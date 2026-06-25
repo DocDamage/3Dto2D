@@ -1,0 +1,17 @@
+SpriteForge Godot notes
+
+Sprite2D setup:
+- Texture: sheet.png
+- hframes: 4
+- vframes: 4
+- Frame range: 0 to 15
+- FPS: 12
+- Cell size: 256x256
+
+For AnimatedSprite2D:
+- Create SpriteFrames resource.
+- Add animation.
+- Add frames from sheet.png using the same 256x256 grid.
+- Set animation speed to 12 FPS.
+
+If you used --spacing or --margin, use the rectangle data in sheet.json instead of plain hframes/vframes slicing.

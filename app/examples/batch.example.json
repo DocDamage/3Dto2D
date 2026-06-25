@@ -1,0 +1,15 @@
+{
+  "jobs": [
+    {
+      "mode": "pack",
+      "input": "examples/test_frames",
+      "output": "output/test_frames_sprite",
+      "fps": 12,
+      "cell_size": "128x128",
+      "anchor": "bottom-center",
+      "solidify": 2,
+      "preview_gif": true,
+      "report": true
+    }
+  ]
+}

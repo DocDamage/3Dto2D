@@ -1,0 +1,20 @@
+START HERE
+
+For normal use, double-click:
+
+  START_HERE.bat
+
+Then use the browser UI:
+
+  Launchpad -> Run No-GPU Demo
+  Launchpad -> Install Safe Setup
+  Launchpad -> Launch ComfyUI
+  Make Sprite -> profile debug first
+  Quality Lab -> QA / Auto-Fix
+  Release -> Build Release ZIP
+
+V12 FINAL POLISH
+
+Default setup installs the safe Wan 2.1 1.3B model path. After that works, add Wan 2.2 TI2V 5B from the Setup tab if you want better quality. Wan 2.2 14B is cloud/heavy-GPU only and is not auto-downloaded.
+
+If anything breaks, run COLLECT_SUPPORT_BUNDLE.bat.

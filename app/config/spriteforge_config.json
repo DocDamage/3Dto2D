@@ -1,0 +1,250 @@
+{
+  "paths": {
+    "comfyui_dir": "vendor/ComfyUI",
+    "comfyui_output": "vendor/ComfyUI/output",
+    "sprite_output": "output",
+    "input_dir": "input",
+    "blender_exe": "blender"
+  },
+  "comfy": {
+    "host": "127.0.0.1",
+    "port": 8188,
+    "listen": "127.0.0.1",
+    "extra_args": []
+  },
+  "sprite_defaults": {
+    "fps": 12,
+    "cell_size": "512x512",
+    "key_color": "auto",
+    "key_tolerance": 45,
+    "pad": 24,
+    "anchor": "bottom-center",
+    "solidify": 2,
+    "drop_loop_duplicate": true,
+    "preview_gif": true,
+    "report": true
+  },
+  "wan_defaults": {
+    "api_workflow": "workflows/wan21_t2v_1_3b_native_api.json",
+    "model": "wan2.1_t2v_1.3B_fp16.safetensors",
+    "text_encoder": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+    "vae": "wan_2.1_vae.safetensors",
+    "width": 832,
+    "height": 480,
+    "frames": 33,
+    "fps": 12,
+    "steps": 30,
+    "cfg": 6,
+    "shift": 8,
+    "sampler": "uni_pc",
+    "scheduler": "simple",
+    "output_prefix": "SpriteForge/wan_sprite"
+  },
+  "profiles": {
+    "debug": {
+      "width": 512,
+      "height": 288,
+      "frames": 9,
+      "fps": 8,
+      "steps": 8,
+      "cfg": 5,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "rtx3060_12gb": {
+      "width": 832,
+      "height": 480,
+      "frames": 33,
+      "fps": 12,
+      "steps": 24,
+      "cfg": 6,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "sprite_fast": {
+      "width": 640,
+      "height": 384,
+      "frames": 25,
+      "fps": 12,
+      "steps": 18,
+      "cfg": 6,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "quality_local": {
+      "width": 832,
+      "height": 480,
+      "frames": 49,
+      "fps": 12,
+      "steps": 32,
+      "cfg": 6,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "i2v_cloud_24gb_plus": {
+      "width": 512,
+      "height": 512,
+      "frames": 33,
+      "fps": 12,
+      "steps": 20,
+      "cfg": 6,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "pose_debug": {
+      "width": 512,
+      "height": 512,
+      "frames": 16,
+      "fps": 8,
+      "steps": 10,
+      "cfg": 5,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "wan22_5b_debug": {
+      "width": 512,
+      "height": 288,
+      "frames": 9,
+      "fps": 8,
+      "steps": 8,
+      "cfg": 5,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "wan22_5b_local": {
+      "width": 832,
+      "height": 480,
+      "frames": 33,
+      "fps": 12,
+      "steps": 20,
+      "cfg": 5,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
+    "wan22_5b_quality": {
+      "width": 960,
+      "height": 544,
+      "frames": 49,
+      "fps": 12,
+      "steps": 24,
+      "cfg": 5.5,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    }
+  },
+  "diagnostics": {
+    "required_native_wan_nodes": [
+      "UNETLoader",
+      "CLIPLoader",
+      "VAELoader",
+      "EmptyHunyuanLatentVideo",
+      "ModelSamplingSD3",
+      "KSampler",
+      "VAEDecode",
+      "SaveWEBM"
+    ]
+  },
+  "wan_modes": {
+    "t2v": {
+      "api_workflow": "workflows/wan21_t2v_1_3b_native_api.json",
+      "model": "wan2.1_t2v_1.3B_fp16.safetensors",
+      "local_ok": true
+    },
+    "i2v": {
+      "api_workflow": "workflows/wan21_i2v_480p_14b_native_api.json",
+      "model": "wan2.1_i2v_480p_14B_fp16.safetensors",
+      "clip_vision": "clip_vision_h.safetensors",
+      "width": 512,
+      "height": 512,
+      "frames": 33,
+      "steps": 20,
+      "local_ok": false,
+      "note": "Reference image mode uses Wan 2.1 I2V 14B; prefer cloud or heavy offload."
+    },
+    "vace": {
+      "api_workflow": "workflows/user_exported_vace_reference_api.json",
+      "model": "wan2.1_vace_14B_fp16.safetensors",
+      "local_ok": false,
+      "note": "Placeholder: export a VACE API workflow from ComfyUI and point --workflow to it."
+    },
+    "custom": {},
+    "ti2v22": {
+      "api_workflow": "workflows/wan22_ti2v_5b_native_api.json",
+      "model": "wan2.2_ti2v_5B_fp16.safetensors",
+      "text_encoder": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "vae": "wan2.2_vae.safetensors",
+      "width": 832,
+      "height": 480,
+      "frames": 33,
+      "steps": 20,
+      "cfg": 5,
+      "shift": 8,
+      "local_ok": true,
+      "note": "Wan2.2 TI2V 5B hybrid model; supports T2V and optional I2V when the workflow image node is enabled."
+    }
+  },
+  "cloud": {
+    "default_profile": "quality_local",
+    "remote_spriteforge_dir": "SpriteForge",
+    "keep_api_keys_out_of_config": true
+  },
+  "default_model_tier": "wan21_safe",
+  "model_tiers": {
+    "wan21_safe": {
+      "label": "Wan 2.1 T2V 1.3B - safest local default",
+      "short_label": "Safe / Wan 2.1 1.3B",
+      "mode": "t2v",
+      "default_profile": "rtx3060_12gb",
+      "manifest": "model_manifests/wan21_t2v_1_3b_native.json",
+      "local_ok": true,
+      "min_vram_gb": 8,
+      "recommended_for": "RTX 3060 12GB first-run and production-safe local tests",
+      "defaults": {
+        "api_workflow": "workflows/wan21_t2v_1_3b_native_api.json",
+        "model": "wan2.1_t2v_1.3B_fp16.safetensors",
+        "text_encoder": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "vae": "wan_2.1_vae.safetensors",
+        "output_prefix": "SpriteForge/wan21_sprite"
+      }
+    },
+    "wan22_5b": {
+      "label": "Wan 2.2 TI2V 5B - advanced local quality",
+      "short_label": "Better / Wan 2.2 5B",
+      "mode": "ti2v22",
+      "default_profile": "wan22_5b_local",
+      "manifest": "model_manifests/wan22_ti2v_5b_native.json",
+      "local_ok": true,
+      "min_vram_gb": 8,
+      "recommended_for": "Better motion/prompt adherence on local GPUs with native offloading",
+      "defaults": {
+        "api_workflow": "workflows/wan22_ti2v_5b_native_api.json",
+        "model": "wan2.2_ti2v_5B_fp16.safetensors",
+        "text_encoder": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "vae": "wan2.2_vae.safetensors",
+        "output_prefix": "SpriteForge/wan22_5b_sprite"
+      }
+    },
+    "wan22_14b_cloud": {
+      "label": "Wan 2.2 14B A14B - cloud/heavy GPU only",
+      "short_label": "Cloud / Wan 2.2 14B",
+      "mode": "custom",
+      "default_profile": "i2v_cloud_24gb_plus",
+      "manifest": null,
+      "local_ok": false,
+      "min_vram_gb": 80,
+      "recommended_for": "Remote ComfyUI / rented GPU workflows; not a default local install",
+      "defaults": {
+        "output_prefix": "SpriteForge/wan22_14b_cloud_sprite"
+      }
+    }
+  }
+}

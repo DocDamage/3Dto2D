@@ -1,0 +1,16 @@
+SpriteForge Studio v12 Quick Start
+
+1. Extract the ZIP.
+2. Double-click START_HERE.bat.
+3. Open Launchpad.
+4. Run No-GPU Demo.
+5. Run Install Safe Setup.
+6. Launch ComfyUI.
+7. Make Sprite with profile=debug.
+8. Make Sprite with profile=rtx3060_12gb.
+9. Run QA / Auto-Fix.
+10. Build Release ZIP.
+
+Use Safe Wan 2.1 first. Add Wan 2.2 5B only after the safe path works.
+
+If anything breaks, double-click COLLECT_SUPPORT_BUNDLE.bat.

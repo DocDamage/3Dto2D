@@ -1,0 +1,30 @@
+{
+  "jobs": [
+    {
+      "mode": "video",
+      "input": "input/wan_walk.mp4",
+      "output": "output/wan_walk_sprite",
+      "fps": 12,
+      "cell_size": "512x512",
+      "key_color": "auto",
+      "key_tolerance": 45,
+      "anchor": "bottom-center",
+      "pad": 24,
+      "solidify": 2,
+      "drop_loop_duplicate": true,
+      "preview_gif": true,
+      "report": true
+    },
+    {
+      "mode": "pack",
+      "input": "output/ortho_frames",
+      "output": "output/ortho_sprite",
+      "fps": 12,
+      "cell_size": "512x512",
+      "anchor": "bottom-center",
+      "solidify": 2,
+      "preview_gif": true,
+      "report": true
+    }
+  ]
+}

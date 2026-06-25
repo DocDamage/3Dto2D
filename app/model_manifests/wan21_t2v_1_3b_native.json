@@ -1,0 +1,24 @@
+{
+  "repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged",
+  "preset": "wan21_t2v_1_3b_native",
+  "files": [
+    {
+      "source": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "dest_subdir": "text_encoders",
+      "filename": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "approx_size": "6.74 GB"
+    },
+    {
+      "source": "split_files/vae/wan_2.1_vae.safetensors",
+      "dest_subdir": "vae",
+      "filename": "wan_2.1_vae.safetensors",
+      "approx_size": "254 MB"
+    },
+    {
+      "source": "split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors",
+      "dest_subdir": "diffusion_models",
+      "filename": "wan2.1_t2v_1.3B_fp16.safetensors",
+      "approx_size": "2.84 GB"
+    }
+  ]
+}

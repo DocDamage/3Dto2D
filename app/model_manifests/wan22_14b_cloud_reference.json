@@ -1,0 +1,26 @@
+{
+  "preset": "wan22_14b_cloud_reference",
+  "label": "Wan 2.2 14B cloud/heavy GPU reference manifest",
+  "cloud_only": true,
+  "blocked_by_default": true,
+  "docs": "https://docs.comfy.org/tutorials/video/wan/wan2_2",
+  "note": "Do not auto-download this on RTX 3060 12GB. Use remote ComfyUI/cloud workflow and exported API templates.",
+  "files": [
+    {
+      "filename": "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors",
+      "dest_subdir": "diffusion_models"
+    },
+    {
+      "filename": "wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors",
+      "dest_subdir": "diffusion_models"
+    },
+    {
+      "filename": "wan_2.1_vae.safetensors",
+      "dest_subdir": "vae"
+    },
+    {
+      "filename": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "dest_subdir": "text_encoders"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "video_example": {
+    "command": "python spriteforge.py video --input input/wan_walk.mp4 --output output/wan_walk_sprite --fps 12 --cell-size 512x512 --key-color auto --key-tolerance 45 --anchor bottom-center --pad 24 --solidify 2 --drop-loop-duplicate --preview-gif --report"
+  },
+  "blender_render_example": {
+    "command": "blender -b --python blender_render_ortho.py -- --blend input/character.blend --output output/ortho_frames --direction front --resolution 512 --fps 12 --start 1 --end 32 --transparent --add-light"
+  },
+  "pack_example": {
+    "command": "python spriteforge.py pack --input output/ortho_frames --output output/ortho_sprite --fps 12 --cell-size 512x512 --anchor bottom-center --solidify 2 --preview-gif --report"
+  }
+}

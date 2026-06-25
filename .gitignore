@@ -1,0 +1,30 @@
+# Python/runtime artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments and local install markers
+.venv/
+app/.venv/
+app/.deps_installed_v12
+
+# Local logs and generated outputs
+app/logs/
+app/output/
+app/releases/
+app/input/uploaded_videos/
+
+# External dependencies and model payloads are installed/downloaded locally.
+app/vendor/*
+!app/vendor/NOT_BUNDLED_README.txt
+
+# Large model/checkpoint formats
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.onnx
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

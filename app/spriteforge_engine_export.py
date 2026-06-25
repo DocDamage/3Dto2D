@@ -1,0 +1,638 @@
+#!/usr/bin/env python3
+"""Direct Godot/Unity helper export for SpriteForge spritesheets.
+
+v6 adds:
+- Godot Sprite2D mode (grid-frame playback) and AnimatedSprite2D mode (runtime SpriteFrames from atlas regions)
+- Unity editor helper that slices a sheet and can create an AnimationClip from the sliced sprites
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+from pathlib import Path
+from typing import Dict, Optional
+
+
+def safe_name(name: str) -> str:
+    name = re.sub(r"[^A-Za-z0-9_]+", "_", name.strip())
+    name = re.sub(r"_+", "_", name).strip("_")
+    return name or "spriteforge_sprite"
+
+
+def load_meta(sprite_dir: Path) -> Dict:
+    meta_path = sprite_dir / "sheet.json"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"Missing {meta_path}. Run spriteforge.py video/pack first.")
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    if not (sprite_dir / meta.get("image", "sheet.png")).exists():
+        raise FileNotFoundError(f"Missing spritesheet image in {sprite_dir}: {meta.get('image', 'sheet.png')}")
+    return meta
+
+
+def copy_base_assets(sprite_dir: Path, dest: Path, meta: Dict) -> Path:
+    dest.mkdir(parents=True, exist_ok=True)
+    image = sprite_dir / meta.get("image", "sheet.png")
+    shutil.copy2(image, dest / "sheet.png")
+    shutil.copy2(sprite_dir / "sheet.json", dest / "sheet.json")
+    preview = sprite_dir / "preview.gif"
+    if preview.exists():
+        shutil.copy2(preview, dest / "preview.gif")
+    return dest / "sheet.png"
+
+
+def godot_res_path(project: Optional[Path], dest: Path, res_path: Optional[str], sprite_name: str, filename: str = "sheet.png") -> str:
+    if res_path:
+        base = res_path.rstrip("/")
+        if not base.startswith("res://"):
+            base = "res://" + base.strip("/")
+        return base + "/" + filename
+    if project:
+        try:
+            rel = dest.relative_to(project).as_posix()
+            return "res://" + rel + "/" + filename
+        except ValueError:
+            pass
+    return f"res://assets/sprites/{sprite_name}/{filename}"
+
+
+def godot_sprite2d_script(fps: float, frame_count: int, cols: int, rows: int) -> str:
+    return f'''extends Sprite2D
+
+@export var fps: float = {fps}
+@export var frame_count: int = {frame_count}
+@export var loop: bool = true
+
+var _accum: float = 0.0
+
+func _ready() -> void:
+    hframes = {cols}
+    vframes = {rows}
+    frame = 0
+
+func _process(delta: float) -> void:
+    if fps <= 0.0 or frame_count <= 1:
+        return
+    _accum += delta
+    var step := 1.0 / fps
+    while _accum >= step:
+        _accum -= step
+        var next_frame := frame + 1
+        if next_frame >= frame_count:
+            next_frame = 0 if loop else frame_count - 1
+        frame = next_frame
+'''
+
+
+def godot_animatedsprite2d_script(tex_path: str, fps: float, frame_count: int, frame_width: int, frame_height: int, cols: int, rows: int) -> str:
+    return f'''extends AnimatedSprite2D
+
+@export var fps: float = {fps}
+@export var loop: bool = true
+
+const FRAME_COUNT := {frame_count}
+const FRAME_WIDTH := {frame_width}
+const FRAME_HEIGHT := {frame_height}
+const COLUMNS := {cols}
+const ROWS := {rows}
+const SHEET := preload("{tex_path}")
+
+func _ready() -> void:
+    var sf := SpriteFrames.new()
+    var anim := &"default"
+    if not sf.has_animation(anim):
+        sf.add_animation(anim)
+    sf.set_animation_speed(anim, fps)
+    sf.set_animation_loop(anim, loop)
+    for i in range(FRAME_COUNT):
+        var col := i % COLUMNS
+        var row := int(i / COLUMNS)
+        var at := AtlasTexture.new()
+        at.atlas = SHEET
+        at.region = Rect2(col * FRAME_WIDTH, row * FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT)
+        sf.add_frame(anim, at)
+    sprite_frames = sf
+    animation = anim
+    play(anim)
+'''
+
+
+def export_godot(sprite_dir: Path, output: Optional[Path], project: Optional[Path], name: Optional[str], res_path: Optional[str], mode: str) -> Path:
+    meta = load_meta(sprite_dir)
+    sprite_name = safe_name(name or meta.get("animation") or sprite_dir.name)
+    dest = output if output else (project / "assets" / "sprites" / sprite_name if project else sprite_dir / "godot_export")
+    copy_base_assets(sprite_dir, dest, meta)
+
+    tex_path = godot_res_path(project, dest, res_path, sprite_name, "sheet.png")
+    script_name = f"{sprite_name}_{mode}_player.gd"
+    scene_name = f"{sprite_name}.tscn"
+    fps = float(meta.get("fps", 12))
+    frame_count = int(meta.get("frame_count", 1))
+    cols = int(meta.get("columns", 1))
+    rows = int(meta.get("rows", 1))
+    fw = int(meta.get("frame_width", 0))
+    fh = int(meta.get("frame_height", 0))
+    folder_path = tex_path.rsplit("/", 1)[0]
+    script_res_path = f"{folder_path}/{script_name}"
+
+    if mode == "animatedsprite2d":
+        script = godot_animatedsprite2d_script(tex_path, fps, frame_count, fw, fh, cols, rows)
+        node_type = "AnimatedSprite2D"
+        node_extra = f"autoplay = &\"default\"\n"
+    else:
+        script = godot_sprite2d_script(fps, frame_count, cols, rows)
+        node_type = "Sprite2D"
+        node_extra = f"texture = ExtResource(\"1_texture\")\nhframes = {cols}\nvframes = {rows}\ncentered = true\nfps = {fps}\nframe_count = {frame_count}\nloop = true\n"
+
+    (dest / script_name).write_text(script, encoding="utf-8")
+
+    if mode == "animatedsprite2d":
+        tscn = f'''[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="{script_res_path}" id="1_script"]
+
+[node name="{sprite_name}" type="{node_type}"]
+script = ExtResource("1_script")
+{node_extra}'''
+    else:
+        tscn = f'''[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="{tex_path}" id="1_texture"]
+[ext_resource type="Script" path="{script_res_path}" id="2_script"]
+
+[node name="{sprite_name}" type="{node_type}"]
+script = ExtResource("2_script")
+{node_extra}'''
+    (dest / scene_name).write_text(tscn, encoding="utf-8")
+
+    notes = f'''# Godot import notes
+
+Generated files:
+
+- `sheet.png`
+- `sheet.json`
+- `{script_name}`
+- `{scene_name}`
+
+Godot mode:
+
+```text
+{mode}
+```
+
+Expected texture path:
+
+```text
+{tex_path}
+```
+
+Sprite settings:
+
+```text
+columns = {cols}
+rows = {rows}
+frame_count = {frame_count}
+fps = {fps}
+cell = {fw}x{fh}
+```
+
+`animatedsprite2d` mode builds a `SpriteFrames` resource at runtime from atlas regions.
+`sprite2d` mode uses `hframes`, `vframes`, and manual frame stepping.
+'''
+    (dest / "GODOT_IMPORT_NOTES.md").write_text(notes, encoding="utf-8")
+    return dest
+
+
+def unity_runtime_script(class_name: str, fps: float, frame_count: int) -> str:
+    return f'''using UnityEngine;
+
+[RequireComponent(typeof(SpriteRenderer))]
+public class {class_name} : MonoBehaviour
+{{
+    public Sprite[] frames;
+    public float fps = {fps}f;
+    public bool loop = true;
+
+    private SpriteRenderer spriteRenderer;
+    private float accum;
+    private int index;
+
+    void Awake()
+    {{
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        if (frames != null && frames.Length > 0)
+            spriteRenderer.sprite = frames[0];
+    }}
+
+    void Update()
+    {{
+        if (frames == null || frames.Length <= 1 || fps <= 0f) return;
+        accum += Time.deltaTime;
+        float step = 1f / fps;
+        while (accum >= step)
+        {{
+            accum -= step;
+            index++;
+            if (index >= frames.Length)
+                index = loop ? 0 : frames.Length - 1;
+            spriteRenderer.sprite = frames[index];
+        }}
+    }}
+}}
+'''
+
+
+def unity_editor_importer() -> str:
+    return r'''#if UNITY_EDITOR
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+public static class SpriteForgeSheetImporter
+{
+    [MenuItem("Tools/SpriteForge/Slice Selected SpriteForge Sheet")]
+    public static void SliceSelected()
+    {
+        var texturePath = SelectedTexturePath();
+        if (string.IsNullOrEmpty(texturePath)) return;
+        var meta = LoadMeta(texturePath);
+        if (meta == null) return;
+
+        var importer = AssetImporter.GetAtPath(texturePath) as TextureImporter;
+        if (importer == null)
+        {
+            Debug.LogError("Selected asset is not a TextureImporter texture.");
+            return;
+        }
+
+        importer.textureType = TextureImporterType.Sprite;
+        importer.spriteImportMode = SpriteImportMode.Multiple;
+        importer.mipmapEnabled = false;
+        importer.filterMode = FilterMode.Point;
+        importer.textureCompression = TextureImporterCompression.Uncompressed;
+
+#pragma warning disable 0618
+        var sprites = new List<SpriteMetaData>();
+        for (int i = 0; i < meta.frame_count; i++)
+        {
+            int col = i % meta.columns;
+            int row = i / meta.columns;
+            var smd = new SpriteMetaData();
+            smd.name = meta.animation + "_" + i.ToString("0000");
+            smd.rect = new Rect(col * meta.frame_width, (meta.rows - row - 1) * meta.frame_height, meta.frame_width, meta.frame_height);
+            smd.pivot = new Vector2(0.5f, 0.0f);
+            smd.alignment = (int)SpriteAlignment.Custom;
+            sprites.Add(smd);
+        }
+        importer.spritesheet = sprites.ToArray();
+#pragma warning restore 0618
+
+        EditorUtility.SetDirty(importer);
+        importer.SaveAndReimport();
+        AssetDatabase.Refresh();
+        Debug.Log("SpriteForge sheet sliced: " + texturePath);
+    }
+
+    [MenuItem("Tools/SpriteForge/Create Animation Clip From Selected Sheet")]
+    public static void CreateAnimationClipFromSelectedSheet()
+    {
+        var texturePath = SelectedTexturePath();
+        if (string.IsNullOrEmpty(texturePath)) return;
+        var meta = LoadMeta(texturePath);
+        if (meta == null) return;
+
+        var sprites = AssetDatabase.LoadAllAssetRepresentationsAtPath(texturePath)
+            .OfType<Sprite>()
+            .OrderBy(s => s.name)
+            .ToArray();
+        if (sprites.Length == 0)
+        {
+            Debug.LogError("No sliced sprites found. Run Slice Selected SpriteForge Sheet first.");
+            return;
+        }
+
+        var clip = new AnimationClip();
+        clip.frameRate = Mathf.Max(1f, meta.fps);
+        var binding = EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite");
+        var keyframes = new ObjectReferenceKeyframe[sprites.Length];
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            keyframes[i] = new ObjectReferenceKeyframe
+            {
+                time = i / clip.frameRate,
+                value = sprites[i]
+            };
+        }
+        AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
+
+        var settings = AnimationUtility.GetAnimationClipSettings(clip);
+        settings.loopTime = true;
+        AnimationUtility.SetAnimationClipSettings(clip, settings);
+
+        var clipPath = Path.Combine(Path.GetDirectoryName(texturePath), meta.animation + ".anim").Replace("\\", "/");
+        AssetDatabase.CreateAsset(clip, AssetDatabase.GenerateUniqueAssetPath(clipPath));
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("Created SpriteForge animation clip: " + clipPath);
+    }
+
+    private static string SelectedTexturePath()
+    {
+        var obj = Selection.activeObject;
+        var texturePath = AssetDatabase.GetAssetPath(obj);
+        if (string.IsNullOrEmpty(texturePath) || !texturePath.EndsWith(".png"))
+        {
+            Debug.LogError("Select a SpriteForge sheet.png texture first.");
+            return null;
+        }
+        return texturePath;
+    }
+
+    private static SpriteForgeMeta LoadMeta(string texturePath)
+    {
+        var jsonPath = Path.Combine(Path.GetDirectoryName(texturePath), "sheet.json");
+        if (!File.Exists(jsonPath))
+        {
+            Debug.LogError("Could not find sheet.json next to the selected sheet.png.");
+            return null;
+        }
+        return JsonUtility.FromJson<SpriteForgeMeta>(File.ReadAllText(jsonPath));
+    }
+
+    [System.Serializable]
+    public class SpriteForgeMeta
+    {
+        public string animation;
+        public int frame_width;
+        public int frame_height;
+        public int frame_count;
+        public float fps;
+        public int columns;
+        public int rows;
+    }
+}
+#endif
+'''
+
+
+def export_unity(sprite_dir: Path, output: Optional[Path], project: Optional[Path], name: Optional[str]) -> Path:
+    meta = load_meta(sprite_dir)
+    sprite_name = safe_name(name or meta.get("animation") or sprite_dir.name)
+    dest = output if output else (project / "Assets" / "SpriteForge" / sprite_name if project else sprite_dir / "unity_export")
+    copy_base_assets(sprite_dir, dest, meta)
+
+    runtime_class = safe_name(sprite_name.title().replace("_", "")) + "Animator"
+    (dest / f"{runtime_class}.cs").write_text(unity_runtime_script(runtime_class, float(meta.get("fps", 12)), int(meta.get("frame_count", 1))), encoding="utf-8")
+    editor_dir = dest / "Editor"
+    editor_dir.mkdir(parents=True, exist_ok=True)
+    (editor_dir / "SpriteForgeSheetImporter.cs").write_text(unity_editor_importer(), encoding="utf-8")
+
+    notes = f'''# Unity import notes
+
+Generated files:
+
+- `sheet.png`
+- `sheet.json`
+- `{runtime_class}.cs`
+- `Editor/SpriteForgeSheetImporter.cs`
+
+Steps inside Unity:
+
+1. Put this folder under your project's `Assets/` folder.
+2. Select `sheet.png`.
+3. Run `Tools > SpriteForge > Slice Selected SpriteForge Sheet`.
+4. Run `Tools > SpriteForge > Create Animation Clip From Selected Sheet` if you want a `.anim` clip.
+5. Or create a GameObject with a `SpriteRenderer`, add `{runtime_class}`, and assign the sliced frame sprites in order.
+
+Sprite settings:
+
+```text
+columns = {meta.get('columns')}
+rows = {meta.get('rows')}
+frame_count = {meta.get('frame_count')}
+fps = {meta.get('fps')}
+cell = {meta.get('frame_width')}x{meta.get('frame_height')}
+```
+'''
+    (dest / "UNITY_IMPORT_NOTES.md").write_text(notes, encoding="utf-8")
+    return dest
+
+
+def cmd_export(args: argparse.Namespace) -> None:
+    sprite_dir = Path(args.sprite_dir).resolve()
+    output = Path(args.output).resolve() if args.output else None
+    project = Path(args.project).resolve() if args.project else None
+    if args.engine == "godot":
+        dest = export_godot(sprite_dir, output, project, args.name, args.res_path, args.godot_mode)
+    else:
+        dest = export_unity(sprite_dir, output, project, args.name)
+    print(f"Exported {args.engine} helper files: {dest}")
+
+
+# ---------------------------------------------------------------------------
+# Validate export
+# ---------------------------------------------------------------------------
+
+def _check(label: str, ok: bool, detail: str = "") -> Dict:
+    status = "PASS" if ok else "FAIL"
+    msg = f"[{status}] {label}" + (f": {detail}" if detail else "")
+    print(msg)
+    return {"label": label, "ok": ok, "detail": detail}
+
+
+def validate_export(
+    sprite_dir: Path,
+    engine: Optional[str] = None,
+    release_zip: Optional[Path] = None,
+) -> bool:
+    """Validate Godot/Unity export files for a sprite output directory.
+
+    Returns True if all checks pass, False otherwise.
+    Prints a structured pass/fail table to stdout.
+    """
+    import zipfile
+    results = []
+    all_ok = True
+
+    # --- 1. sheet.json exists and parses ---
+    meta_path = sprite_dir / "sheet.json"
+    r = _check("sheet.json exists", meta_path.exists())
+    results.append(r)
+    if not r["ok"]:
+        all_ok = False
+        print(f"\nResult: FAIL ({sum(1 for r in results if r['ok'])}/{len(results)} passed)")
+        return False
+
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        r = _check("sheet.json parseable", True)
+    except Exception as exc:
+        r = _check("sheet.json parseable", False, str(exc))
+        all_ok = False
+        results.append(r)
+        print(f"\nResult: FAIL ({sum(1 for r in results if r['ok'])}/{len(results)} passed)")
+        return False
+    results.append(r)
+
+    # --- 2. sheet.png exists ---
+    sheet_img = sprite_dir / meta.get("image", "sheet.png")
+    if not sheet_img.exists():
+        sheet_img = sprite_dir / "sheet.png"
+    r = _check("sheet.png exists", sheet_img.exists(), str(sheet_img))
+    results.append(r)
+    if not r["ok"]:
+        all_ok = False
+
+    # --- 3. Pixel dimensions match metadata ---
+    if sheet_img.exists():
+        try:
+            from PIL import Image as _Img
+            with _Img.open(sheet_img) as im:
+                img_w, img_h = im.size
+            fw = int(meta.get("frame_width", 0))
+            fh = int(meta.get("frame_height", 0))
+            cols = int(meta.get("columns", 1))
+            rows = int(meta.get("rows", 1))
+            expected_w = fw * cols
+            expected_h = fh * rows
+            dim_ok = (img_w == expected_w and img_h == expected_h)
+            r = _check(
+                "Sheet pixel dimensions match metadata",
+                dim_ok,
+                f"image={img_w}x{img_h} expected={expected_w}x{expected_h} (fw={fw} fh={fh} cols={cols} rows={rows})",
+            )
+            results.append(r)
+            if not dim_ok:
+                all_ok = False
+
+            # --- 4. Frame count matches grid ---
+            fc_meta = int(meta.get("frame_count", 0))
+            fc_grid = cols * rows
+            # frame_count must be <= grid cells
+            fc_ok = 0 < fc_meta <= fc_grid
+            r = _check(
+                "frame_count consistent with grid",
+                fc_ok,
+                f"frame_count={fc_meta} grid_cells={fc_grid}",
+            )
+            results.append(r)
+            if not fc_ok:
+                all_ok = False
+        except Exception as exc:
+            r = _check("Sheet image validation", False, str(exc))
+            results.append(r)
+            all_ok = False
+
+    # --- 5. Engine-specific file checks ---
+    if engine == "godot":
+        gd_files = list(sprite_dir.glob("*.gd")) + list(sprite_dir.glob("godot_export/*.gd"))
+        r = _check("Godot .gd script present", bool(gd_files),
+                   f"found: {[f.name for f in gd_files]}" if gd_files else "no .gd file found")
+        results.append(r)
+        if not r["ok"]:
+            all_ok = False
+
+        tres_files = list(sprite_dir.glob("*.tres")) + list(sprite_dir.glob("godot_export/*.tres"))
+        r = _check("Godot .tres resource present", bool(tres_files),
+                   f"found: {[f.name for f in tres_files]}" if tres_files else "no .tres file found")
+        results.append(r)
+        if not r["ok"]:
+            all_ok = False
+
+        # Check hframes/vframes in .tres
+        if tres_files:
+            tres_text = tres_files[0].read_text(encoding="utf-8", errors="replace")
+            expected_hf = str(meta.get("columns", 1))
+            expected_vf = str(meta.get("rows", 1))
+            hf_ok = f"hframes = {expected_hf}" in tres_text
+            vf_ok = f"vframes = {expected_vf}" in tres_text
+            r = _check("Godot .tres hframes matches metadata", hf_ok, f"expected hframes={expected_hf}")
+            results.append(r)
+            if not hf_ok:
+                all_ok = False
+            r = _check("Godot .tres vframes matches metadata", vf_ok, f"expected vframes={expected_vf}")
+            results.append(r)
+            if not vf_ok:
+                all_ok = False
+
+    elif engine == "unity":
+        cs_files = list(sprite_dir.glob("*.cs")) + list(sprite_dir.glob("unity_export/*.cs"))
+        r = _check("Unity .cs script present", bool(cs_files),
+                   f"found: {[f.name for f in cs_files]}" if cs_files else "no .cs file found")
+        results.append(r)
+        if not r["ok"]:
+            all_ok = False
+
+    # --- 6. Release zip checks ---
+    if release_zip and Path(release_zip).exists():
+        import zipfile as _zf
+        try:
+            with _zf.ZipFile(release_zip, "r") as zf:
+                names = set(zf.namelist())
+            has_sheet = any("sheet.png" in n for n in names)
+            has_json = any("sheet.json" in n for n in names)
+            r = _check("Release zip contains sheet.png", has_sheet)
+            results.append(r)
+            if not has_sheet:
+                all_ok = False
+            r = _check("Release zip contains sheet.json", has_json)
+            results.append(r)
+            if not has_json:
+                all_ok = False
+        except Exception as exc:
+            r = _check("Release zip readable", False, str(exc))
+            results.append(r)
+            all_ok = False
+    elif release_zip:
+        r = _check("Release zip exists", False, str(release_zip))
+        results.append(r)
+        all_ok = False
+
+    passed = sum(1 for r in results if r["ok"])
+    total = len(results)
+    status_str = "PASS" if all_ok else "FAIL"
+    print(f"\nResult: {status_str} ({passed}/{total} checks passed)")
+    return all_ok
+
+
+def cmd_validate(args: argparse.Namespace) -> None:
+    sprite_dir = Path(args.sprite_dir).resolve()
+    engine = args.engine or None
+    release_zip = Path(args.release_zip).resolve() if args.release_zip else None
+    ok = validate_export(sprite_dir, engine=engine, release_zip=release_zip)
+    if not ok:
+        raise SystemExit(1)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Export SpriteForge sheets to Godot/Unity helper files")
+    s = p.add_subparsers(dest="command", required=True)
+    e = s.add_parser("export")
+    e.add_argument("--sprite-dir", required=True, help="Folder containing sheet.png and sheet.json")
+    e.add_argument("--engine", required=True, choices=["godot", "unity"])
+    e.add_argument("--output", default=None, help="Output folder. Defaults inside the project or sprite_dir.")
+    e.add_argument("--project", default=None, help="Godot or Unity project root")
+    e.add_argument("--name", default=None)
+    e.add_argument("--res-path", default=None, help="Godot res:// folder path, for example res://assets/sprites/hero_walk")
+    e.add_argument("--godot-mode", choices=["sprite2d", "animatedsprite2d"], default="animatedsprite2d")
+    e.set_defaults(func=cmd_export)
+    v = s.add_parser("validate", help="Validate export files for correctness")
+    v.add_argument("--sprite-dir", required=True, help="Sprite output folder")
+    v.add_argument("--engine", default=None, choices=["godot", "unity"], help="Engine to check engine-specific files")
+    v.add_argument("--release-zip", default=None, help="Release zip to check for completeness")
+    v.set_defaults(func=cmd_validate)
+    return p
+
+
+def main() -> int:
+    p = build_parser()
+    args = p.parse_args()
+    args.func(args)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

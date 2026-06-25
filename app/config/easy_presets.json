@@ -1,0 +1,70 @@
+{
+  "actions": {
+    "idle": {
+      "label": "Idle",
+      "frames": 25,
+      "note": "breathing / subtle motion"
+    },
+    "walk": {
+      "label": "Walk",
+      "frames": 33,
+      "note": "side-view walk cycle"
+    },
+    "run": {
+      "label": "Run",
+      "frames": 25,
+      "note": "faster side-view loop"
+    },
+    "attack_light": {
+      "label": "Light attack",
+      "frames": 33,
+      "note": "fast readable attack"
+    },
+    "attack_heavy": {
+      "label": "Heavy attack",
+      "frames": 41,
+      "note": "wind-up and hit"
+    },
+    "cast": {
+      "label": "Cast / magic",
+      "frames": 33,
+      "note": "spell wind-up"
+    },
+    "jump": {
+      "label": "Jump",
+      "frames": 25,
+      "note": "arc / landing"
+    },
+    "hurt": {
+      "label": "Hurt",
+      "frames": 17,
+      "note": "hit reaction"
+    },
+    "death": {
+      "label": "Death",
+      "frames": 49,
+      "note": "fall / collapse"
+    }
+  },
+  "directions": [
+    "right",
+    "left",
+    "front",
+    "back",
+    "three_quarter"
+  ],
+  "styles": [
+    "clean 2D game sprite, crisp edges, readable silhouette",
+    "pixel-art inspired sprite, clean silhouette, simple palette",
+    "anime game sprite, crisp cel-shaded style",
+    "dark fantasy game sprite, readable silhouette",
+    "cartoon platformer sprite, bold shapes"
+  ],
+  "profiles": [
+    "debug",
+    "sprite_fast",
+    "rtx3060_12gb",
+    "quality_local",
+    "i2v_cloud_24gb_plus"
+  ]
+}

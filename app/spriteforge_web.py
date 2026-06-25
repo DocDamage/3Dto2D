@@ -311,8 +311,8 @@ def _list_quality_reports(project_meta: Optional[Dict[str, str]] = None, limit: 
 
 
 def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, int]:
-    """Count project-local planning assets: packs, prompts, and posepacks."""
-    counts = {"packs": 0, "prompts": 0, "posepacks": 0}
+    """Count project-local planning assets: references, packs, prompts, and posepacks."""
+    counts = {"references": 0, "packs": 0, "prompts": 0, "posepacks": 0}
     if not project_meta:
         return counts
     project_root = str(project_meta.get("project_root") or "")
@@ -321,6 +321,8 @@ def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, i
     root = (ROOT / project_root).resolve()
     if not _is_relative_to(root, (ROOT / "projects").resolve()) or not root.exists():
         return counts
+    allowed_refs = VIDEO_SUFFIXES | IMAGE_SUFFIXES
+    counts["references"] = sum(1 for path in (root / "references").glob("*") if path.is_file() and path.suffix.lower() in allowed_refs) if (root / "references").exists() else 0
     counts["packs"] = sum(1 for path in root.rglob("pack_manifest.json") if path.is_file())
     counts["prompts"] = sum(1 for path in (root / "prompts").glob("*.json") if path.is_file()) if (root / "prompts").exists() else 0
     counts["posepacks"] = sum(1 for path in (root / "posepacks").glob("*/posepack.json") if path.is_file()) if (root / "posepacks").exists() else 0
@@ -879,11 +881,15 @@ class Handler(BaseHTTPRequestHandler):
             msg = BytesParser().parsebytes(b"Content-Type: " + content_type.encode("utf-8") + b"\r\n\r\n" + body)
             
             uploaded_part = None
+            active_project = ""
             if msg.is_multipart():
                 for part in msg.walk():
                     if part.get_filename():
                         uploaded_part = part
-                        break
+                        continue
+                    field_name = part.get_param("name", header="content-disposition")
+                    if field_name == "active_project":
+                        active_project = str(part.get_payload(decode=True).decode("utf-8", errors="ignore")).strip()
             
             if uploaded_part is None:
                 return self.send_json({"ok": False, "message": "No file payload found in multipart data."}, 400)
@@ -892,11 +898,13 @@ class Handler(BaseHTTPRequestHandler):
             suffix = Path(filename).suffix.lower()
             if suffix not in VIDEO_SUFFIXES and suffix not in IMAGE_SUFFIXES:
                 return self.send_json({"ok": False, "message": "Unsupported file type."}, 400)
-                
-            UPLOADS.mkdir(parents=True, exist_ok=True)
-            dest = UPLOADS / filename
+
+            project_meta = ProjectService.metadata_for_path(active_project) if active_project else None
+            upload_dir = _project_artifact_path(project_meta, "references", "upload").parent if project_meta else UPLOADS
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            dest = upload_dir / filename
             if dest.exists():
-                dest = UPLOADS / f"{dest.stem}_{int(time.time())}{dest.suffix}"
+                dest = upload_dir / f"{dest.stem}_{int(time.time())}{dest.suffix}"
             
             file_data = uploaded_part.get_payload(decode=True)
             dest.write_bytes(file_data)

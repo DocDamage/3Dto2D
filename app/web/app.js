@@ -56,7 +56,7 @@ function renderProjectSummary(workspace){
     el.textContent = 'Global workspace';
     return;
   }
-  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.prompts || 0} prompts · ${workspace.posepacks || 0} posepacks · ${workspace.quality || 0} QA · ${workspace.experiments} runs · ${workspace.queues} queues · ${workspace.releases || 0} releases`;
+  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.references || 0} refs · ${workspace.prompts || 0} prompts · ${workspace.posepacks || 0} posepacks · ${workspace.quality || 0} QA · ${workspace.experiments} runs · ${workspace.queues} queues · ${workspace.releases || 0} releases`;
 }
 
 function renderOutputs(outputs){
@@ -166,7 +166,7 @@ async function createProject(){
 }
 
 async function uploadFile(file){
-  const fd=new FormData(); fd.append('file', file);
+  const fd=new FormData(); fd.append('file', file); fd.append('active_project', activeProjectPath || '');
   toast('Uploading '+file.name+'…');
   const r=await fetch('/api/upload',{method:'POST',body:fd});
   const data=await r.json(); if(!r.ok||!data.ok) throw new Error(data.message||'Upload failed');

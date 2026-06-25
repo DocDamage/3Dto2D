@@ -475,6 +475,7 @@ def test_project_workspace_counts_releases(tmp_path, monkeypatch):
         "sprite_count": 1,
     }), encoding="utf-8")
     project_dir = tmp_path / "projects" / "hero"
+    (project_dir / "references").mkdir(parents=True)
     (project_dir / "prompts").mkdir()
     (project_dir / "quality" / "hero_walk").mkdir(parents=True)
     (project_dir / "posepacks" / "idle_right").mkdir(parents=True)
@@ -486,6 +487,7 @@ def test_project_workspace_counts_releases(tmp_path, monkeypatch):
         "metrics": {},
         "issues": [],
     }), encoding="utf-8")
+    (project_dir / "references" / "hero_ref.png").write_bytes(b"png")
     (project_dir / "prompts" / "idle_right.json").write_text("{}", encoding="utf-8")
     (project_dir / "posepacks" / "idle_right" / "posepack.json").write_text("{}", encoding="utf-8")
 
@@ -496,6 +498,7 @@ def test_project_workspace_counts_releases(tmp_path, monkeypatch):
     })
 
     assert workspace["releases"] == 1
+    assert workspace["references"] == 1
     assert workspace["packs"] == 1
     assert workspace["quality"] == 1
     assert workspace["prompts"] == 1
@@ -636,6 +639,49 @@ def test_upload_limits():
     assert len(handler.sent_jsons) == 1
     data, status = handler.sent_jsons[0]
     assert status in (400, 500)
+
+
+def test_upload_routes_to_active_project_references(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "UPLOADS", tmp_path / "input")
+    project_meta = {
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    }
+    monkeypatch.setattr(
+        web_mod.ProjectService,
+        "metadata_for_path",
+        staticmethod(lambda value: project_meta if value == "projects/hero/spriteforge_project.json" else None),
+    )
+
+    boundary = "----spriteforge-test-boundary"
+    body = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="active_project"\r\n\r\n'
+        "projects/hero/spriteforge_project.json\r\n"
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="file"; filename="hero ref.png"\r\n'
+        "Content-Type: image/png\r\n\r\n"
+    ).encode("utf-8") + b"fake png bytes" + f"\r\n--{boundary}--\r\n".encode("utf-8")
+
+    handler = MockHandler()
+    handler.path = "/api/upload"
+    handler.headers = {
+        "Content-Length": str(len(body)),
+        "Content-Type": f"multipart/form-data; boundary={boundary}",
+    }
+    handler.rfile.read.return_value = body
+    handler.do_POST()
+
+    data, status = handler.sent_jsons[-1]
+    dest = tmp_path / "projects" / "hero" / "references" / "hero_ref.png"
+    assert status == 200
+    assert data["ok"] is True
+    assert data["relative"] == "projects/hero/references/hero_ref.png"
+    assert dest.read_bytes() == b"fake png bytes"
 
 
 def test_experiment_clear_api_scopes_to_project(tmp_path, monkeypatch):

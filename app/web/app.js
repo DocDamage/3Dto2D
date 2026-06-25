@@ -171,6 +171,7 @@ async function uploadFile(file){
   const r=await fetch('/api/upload',{method:'POST',body:fd});
   const data=await r.json(); if(!r.ok||!data.ok) throw new Error(data.message||'Upload failed');
   $('#videoPath').value=data.path; toast('Uploaded: '+data.relative);
+  await loadReferences();
 }
 
 $$('.nav').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
@@ -234,6 +235,7 @@ if($('#projectSelect')) $('#projectSelect').addEventListener('change', async e =
     if ($('#view-queues')?.classList.contains('active')) await loadQueues();
     if ($('#view-packs')?.classList.contains('active')) await loadPacks();
     if ($('#view-quality')?.classList.contains('active')) await loadQualityReports();
+    if ($('#view-convert')?.classList.contains('active')) await loadReferences();
   }catch(err){ toast('Project select failed: '+err.message); }
 });
 if($('#createProjectBtn')) $('#createProjectBtn').addEventListener('click', createProject);
@@ -735,12 +737,79 @@ if ($('#historyBody')) {
 }
 // Load history when the tab is shown
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.view === 'convert') loadReferences();
   if (b.dataset.view === 'history') loadHistory();
   if (b.dataset.view === 'quality') loadQualityReports();
   if (b.dataset.view === 'queues') loadQueues();
   if (b.dataset.view === 'packs') loadPacks();
   if (b.dataset.view === 'release') loadReleases();
 }));
+
+// ============================================================
+// Reference Files
+// ============================================================
+async function loadReferences() {
+  try {
+    const data = await api('/api/references' + projectQuery());
+    const list = $('#referenceList');
+    if (!list) return;
+    if (!data.references || !data.references.length) {
+      clearNode(list);
+      appendText(list, 'div', 'No references uploaded yet.', 'empty compact');
+      return;
+    }
+    clearNode(list);
+    data.references.forEach(ref => {
+      const item = document.createElement('article');
+      item.className = 'release-item';
+      appendText(item, 'b', ref.name || 'Reference');
+      const sizeKb = ref.size ? `${Math.max(1, Math.round(ref.size / 1024))} KB` : 'unknown size';
+      appendText(item, 'small', `${ref.kind || 'file'} · ${sizeKb} · ${ref.modified || ''}`);
+      appendText(item, 'code', ref.path || '');
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row compact-actions';
+      if (ref.path) {
+        const select = document.createElement('button');
+        select.type = 'button';
+        select.className = 'mini';
+        select.dataset.referencePath = ref.path;
+        select.textContent = 'Use';
+        actions.appendChild(select);
+
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'mini';
+        open.dataset.openPath = ref.path;
+        open.textContent = 'Open';
+        actions.appendChild(open);
+      }
+      if (ref.url) {
+        const file = document.createElement('a');
+        file.className = 'mini link-button';
+        file.href = ref.url;
+        file.textContent = 'File';
+        actions.appendChild(file);
+      }
+      item.appendChild(actions);
+      list.appendChild(item);
+    });
+  } catch(e) { console.error(e); }
+}
+
+if ($('#refreshReferences')) $('#refreshReferences').addEventListener('click', loadReferences);
+if ($('#referenceList')) {
+  $('#referenceList').addEventListener('click', async (e) => {
+    const useBtn = e.target.closest('[data-reference-path]');
+    if (useBtn) {
+      $('#videoPath').value = useBtn.dataset.referencePath;
+      toast('Reference selected');
+      return;
+    }
+    const openBtn = e.target.closest('[data-open-path]');
+    if (openBtn) await openPath(openBtn.dataset.openPath);
+  });
+}
 
 // ============================================================
 // Quality History

@@ -310,6 +310,41 @@ def _list_quality_reports(project_meta: Optional[Dict[str, str]] = None, limit: 
     return results[:limit]
 
 
+def _list_references(project_meta: Optional[Dict[str, str]] = None, limit: int = 80) -> List[Dict[str, Any]]:
+    """Return uploaded reference image/video files for the active project or global input."""
+    allowed = VIDEO_SUFFIXES | IMAGE_SUFFIXES
+    if project_meta and project_meta.get("project_root"):
+        root = (ROOT / str(project_meta["project_root"]) / "references").resolve()
+        if not _is_relative_to(root, (ROOT / "projects").resolve()):
+            return []
+    else:
+        root = UPLOADS
+    if not root.exists():
+        return []
+    results: List[Dict[str, Any]] = []
+    for path in sorted(root.glob("*"), key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True):
+        try:
+            if not path.is_file() or path.suffix.lower() not in allowed:
+                continue
+            kind = "video" if path.suffix.lower() in VIDEO_SUFFIXES else "image"
+            mtime = path.stat().st_mtime
+            results.append({
+                "name": path.name,
+                "path": rel(path),
+                "url": "/file/" + rel(path),
+                "kind": kind,
+                "size": path.stat().st_size,
+                "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                "mtime": mtime,
+                "project_name": project_meta.get("project_name", "") if project_meta else "",
+                "project_path": project_meta.get("project_path", "") if project_meta else "",
+                "project_root": project_meta.get("project_root", "") if project_meta else "",
+            })
+        except Exception:
+            continue
+    return results[:limit]
+
+
 def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, int]:
     """Count project-local planning assets: references, packs, prompts, and posepacks."""
     counts = {"references": 0, "packs": 0, "prompts": 0, "posepacks": 0}
@@ -707,6 +742,10 @@ class Handler(BaseHTTPRequestHandler):
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)
             return self.send_json({"reports": _list_quality_reports(project_meta), "project_workspace": _project_workspace(project_meta)})
+        if path == "/api/references":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json({"references": _list_references(project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/releases":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)

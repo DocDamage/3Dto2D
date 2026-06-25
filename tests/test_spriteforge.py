@@ -460,6 +460,38 @@ def test_quality_listing_project_filter_and_source_path(tmp_path, monkeypatch):
     assert rows[0]["issue_count"] == 1
 
 
+def test_reference_listing_project_filter_and_global_fallback(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "UPLOADS", tmp_path / "input")
+
+    hero_refs = tmp_path / "projects" / "hero" / "references"
+    other_refs = tmp_path / "projects" / "other" / "references"
+    global_refs = tmp_path / "input"
+    hero_refs.mkdir(parents=True)
+    other_refs.mkdir(parents=True)
+    global_refs.mkdir(parents=True)
+    (hero_refs / "hero_pose.png").write_bytes(b"png")
+    (hero_refs / "notes.txt").write_text("ignore", encoding="utf-8")
+    (other_refs / "other_pose.png").write_bytes(b"png")
+    (global_refs / "global_walk.mp4").write_bytes(b"video")
+
+    rows = web_mod._list_references({
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+    assert [row["name"] for row in rows] == ["hero_pose.png"]
+    assert rows[0]["path"] == "projects/hero/references/hero_pose.png"
+    assert rows[0]["kind"] == "image"
+
+    global_rows = web_mod._list_references(None)
+    assert [row["name"] for row in global_rows] == ["global_walk.mp4"]
+    assert global_rows[0]["path"] == "input/global_walk.mp4"
+    assert global_rows[0]["kind"] == "video"
+
+
 def test_project_workspace_counts_releases(tmp_path, monkeypatch):
     import spriteforge_web as web_mod
 

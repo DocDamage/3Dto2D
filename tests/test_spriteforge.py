@@ -424,6 +424,42 @@ def test_pack_listing_project_filter(tmp_path, monkeypatch):
     assert rows[0]["entries"] == 2
 
 
+def test_quality_listing_project_filter_and_source_path(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+
+    project_sprite = tmp_path / "projects" / "hero" / "sprites" / "hero_walk"
+    project_quality = tmp_path / "projects" / "hero" / "quality" / "hero_walk"
+    global_quality = tmp_path / "output" / "quality" / "other_walk"
+    project_sprite.mkdir(parents=True)
+    project_quality.mkdir(parents=True)
+    global_quality.mkdir(parents=True)
+    (project_sprite / "sheet.json").write_text("{}", encoding="utf-8")
+    (project_quality / "qa_report.json").write_text(json.dumps({
+        "metrics": {"loop_seam_rmse": 12.5, "foot_y_stdev_px": 1.25},
+        "issues": [{"level": "warn", "code": "loop", "message": "Loop seam"}],
+    }), encoding="utf-8")
+    (project_quality / "qa_report.html").write_text("<html></html>", encoding="utf-8")
+    (global_quality / "qa_report.json").write_text(json.dumps({
+        "metrics": {},
+        "issues": [],
+    }), encoding="utf-8")
+
+    rows = web_mod._list_quality_reports({
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert [row["name"] for row in rows] == ["hero_walk"]
+    assert rows[0]["path"] == "projects/hero/quality/hero_walk"
+    assert rows[0]["source_path"] == "projects/hero/sprites/hero_walk"
+    assert rows[0]["html_url"] == "/file/projects/hero/quality/hero_walk/qa_report.html"
+    assert rows[0]["issue_count"] == 1
+
+
 def test_project_workspace_counts_releases(tmp_path, monkeypatch):
     import spriteforge_web as web_mod
 
@@ -440,10 +476,15 @@ def test_project_workspace_counts_releases(tmp_path, monkeypatch):
     }), encoding="utf-8")
     project_dir = tmp_path / "projects" / "hero"
     (project_dir / "prompts").mkdir()
+    (project_dir / "quality" / "hero_walk").mkdir(parents=True)
     (project_dir / "posepacks" / "idle_right").mkdir(parents=True)
     (project_dir / "pack_manifest.json").write_text(json.dumps({
         "schema": "spriteforge_pack.v1",
         "project_name": "hero",
+    }), encoding="utf-8")
+    (project_dir / "quality" / "hero_walk" / "qa_report.json").write_text(json.dumps({
+        "metrics": {},
+        "issues": [],
     }), encoding="utf-8")
     (project_dir / "prompts" / "idle_right.json").write_text("{}", encoding="utf-8")
     (project_dir / "posepacks" / "idle_right" / "posepack.json").write_text("{}", encoding="utf-8")
@@ -456,6 +497,7 @@ def test_project_workspace_counts_releases(tmp_path, monkeypatch):
 
     assert workspace["releases"] == 1
     assert workspace["packs"] == 1
+    assert workspace["quality"] == 1
     assert workspace["prompts"] == 1
     assert workspace["posepacks"] == 1
 

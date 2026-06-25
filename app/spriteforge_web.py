@@ -246,6 +246,70 @@ def _list_packs(project_meta: Optional[Dict[str, str]] = None, limit: int = 40) 
     return results[:limit]
 
 
+def _quality_source_path(folder: Path, project_meta: Optional[Dict[str, str]]) -> str:
+    if (folder / "sheet.json").is_file():
+        return rel(folder)
+    if folder.name in {"qa", "quality"} and (folder.parent / "sheet.json").is_file():
+        return rel(folder.parent)
+    if project_meta and project_meta.get("project_root"):
+        project_root = ROOT / str(project_meta["project_root"])
+        candidate = project_root / "sprites" / folder.name
+        if (candidate / "sheet.json").is_file():
+            return rel(candidate)
+    candidate = OUTPUT / folder.name
+    if (candidate / "sheet.json").is_file():
+        return rel(candidate)
+    return rel(folder)
+
+
+def _list_quality_reports(project_meta: Optional[Dict[str, str]] = None, limit: int = 40) -> List[Dict[str, Any]]:
+    """Return QA/quality report summaries from project and sprite output folders."""
+    search_roots = [ROOT / "projects", OUTPUT]
+    seen: set[Path] = set()
+    results: List[Dict[str, Any]] = []
+    for search_root in search_roots:
+        if not search_root.exists():
+            continue
+        for pattern in ("qa_report.json", "quality_report.json"):
+            for report in search_root.rglob(pattern):
+                try:
+                    report = report.resolve()
+                    if report in seen:
+                        continue
+                    seen.add(report)
+                    data = load_json(report, {})
+                    folder = report.parent
+                    html_report = folder / report.name.replace(".json", ".html")
+                    mtime = report.stat().st_mtime
+                    metrics = data.get("metrics", {}) if isinstance(data.get("metrics"), dict) else {}
+                    issues = data.get("issues", []) if isinstance(data.get("issues"), list) else []
+                    score = data.get("score")
+                    row = {
+                        "name": folder.name,
+                        "path": rel(folder),
+                        "source_path": _quality_source_path(folder, project_meta),
+                        "report_path": rel(report),
+                        "report_url": "/file/" + rel(report),
+                        "html_url": "/file/" + rel(html_report) if html_report.exists() else "",
+                        "kind": "QA report" if report.name == "qa_report.json" else "Quality report",
+                        "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                        "mtime": mtime,
+                        "score": score,
+                        "issue_count": len(issues),
+                        "loop_seam_rmse": metrics.get("loop_seam_rmse"),
+                        "foot_y_stdev_px": metrics.get("foot_y_stdev_px"),
+                        "project_name": data.get("project_name", ""),
+                        "project_path": data.get("project_path", ""),
+                        "project_root": data.get("project_root", ""),
+                    }
+                    if ProjectService.item_matches_project(row, project_meta):
+                        results.append(row)
+                except Exception:
+                    continue
+    results.sort(key=lambda item: item["mtime"], reverse=True)
+    return results[:limit]
+
+
 def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, int]:
     """Count project-local planning assets: packs, prompts, and posepacks."""
     counts = {"packs": 0, "prompts": 0, "posepacks": 0}
@@ -282,6 +346,7 @@ def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]
     queues = _list_queues(project_meta)
     releases = _list_releases(project_meta)
     packs = _list_packs(project_meta)
+    quality = _list_quality_reports(project_meta)
     assets = _project_asset_counts(project_meta)
     return {
         "active": project_meta,
@@ -289,6 +354,7 @@ def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]
         "experiments": len(experiments),
         "queues": len(queues),
         "releases": len(releases),
+        "quality": len(quality),
         **assets,
         "packs": len(packs),
         "starred": sum(1 for rec in experiments if rec.get("starred")),
@@ -635,6 +701,10 @@ class Handler(BaseHTTPRequestHandler):
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)
             return self.send_json({"packs": _list_packs(project_meta), "project_workspace": _project_workspace(project_meta)})
+        if path == "/api/quality":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json({"reports": _list_quality_reports(project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/releases":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)

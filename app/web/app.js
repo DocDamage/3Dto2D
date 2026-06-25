@@ -56,7 +56,7 @@ function renderProjectSummary(workspace){
     el.textContent = 'Global workspace';
     return;
   }
-  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.prompts || 0} prompts · ${workspace.posepacks || 0} posepacks · ${workspace.experiments} runs · ${workspace.queues} queues · ${workspace.releases || 0} releases`;
+  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.prompts || 0} prompts · ${workspace.posepacks || 0} posepacks · ${workspace.quality || 0} QA · ${workspace.experiments} runs · ${workspace.queues} queues · ${workspace.releases || 0} releases`;
 }
 
 function renderOutputs(outputs){
@@ -233,6 +233,7 @@ if($('#projectSelect')) $('#projectSelect').addEventListener('change', async e =
     if ($('#view-history')?.classList.contains('active')) await loadHistory();
     if ($('#view-queues')?.classList.contains('active')) await loadQueues();
     if ($('#view-packs')?.classList.contains('active')) await loadPacks();
+    if ($('#view-quality')?.classList.contains('active')) await loadQualityReports();
   }catch(err){ toast('Project select failed: '+err.message); }
 });
 if($('#createProjectBtn')) $('#createProjectBtn').addEventListener('click', createProject);
@@ -735,10 +736,76 @@ if ($('#historyBody')) {
 // Load history when the tab is shown
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {
   if (b.dataset.view === 'history') loadHistory();
+  if (b.dataset.view === 'quality') loadQualityReports();
   if (b.dataset.view === 'queues') loadQueues();
   if (b.dataset.view === 'packs') loadPacks();
   if (b.dataset.view === 'release') loadReleases();
 }));
+
+// ============================================================
+// Quality History
+// ============================================================
+async function loadQualityReports() {
+  try {
+    const data = await api('/api/quality' + projectQuery());
+    const list = $('#qualityList');
+    if (!list) return;
+    if (!data.reports || !data.reports.length) {
+      clearNode(list);
+      appendText(list, 'div', 'No QA reports found yet.', 'empty compact');
+      return;
+    }
+    clearNode(list);
+    data.reports.forEach(q => {
+      const item = document.createElement('article');
+      item.className = 'release-item';
+      appendText(item, 'b', q.name || 'QA report');
+      const score = q.score !== null && q.score !== undefined ? ` · score ${Number(q.score).toFixed(1)}` : '';
+      const issues = Number(q.issue_count || 0);
+      appendText(item, 'small', `${q.kind || 'Report'} · ${issues} issues${score} · ${q.modified || ''}`);
+      appendText(item, 'code', q.path || '');
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row compact-actions';
+      if (q.source_path || q.path) {
+        const select = document.createElement('button');
+        select.type = 'button';
+        select.className = 'mini';
+        select.dataset.selectQualityPath = q.source_path || q.path;
+        select.textContent = 'Select';
+        actions.appendChild(select);
+      }
+      if (q.html_url) {
+        const report = document.createElement('a');
+        report.className = 'mini link-button';
+        report.href = q.html_url;
+        report.textContent = 'Report';
+        actions.appendChild(report);
+      }
+      if (q.report_url) {
+        const json = document.createElement('a');
+        json.className = 'mini link-button';
+        json.href = q.report_url;
+        json.textContent = 'JSON';
+        actions.appendChild(json);
+      }
+      item.appendChild(actions);
+      list.appendChild(item);
+    });
+  } catch(e) { console.error(e); }
+}
+
+if ($('#refreshQuality')) $('#refreshQuality').addEventListener('click', loadQualityReports);
+if ($('#qualityList')) {
+  $('#qualityList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-select-quality-path]');
+    if (!btn) return;
+    const path = btn.dataset.selectQualityPath;
+    selectedSpriteDir = path.replace(/\/qa$|\/quality$/, '');
+    $('#qualitySpriteDir').value = selectedSpriteDir;
+    await loadSpriteDetails(selectedSpriteDir);
+  });
+}
 
 // ============================================================
 // Pack History

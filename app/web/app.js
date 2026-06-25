@@ -56,7 +56,7 @@ function renderProjectSummary(workspace){
     el.textContent = 'Global workspace';
     return;
   }
-  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.experiments} runs · ${workspace.queues} queues · ${workspace.releases || 0} releases`;
+  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.prompts || 0} prompts · ${workspace.posepacks || 0} posepacks · ${workspace.experiments} runs · ${workspace.queues} queues · ${workspace.releases || 0} releases`;
 }
 
 function renderOutputs(outputs){

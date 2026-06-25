@@ -312,6 +312,15 @@ def test_project_workspace_counts_releases(tmp_path, monkeypatch):
         "name": "hero_pack",
         "sprite_count": 1,
     }), encoding="utf-8")
+    project_dir = tmp_path / "projects" / "hero"
+    (project_dir / "prompts").mkdir()
+    (project_dir / "posepacks" / "idle_right").mkdir(parents=True)
+    (project_dir / "pack_manifest.json").write_text(json.dumps({
+        "schema": "spriteforge_pack.v1",
+        "project_name": "hero",
+    }), encoding="utf-8")
+    (project_dir / "prompts" / "idle_right.json").write_text("{}", encoding="utf-8")
+    (project_dir / "posepacks" / "idle_right" / "posepack.json").write_text("{}", encoding="utf-8")
 
     workspace = web_mod._project_workspace({
         "project_name": "hero",
@@ -320,6 +329,9 @@ def test_project_workspace_counts_releases(tmp_path, monkeypatch):
     })
 
     assert workspace["releases"] == 1
+    assert workspace["packs"] == 1
+    assert workspace["prompts"] == 1
+    assert workspace["posepacks"] == 1
 
 
 from unittest.mock import MagicMock, patch

@@ -186,6 +186,23 @@ def _list_releases(project_meta: Optional[Dict[str, str]] = None, limit: int = 4
     return results[:limit]
 
 
+def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, int]:
+    """Count project-local planning assets: packs, prompts, and posepacks."""
+    counts = {"packs": 0, "prompts": 0, "posepacks": 0}
+    if not project_meta:
+        return counts
+    project_root = str(project_meta.get("project_root") or "")
+    if not project_root:
+        return counts
+    root = (ROOT / project_root).resolve()
+    if not _is_relative_to(root, (ROOT / "projects").resolve()) or not root.exists():
+        return counts
+    counts["packs"] = sum(1 for path in root.rglob("pack_manifest.json") if path.is_file())
+    counts["prompts"] = sum(1 for path in (root / "prompts").glob("*.json") if path.is_file()) if (root / "prompts").exists() else 0
+    counts["posepacks"] = sum(1 for path in (root / "posepacks").glob("*/posepack.json") if path.is_file()) if (root / "posepacks").exists() else 0
+    return counts
+
+
 def _project_meta_from_query(query: Dict[str, List[str]]) -> Optional[Dict[str, str]]:
     project_value = (query.get("project") or [""])[0]
     if project_value:
@@ -204,12 +221,14 @@ def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]
     outputs = sprite_outputs(500, project_meta)
     queues = _list_queues(project_meta)
     releases = _list_releases(project_meta)
+    assets = _project_asset_counts(project_meta)
     return {
         "active": project_meta,
         "outputs": len(outputs),
         "experiments": len(experiments),
         "queues": len(queues),
         "releases": len(releases),
+        **assets,
         "starred": sum(1 for rec in experiments if rec.get("starred")),
     }
 

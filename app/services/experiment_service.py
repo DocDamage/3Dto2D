@@ -139,7 +139,7 @@ class ExperimentService:
             return False
 
     @staticmethod
-    def update_qa(run_id: str, qa_score: float, qa_passed: bool) -> bool:
+    def update_qa(run_id: str, qa_score: Optional[float], qa_passed: bool) -> bool:
         """Update QA fields on an existing record. Returns True if found."""
         with ExperimentService._lock:
             records = ExperimentService._load()
@@ -147,6 +147,23 @@ class ExperimentService:
                 if rec.get("id") == run_id:
                     rec["qa_score"] = qa_score
                     rec["qa_passed"] = qa_passed
+                    ExperimentService._save(records)
+                    return True
+            return False
+
+    @staticmethod
+    def update_qa_for_sprite(sprite_folder: str, qa_score: Optional[float], qa_passed: bool) -> bool:
+        """Update the newest run matching *sprite_folder*. Returns True if found."""
+        normalized = str(sprite_folder or "").replace("\\", "/").strip("/")
+        if not normalized:
+            return False
+        with ExperimentService._lock:
+            records = ExperimentService._load()
+            for rec in records:
+                rec_folder = str(rec.get("sprite_folder") or "").replace("\\", "/").strip("/")
+                if rec_folder == normalized:
+                    rec["qa_score"] = qa_score
+                    rec["qa_passed"] = bool(qa_passed)
                     ExperimentService._save(records)
                     return True
             return False

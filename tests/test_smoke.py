@@ -280,6 +280,76 @@ def test_experiment_service(tmp_path, monkeypatch):
     assert ExperimentService.get_history() == []
 
 
+def test_job_service_records_qa_result(tmp_path, monkeypatch):
+    """Completed qa-report jobs annotate the matching experiment record."""
+    import services.experiment_service as es_mod
+    import services.job_service as js_mod
+    from services.experiment_service import ExperimentService
+    from services.job_service import JobService
+
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "history.json")
+    monkeypatch.setattr(js_mod, "ROOT", tmp_path)
+
+    sprite_dir = tmp_path / "output" / "hero_idle"
+    report_dir = sprite_dir / "qa"
+    report_dir.mkdir(parents=True)
+    (report_dir / "qa_report.json").write_text(json.dumps({
+        "metrics": {"frame_count": 2},
+        "issues": [],
+    }), encoding="utf-8")
+
+    run_id = ExperimentService.append_run(sprite_folder="output/hero_idle")
+
+    updated = JobService._record_qa_result([
+        sys.executable,
+        "spriteforge_unified.py",
+        "qa-report",
+        "--input",
+        "output/hero_idle",
+    ])
+
+    assert updated is True
+    rec = ExperimentService.get_run(run_id)
+    assert rec["qa_passed"] is True
+    assert rec["qa_score"] == 100.0
+
+
+def test_job_service_records_warning_qa_result_as_not_passed(tmp_path, monkeypatch):
+    """Warnings in qa_report.json mark the matching run as needing attention."""
+    import services.experiment_service as es_mod
+    import services.job_service as js_mod
+    from services.experiment_service import ExperimentService
+    from services.job_service import JobService
+
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "history.json")
+    monkeypatch.setattr(js_mod, "ROOT", tmp_path)
+
+    sprite_dir = tmp_path / "output" / "hero_walk"
+    custom_report_dir = tmp_path / "project_quality" / "hero_walk"
+    custom_report_dir.mkdir(parents=True)
+    (custom_report_dir / "qa_report.json").write_text(json.dumps({
+        "metrics": {"frame_count": 2},
+        "issues": [{"level": "warn", "code": "loop_seam", "message": "Loop may pop."}],
+    }), encoding="utf-8")
+
+    run_id = ExperimentService.append_run(sprite_folder="output/hero_walk")
+
+    updated = JobService._record_qa_result([
+        sys.executable,
+        "spriteforge_unified.py",
+        "qa-report",
+        "--input",
+        str(sprite_dir),
+        "--output",
+        str(custom_report_dir),
+    ])
+
+    assert updated is True
+    rec = ExperimentService.get_run(run_id)
+    assert rec["qa_passed"] is False
+    assert rec["qa_score"] == 85.0
+
+
 def test_experiment_history_retention(tmp_path, monkeypatch):
     """Experiment history is capped so local JSON does not grow forever."""
     from services import experiment_service as es_mod

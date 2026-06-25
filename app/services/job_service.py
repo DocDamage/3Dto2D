@@ -286,8 +286,62 @@ class JobService:
                         except Exception:
                             pass  # Never break normal flow
 
+                    if exit_code == 0 and any("qa-report" in str(c) for c in cmd):
+                        try:
+                            JobService._record_qa_result(cmd)
+                        except Exception:
+                            pass  # Never break normal flow
+
         threading.Thread(target=worker, daemon=True).start()
         return True, job_id
+
+    @staticmethod
+    def _record_qa_result(cmd: List[str]) -> bool:
+        """Attach a completed QA report to the newest matching experiment run."""
+        def _arg(flag: str, default: str = "") -> str:
+            try:
+                idx = list(cmd).index(flag)
+                return str(cmd[idx + 1]) if idx + 1 < len(cmd) else default
+            except ValueError:
+                return default
+
+        sprite_arg = _arg("--input")
+        if not sprite_arg:
+            return False
+        sprite_path = Path(sprite_arg)
+        sprite_dir = sprite_path.resolve() if sprite_path.is_absolute() else (ROOT / sprite_path).resolve()
+        try:
+            sprite_folder = str(sprite_dir.relative_to(ROOT)).replace("\\", "/")
+        except ValueError:
+            sprite_folder = str(sprite_dir).replace("\\", "/")
+
+        output_arg = _arg("--output")
+        report_dir = Path(output_arg).resolve() if output_arg else sprite_dir / "qa"
+        report_path = report_dir / "qa_report.json"
+        if not report_path.exists():
+            report_path = report_dir / "quality_report.json"
+        if not report_path.exists():
+            return False
+
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        issues = report.get("issues") or []
+        blocking = [
+            issue for issue in issues
+            if str(issue.get("level", "")).lower() in {"error", "warn", "warning"}
+        ]
+        qa_passed = not blocking
+        qa_score = report.get("score")
+        if qa_score is None:
+            errors = sum(1 for issue in issues if str(issue.get("level", "")).lower() == "error")
+            warnings = sum(1 for issue in issues if str(issue.get("level", "")).lower() in {"warn", "warning"})
+            qa_score = max(0.0, 100.0 - (errors * 35.0) - (warnings * 15.0))
+        try:
+            qa_score = float(qa_score)
+        except (TypeError, ValueError):
+            qa_score = None
+
+        from services.experiment_service import ExperimentService
+        return ExperimentService.update_qa_for_sprite(sprite_folder, qa_score, qa_passed)
 
     @staticmethod
     def recover_interrupted_jobs() -> None:

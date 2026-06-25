@@ -74,41 +74,58 @@ def next_step_status() -> Dict[str, Any]:
         return {"step": "Run Preflight", "reason": f"Could not compute recommendation: {exc}", "action": "final_preflight"}
 
 
+def _sprite_search_roots(project_meta: Optional[Dict[str, str]] = None) -> List[Path]:
+    roots = [OUTPUT]
+    if project_meta and project_meta.get("project_root"):
+        root = (ROOT / str(project_meta["project_root"]) / "sprites").resolve()
+        if _is_relative_to(root, (ROOT / "projects").resolve()):
+            roots.insert(0, root)
+    elif (ROOT / "projects").exists():
+        roots.append(ROOT / "projects")
+    return roots
+
+
 def sprite_outputs(limit: int = 60, project_meta: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
-    if not OUTPUT.exists():
-        return rows
-    for meta in OUTPUT.rglob("sheet.json"):
-        try:
-            folder = meta.parent
-            data = load_json(meta, {})
-            preview = folder / "preview.gif"
-            sheet = folder / "sheet.png"
-            report = folder / "report.html"
-            mtime = folder.stat().st_mtime
-            row = {
-                "name": folder.name,
-                "path": rel(folder),
-                "mtime": mtime,
-                "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
-                "frame_count": data.get("frame_count", "?"),
-                "fps": data.get("fps", "?"),
-                "frame_width": data.get("frame_width", data.get("w", "?")),
-                "frame_height": data.get("frame_height", data.get("h", "?")),
-                "columns": data.get("columns", "?"),
-                "rows": data.get("rows", "?"),
-                "preview_url": "/file/" + rel(preview) if preview.exists() else None,
-                "sheet_url": "/file/" + rel(sheet) if sheet.exists() else None,
-                "report_url": "/file/" + rel(report) if report.exists() else None,
-                "json_url": "/file/" + rel(meta),
-                "project_name": data.get("project_name", ""),
-                "project_path": data.get("project_path", ""),
-                "project_root": data.get("project_root", ""),
-            }
-            if ProjectService.item_matches_project(row, project_meta):
-                rows.append(row)
-        except Exception:
+    seen: set[Path] = set()
+    for root in _sprite_search_roots(project_meta):
+        if not root.exists():
             continue
+        for meta in root.rglob("sheet.json"):
+            try:
+                meta = meta.resolve()
+                if meta in seen:
+                    continue
+                seen.add(meta)
+                folder = meta.parent
+                data = load_json(meta, {})
+                preview = folder / "preview.gif"
+                sheet = folder / "sheet.png"
+                report = folder / "report.html"
+                mtime = folder.stat().st_mtime
+                row = {
+                    "name": folder.name,
+                    "path": rel(folder),
+                    "mtime": mtime,
+                    "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                    "frame_count": data.get("frame_count", "?"),
+                    "fps": data.get("fps", "?"),
+                    "frame_width": data.get("frame_width", data.get("w", "?")),
+                    "frame_height": data.get("frame_height", data.get("h", "?")),
+                    "columns": data.get("columns", "?"),
+                    "rows": data.get("rows", "?"),
+                    "preview_url": "/file/" + rel(preview) if preview.exists() else None,
+                    "sheet_url": "/file/" + rel(sheet) if sheet.exists() else None,
+                    "report_url": "/file/" + rel(report) if report.exists() else None,
+                    "json_url": "/file/" + rel(meta),
+                    "project_name": data.get("project_name", ""),
+                    "project_path": data.get("project_path", ""),
+                    "project_root": data.get("project_root", ""),
+                }
+                if ProjectService.item_matches_project(row, project_meta):
+                    rows.append(row)
+            except Exception:
+                continue
     rows.sort(key=lambda item: item["mtime"], reverse=True)
     return rows[:limit]
 
@@ -305,11 +322,20 @@ def _resolve_queue_path(value: str) -> Path:
 
 def _resolve_sprite_output_dir(value: str) -> Path:
     sprite_dir = (ROOT / value).resolve() if not Path(value).is_absolute() else Path(value).resolve()
-    if not _is_relative_to(sprite_dir, OUTPUT):
-        raise ValueError("Sprite path must be inside output.")
+    projects_dir = (ROOT / "projects").resolve()
+    if not (_is_relative_to(sprite_dir, OUTPUT) or _is_relative_to(sprite_dir, projects_dir)):
+        raise ValueError("Sprite path must be inside output or projects.")
     if not sprite_dir.is_dir() or not (sprite_dir / "sheet.json").is_file():
         raise FileNotFoundError("Sprite output folder not found.")
     return sprite_dir
+
+
+def _project_artifact_path(project_meta: Dict[str, str], folder: str, name: str) -> Path:
+    project_root = (ROOT / str(project_meta["project_root"])).resolve()
+    projects_root = (ROOT / "projects").resolve()
+    if not _is_relative_to(project_root, projects_root):
+        raise ValueError("Project root must be inside projects.")
+    return project_root / folder / safe_name(name)
 
 
 # Jobs are now managed persistently by JobService
@@ -362,6 +388,8 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             raise ValueError("No input video selected.")
         cmd = [PYTHON, "spriteforge_unified.py", "convert-video", "--input", inp]
         out = str(payload.get("output") or "").strip()
+        if not out and project_meta:
+            out = str(_project_artifact_path(project_meta, "sprites", f"{Path(inp).stem}_sprite"))
         if out:
             cmd += ["--output", out]
         extra: List[str] = []
@@ -383,12 +411,21 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         if not sprite_dir:
             raise ValueError("No sprite output folder selected.")
         if action == "qa_report":
-            return "Analyze sprite quality", [PYTHON, "spriteforge_unified.py", "qa-report", "--input", sprite_dir]
+            cmd = [PYTHON, "spriteforge_unified.py", "qa-report", "--input", sprite_dir]
+            if project_meta:
+                cmd += ["--output", str(_project_artifact_path(project_meta, "quality", Path(sprite_dir).name))]
+            return "Analyze sprite quality", cmd
         if action == "autofix":
             blend = str(payload.get("blend_loop_frames", 3))
-            return "Auto-fix sprite output", [PYTHON, "spriteforge_unified.py", "autofix-sprite", "--input", sprite_dir, "--stabilize-anchor", "--drop-loop-duplicate", "--deflicker", "--blend-loop-frames", blend]
+            cmd = [PYTHON, "spriteforge_unified.py", "autofix-sprite", "--input", sprite_dir, "--stabilize-anchor", "--drop-loop-duplicate", "--deflicker", "--blend-loop-frames", blend]
+            if project_meta:
+                cmd += ["--output", str(_project_artifact_path(project_meta, "sprites", f"{Path(sprite_dir).name}_fixed"))]
+            return "Auto-fix sprite output", cmd
         engine = "godot" if action == "export_godot" else "unity"
-        return f"Export {engine.title()} helper", [PYTHON, "spriteforge_unified.py", "export-engine", "--engine", engine, "--sprite-dir", sprite_dir]
+        cmd = [PYTHON, "spriteforge_unified.py", "export-engine", "--engine", engine, "--sprite-dir", sprite_dir]
+        if project_meta:
+            cmd += ["--output", str(_project_artifact_path(project_meta, "exports", f"{Path(sprite_dir).name}_{engine}"))]
+        return f"Export {engine.title()} helper", cmd
     if action == "character_pack":
         name = safe_name(str(payload.get("name") or "hero"))
         cmd = [
@@ -416,7 +453,10 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         if not sprites:
             raise ValueError("No sprite outputs selected for atlas.")
         name = safe_name(str(payload.get("name") or "character"))
-        return "Build multi-action atlas", [PYTHON, "spriteforge_unified.py", "atlas-build", "--sprites", *list(sprites), "--output", str(payload.get("output") or f"output/{name}_atlas"), "--name", name]
+        output = str(payload.get("output") or "").strip()
+        if not output:
+            output = str(_project_artifact_path(project_meta, "exports", f"{name}_atlas")) if project_meta else f"output/{name}_atlas"
+        return "Build multi-action atlas", [PYTHON, "spriteforge_unified.py", "atlas-build", "--sprites", *list(sprites), "--output", output, "--name", name]
     if action == "release_package":
         sprites = payload.get("sprites") or payload.get("sprite_dir") or []
         if isinstance(sprites, str):

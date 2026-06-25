@@ -128,6 +128,57 @@ def test_build_action_command():
 
     with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
         title, cmd = build_action_command({
+            "action": "convert_video",
+            "active_project": "projects/hero/spriteforge_project.json",
+            "input": "input/hero_walk.webm",
+        })
+    assert title == "Convert video to spritesheet"
+    assert "--output" in cmd
+    assert str(ROOT / "app" / "projects" / "hero" / "sprites" / "hero_walk_sprite") in cmd
+
+    with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
+        title, cmd = build_action_command({
+            "action": "qa_report",
+            "active_project": "projects/hero/spriteforge_project.json",
+            "sprite_dir": "output/hero_walk_sprite",
+        })
+    assert title == "Analyze sprite quality"
+    assert "--output" in cmd
+    assert str(ROOT / "app" / "projects" / "hero" / "quality" / "hero_walk_sprite") in cmd
+
+    with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
+        title, cmd = build_action_command({
+            "action": "autofix",
+            "active_project": "projects/hero/spriteforge_project.json",
+            "sprite_dir": "output/hero_walk_sprite",
+        })
+    assert title == "Auto-fix sprite output"
+    assert "--output" in cmd
+    assert str(ROOT / "app" / "projects" / "hero" / "sprites" / "hero_walk_sprite_fixed") in cmd
+
+    with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
+        title, cmd = build_action_command({
+            "action": "export_godot",
+            "active_project": "projects/hero/spriteforge_project.json",
+            "sprite_dir": "output/hero_walk_sprite",
+        })
+    assert title == "Export Godot helper"
+    assert "--output" in cmd
+    assert str(ROOT / "app" / "projects" / "hero" / "exports" / "hero_walk_sprite_godot") in cmd
+
+    with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
+        title, cmd = build_action_command({
+            "action": "atlas",
+            "active_project": "projects/hero/spriteforge_project.json",
+            "name": "hero",
+            "sprites": ["output/hero_idle_sprite", "output/hero_walk_sprite"],
+        })
+    assert title == "Build multi-action atlas"
+    assert "--output" in cmd
+    assert str(ROOT / "app" / "projects" / "hero" / "exports" / "hero_atlas") in cmd
+
+    with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
+        title, cmd = build_action_command({
             "action": "character_pack",
             "active_project": "projects/hero/spriteforge_project.json",
             "name": "hero",
@@ -227,6 +278,7 @@ def test_project_service_create_list_and_select(tmp_path, monkeypatch):
 def test_sprite_outputs_project_filter(tmp_path, monkeypatch):
     import spriteforge_web as web_mod
 
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     output = tmp_path / "output"
     hero = output / "hero_idle"
     other = output / "other_idle"
@@ -261,6 +313,43 @@ def test_sprite_outputs_project_filter(tmp_path, monkeypatch):
 
     assert len(rows) == 1
     assert rows[0]["name"] == "hero_idle"
+
+
+def test_sprite_outputs_includes_project_local_sprites(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+
+    local_sprite = tmp_path / "projects" / "hero" / "sprites" / "hero_walk_fixed"
+    global_sprite = tmp_path / "output" / "global_idle"
+    local_sprite.mkdir(parents=True)
+    global_sprite.mkdir(parents=True)
+    (local_sprite / "sheet.json").write_text(json.dumps({
+        "frame_count": 1,
+        "fps": 12,
+        "frame_width": 64,
+        "frame_height": 64,
+        "columns": 1,
+        "rows": 1,
+    }), encoding="utf-8")
+    (global_sprite / "sheet.json").write_text(json.dumps({
+        "frame_count": 1,
+        "fps": 12,
+        "frame_width": 64,
+        "frame_height": 64,
+        "columns": 1,
+        "rows": 1,
+    }), encoding="utf-8")
+
+    rows = web_mod.sprite_outputs(20, {
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert [row["name"] for row in rows] == ["hero_walk_fixed"]
+    assert rows[0]["path"] == "projects/hero/sprites/hero_walk_fixed"
 
 
 def test_release_listing_project_filter(tmp_path, monkeypatch):
@@ -454,12 +543,18 @@ def test_queue_path_guard(tmp_path, monkeypatch):
 def test_compare_path_guard(tmp_path, monkeypatch):
     import spriteforge_web as web_mod
 
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
     sprite_dir = web_mod.OUTPUT / "hero_idle"
     sprite_dir.mkdir(parents=True)
     (sprite_dir / "sheet.json").write_text("{}", encoding="utf-8")
 
     assert web_mod._resolve_sprite_output_dir(str(sprite_dir)) == sprite_dir.resolve()
+
+    project_sprite = tmp_path / "projects" / "hero" / "sprites" / "hero_idle"
+    project_sprite.mkdir(parents=True)
+    (project_sprite / "sheet.json").write_text("{}", encoding="utf-8")
+    assert web_mod._resolve_sprite_output_dir(str(project_sprite)) == project_sprite.resolve()
 
     no_meta = web_mod.OUTPUT / "no_meta"
     no_meta.mkdir()

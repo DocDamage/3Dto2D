@@ -234,6 +234,7 @@ if($('#projectSelect')) $('#projectSelect').addEventListener('change', async e =
     if ($('#view-history')?.classList.contains('active')) await loadHistory();
     if ($('#view-queues')?.classList.contains('active')) await loadQueues();
     if ($('#view-packs')?.classList.contains('active')) await loadPacks();
+    if ($('#view-packs')?.classList.contains('active')) await loadPlanning();
     if ($('#view-quality')?.classList.contains('active')) await loadQualityReports();
     if ($('#view-convert')?.classList.contains('active')) await loadReferences();
   }catch(err){ toast('Project select failed: '+err.message); }
@@ -741,7 +742,7 @@ document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () =>
   if (b.dataset.view === 'history') loadHistory();
   if (b.dataset.view === 'quality') loadQualityReports();
   if (b.dataset.view === 'queues') loadQueues();
-  if (b.dataset.view === 'packs') loadPacks();
+  if (b.dataset.view === 'packs') { loadPacks(); loadPlanning(); }
   if (b.dataset.view === 'release') loadReleases();
 }));
 
@@ -925,6 +926,69 @@ async function loadPacks() {
 if ($('#refreshPacks')) $('#refreshPacks').addEventListener('click', loadPacks);
 if ($('#packList')) {
   $('#packList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-open-path]');
+    if (btn) await openPath(btn.dataset.openPath);
+  });
+}
+
+// ============================================================
+// Planning Assets
+// ============================================================
+async function loadPlanning() {
+  try {
+    const data = await api('/api/planning' + projectQuery());
+    const list = $('#planningList');
+    if (!list) return;
+    const prompts = data.prompts || [];
+    const posepacks = data.posepacks || [];
+    if (!prompts.length && !posepacks.length) {
+      clearNode(list);
+      appendText(list, 'div', 'No project prompts or posepacks found yet.', 'empty compact');
+      return;
+    }
+    clearNode(list);
+    const rows = [
+      ...prompts.map(p => ({...p, kind: 'Prompt'})),
+      ...posepacks.map(p => ({...p, kind: 'Posepack'})),
+    ];
+    rows.forEach(asset => {
+      const item = document.createElement('article');
+      item.className = 'release-item';
+      appendText(item, 'b', asset.name || asset.kind);
+      const parts = [asset.kind];
+      if (asset.action) parts.push(asset.action);
+      if (asset.direction) parts.push(asset.direction);
+      if (asset.frames !== undefined) parts.push(`${asset.frames} frames`);
+      if (asset.modified) parts.push(asset.modified);
+      appendText(item, 'small', parts.join(' · '));
+      appendText(item, 'code', asset.path || asset.manifest_path || '');
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row compact-actions';
+      if (asset.path) {
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'mini';
+        open.dataset.openPath = asset.path;
+        open.textContent = 'Open';
+        actions.appendChild(open);
+      }
+      if (asset.url || asset.manifest_url) {
+        const file = document.createElement('a');
+        file.className = 'mini link-button';
+        file.href = asset.url || asset.manifest_url;
+        file.textContent = 'JSON';
+        actions.appendChild(file);
+      }
+      item.appendChild(actions);
+      list.appendChild(item);
+    });
+  } catch(e) { console.error(e); }
+}
+
+if ($('#refreshPlanning')) $('#refreshPlanning').addEventListener('click', loadPlanning);
+if ($('#planningList')) {
+  $('#planningList').addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-open-path]');
     if (btn) await openPath(btn.dataset.openPath);
   });

@@ -345,6 +345,59 @@ def _list_references(project_meta: Optional[Dict[str, str]] = None, limit: int =
     return results[:limit]
 
 
+def _list_planning_assets(project_meta: Optional[Dict[str, str]] = None, limit: int = 120) -> Dict[str, List[Dict[str, Any]]]:
+    """Return prompt and posepack planning files for the active project."""
+    empty: Dict[str, List[Dict[str, Any]]] = {"prompts": [], "posepacks": []}
+    if not project_meta or not project_meta.get("project_root"):
+        return empty
+    project_root = (ROOT / str(project_meta["project_root"])).resolve()
+    if not _is_relative_to(project_root, (ROOT / "projects").resolve()) or not project_root.exists():
+        return empty
+
+    prompts: List[Dict[str, Any]] = []
+    prompts_dir = project_root / "prompts"
+    if prompts_dir.exists():
+        for path in sorted(prompts_dir.glob("*.json"), key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True):
+            try:
+                data = load_json(path, {})
+                mtime = path.stat().st_mtime
+                prompts.append({
+                    "name": path.stem,
+                    "path": rel(path),
+                    "url": "/file/" + rel(path),
+                    "action": data.get("action", ""),
+                    "direction": data.get("direction", ""),
+                    "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                    "mtime": mtime,
+                })
+            except Exception:
+                continue
+
+    posepacks: List[Dict[str, Any]] = []
+    posepacks_dir = project_root / "posepacks"
+    if posepacks_dir.exists():
+        for path in sorted(posepacks_dir.glob("*/posepack.json"), key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True):
+            try:
+                data = load_json(path, {})
+                mtime = path.stat().st_mtime
+                frames = data.get("frames", [])
+                posepacks.append({
+                    "name": path.parent.name,
+                    "path": rel(path.parent),
+                    "manifest_path": rel(path),
+                    "manifest_url": "/file/" + rel(path),
+                    "action": data.get("action", ""),
+                    "direction": data.get("direction", ""),
+                    "frames": len(frames) if isinstance(frames, list) else 0,
+                    "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                    "mtime": mtime,
+                })
+            except Exception:
+                continue
+
+    return {"prompts": prompts[:limit], "posepacks": posepacks[:limit]}
+
+
 def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, int]:
     """Count project-local planning assets: references, packs, prompts, and posepacks."""
     counts = {"references": 0, "packs": 0, "prompts": 0, "posepacks": 0}
@@ -746,6 +799,10 @@ class Handler(BaseHTTPRequestHandler):
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)
             return self.send_json({"references": _list_references(project_meta), "project_workspace": _project_workspace(project_meta)})
+        if path == "/api/planning":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json({**_list_planning_assets(project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/releases":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)

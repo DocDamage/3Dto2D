@@ -492,6 +492,49 @@ def test_reference_listing_project_filter_and_global_fallback(tmp_path, monkeypa
     assert global_rows[0]["kind"] == "video"
 
 
+def test_planning_listing_project_assets(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+
+    project_dir = tmp_path / "projects" / "hero"
+    prompt_dir = project_dir / "prompts"
+    pose_dir = project_dir / "posepacks" / "idle_right"
+    other_dir = tmp_path / "projects" / "other" / "prompts"
+    prompt_dir.mkdir(parents=True)
+    pose_dir.mkdir(parents=True)
+    other_dir.mkdir(parents=True)
+    (prompt_dir / "idle_right.json").write_text(json.dumps({
+        "action": "idle",
+        "direction": "right",
+        "prompt": "hero idle",
+    }), encoding="utf-8")
+    (pose_dir / "posepack.json").write_text(json.dumps({
+        "action": "idle",
+        "direction": "right",
+        "frames": [{"index": 0}, {"index": 1}],
+    }), encoding="utf-8")
+    (other_dir / "other.json").write_text(json.dumps({
+        "action": "walk",
+        "direction": "left",
+    }), encoding="utf-8")
+
+    rows = web_mod._list_planning_assets({
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert [row["name"] for row in rows["prompts"]] == ["idle_right"]
+    assert rows["prompts"][0]["path"] == "projects/hero/prompts/idle_right.json"
+    assert rows["prompts"][0]["action"] == "idle"
+    assert [row["name"] for row in rows["posepacks"]] == ["idle_right"]
+    assert rows["posepacks"][0]["path"] == "projects/hero/posepacks/idle_right"
+    assert rows["posepacks"][0]["manifest_path"] == "projects/hero/posepacks/idle_right/posepack.json"
+    assert rows["posepacks"][0]["frames"] == 2
+    assert web_mod._list_planning_assets(None) == {"prompts": [], "posepacks": []}
+
+
 def test_project_workspace_counts_releases(tmp_path, monkeypatch):
     import spriteforge_web as web_mod
 

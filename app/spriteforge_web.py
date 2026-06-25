@@ -74,7 +74,7 @@ def next_step_status() -> Dict[str, Any]:
         return {"step": "Run Preflight", "reason": f"Could not compute recommendation: {exc}", "action": "final_preflight"}
 
 
-def sprite_outputs(limit: int = 60) -> List[Dict[str, Any]]:
+def sprite_outputs(limit: int = 60, project_meta: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     if not OUTPUT.exists():
         return rows
@@ -86,7 +86,7 @@ def sprite_outputs(limit: int = 60) -> List[Dict[str, Any]]:
             sheet = folder / "sheet.png"
             report = folder / "report.html"
             mtime = folder.stat().st_mtime
-            rows.append({
+            row = {
                 "name": folder.name,
                 "path": rel(folder),
                 "mtime": mtime,
@@ -101,7 +101,12 @@ def sprite_outputs(limit: int = 60) -> List[Dict[str, Any]]:
                 "sheet_url": "/file/" + rel(sheet) if sheet.exists() else None,
                 "report_url": "/file/" + rel(report) if report.exists() else None,
                 "json_url": "/file/" + rel(meta),
-            })
+                "project_name": data.get("project_name", ""),
+                "project_path": data.get("project_path", ""),
+                "project_root": data.get("project_root", ""),
+            }
+            if ProjectService.item_matches_project(row, project_meta):
+                rows.append(row)
         except Exception:
             continue
     rows.sort(key=lambda item: item["mtime"], reverse=True)
@@ -109,7 +114,7 @@ def sprite_outputs(limit: int = 60) -> List[Dict[str, Any]]:
 
 
 
-def _list_queues() -> List[Dict[str, Any]]:
+def _list_queues(project_meta: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
     """Return summary info for all *_queue.json files in output/jobs/."""
     jobs_dir = OUTPUT / "jobs"
     if not jobs_dir.exists():
@@ -122,16 +127,47 @@ def _list_queues() -> List[Dict[str, Any]]:
             for job in data.get("jobs", []):
                 s = job.get("status", "unknown")
                 counts[s] = counts.get(s, 0) + 1
-            results.append({
+            row = {
                 "name": data.get("name", qfile.stem),
                 "path": rel(qfile),
                 "created_at": data.get("created_at", ""),
                 "total": len(data.get("jobs", [])),
                 "counts": counts,
-            })
+                "project_name": data.get("project_name", ""),
+                "project_path": data.get("project_path", ""),
+                "project_root": data.get("project_root", ""),
+            }
+            if ProjectService.item_matches_project(row, project_meta):
+                results.append(row)
         except Exception:
             continue
     return results
+
+
+def _project_meta_from_query(query: Dict[str, List[str]]) -> Optional[Dict[str, str]]:
+    project_value = (query.get("project") or [""])[0]
+    if project_value:
+        return ProjectService.metadata_for_path(project_value)
+    active = ProjectService.get_active_project()
+    if active:
+        return ProjectService.metadata_for_path(str(active.get("path") or ""))
+    return None
+
+
+def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]:
+    experiments = [
+        rec for rec in ExperimentService.get_history()
+        if ProjectService.item_matches_project(rec, project_meta)
+    ] if project_meta else ExperimentService.get_history()
+    outputs = sprite_outputs(500, project_meta)
+    queues = _list_queues(project_meta)
+    return {
+        "active": project_meta,
+        "outputs": len(outputs),
+        "experiments": len(experiments),
+        "queues": len(queues),
+        "starred": sum(1 for rec in experiments if rec.get("starred")),
+    }
 
 
 def _is_relative_to(path: Path, base: Path) -> bool:
@@ -354,6 +390,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             return self.serve_static(target_path, ROOT)
         if path == "/api/status":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
             active_job = JobService.get_active_job()
             if active_job:
                 job_status = dict(active_job)
@@ -376,7 +414,8 @@ class Handler(BaseHTTPRequestHandler):
                 "models": ModelService.get_summary(),
                 "disk": ModelService.get_disk_summary(),
                 "next_step": next_step_status(),
-                "outputs": sprite_outputs(24),
+                "outputs": sprite_outputs(24, project_meta),
+                "project_workspace": _project_workspace(project_meta),
                 "job": job_status,
                 "time": time.strftime("%H:%M:%S")
             })
@@ -394,11 +433,16 @@ class Handler(BaseHTTPRequestHandler):
                     job_status = {"running": False, "title": "Idle", "progress": 0.0, "exit_code": None, "logs": [], "started_at": None, "finished_at": None}
             return self.send_json(job_status)
         if path == "/api/outputs":
-            return self.send_json({"outputs": sprite_outputs(80)})
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json({"outputs": sprite_outputs(80, project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/config":
             return self.send_json(ConfigService.get_config())
         if path == "/api/experiments":
-            return self.send_json({"experiments": ExperimentService.get_history()})
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            experiments = [rec for rec in ExperimentService.get_history() if ProjectService.item_matches_project(rec, project_meta)] if project_meta else ExperimentService.get_history()
+            return self.send_json({"experiments": experiments, "project_workspace": _project_workspace(project_meta)})
         if path == "/api/experiments/export":
             data = ExperimentService.export_history()
             payload = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
@@ -412,7 +456,9 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 return self.send_json({"error": str(exc)}, 500)
         if path == "/api/queues":
-            return self.send_json({"queues": _list_queues()})
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json({"queues": _list_queues(project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/projects":
             return self.send_json({"projects": ProjectService.list_projects(), "active": ProjectService.get_active_project()})
         if path == "/api/queues/detail":
@@ -488,7 +534,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"ok": True, "project": project})
             if path == "/api/projects/active":
                 body = self.read_json()
-                project = ProjectService.set_active_project(str(body.get("path") or ""))
+                requested = str(body.get("path") or "")
+                if not requested:
+                    ProjectService.clear_active_project()
+                    return self.send_json({"ok": True, "project": None})
+                project = ProjectService.set_active_project(requested)
                 if not project:
                     return self.send_json({"ok": False, "message": "Project not found."}, 404)
                 return self.send_json({"ok": True, "project": project})

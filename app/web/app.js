@@ -46,6 +46,18 @@ function setTextState(node, text, className=''){
   clearNode(node);
   appendText(node, 'span', text, className);
 }
+function projectQuery(){
+  return activeProjectPath ? `?project=${encodeURIComponent(activeProjectPath)}` : '';
+}
+function renderProjectSummary(workspace){
+  const el = $('#projectSummary');
+  if(!el) return;
+  if(!workspace || !workspace.active){
+    el.textContent = 'Global workspace';
+    return;
+  }
+  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.experiments} runs · ${workspace.queues} queues`;
+}
 
 function renderOutputs(outputs){
   currentOutputs = outputs || [];
@@ -103,7 +115,7 @@ function renderJob(job){
 
 async function refreshAll(){
   try{
-    const s=await api('/api/status');
+    const s=await api('/api/status' + projectQuery());
     setChip('#chip-comfy', s.comfy_running?'ok':'warn', 'ComfyUI: '+(s.comfy_running?'online':'offline'));
     const modelState=s.models.ok?'ok':'warn';
     const adv = s.models.advanced_total ? ` · 2.2 ${s.models.advanced_present}/${s.models.advanced_total}` : '';
@@ -114,6 +126,7 @@ async function refreshAll(){
     recommendedAction = s.next_step?.action || '';
     if($('#next-step-title')) $('#next-step-title').textContent = s.next_step?.step || 'Ready';
     if($('#next-step-reason')) $('#next-step-reason').textContent = s.next_step?.reason || 'No recommendation available.';
+    renderProjectSummary(s.project_workspace);
     renderOutputs(s.outputs); renderJob(s.job);
   }catch(e){ console.error(e); }
 }
@@ -212,10 +225,10 @@ if($('#releaseForm')) $('#releaseForm').addEventListener('submit',e=>{ e.prevent
 if($('#queueForm')) $('#queueForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('queue_create', formData(e.currentTarget)); showView('logs'); });
 if($('#projectSelect')) $('#projectSelect').addEventListener('change', async e => {
   activeProjectPath = e.currentTarget.value || '';
-  if(!activeProjectPath) return;
   try{
     await api('/api/projects/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:activeProjectPath})});
-    toast('Project selected');
+    toast(activeProjectPath ? 'Project selected' : 'Global workspace selected');
+    await refreshAll();
   }catch(err){ toast('Project select failed: '+err.message); }
 });
 if($('#createProjectBtn')) $('#createProjectBtn').addEventListener('click', createProject);
@@ -629,7 +642,7 @@ function statusBadge(rec) {
 
 async function loadHistory() {
   try {
-    const data = await api('/api/experiments');
+    const data = await api('/api/experiments' + projectQuery());
     const body = $('#historyBody');
     if (!data.experiments || !data.experiments.length) {
       tableEmpty(body, 10, 'No generation history yet.');
@@ -742,7 +755,7 @@ function queueStatusClass(s) {
 
 async function loadQueues() {
   try {
-    const data = await api('/api/queues');
+    const data = await api('/api/queues' + projectQuery());
     const list = $('#queueList');
     if (!data.queues || !data.queues.length) {
       clearNode(list);

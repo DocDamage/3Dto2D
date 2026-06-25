@@ -182,6 +182,69 @@ def test_project_service_create_list_and_select(tmp_path, monkeypatch):
     resolved = ProjectService.resolve_project_path("projects/Hero_Knight/spriteforge_project.json")
     assert resolved == (projects_dir / "Hero_Knight" / "spriteforge_project.json").resolve()
     assert ProjectService.resolve_project_path(str(tmp_path / "outside.json")) is None
+    assert ProjectService.item_matches_project(
+        {"project_path": "projects/Hero_Knight/spriteforge_project.json"},
+        {
+            "project_name": "Hero_Knight",
+            "project_path": "projects/Hero_Knight/spriteforge_project.json",
+            "project_root": "projects/Hero_Knight",
+        },
+    )
+    assert ProjectService.item_matches_project(
+        {"path": "output/Hero_Knight_walk_right_sprite", "name": "Hero_Knight_walk_right_sprite"},
+        {
+            "project_name": "Hero_Knight",
+            "project_path": "projects/Hero_Knight/spriteforge_project.json",
+            "project_root": "projects/Hero_Knight",
+        },
+    )
+    assert not ProjectService.item_matches_project(
+        {"path": "output/Other_walk_right_sprite", "name": "Other_walk_right_sprite"},
+        {
+            "project_name": "Hero_Knight",
+            "project_path": "projects/Hero_Knight/spriteforge_project.json",
+            "project_root": "projects/Hero_Knight",
+        },
+    )
+
+
+def test_sprite_outputs_project_filter(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    output = tmp_path / "output"
+    hero = output / "hero_idle"
+    other = output / "other_idle"
+    hero.mkdir(parents=True)
+    other.mkdir(parents=True)
+    (hero / "sheet.json").write_text(json.dumps({
+        "frame_count": 1,
+        "fps": 12,
+        "frame_width": 64,
+        "frame_height": 64,
+        "columns": 1,
+        "rows": 1,
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    }), encoding="utf-8")
+    (other / "sheet.json").write_text(json.dumps({
+        "frame_count": 1,
+        "fps": 12,
+        "frame_width": 64,
+        "frame_height": 64,
+        "columns": 1,
+        "rows": 1,
+    }), encoding="utf-8")
+    monkeypatch.setattr(web_mod, "OUTPUT", output)
+
+    rows = web_mod.sprite_outputs(20, {
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert len(rows) == 1
+    assert rows[0]["name"] == "hero_idle"
 
 
 from unittest.mock import MagicMock, patch

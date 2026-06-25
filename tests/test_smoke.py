@@ -343,3 +343,36 @@ def test_queue_listing_helper(tmp_path, monkeypatch):
     assert queues[0]["total"] == 3
     assert queues[0]["counts"]["done"] == 1
     assert queues[0]["counts"]["failed"] == 1
+
+
+def test_queue_listing_project_filter(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path)
+
+    jobs_dir = tmp_path / "jobs"
+    jobs_dir.mkdir()
+    project_queue = {
+        "schema": "spriteforge_queue_v12",
+        "name": "hero",
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+        "created_at": "2026-06-01T12:00:00",
+        "jobs": [{"id": "001_idle_right", "status": "pending"}],
+    }
+    other_queue = {
+        "schema": "spriteforge_queue_v12",
+        "name": "other",
+        "created_at": "2026-06-01T12:00:00",
+        "jobs": [{"id": "001_idle_right", "status": "pending"}],
+    }
+    (jobs_dir / "hero_queue.json").write_text(json.dumps(project_queue), encoding="utf-8")
+    (jobs_dir / "other_queue.json").write_text(json.dumps(other_queue), encoding="utf-8")
+
+    queues = web_mod._list_queues({
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert [q["name"] for q in queues] == ["hero"]

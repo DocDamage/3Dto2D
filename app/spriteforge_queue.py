@@ -76,11 +76,15 @@ def cmd_create(args: argparse.Namespace) -> None:
         if not p.is_absolute():
             p = ROOT / p
         project = load_project(p)
+        project_file = p / "spriteforge_project.json" if p.is_dir() else p
+        project_root_path = project_file.parent
         name = str(project.get("name") or p.stem)
         actions = split_csv(args.actions) if args.actions else list(project.get("actions", []))
         directions = split_csv(args.directions) if args.directions else list(project.get("directions", []))
     else:
         name = args.name
+        project_file = None
+        project_root_path = None
         project = {"name": name, "character": args.character, "style": args.style, "background": args.background, "fps": args.fps, "frames_by_action": {}}
         actions = split_csv(args.actions)
         directions = split_csv(args.directions)
@@ -104,6 +108,13 @@ def cmd_create(args: argparse.Namespace) -> None:
             })
             idx += 1
     queue = {"schema": "spriteforge_queue_v12", "name": name, "created_at": dt.datetime.now().isoformat(timespec="seconds"), "jobs": jobs}
+    if project_file and project_root_path:
+        try:
+            queue["project_name"] = name
+            queue["project_path"] = str(project_file.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
+            queue["project_root"] = str(project_root_path.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
+        except Exception:
+            queue["project_name"] = name
     out = Path(args.output) if args.output else queue_path_for(name)
     if not out.is_absolute():
         out = ROOT / out

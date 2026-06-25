@@ -71,6 +71,29 @@ class ProjectService:
         }
 
     @staticmethod
+    def item_matches_project(item: Dict[str, Any], project_meta: Optional[Dict[str, str]]) -> bool:
+        if not project_meta:
+            return True
+        project_name = project_meta.get("project_name", "")
+        project_path = project_meta.get("project_path", "")
+        project_root = project_meta.get("project_root", "")
+
+        if item.get("project_path") and item.get("project_path") == project_path:
+            return True
+        if item.get("project_root") and item.get("project_root") == project_root:
+            return True
+        if item.get("project_name") and item.get("project_name") == project_name:
+            return True
+
+        path = str(item.get("path") or item.get("sprite_folder") or "")
+        name = str(item.get("name") or "")
+        return bool(
+            (project_root and (path == project_root or path.startswith(project_root + "/")))
+            or (project_name and (name == project_name or name.startswith(project_name + "_")))
+            or (project_name and (path.startswith(f"output/{project_name}_") or f"/{project_name}_" in path))
+        )
+
+    @staticmethod
     def list_projects() -> List[Dict[str, Any]]:
         with ProjectService._lock:
             PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -124,6 +147,13 @@ class ProjectService:
             state["active_project"] = str(path.relative_to(ROOT)).replace("\\", "/")
             ProjectService._save_state(state)
             return ProjectService.get_active_project()
+
+    @staticmethod
+    def clear_active_project() -> None:
+        with ProjectService._lock:
+            state = ProjectService._state()
+            state.pop("active_project", None)
+            ProjectService._save_state(state)
 
     @staticmethod
     def create_project(

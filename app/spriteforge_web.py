@@ -186,6 +186,49 @@ def _list_releases(project_meta: Optional[Dict[str, str]] = None, limit: int = 4
     return results[:limit]
 
 
+def _list_packs(project_meta: Optional[Dict[str, str]] = None, limit: int = 40) -> List[Dict[str, Any]]:
+    """Return character pack summaries from project and global pack folders."""
+    search_roots = [ROOT / "projects", OUTPUT / "packs", OUTPUT]
+    seen: set[Path] = set()
+    results: List[Dict[str, Any]] = []
+    for search_root in search_roots:
+        if not search_root.exists():
+            continue
+        for manifest in search_root.rglob("pack_manifest.json"):
+            try:
+                manifest = manifest.resolve()
+                if manifest in seen:
+                    continue
+                seen.add(manifest)
+                data = load_json(manifest, {})
+                if data.get("schema") != "spriteforge_pack.v1":
+                    continue
+                folder = manifest.parent
+                mtime = folder.stat().st_mtime
+                entries = data.get("entries", [])
+                row = {
+                    "name": data.get("pack_name") or data.get("character") or folder.name,
+                    "path": rel(folder),
+                    "manifest_path": rel(manifest),
+                    "manifest_url": "/file/" + rel(manifest),
+                    "created_at": data.get("created_at", ""),
+                    "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                    "mtime": mtime,
+                    "actions": data.get("actions", []),
+                    "directions": data.get("directions", []),
+                    "entries": len(entries) if isinstance(entries, list) else 0,
+                    "project_name": data.get("project_name", ""),
+                    "project_path": data.get("project_path", ""),
+                    "project_root": data.get("project_root", ""),
+                }
+                if ProjectService.item_matches_project(row, project_meta):
+                    results.append(row)
+            except Exception:
+                continue
+    results.sort(key=lambda item: item["mtime"], reverse=True)
+    return results[:limit]
+
+
 def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, int]:
     """Count project-local planning assets: packs, prompts, and posepacks."""
     counts = {"packs": 0, "prompts": 0, "posepacks": 0}
@@ -221,6 +264,7 @@ def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]
     outputs = sprite_outputs(500, project_meta)
     queues = _list_queues(project_meta)
     releases = _list_releases(project_meta)
+    packs = _list_packs(project_meta)
     assets = _project_asset_counts(project_meta)
     return {
         "active": project_meta,
@@ -229,6 +273,7 @@ def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]
         "queues": len(queues),
         "releases": len(releases),
         **assets,
+        "packs": len(packs),
         "starred": sum(1 for rec in experiments if rec.get("starred")),
     }
 
@@ -546,6 +591,10 @@ class Handler(BaseHTTPRequestHandler):
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)
             return self.send_json({"queues": _list_queues(project_meta), "project_workspace": _project_workspace(project_meta)})
+        if path == "/api/packs":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json({"packs": _list_packs(project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/releases":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)

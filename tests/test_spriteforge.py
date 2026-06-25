@@ -298,6 +298,43 @@ def test_release_listing_project_filter(tmp_path, monkeypatch):
     assert rows[0]["zip_path"] == "projects/hero/releases/hero_pack.zip"
 
 
+def test_pack_listing_project_filter(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+
+    hero_pack = tmp_path / "projects" / "hero"
+    global_pack = tmp_path / "output" / "packs" / "global"
+    hero_pack.mkdir(parents=True)
+    global_pack.mkdir(parents=True)
+    (hero_pack / "pack_manifest.json").write_text(json.dumps({
+        "schema": "spriteforge_pack.v1",
+        "pack_name": "hero",
+        "created_at": "2026-06-25T12:00:00",
+        "actions": ["idle", "walk"],
+        "directions": ["right"],
+        "entries": [{"action": "idle"}, {"action": "walk"}],
+    }), encoding="utf-8")
+    (global_pack / "pack_manifest.json").write_text(json.dumps({
+        "schema": "spriteforge_pack.v1",
+        "pack_name": "global",
+        "created_at": "2026-06-25T12:00:00",
+        "entries": [],
+    }), encoding="utf-8")
+
+    rows = web_mod._list_packs({
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert [row["name"] for row in rows] == ["hero"]
+    assert rows[0]["path"] == "projects/hero"
+    assert rows[0]["manifest_path"] == "projects/hero/pack_manifest.json"
+    assert rows[0]["entries"] == 2
+
+
 def test_project_workspace_counts_releases(tmp_path, monkeypatch):
     import spriteforge_web as web_mod
 

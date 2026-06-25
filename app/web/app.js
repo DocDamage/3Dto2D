@@ -232,6 +232,7 @@ if($('#projectSelect')) $('#projectSelect').addEventListener('change', async e =
     if ($('#view-release')?.classList.contains('active')) await loadReleases();
     if ($('#view-history')?.classList.contains('active')) await loadHistory();
     if ($('#view-queues')?.classList.contains('active')) await loadQueues();
+    if ($('#view-packs')?.classList.contains('active')) await loadPacks();
   }catch(err){ toast('Project select failed: '+err.message); }
 });
 if($('#createProjectBtn')) $('#createProjectBtn').addEventListener('click', createProject);
@@ -735,8 +736,63 @@ if ($('#historyBody')) {
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {
   if (b.dataset.view === 'history') loadHistory();
   if (b.dataset.view === 'queues') loadQueues();
+  if (b.dataset.view === 'packs') loadPacks();
   if (b.dataset.view === 'release') loadReleases();
 }));
+
+// ============================================================
+// Pack History
+// ============================================================
+async function loadPacks() {
+  try {
+    const data = await api('/api/packs' + projectQuery());
+    const list = $('#packList');
+    if (!list) return;
+    if (!data.packs || !data.packs.length) {
+      clearNode(list);
+      appendText(list, 'div', 'No packs found yet.', 'empty compact');
+      return;
+    }
+    clearNode(list);
+    data.packs.forEach(p => {
+      const item = document.createElement('article');
+      item.className = 'release-item';
+      appendText(item, 'b', p.name || 'Pack');
+      const actions = Array.isArray(p.actions) ? p.actions.length : 0;
+      const directions = Array.isArray(p.directions) ? p.directions.length : 0;
+      appendText(item, 'small', `${p.entries || 0} entries · ${actions} actions · ${directions} directions · ${p.modified || String(p.created_at || '').slice(0, 16)}`);
+      appendText(item, 'code', p.path || '');
+
+      const controls = document.createElement('div');
+      controls.className = 'button-row compact-actions';
+      if (p.path) {
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'mini';
+        open.dataset.openPath = p.path;
+        open.textContent = 'Open';
+        controls.appendChild(open);
+      }
+      if (p.manifest_url) {
+        const manifest = document.createElement('a');
+        manifest.className = 'mini link-button';
+        manifest.href = p.manifest_url;
+        manifest.textContent = 'Manifest';
+        controls.appendChild(manifest);
+      }
+      item.appendChild(controls);
+      list.appendChild(item);
+    });
+  } catch(e) { console.error(e); }
+}
+
+if ($('#refreshPacks')) $('#refreshPacks').addEventListener('click', loadPacks);
+if ($('#packList')) {
+  $('#packList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-open-path]');
+    if (btn) await openPath(btn.dataset.openPath);
+  });
+}
 
 // ============================================================
 // Release History

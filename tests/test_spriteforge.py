@@ -629,6 +629,69 @@ def test_release_manifests(tmp_path):
         assert "release_output/sprites/mock_sprite/sheet.json" in namelist
 
 
+def test_release_manifest_includes_project_metadata(tmp_path):
+    import json
+    from spriteforge_final import build_parser
+
+    project_dir = tmp_path / "projects" / "hero"
+    project_dir.mkdir(parents=True)
+    project_manifest = project_dir / "spriteforge_project.json"
+    project_manifest.write_text(json.dumps({
+        "schema": "spriteforge_project_v1",
+        "name": "hero",
+    }), encoding="utf-8")
+
+    src_sprite_dir = tmp_path / "mock_sprite"
+    src_sprite_dir.mkdir()
+    (src_sprite_dir / "sheet.json").write_text(json.dumps({
+        "animation": "hero_idle",
+        "frame_count": 1,
+        "fps": 12,
+        "frame_width": 64,
+        "frame_height": 64,
+        "columns": 1,
+        "rows": 1,
+        "image": "sheet.png",
+    }), encoding="utf-8")
+    (src_sprite_dir / "sheet.png").write_text("fake png bytes", encoding="utf-8")
+
+    out_dir = tmp_path / "projects" / "hero" / "releases" / "hero_release"
+    parser = build_parser()
+    args = parser.parse_args([
+        "release",
+        "--name",
+        "hero_release",
+        "--project",
+        str(project_manifest),
+        "--sprite-dir",
+        str(src_sprite_dir),
+        "--output",
+        str(out_dir),
+    ])
+
+    with patch("spriteforge_final.preflight_data", return_value={
+        "generated_at": "2026-06-25T12:00:00",
+        "checks": {
+            "python": {"ok": True, "value": "python"},
+            "git": {"ok": True, "value": "git"},
+            "nvidia": {"ok": True, "raw": "GeForce RTX", "label": "GeForce RTX"},
+            "disk": {"ok": True, "free_gb": 100, "total_gb": 500},
+            "comfy_dir": {"ok": True, "value": "comfy_dir"},
+            "comfy_output": {"ok": True, "value": "comfy_output"},
+            "comfy_running": {"ok": False, "value": "comfy_url"},
+            "outputs": {"ok": True, "count": 1},
+            "next_step": {"step": "None", "reason": "none"},
+        },
+        "sprites": [],
+    }):
+        args.func(args)
+
+    manifest = json.loads((out_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["project_name"] == "hero"
+    assert manifest["project_path"].endswith("projects/hero/spriteforge_project.json")
+    assert manifest["project_root"].endswith("projects/hero")
+
+
 def test_godot_export(tmp_path):
     from services.export_service import ExportService
     import json

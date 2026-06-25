@@ -312,6 +312,29 @@ def selected_sprite_dirs(args: argparse.Namespace) -> List[Path]:
     return out
 
 
+def project_release_metadata(project: Optional[str]) -> Dict[str, str]:
+    """Return stable project identity fields for release manifests."""
+    if not project:
+        return {}
+    path = Path(project)
+    if not path.is_absolute():
+        path = ROOT / path
+    manifest = path / "spriteforge_project.json" if path.is_dir() else path
+    data = load_json(manifest, {}) or {}
+    if manifest.name != "spriteforge_project.json" or not manifest.exists():
+        return {}
+    try:
+        project_path = rel(manifest)
+        project_root = rel(manifest.parent)
+    except Exception:
+        return {}
+    return {
+        "project_name": str(data.get("name") or manifest.parent.name),
+        "project_path": project_path,
+        "project_root": project_root,
+    }
+
+
 def make_release_readme(name: str, sprites: List[Dict[str, Any]], created: str) -> str:
     lines = [
         f"# {name} Sprite Release",
@@ -384,7 +407,15 @@ def cmd_release(args: argparse.Namespace) -> None:
     preflight = preflight_data()
     write_json(outroot / "preflight" / "preflight.json", preflight)
     (outroot / "preflight" / "preflight.html").write_text(render_preflight_html(preflight), encoding="utf-8")
-    manifest = {"schema": "spriteforge_release_v12", "name": name, "created_at": created, "sprite_count": len(records), "sprites": records, "root": str(ROOT.resolve())}
+    manifest = {
+        "schema": "spriteforge_release_v12",
+        "name": name,
+        "created_at": created,
+        "sprite_count": len(records),
+        "sprites": records,
+        "root": str(ROOT.resolve()),
+        **project_release_metadata(args.project),
+    }
     write_json(outroot / "manifest.json", manifest)
     (outroot / "README.md").write_text(make_release_readme(name, records, created), encoding="utf-8")
     if args.zip:

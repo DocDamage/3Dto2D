@@ -75,6 +75,29 @@ def find_sprite_dirs(root: Path) -> List[Path]:
     return sorted({p.parent for p in root.rglob("sheet.json")})
 
 
+def project_metadata_for_output(out: Path) -> Dict[str, str]:
+    """Attach project identity when the pack is created inside a project root."""
+    for parent in [out, *out.parents]:
+        manifest = parent / "spriteforge_project.json"
+        if manifest.exists():
+            try:
+                data = json.loads(manifest.read_text(encoding="utf-8"))
+            except Exception:
+                data = {}
+            try:
+                project_path = manifest.resolve().relative_to(ROOT.resolve()).as_posix()
+                project_root = parent.resolve().relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                project_path = str(manifest.resolve()).replace("\\", "/")
+                project_root = str(parent.resolve()).replace("\\", "/")
+            return {
+                "project_name": str(data.get("name") or parent.name),
+                "project_path": project_path,
+                "project_root": project_root,
+            }
+    return {}
+
+
 def default_frame_count(action: str) -> int:
     spec = ACTION_TEMPLATES.get(action, {}) if isinstance(ACTION_TEMPLATES, dict) else {}
     return int(spec.get("frames", 24))
@@ -134,6 +157,7 @@ def cmd_init(args: argparse.Namespace) -> None:
         "actions": actions,
         "directions": directions,
         "entries": entries,
+        **project_metadata_for_output(out),
         "notes": [
             "Generate videos/sprites for each entry, then run pack-collect or pack-atlas.",
             "Use prompt_path and posepack_path with exported ComfyUI API workflows.",

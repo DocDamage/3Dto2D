@@ -326,7 +326,25 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         engine = "godot" if action == "export_godot" else "unity"
         return f"Export {engine.title()} helper", [PYTHON, "spriteforge_unified.py", "export-engine", "--engine", engine, "--sprite-dir", sprite_dir]
     if action == "character_pack":
-        return "Create character pack", [PYTHON, "spriteforge_unified.py", "character-pack", "--name", safe_name(str(payload.get("name") or "hero")), "--description", str(payload.get("description") or "single full body original game hero"), "--actions", str(payload.get("actions") or "idle,walk,run,attack_light,hurt"), "--directions", str(payload.get("directions") or "right")]
+        name = safe_name(str(payload.get("name") or "hero"))
+        cmd = [
+            PYTHON,
+            "spriteforge_unified.py",
+            "pack-init",
+            "--name",
+            name,
+            "--character",
+            str(payload.get("description") or "single full body original game hero"),
+            "--actions",
+            str(payload.get("actions") or "idle,walk,run,attack_light,hurt"),
+            "--directions",
+            str(payload.get("directions") or "right"),
+            "--pose-guided",
+            "--posepacks",
+        ]
+        if project_meta:
+            cmd += ["--output", str(ROOT / project_meta["project_root"])]
+        return "Create character production pack", cmd
     if action == "atlas":
         sprites = payload.get("sprites") or []
         if isinstance(sprites, str):

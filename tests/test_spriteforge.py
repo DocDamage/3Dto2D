@@ -126,6 +126,22 @@ def test_build_action_command():
     assert str(ROOT / "app" / "projects" / "hero" / "releases" / "hero_release") in cmd
     assert payload["project_name"] == "hero"
 
+    with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
+        title, cmd = build_action_command({
+            "action": "character_pack",
+            "active_project": "projects/hero/spriteforge_project.json",
+            "name": "hero",
+            "description": "single full body original game hero",
+            "actions": "idle,walk",
+            "directions": "right",
+        })
+    assert title == "Create character production pack"
+    assert "pack-init" in cmd
+    assert "--output" in cmd
+    assert str(ROOT / "app" / "projects" / "hero") in cmd
+    assert "--pose-guided" in cmd
+    assert "--posepacks" in cmd
+
 
 def test_model_summary_shape(monkeypatch):
     monkeypatch.setattr(
@@ -731,6 +747,52 @@ def test_release_manifest_includes_project_metadata(tmp_path):
     assert manifest["project_name"] == "hero"
     assert manifest["project_path"].endswith("projects/hero/spriteforge_project.json")
     assert manifest["project_root"].endswith("projects/hero")
+
+
+def test_pack_manifest_includes_project_metadata(tmp_path, monkeypatch):
+    import argparse
+    import json
+    import spriteforge_pack as pack_mod
+
+    project_dir = tmp_path / "projects" / "hero"
+    project_dir.mkdir(parents=True)
+    (project_dir / "spriteforge_project.json").write_text(json.dumps({
+        "schema": "spriteforge_project_v1",
+        "name": "hero",
+    }), encoding="utf-8")
+    monkeypatch.setattr(pack_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(pack_mod, "ACTION_TEMPLATES", {"idle": {"frames": 2}})
+    monkeypatch.setattr(pack_mod, "DIRECTIONS", {"right": "Right"})
+    monkeypatch.setattr(pack_mod, "build_prompt", lambda **kwargs: {
+        "positive": "hero idle",
+        "negative": "",
+        "recommended_frames": 2,
+    })
+    monkeypatch.setattr(pack_mod, "make_posepack", lambda action, direction, frames, size, output: output.mkdir(parents=True))
+
+    args = argparse.Namespace(
+        name="hero",
+        output=str(project_dir),
+        actions="idle",
+        directions="right",
+        character="hero",
+        style="sprite",
+        background="green",
+        extra="",
+        reference=False,
+        pose_guided=True,
+        posepacks=True,
+        pose_size=64,
+    )
+
+    pack_mod.cmd_init(args)
+
+    manifest = json.loads((project_dir / "pack_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["project_name"] == "hero"
+    assert manifest["project_path"] == "projects/hero/spriteforge_project.json"
+    assert manifest["project_root"] == "projects/hero"
+    assert (project_dir / "prompts" / "idle_right.json").exists()
+    assert (project_dir / "posepacks" / "idle_right").exists()
 
 
 def test_godot_export(tmp_path):

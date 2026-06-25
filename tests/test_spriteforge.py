@@ -247,6 +247,65 @@ def test_sprite_outputs_project_filter(tmp_path, monkeypatch):
     assert rows[0]["name"] == "hero_idle"
 
 
+def test_release_listing_project_filter(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+
+    hero_release = tmp_path / "projects" / "hero" / "releases" / "hero_pack"
+    other_release = tmp_path / "releases" / "global_pack"
+    hero_release.mkdir(parents=True)
+    other_release.mkdir(parents=True)
+    (hero_release / "manifest.json").write_text(json.dumps({
+        "schema": "spriteforge_release_v12",
+        "name": "hero_pack",
+        "created_at": "2026-06-25T12:00:00",
+        "sprite_count": 2,
+    }), encoding="utf-8")
+    (hero_release.with_suffix(".zip")).write_text("zip bytes", encoding="utf-8")
+    (other_release / "manifest.json").write_text(json.dumps({
+        "schema": "spriteforge_release_v12",
+        "name": "global_pack",
+        "created_at": "2026-06-25T12:00:00",
+        "sprite_count": 1,
+    }), encoding="utf-8")
+
+    rows = web_mod._list_releases({
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert [row["name"] for row in rows] == ["hero_pack"]
+    assert rows[0]["path"] == "projects/hero/releases/hero_pack"
+    assert rows[0]["zip_path"] == "projects/hero/releases/hero_pack.zip"
+
+
+def test_project_workspace_counts_releases(tmp_path, monkeypatch):
+    import spriteforge_web as web_mod
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+    monkeypatch.setattr(web_mod.ExperimentService, "get_history", staticmethod(lambda: []))
+
+    release_dir = tmp_path / "projects" / "hero" / "releases" / "hero_pack"
+    release_dir.mkdir(parents=True)
+    (release_dir / "manifest.json").write_text(json.dumps({
+        "schema": "spriteforge_release_v12",
+        "name": "hero_pack",
+        "sprite_count": 1,
+    }), encoding="utf-8")
+
+    workspace = web_mod._project_workspace({
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    })
+
+    assert workspace["releases"] == 1
+
+
 from unittest.mock import MagicMock, patch
 import json
 import time

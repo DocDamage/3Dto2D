@@ -144,6 +144,48 @@ def _list_queues(project_meta: Optional[Dict[str, str]] = None) -> List[Dict[str
     return results
 
 
+def _list_releases(project_meta: Optional[Dict[str, str]] = None, limit: int = 40) -> List[Dict[str, Any]]:
+    """Return release package summaries from project and global release folders."""
+    search_roots = [ROOT / "projects", ROOT / "releases", OUTPUT]
+    seen: set[Path] = set()
+    results: List[Dict[str, Any]] = []
+    for search_root in search_roots:
+        if not search_root.exists():
+            continue
+        for manifest in search_root.rglob("manifest.json"):
+            try:
+                manifest = manifest.resolve()
+                if manifest in seen:
+                    continue
+                seen.add(manifest)
+                data = load_json(manifest, {})
+                if data.get("schema") != "spriteforge_release_v12":
+                    continue
+                folder = manifest.parent
+                mtime = folder.stat().st_mtime
+                zip_path = folder.with_suffix(".zip")
+                row = {
+                    "name": data.get("name") or folder.name,
+                    "path": rel(folder),
+                    "manifest_url": "/file/" + rel(manifest),
+                    "zip_path": rel(zip_path) if zip_path.exists() else "",
+                    "zip_url": "/file/" + rel(zip_path) if zip_path.exists() else "",
+                    "created_at": data.get("created_at", ""),
+                    "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+                    "mtime": mtime,
+                    "sprite_count": data.get("sprite_count", len(data.get("sprites", []))),
+                    "project_name": data.get("project_name", ""),
+                    "project_path": data.get("project_path", ""),
+                    "project_root": data.get("project_root", ""),
+                }
+                if ProjectService.item_matches_project(row, project_meta):
+                    results.append(row)
+            except Exception:
+                continue
+    results.sort(key=lambda item: item["mtime"], reverse=True)
+    return results[:limit]
+
+
 def _project_meta_from_query(query: Dict[str, List[str]]) -> Optional[Dict[str, str]]:
     project_value = (query.get("project") or [""])[0]
     if project_value:
@@ -161,11 +203,13 @@ def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]
     ] if project_meta else ExperimentService.get_history()
     outputs = sprite_outputs(500, project_meta)
     queues = _list_queues(project_meta)
+    releases = _list_releases(project_meta)
     return {
         "active": project_meta,
         "outputs": len(outputs),
         "experiments": len(experiments),
         "queues": len(queues),
+        "releases": len(releases),
         "starred": sum(1 for rec in experiments if rec.get("starred")),
     }
 
@@ -459,6 +503,10 @@ class Handler(BaseHTTPRequestHandler):
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)
             return self.send_json({"queues": _list_queues(project_meta), "project_workspace": _project_workspace(project_meta)})
+        if path == "/api/releases":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json({"releases": _list_releases(project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/projects":
             return self.send_json({"projects": ProjectService.list_projects(), "active": ProjectService.get_active_project()})
         if path == "/api/queues/detail":

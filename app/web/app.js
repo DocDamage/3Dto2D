@@ -56,7 +56,7 @@ function renderProjectSummary(workspace){
     el.textContent = 'Global workspace';
     return;
   }
-  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.experiments} runs · ${workspace.queues} queues`;
+  el.textContent = `${workspace.active.project_name}: ${workspace.outputs} outputs · ${workspace.experiments} runs · ${workspace.queues} queues · ${workspace.releases || 0} releases`;
 }
 
 function renderOutputs(outputs){
@@ -229,6 +229,9 @@ if($('#projectSelect')) $('#projectSelect').addEventListener('change', async e =
     await api('/api/projects/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:activeProjectPath})});
     toast(activeProjectPath ? 'Project selected' : 'Global workspace selected');
     await refreshAll();
+    if ($('#view-release')?.classList.contains('active')) await loadReleases();
+    if ($('#view-history')?.classList.contains('active')) await loadHistory();
+    if ($('#view-queues')?.classList.contains('active')) await loadQueues();
   }catch(err){ toast('Project select failed: '+err.message); }
 });
 if($('#createProjectBtn')) $('#createProjectBtn').addEventListener('click', createProject);
@@ -732,7 +735,60 @@ if ($('#historyBody')) {
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {
   if (b.dataset.view === 'history') loadHistory();
   if (b.dataset.view === 'queues') loadQueues();
+  if (b.dataset.view === 'release') loadReleases();
 }));
+
+// ============================================================
+// Release History
+// ============================================================
+async function loadReleases() {
+  try {
+    const data = await api('/api/releases' + projectQuery());
+    const list = $('#releaseList');
+    if (!list) return;
+    if (!data.releases || !data.releases.length) {
+      clearNode(list);
+      appendText(list, 'div', 'No releases found yet.', 'empty compact');
+      return;
+    }
+    clearNode(list);
+    data.releases.forEach(r => {
+      const item = document.createElement('article');
+      item.className = 'release-item';
+      appendText(item, 'b', r.name || 'Release');
+      appendText(item, 'small', `${r.sprite_count || 0} sprites · ${r.modified || String(r.created_at || '').slice(0, 16)}`);
+      appendText(item, 'code', r.path || '');
+
+      const actions = document.createElement('div');
+      actions.className = 'button-row compact-actions';
+      if (r.path) {
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'mini';
+        open.dataset.openPath = r.path;
+        open.textContent = 'Open';
+        actions.appendChild(open);
+      }
+      if (r.zip_path) {
+        const zip = document.createElement('a');
+        zip.className = 'mini link-button';
+        zip.href = r.zip_url;
+        zip.textContent = 'ZIP';
+        actions.appendChild(zip);
+      }
+      item.appendChild(actions);
+      list.appendChild(item);
+    });
+  } catch(e) { console.error(e); }
+}
+
+if ($('#refreshReleases')) $('#refreshReleases').addEventListener('click', loadReleases);
+if ($('#releaseList')) {
+  $('#releaseList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-open-path]');
+    if (btn) await openPath(btn.dataset.openPath);
+  });
+}
 
 // ============================================================
 // Queue Monitor

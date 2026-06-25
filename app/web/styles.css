@@ -75,6 +75,13 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background-ima
 .status-failed{color:#f66}
 .status-running{color:#fa0}
 .status-muted{color:#888}
+.release-list{display:grid;gap:10px}
+.release-item{display:grid;gap:7px;padding:12px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.045)}
+.release-item b{font-size:.95rem}
+.release-item small{color:#8d98b2}
+.release-item code{color:#aab4cc;font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-button{display:inline-flex;align-items:center;text-decoration:none}
+.release-includes-card{grid-column:1/-1}
 
 @media(max-width:760px){
   .table-card-head{align-items:flex-start;flex-direction:column}

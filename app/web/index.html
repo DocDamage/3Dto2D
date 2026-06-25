@@ -356,6 +356,12 @@
           <button class="primary big" type="submit">Build Release ZIP</button>
         </form>
         <section class="card">
+          <div class="card-head"><h3>Recent releases</h3><button class="mini" id="refreshReleases" type="button">Refresh</button></div>
+          <div id="releaseList" class="release-list">
+            <div class="empty compact">No releases found yet.</div>
+          </div>
+        </section>
+        <section class="card release-includes-card">
           <h3>Release package includes</h3>
           <div class="quality-grid">
             <div>Spritesheets</div><div>sheet.json metadata</div><div>Preview GIFs</div><div>QA/preflight report</div><div>Godot/Unity notes</div><div>Manifest + README</div>

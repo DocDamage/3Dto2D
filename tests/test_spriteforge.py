@@ -99,6 +99,13 @@ def test_build_action_command():
     assert "convert-video" in cmd
     assert "test.mp4" in cmd
 
+    project_manifest = ROOT / "app" / "projects" / "hero" / "spriteforge_project.json"
+    with patch("services.project_service.ProjectService.resolve_project_path", return_value=project_manifest):
+        title, cmd = build_action_command({"action": "queue_create", "active_project": "projects/hero/spriteforge_project.json"})
+    assert title == "Create persistent production queue"
+    assert "--project" in cmd
+    assert str(project_manifest) in cmd
+
 
 def test_model_summary_shape(monkeypatch):
     monkeypatch.setattr(
@@ -125,6 +132,36 @@ def test_model_summary_shape(monkeypatch):
     assert summary["advanced_total"] == 3
     assert summary["advanced_ok"] is False
     assert "tiers" in summary
+
+
+def test_project_service_create_list_and_select(tmp_path, monkeypatch):
+    from services import project_service as ps_mod
+    from services.project_service import ProjectService
+
+    projects_dir = tmp_path / "projects"
+    state_path = tmp_path / "output" / "projects" / "project_state.json"
+    monkeypatch.setattr(ps_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(ps_mod, "PROJECTS_DIR", projects_dir)
+    monkeypatch.setattr(ps_mod, "STATE_PATH", state_path)
+
+    project = ProjectService.create_project(name="Hero Knight")
+
+    assert project["name"] == "Hero_Knight"
+    assert project["path"] == "projects/Hero_Knight/spriteforge_project.json"
+    assert (projects_dir / "Hero_Knight" / "spriteforge_project.json").exists()
+    assert (projects_dir / "Hero_Knight" / "queues").is_dir()
+
+    listed = ProjectService.list_projects()
+    assert len(listed) == 1
+    assert listed[0]["name"] == "Hero_Knight"
+
+    active = ProjectService.get_active_project()
+    assert active is not None
+    assert active["name"] == "Hero_Knight"
+
+    resolved = ProjectService.resolve_project_path("projects/Hero_Knight/spriteforge_project.json")
+    assert resolved == (projects_dir / "Hero_Knight" / "spriteforge_project.json").resolve()
+    assert ProjectService.resolve_project_path(str(tmp_path / "outside.json")) is None
 
 
 from unittest.mock import MagicMock, patch
@@ -340,6 +377,20 @@ def test_job_lifecycle(tmp_path):
                 c_job = next(j for j in hist if j["id"] == job_id)
                 assert c_job["phase"] == "cancelled"
                 assert c_job["exit_code"] == -1
+
+
+def test_job_history_retention(tmp_path):
+    import services.job_service
+    from services.job_service import JobService
+
+    temp_history = tmp_path / "job_history.json"
+    jobs = [{"id": str(i), "phase": "completed", "logs": []} for i in range(5)]
+
+    with patch("services.job_service.HISTORY_PATH", temp_history), patch("services.job_service.MAX_JOB_HISTORY", 3):
+        JobService._save_history(jobs)
+        history = JobService.get_history()
+
+    assert [job["id"] for job in history] == ["0", "1", "2"]
 
 
 def test_release_manifests(tmp_path):

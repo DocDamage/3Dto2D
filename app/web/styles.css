@@ -34,3 +34,58 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background-ima
 .next-card h3{font-size:28px;margin:2px 0 6px;letter-spacing:-.035em}.next-card p{margin:0;color:var(--muted)}
 .launch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}.launch-step{position:relative;min-height:250px;overflow:hidden}.launch-step:before{content:"";position:absolute;inset:-30% -20% auto auto;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(85,241,255,.22),transparent 70%)}.launch-step span{display:grid;place-items:center;width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,rgba(85,241,255,.22),rgba(169,112,255,.18));color:var(--cyan);font-weight:1000;margin-bottom:18px}.launch-step h3{font-size:24px;margin:0 0 8px;letter-spacing:-.035em}.launch-step p{color:var(--muted);min-height:72px}.launch-step .primary,.launch-step .ghost{position:relative;z-index:1}
 @media(max-width:760px){.next-card{grid-template-columns:1fr}.next-card .button-row{margin-top:8px}}
+
+/* History and queue monitor */
+.table-card{padding:0;overflow:hidden}
+.table-card-head{padding:12px 16px;margin-bottom:0}
+.compact-actions{margin-top:0;gap:8px}
+.table-scroll{overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:.83rem}
+.data-table thead tr{background:#1a1a2e;color:#8899bb;text-align:left}
+.data-table th,.data-table td{padding:8px 10px;border-bottom:1px solid #1e1e2e;vertical-align:middle}
+.data-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.queue-table{font-size:.82rem}
+.queue-table th,.queue-table td{padding:6px 10px}
+.empty-cell{padding:24px!important;text-align:center;color:#65708a}
+.nowrap{white-space:nowrap}
+.muted-cell{color:#8d98b2}
+.path-cell{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem}
+.subtle-path{color:#6f7893}
+.notes-cell{color:#aab4cc;font-size:.8rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mono-cell{font-family:Consolas,ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem}
+.qa-badge{font-weight:900;font-size:.75rem}
+.qa-badge.pass{color:#6f6}
+.qa-badge.fail{color:#ff6b91}
+.qa-badge.muted{color:#888}
+.icon-mini{width:30px;height:30px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.06);color:var(--muted);cursor:pointer;font-size:17px;line-height:1}
+.icon-mini.active{color:var(--yellow);border-color:rgba(255,214,106,.45);background:rgba(255,214,106,.12)}
+.queue-layout{align-items:flex-start}
+.queue-list-card{min-width:260px;max-width:320px}
+.queue-detail-card{min-width:0}
+.queue-list{display:flex;flex-direction:column;gap:8px;padding-top:8px}
+.empty.compact{color:#65708a;font-size:.85rem}
+.queue-item{width:100%;text-align:left;padding:10px;border:1px solid transparent;border-radius:16px;background:rgba(255,255,255,.045);color:var(--text);cursor:pointer}
+.queue-item:hover,.queue-item.active{border-color:#5070d0;background:rgba(85,241,255,.08)}
+.queue-item b{display:block;font-size:.85rem}
+.queue-item small{color:#65708a}
+.queue-pills{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.queue-pills span{background:#1e1e2e;font-size:.7em;padding:1px 6px;border-radius:10px}
+.queue-status{font-weight:800}
+
+@media(max-width:760px){
+  .table-card-head{align-items:flex-start;flex-direction:column}
+  .compact-actions .mini{flex:1 1 auto}
+  .queue-list-card{max-width:none}
+}
+
+/* Project mode selector */
+.topbar{display:grid;grid-template-columns:1fr auto}
+.project-strip{grid-column:1/-1;display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.project-strip label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.project-strip select,.project-strip input{height:36px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:rgba(0,0,0,.22);color:var(--text);padding:0 10px;outline:none}
+.project-strip input{width:190px}
+@media(max-width:620px){
+  .topbar{display:block}
+  .project-strip{justify-content:flex-start;margin-top:12px}
+  .project-strip label,.project-strip select,.project-strip input{width:100%}
+}

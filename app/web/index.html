@@ -52,6 +52,11 @@
         <div class="chip" id="chip-comfy">ComfyUI: checking…</div>
         <div class="chip" id="chip-models">WAN models: checking…</div>
       </div>
+      <div class="project-strip">
+        <label>Project<select id="projectSelect"><option value="">No project</option></select></label>
+        <input id="projectNameInput" placeholder="New project name" />
+        <button class="mini" id="createProjectBtn" type="button">Create</button>
+      </div>
     </header>
 
     <section class="view active" id="view-dashboard">
@@ -394,27 +399,32 @@
     ============================================================ -->
     <section class="view" id="view-history">
       <div class="section-title"><p class="eyebrow">What worked?</p><h2>Experiment History</h2></div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <div class="card-head" style="padding:12px 16px">
+      <div class="card table-card">
+        <div class="card-head table-card-head">
           <h3>Generation runs</h3>
-          <button class="mini" id="refreshHistory">Refresh</button>
+          <div class="button-row compact-actions">
+            <button class="mini" id="refreshHistory" type="button">Refresh</button>
+            <button class="mini" id="exportHistory" type="button">Export JSON</button>
+            <button class="mini danger" id="clearHistory" type="button">Clear Unstarred</button>
+          </div>
         </div>
-        <div style="overflow-x:auto">
-          <table id="historyTable" style="width:100%;border-collapse:collapse;font-size:.83rem">
+        <div class="table-scroll">
+          <table id="historyTable" class="data-table history-table">
             <thead>
-              <tr style="background:#1a1a2e;color:#8899bb;text-align:left">
-                <th style="padding:8px 10px">Time</th>
-                <th style="padding:8px 10px">Action</th>
-                <th style="padding:8px 10px">Dir</th>
-                <th style="padding:8px 10px">Tier</th>
-                <th style="padding:8px 10px">Profile</th>
-                <th style="padding:8px 10px">QA</th>
-                <th style="padding:8px 10px">Output</th>
-                <th style="padding:8px 10px">Notes</th>
+              <tr>
+                <th>Keep</th>
+                <th>Time</th>
+                <th>Action</th>
+                <th>Dir</th>
+                <th>Tier</th>
+                <th>Profile</th>
+                <th>QA</th>
+                <th>Output</th>
+                <th>Notes</th>
               </tr>
             </thead>
             <tbody id="historyBody">
-              <tr><td colspan="8" style="padding:24px;text-align:center;color:#555">No generation history yet. Run a sprite job to see it here.</td></tr>
+              <tr><td colspan="9" class="empty-cell">No generation history yet. Run a sprite job to see it here.</td></tr>
             </tbody>
           </table>
         </div>
@@ -426,16 +436,16 @@
     ============================================================ -->
     <section class="view" id="view-queues">
       <div class="section-title"><p class="eyebrow">Batch production</p><h2>Queue Monitor</h2></div>
-      <div class="split" style="align-items:flex-start">
+      <div class="split queue-layout">
         <!-- Left: queue list -->
-        <section class="card" style="min-width:260px;max-width:320px">
+        <section class="card queue-list-card">
           <div class="card-head"><h3>Queues</h3><button class="mini" id="refreshQueues">Refresh</button></div>
-          <div id="queueList" style="display:flex;flex-direction:column;gap:8px;padding-top:8px">
-            <div style="color:#555;font-size:.85rem">No queues found. Create one in Queue Builder.</div>
+          <div id="queueList" class="queue-list">
+            <div class="empty compact">No queues found. Create one in Queue Builder.</div>
           </div>
         </section>
         <!-- Right: selected queue detail -->
-        <section class="card" style="flex:1">
+        <section class="card queue-detail-card">
           <div class="card-head">
             <h3 id="queueDetailName">Select a queue</h3>
             <div class="button-row">
@@ -444,20 +454,20 @@
               <button class="ghost mini danger" id="queueResetBtn" disabled>Reset All</button>
             </div>
           </div>
-          <div style="overflow-x:auto">
-            <table id="queueDetailTable" style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <div class="table-scroll">
+            <table id="queueDetailTable" class="data-table queue-table">
               <thead>
-                <tr style="background:#1a1a2e;color:#8899bb;text-align:left">
-                  <th style="padding:6px 10px">ID</th>
-                  <th style="padding:6px 10px">Action</th>
-                  <th style="padding:6px 10px">Dir</th>
-                  <th style="padding:6px 10px">Status</th>
-                  <th style="padding:6px 10px">Exit</th>
-                  <th style="padding:6px 10px">Output</th>
+                <tr>
+                  <th>ID</th>
+                  <th>Action</th>
+                  <th>Dir</th>
+                  <th>Status</th>
+                  <th>Exit</th>
+                  <th>Output</th>
                 </tr>
               </thead>
               <tbody id="queueDetailBody">
-                <tr><td colspan="6" style="padding:24px;text-align:center;color:#555">No queue selected.</td></tr>
+                <tr><td colspan="6" class="empty-cell">No queue selected.</td></tr>
               </tbody>
             </table>
           </div>

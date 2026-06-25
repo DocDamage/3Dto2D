@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT_PATH = ROOT / "output" / "experiments" / "experiment_history.json"
+MAX_EXPERIMENT_HISTORY = 500
 
 
 class ExperimentService:
@@ -37,7 +38,7 @@ class ExperimentService:
     def _save(records: List[Dict[str, Any]]) -> None:
         EXPERIMENT_PATH.parent.mkdir(parents=True, exist_ok=True)
         try:
-            EXPERIMENT_PATH.write_text(json.dumps(records, indent=2), encoding="utf-8")
+            EXPERIMENT_PATH.write_text(json.dumps(records[:MAX_EXPERIMENT_HISTORY], indent=2), encoding="utf-8")
         except Exception:
             pass
 
@@ -83,6 +84,7 @@ class ExperimentService:
             "qa_score": qa_score,
             "qa_passed": qa_passed,
             "fix_applied": fix_applied,
+            "starred": False,
             "notes": notes,
         }
         with ExperimentService._lock:
@@ -119,6 +121,18 @@ class ExperimentService:
             return False
 
     @staticmethod
+    def set_starred(run_id: str, starred: bool) -> bool:
+        """Mark a run as starred/unstarred. Returns True if found."""
+        with ExperimentService._lock:
+            records = ExperimentService._load()
+            for rec in records:
+                if rec.get("id") == run_id:
+                    rec["starred"] = bool(starred)
+                    ExperimentService._save(records)
+                    return True
+            return False
+
+    @staticmethod
     def update_qa(run_id: str, qa_score: float, qa_passed: bool) -> bool:
         """Update QA fields on an existing record. Returns True if found."""
         with ExperimentService._lock:
@@ -130,3 +144,25 @@ class ExperimentService:
                     ExperimentService._save(records)
                     return True
             return False
+
+    @staticmethod
+    def export_history() -> Dict[str, Any]:
+        """Return a stable export document for all experiment records."""
+        with ExperimentService._lock:
+            records = ExperimentService._load()
+            return {
+                "schema": "spriteforge_experiment_history_v1",
+                "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "count": len(records),
+                "records": records,
+            }
+
+    @staticmethod
+    def clear_history(*, keep_starred: bool = True) -> int:
+        """Clear experiment records and return the number removed."""
+        with ExperimentService._lock:
+            records = ExperimentService._load()
+            kept = [rec for rec in records if keep_starred and rec.get("starred")]
+            removed = len(records) - len(kept)
+            ExperimentService._save(kept)
+            return removed

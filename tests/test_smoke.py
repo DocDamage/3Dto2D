@@ -4,16 +4,20 @@ These tests focus on integration-level sanity checks that don't require
 ComfyUI, GPU, or any generated outputs to exist.
 """
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT / "app"
+GOLDEN_DEMO = APP / "examples" / "prebuilt_demo_sprite"
 PYTHON = str(APP / ".venv" / "Scripts" / "python.exe") if (APP / ".venv" / "Scripts" / "python.exe").exists() else sys.executable
 
 sys.path.insert(0, str(APP))
@@ -74,6 +78,107 @@ def test_compare_smoke(tmp_path):
     assert (out / "compare_report.html").exists()
     assert data["compared_frames"] == 2
     assert data["mean_diff"] > 0
+
+
+def test_golden_demo_sprite_metadata():
+    """The checked-in demo sprite remains a valid known-good fixture."""
+    meta = json.loads((GOLDEN_DEMO / "sheet.json").read_text(encoding="utf-8"))
+    sheet = Image.open(GOLDEN_DEMO / meta["image"])
+    frames = sorted((GOLDEN_DEMO / "frames_processed").glob("frame_*.png"))
+
+    assert sheet.size == (
+        meta["frame_width"] * meta["columns"],
+        meta["frame_height"] * meta["rows"],
+    )
+    assert meta["animation"] == "demo_idle"
+    assert meta["frame_count"] == 16
+    assert len(meta["frames"]) == meta["frame_count"]
+    assert len(frames) == meta["frame_count"]
+    assert 1 <= meta["fps"] <= 60
+    assert (GOLDEN_DEMO / "preview.gif").exists()
+    assert (GOLDEN_DEMO / "report.html").exists()
+
+    for frame in meta["frames"]:
+        assert frame["w"] == meta["frame_width"]
+        assert frame["h"] == meta["frame_height"]
+        assert 0 <= frame["x"] < sheet.width
+        assert 0 <= frame["y"] < sheet.height
+        assert frame["x"] + frame["w"] <= sheet.width
+        assert frame["y"] + frame["h"] <= sheet.height
+
+
+def test_golden_demo_quality_and_compare(tmp_path):
+    """Golden fixture produces bounded QC metrics and a compare report."""
+    from spriteforge_compare import compare_dirs
+    from spriteforge_quality import quality_report
+
+    sprite_a = tmp_path / "demo_a"
+    sprite_b = tmp_path / "demo_b"
+    shutil.copytree(GOLDEN_DEMO, sprite_a)
+    shutil.copytree(GOLDEN_DEMO, sprite_b)
+
+    quality = quality_report(sprite_a, tmp_path / "quality", None)
+    assert 0 <= float(quality["score"]) <= 100
+    assert quality["grade"] in {"A", "B", "C", "D"}
+    assert (tmp_path / "quality" / "quality_report.json").exists()
+    assert (tmp_path / "quality" / "quality_report.html").exists()
+
+    compare = compare_dirs(sprite_a, sprite_b, tmp_path / "compare")
+    assert compare["compared_frames"] == 16
+    assert compare["mean_diff"] == 0
+    assert (tmp_path / "compare" / "compare_report.json").exists()
+    assert (tmp_path / "compare" / "compare_report.html").exists()
+
+
+def test_golden_demo_release_zip_contents(tmp_path):
+    """Release packaging includes the expected files for the golden fixture."""
+    from spriteforge_final import build_parser
+
+    sprite_dir = tmp_path / "prebuilt_demo_sprite"
+    shutil.copytree(GOLDEN_DEMO, sprite_dir)
+    out_dir = tmp_path / "demo_release"
+
+    parser = build_parser()
+    args = parser.parse_args([
+        "release",
+        "--name",
+        "golden_demo",
+        "--sprite-dir",
+        str(sprite_dir),
+        "--output",
+        str(out_dir),
+        "--zip",
+    ])
+
+    mock_preflight = {
+        "generated_at": "2026-06-25T12:00:00",
+        "checks": {
+            "python": {"ok": True, "value": "python"},
+            "git": {"ok": True, "value": "git"},
+            "nvidia": {"ok": True, "raw": "GeForce RTX", "label": "GeForce RTX"},
+            "disk": {"ok": True, "free_gb": 100, "total_gb": 500},
+            "comfy_dir": {"ok": True, "value": "comfy_dir"},
+            "comfy_output": {"ok": True, "value": "comfy_output"},
+            "comfy_running": {"ok": False, "value": "comfy_url"},
+            "outputs": {"ok": True, "count": 1},
+            "next_step": {"step": "None", "reason": "none"},
+        },
+        "sprites": [],
+    }
+    with patch("spriteforge_final.preflight_data", return_value=mock_preflight):
+        args.func(args)
+
+    assert (out_dir / "manifest.json").exists()
+    assert (out_dir / "sprites" / "prebuilt_demo_sprite" / "sheet.json").exists()
+    assert (out_dir / "sprites" / "prebuilt_demo_sprite" / "sheet.png").exists()
+
+    zip_file_path = out_dir.with_suffix(".zip")
+    assert zip_file_path.exists()
+    with zipfile.ZipFile(zip_file_path, "r") as zf:
+        names = set(zf.namelist())
+    assert "demo_release/manifest.json" in names
+    assert "demo_release/sprites/prebuilt_demo_sprite/sheet.json" in names
+    assert "demo_release/sprites/prebuilt_demo_sprite/sheet.png" in names
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +259,37 @@ def test_experiment_service(tmp_path, monkeypatch):
     assert ok
     rec2 = ExperimentService.get_run(run_id)
     assert rec2["notes"] == "great result!"
+
+    assert ExperimentService.set_starred(run_id, True)
+    exported = ExperimentService.export_history()
+    assert exported["schema"] == "spriteforge_experiment_history_v1"
+    assert exported["count"] == 1
+    assert exported["records"][0]["starred"] is True
+
+    removed = ExperimentService.clear_history(keep_starred=True)
+    assert removed == 0
+    assert len(ExperimentService.get_history()) == 1
+
+    removed = ExperimentService.clear_history(keep_starred=False)
+    assert removed == 1
+    assert ExperimentService.get_history() == []
+
+
+def test_experiment_history_retention(tmp_path, monkeypatch):
+    """Experiment history is capped so local JSON does not grow forever."""
+    from services import experiment_service as es_mod
+    from services.experiment_service import ExperimentService
+
+    test_path = tmp_path / "experiments" / "experiment_history.json"
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", test_path)
+    monkeypatch.setattr(es_mod, "MAX_EXPERIMENT_HISTORY", 3)
+
+    for i in range(5):
+        ExperimentService.append_run(prompt=f"run {i}")
+
+    history = ExperimentService.get_history(limit=10)
+    assert len(history) == 3
+    assert [rec["prompt"] for rec in history] == ["run 4", "run 3", "run 2"]
 
 
 # ---------------------------------------------------------------------------

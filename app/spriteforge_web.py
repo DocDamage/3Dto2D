@@ -32,6 +32,7 @@ from services.job_service import JobService
 from services.sprite_service import SpriteService
 from services.export_service import ExportService
 from services.experiment_service import ExperimentService
+from services.project_service import ProjectService
 from services.advisor_service import advise as advisor_advise
 
 ROOT = Path(__file__).resolve().parent
@@ -259,7 +260,12 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         return "Build release package", cmd
     if action == "queue_create":
         name = safe_name(str(payload.get("name") or "character"))
-        return "Create persistent production queue", [PYTHON, "spriteforge_unified.py", "queue-create", "--name", name, "--character", str(payload.get("description") or "single full body original game hero"), "--actions", str(payload.get("actions") or "idle,walk,run,attack_light,hurt"), "--directions", str(payload.get("directions") or "right"), "--tier", str(payload.get("tier") or "wan21_safe"), "--profile", str(payload.get("profile") or "auto")]
+        project_path = ProjectService.resolve_project_path(str(payload.get("active_project") or ""))
+        cmd = [PYTHON, "spriteforge_unified.py", "queue-create"]
+        if project_path:
+            cmd += ["--project", str(project_path)]
+        cmd += ["--name", name, "--character", str(payload.get("description") or "single full body original game hero"), "--actions", str(payload.get("actions") or "idle,walk,run,attack_light,hurt"), "--directions", str(payload.get("directions") or "right"), "--tier", str(payload.get("tier") or "wan21_safe"), "--profile", str(payload.get("profile") or "auto")]
+        return "Create persistent production queue", cmd
     if action == "validate_export":
         sprite_dir = str(payload.get("sprite_dir") or "").strip()
         if not sprite_dir:
@@ -303,6 +309,16 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def send_bytes(self, payload: bytes, *, content_type: str, filename: Optional[str] = None, status: int = 200) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        if filename:
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.end_headers()
         self.wfile.write(payload)
 
@@ -376,6 +392,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(ConfigService.get_config())
         if path == "/api/experiments":
             return self.send_json({"experiments": ExperimentService.get_history()})
+        if path == "/api/experiments/export":
+            data = ExperimentService.export_history()
+            payload = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+            stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+            return self.send_bytes(payload, content_type="application/json; charset=utf-8", filename=f"spriteforge_experiment_history_{stamp}.json")
         if path == "/api/advisor":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             quality = (qs.get("quality") or ["balanced"])[0]
@@ -385,6 +406,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": str(exc)}, 500)
         if path == "/api/queues":
             return self.send_json({"queues": _list_queues()})
+        if path == "/api/projects":
+            return self.send_json({"projects": ProjectService.list_projects(), "active": ProjectService.get_active_project()})
         if path == "/api/queues/detail":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             qpath_str = (qs.get("path") or [""])[0]
@@ -429,6 +452,34 @@ class Handler(BaseHTTPRequestHandler):
                 notes = str(body.get("notes") or "")
                 found = ExperimentService.update_note(run_id, notes)
                 return self.send_json({"ok": found})
+            if path == "/api/experiments/star":
+                body = self.read_json()
+                run_id = str(body.get("id") or "")
+                starred = bool(body.get("starred"))
+                found = ExperimentService.set_starred(run_id, starred)
+                return self.send_json({"ok": found})
+            if path == "/api/experiments/clear":
+                body = self.read_json()
+                keep_starred = bool(body.get("keep_starred", True))
+                removed = ExperimentService.clear_history(keep_starred=keep_starred)
+                return self.send_json({"ok": True, "removed": removed})
+            if path == "/api/projects/create":
+                body = self.read_json()
+                name = str(body.get("name") or "").strip()
+                if not name:
+                    return self.send_json({"ok": False, "message": "Project name required."}, 400)
+                project = ProjectService.create_project(
+                    name=name,
+                    character=str(body.get("character") or "single full body original game character, consistent outfit, readable silhouette"),
+                    style=str(body.get("style") or "2D game sprite animation, crisp edges, readable silhouette, production sprite sheet style"),
+                )
+                return self.send_json({"ok": True, "project": project})
+            if path == "/api/projects/active":
+                body = self.read_json()
+                project = ProjectService.set_active_project(str(body.get("path") or ""))
+                if not project:
+                    return self.send_json({"ok": False, "message": "Project not found."}, 404)
+                return self.send_json({"ok": True, "project": project})
             if path == "/api/compare":
                 body = self.read_json()
                 a_str = str(body.get("a") or "").strip()

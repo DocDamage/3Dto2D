@@ -4,6 +4,7 @@ let currentOutputs = [];
 let selectedSpriteDir = '';
 let lastLogText = '';
 let recommendedAction = '';
+let activeProjectPath = '';
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -18,11 +19,29 @@ function escapeHtml(str) {
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3200); }
 function formData(form){ const data={}; new FormData(form).forEach((v,k)=>{data[k]=v}); $$('input[type="checkbox"]', form).forEach(i=>data[i.name]=i.checked); return data; }
 async function api(path, opts={}){ const r=await fetch(path, opts); const txt=await r.text(); let data={}; try{data=JSON.parse(txt)}catch{data={text:txt}} if(!r.ok) throw new Error(data.message||txt||r.statusText); return data; }
-async function runAction(action, extra={}){ try{ const data=await api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...extra})}); toast(data.message||'Started'); await refreshAll(); }catch(e){ toast('Error: '+e.message); } }
+async function runAction(action, extra={}){ try{ const data=await api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,active_project:activeProjectPath,...extra})}); toast(data.message||'Started'); await refreshAll(); }catch(e){ toast('Error: '+e.message); } }
 async function openPath(path){ try{ await api('/api/open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})}); }catch(e){ toast(e.message); } }
 function setChip(id, state, text){ const el=$(id); el.className='chip '+state; el.textContent=text; }
 function showView(name){ $$('.view').forEach(v=>v.classList.remove('active')); $('#view-'+name)?.classList.add('active'); $$('.nav').forEach(n=>n.classList.toggle('active',n.dataset.view===name)); }
 function relativePath(p){ return p || ''; }
+function clearNode(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+function appendText(parent, tag, text, className=''){
+  const el=document.createElement(tag);
+  if(className) el.className=className;
+  el.textContent=text;
+  parent.appendChild(el);
+  return el;
+}
+function tableEmpty(tbody, colspan, text){
+  clearNode(tbody);
+  const tr=document.createElement('tr');
+  const td=document.createElement('td');
+  td.colSpan=colspan;
+  td.className='empty-cell';
+  td.textContent=text;
+  tr.appendChild(td);
+  tbody.appendChild(tr);
+}
 
 function renderOutputs(outputs){
   currentOutputs = outputs || [];
@@ -72,6 +91,40 @@ async function refreshAll(){
     if($('#next-step-reason')) $('#next-step-reason').textContent = s.next_step?.reason || 'No recommendation available.';
     renderOutputs(s.outputs); renderJob(s.job);
   }catch(e){ console.error(e); }
+}
+
+async function loadProjects(){
+  try{
+    const data = await api('/api/projects');
+    const select = $('#projectSelect');
+    if(!select) return;
+    clearNode(select);
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = 'No project';
+    select.appendChild(none);
+    (data.projects || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.path;
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+    activeProjectPath = data.active?.path || '';
+    select.value = activeProjectPath;
+  }catch(e){ console.error(e); }
+}
+
+async function createProject(){
+  const input = $('#projectNameInput');
+  const name = (input?.value || '').trim();
+  if(!name){ toast('Project name required'); return; }
+  try{
+    const data = await api('/api/projects/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    activeProjectPath = data.project?.path || '';
+    if(input) input.value = '';
+    await loadProjects();
+    toast('Project active: ' + (data.project?.name || name));
+  }catch(e){ toast('Project error: '+e.message); }
 }
 
 async function uploadFile(file){
@@ -132,7 +185,20 @@ if($('#runNextAction')) $('#runNextAction').addEventListener('click', runRecomme
 if($('#launchComfy2')) $('#launchComfy2').addEventListener('click',async()=>{ try{await api('/api/launch_comfy',{method:'POST'}); toast('ComfyUI launch requested'); setTimeout(refreshAll,1800);}catch(e){toast(e.message)} });
 if($('#releaseForm')) $('#releaseForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('release_package', formData(e.currentTarget)); showView('logs'); });
 if($('#queueForm')) $('#queueForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('queue_create', formData(e.currentTarget)); showView('logs'); });
+if($('#projectSelect')) $('#projectSelect').addEventListener('change', async e => {
+  activeProjectPath = e.currentTarget.value || '';
+  if(!activeProjectPath) return;
+  try{
+    await api('/api/projects/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:activeProjectPath})});
+    toast('Project selected');
+  }catch(err){ toast('Project select failed: '+err.message); }
+});
+if($('#createProjectBtn')) $('#createProjectBtn').addEventListener('click', createProject);
+if($('#projectNameInput')) $('#projectNameInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); createProject(); }
+});
 
+loadProjects();
 refreshAll(); setInterval(refreshAll, 3000);
 
 function makeSparkline(values, strokeColor) {
@@ -503,9 +569,19 @@ document.addEventListener('click', e => {
 // Experiment History
 // ============================================================
 function statusBadge(rec) {
-  if (rec.qa_passed === true) return '<span style="color:#6f6;font-size:.8em">✔ QA</span>';
-  if (rec.qa_passed === false) return '<span style="color:#f66;font-size:.8em">✘ QA</span>';
-  return '<span style="color:#888;font-size:.8em">—</span>';
+  const span = document.createElement('span');
+  span.className = 'qa-badge';
+  if (rec.qa_passed === true) {
+    span.classList.add('pass');
+    span.textContent = 'QA';
+  } else if (rec.qa_passed === false) {
+    span.classList.add('fail');
+    span.textContent = 'QA';
+  } else {
+    span.classList.add('muted');
+    span.textContent = '—';
+  }
+  return span;
 }
 
 async function loadHistory() {
@@ -513,26 +589,88 @@ async function loadHistory() {
     const data = await api('/api/experiments');
     const body = $('#historyBody');
     if (!data.experiments || !data.experiments.length) {
-      body.innerHTML = '<tr><td colspan="8" style="padding:24px;text-align:center;color:#555">No generation history yet.</td></tr>';
+      tableEmpty(body, 9, 'No generation history yet.');
       return;
     }
-    body.innerHTML = data.experiments.map(r => `
-      <tr style="border-bottom:1px solid #1e1e2e">
-        <td style="padding:6px 10px;color:#888;font-size:.78em;white-space:nowrap">${escapeHtml(r.created_at||'').slice(0,16)}</td>
-        <td style="padding:6px 10px">${escapeHtml(r.sprite_action||'—')}</td>
-        <td style="padding:6px 10px">${escapeHtml(r.direction||'—')}</td>
-        <td style="padding:6px 10px;font-size:.8em"><code>${escapeHtml((r.model_tier||'').replace('wan21_',''))}</code></td>
-        <td style="padding:6px 10px;font-size:.8em"><code>${escapeHtml(r.profile||'—')}</code></td>
-        <td style="padding:6px 10px">${statusBadge(r)}</td>
-        <td style="padding:6px 10px;font-size:.78em;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          ${r.sprite_folder ? `<button class="mini" onclick="openPath('${escapeHtml(r.sprite_folder)}')">Open</button> <span style="color:#666">${escapeHtml(r.sprite_folder)}</span>` : '—'}
-        </td>
-        <td style="padding:6px 10px;font-size:.8em;color:#aaa">${escapeHtml(r.notes||'')}</td>
-      </tr>`).join('');
+    clearNode(body);
+    data.experiments.forEach(r => {
+      const tr = document.createElement('tr');
+
+      const starCell = document.createElement('td');
+      const star = document.createElement('button');
+      star.type = 'button';
+      star.className = 'icon-mini star-toggle' + (r.starred ? ' active' : '');
+      star.dataset.runId = r.id || '';
+      star.dataset.starred = r.starred ? 'false' : 'true';
+      star.title = r.starred ? 'Unstar run' : 'Keep run when clearing history';
+      star.textContent = r.starred ? '★' : '☆';
+      starCell.appendChild(star);
+      tr.appendChild(starCell);
+
+      appendText(tr, 'td', String(r.created_at || '').slice(0, 16), 'nowrap muted-cell');
+      appendText(tr, 'td', r.sprite_action || '—');
+      appendText(tr, 'td', r.direction || '—');
+
+      const tier = document.createElement('td');
+      appendText(tier, 'code', String(r.model_tier || '').replace('wan21_', '') || '—');
+      tr.appendChild(tier);
+
+      const profile = document.createElement('td');
+      appendText(profile, 'code', r.profile || '—');
+      tr.appendChild(profile);
+
+      const qa = document.createElement('td');
+      qa.appendChild(statusBadge(r));
+      tr.appendChild(qa);
+
+      const output = document.createElement('td');
+      output.className = 'path-cell';
+      if (r.sprite_folder) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mini';
+        btn.dataset.openPath = r.sprite_folder;
+        btn.textContent = 'Open';
+        output.appendChild(btn);
+        appendText(output, 'span', ' ' + r.sprite_folder, 'subtle-path');
+      } else {
+        output.textContent = '—';
+      }
+      tr.appendChild(output);
+
+      appendText(tr, 'td', r.notes || '', 'notes-cell');
+      body.appendChild(tr);
+    });
   } catch(e) { console.error(e); }
 }
 
 if ($('#refreshHistory')) $('#refreshHistory').addEventListener('click', loadHistory);
+if ($('#exportHistory')) $('#exportHistory').addEventListener('click', () => { window.location.href = '/api/experiments/export'; });
+if ($('#clearHistory')) $('#clearHistory').addEventListener('click', async () => {
+  if (!confirm('Clear unstarred experiment history? Starred runs will be kept.')) return;
+  try {
+    const result = await api('/api/experiments/clear', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keep_starred:true})});
+    toast(`Removed ${result.removed || 0} history records`);
+    await loadHistory();
+  } catch(e) { toast('History clear failed: ' + e.message); }
+});
+if ($('#historyBody')) {
+  $('#historyBody').addEventListener('click', async (e) => {
+    const openBtn = e.target.closest('[data-open-path]');
+    if (openBtn) {
+      await openPath(openBtn.dataset.openPath);
+      return;
+    }
+    const starBtn = e.target.closest('.star-toggle');
+    if (starBtn) {
+      try {
+        const starred = starBtn.dataset.starred === 'true';
+        await api('/api/experiments/star', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:starBtn.dataset.runId, starred})});
+        await loadHistory();
+      } catch(err) { toast('Star update failed: ' + err.message); }
+    }
+  });
+}
 // Load history when the tab is shown
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {
   if (b.dataset.view === 'history') loadHistory();
@@ -557,21 +695,32 @@ async function loadQueues() {
     const data = await api('/api/queues');
     const list = $('#queueList');
     if (!data.queues || !data.queues.length) {
-      list.innerHTML = '<div style="color:#555;font-size:.85rem">No queues found. Create one in Queue Builder.</div>';
+      clearNode(list);
+      appendText(list, 'div', 'No queues found. Create one in Queue Builder.', 'empty compact');
       return;
     }
-    list.innerHTML = data.queues.map(q => {
+    clearNode(list);
+    data.queues.forEach(q => {
       const c = q.counts || {};
-      const pills = Object.entries(c).map(([k,v]) =>
-        `<span style="background:#1e1e2e;color:${queueStatusColor(k)};font-size:.7em;padding:1px 6px;border-radius:10px;margin:1px">${k}:${v}</span>`
-      ).join('');
       const active = _selectedQueuePath === q.path;
-      return `<div class="card" style="padding:10px;cursor:pointer;border:1px solid ${active?'#5070d0':'transparent'}" data-qpath="${escapeHtml(q.path)}" onclick="selectQueue('${escapeHtml(q.path)}','${escapeHtml(q.name)}')">
-        <b style="font-size:.85rem">${escapeHtml(q.name)}</b>
-        <div style="margin-top:4px">${pills}</div>
-        <small style="color:#555">${escapeHtml(q.created_at||'').slice(0,16)}</small>
-      </div>`;
-    }).join('');
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'queue-item' + (active ? ' active' : '');
+      item.dataset.qpath = q.path || '';
+      item.dataset.qname = q.name || q.path || 'Queue';
+      appendText(item, 'b', q.name || 'Queue');
+
+      const pills = document.createElement('div');
+      pills.className = 'queue-pills';
+      Object.entries(c).forEach(([k, v]) => {
+        const pill = appendText(pills, 'span', `${k}:${v}`);
+        pill.dataset.status = k;
+        pill.style.color = queueStatusColor(k);
+      });
+      item.appendChild(pills);
+      appendText(item, 'small', String(q.created_at || '').slice(0, 16));
+      list.appendChild(item);
+    });
   } catch(e) { console.error(e); }
 }
 
@@ -590,21 +739,34 @@ async function loadQueueDetail(path) {
     const data = await api('/api/queues/detail?path=' + encodeURIComponent(path));
     const body = $('#queueDetailBody');
     if (!data.jobs || !data.jobs.length) {
-      body.innerHTML = '<tr><td colspan="6" style="padding:16px;color:#555">No jobs in queue.</td></tr>';
+      tableEmpty(body, 6, 'No jobs in queue.');
       return;
     }
-    body.innerHTML = data.jobs.map(j => {
+    clearNode(body);
+    data.jobs.forEach(j => {
       const sc = queueStatusColor(j.status);
-      const logBtn = j.log ? `<button class="mini" onclick="openPath('${escapeHtml(j.log)}')">Log</button>` : '';
-      return `<tr style="border-bottom:1px solid #1a1a2e">
-        <td style="padding:5px 10px;font-family:monospace;font-size:.78em">${escapeHtml(j.id)}</td>
-        <td style="padding:5px 10px">${escapeHtml(j.action||'')}</td>
-        <td style="padding:5px 10px">${escapeHtml(j.direction||'')}</td>
-        <td style="padding:5px 10px"><span style="color:${sc};font-weight:600">${escapeHtml(j.status||'')}</span></td>
-        <td style="padding:5px 10px;color:#888">${j.exit_code !== null && j.exit_code !== undefined ? j.exit_code : '—'}</td>
-        <td style="padding:5px 10px">${logBtn}</td>
-      </tr>`;
-    }).join('');
+      const tr = document.createElement('tr');
+      appendText(tr, 'td', j.id || '', 'mono-cell');
+      appendText(tr, 'td', j.action || '');
+      appendText(tr, 'td', j.direction || '');
+      const status = document.createElement('td');
+      const statusText = appendText(status, 'span', j.status || '');
+      statusText.className = 'queue-status';
+      statusText.style.color = sc;
+      tr.appendChild(status);
+      appendText(tr, 'td', j.exit_code !== null && j.exit_code !== undefined ? String(j.exit_code) : '—', 'muted-cell');
+      const output = document.createElement('td');
+      if (j.log) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mini';
+        btn.dataset.openPath = j.log;
+        btn.textContent = 'Log';
+        output.appendChild(btn);
+      }
+      tr.appendChild(output);
+      body.appendChild(tr);
+    });
   } catch(e) { console.error(e); }
 }
 
@@ -623,6 +785,18 @@ if ($('#queueRunBtn')) $('#queueRunBtn').addEventListener('click', () => queueAc
 if ($('#queueRetryBtn')) $('#queueRetryBtn').addEventListener('click', () => queueAction('/api/queues/retry-failed'));
 if ($('#queueResetBtn')) $('#queueResetBtn').addEventListener('click', () => queueAction('/api/queues/reset'));
 if ($('#refreshQueues')) $('#refreshQueues').addEventListener('click', loadQueues);
+if ($('#queueList')) {
+  $('#queueList').addEventListener('click', async (e) => {
+    const item = e.target.closest('[data-qpath]');
+    if (item) await selectQueue(item.dataset.qpath, item.dataset.qname || 'Queue');
+  });
+}
+if ($('#queueDetailBody')) {
+  $('#queueDetailBody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-open-path]');
+    if (btn) await openPath(btn.dataset.openPath);
+  });
+}
 
 // Auto-refresh queue detail every 5s when the queues view is visible
 setInterval(() => {
@@ -631,4 +805,3 @@ setInterval(() => {
     loadQueueDetail(_selectedQueuePath);
   }
 }, 5000);
-

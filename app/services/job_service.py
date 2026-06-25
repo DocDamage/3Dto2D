@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional, Tuple
 ROOT = Path(__file__).resolve().parent.parent
 HISTORY_PATH = ROOT / "output" / "jobs" / "job_history.json"
 LOGS_DIR = ROOT / "logs"
+MAX_JOB_HISTORY = 500
 
 class JobService:
     _lock = threading.RLock()
@@ -31,7 +32,7 @@ class JobService:
     def _save_history(history: List[Dict[str, Any]]) -> None:
         HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
         try:
-            HISTORY_PATH.write_text(json.dumps(history, indent=2), encoding="utf-8")
+            HISTORY_PATH.write_text(json.dumps(history[:MAX_JOB_HISTORY], indent=2), encoding="utf-8")
         except Exception:
             pass
 

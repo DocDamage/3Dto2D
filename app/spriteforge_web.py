@@ -168,6 +168,9 @@ def _resolve_sprite_output_dir(value: str) -> Path:
 
 def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
     action = str(payload.get("action") or "")
+    project_meta = ProjectService.metadata_for_path(str(payload.get("active_project") or "")) or {}
+    if project_meta:
+        payload.update(project_meta)
     table = {
         "install_all": ("Install everything + safe Wan 2.1 models", [PYTHON, "spriteforge_unified.py", "install-all", "--model-tier", "safe"]),
         "install_advanced": ("Install safe Wan 2.1 + advanced Wan 2.2 5B", [PYTHON, "spriteforge_unified.py", "install-all", "--model-tier", "advanced"]),
@@ -255,6 +258,10 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             raise ValueError("No sprite outputs selected for release package.")
         name = safe_name(str(payload.get("name") or "sprite_release"))
         cmd = [PYTHON, "spriteforge_unified.py", "release-package", "--name", name, "--zip"]
+        if project_meta:
+            cmd += ["--project", str(ROOT / project_meta["project_path"])]
+            if not str(payload.get("output") or "").strip():
+                cmd += ["--output", str(ROOT / project_meta["project_root"] / "releases" / name)]
         for sprite in sprites:
             cmd += ["--sprite-dir", sprite]
         return "Build release package", cmd
@@ -431,7 +438,12 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/run":
                 payload = self.read_json()
                 title, cmd = build_action_command(payload)
-                ok, job_id_or_err = JobService.start_job(title, cmd)
+                metadata = {
+                    key: payload.get(key)
+                    for key in ["project_name", "project_path", "project_root"]
+                    if payload.get(key)
+                }
+                ok, job_id_or_err = JobService.start_job(title, cmd, metadata=metadata)
                 if ok:
                     active = JobService.get_job(job_id_or_err)
                     return self.send_json({"ok": True, "message": "Job started.", "job": active})

@@ -42,16 +42,41 @@ function tableEmpty(tbody, colspan, text){
   tr.appendChild(td);
   tbody.appendChild(tr);
 }
+function setTextState(node, text, className=''){
+  clearNode(node);
+  appendText(node, 'span', text, className);
+}
 
 function renderOutputs(outputs){
   currentOutputs = outputs || [];
   $('#stat-outputs').textContent = currentOutputs.length;
   const g=$('#gallery');
-  if(!currentOutputs.length){ g.innerHTML='<div class="empty">No sprite outputs yet. Run the demo or make a sprite.</div>'; return; }
-  g.innerHTML=currentOutputs.slice(0,12).map(o=>`<article class="sprite-card" data-path="${escapeHtml(o.path)}">
-    ${o.preview_url?`<img src="${escapeHtml(o.preview_url)}?t=${Date.now()}" alt="${escapeHtml(o.name)}">`:(o.sheet_url?`<img src="${escapeHtml(o.sheet_url)}?t=${Date.now()}" alt="${escapeHtml(o.name)}">`:'<div class="placeholder">No preview</div>')}
-    <div class="meta"><b>${escapeHtml(o.name)}</b><small>${escapeHtml(o.frame_count)} frames · ${escapeHtml(o.fps)} fps · ${escapeHtml(o.frame_width)}×${escapeHtml(o.frame_height)}</small><small>${escapeHtml(o.modified)}</small></div>
-  </article>`).join('');
+  clearNode(g);
+  if(!currentOutputs.length){
+    appendText(g, 'div', 'No sprite outputs yet. Run the demo or make a sprite.', 'empty');
+    return;
+  }
+  currentOutputs.slice(0,12).forEach(o => {
+    const card = document.createElement('article');
+    card.className = 'sprite-card';
+    card.dataset.path = o.path || '';
+    const imgUrl = o.preview_url || o.sheet_url || '';
+    if (imgUrl) {
+      const img = document.createElement('img');
+      img.src = `${imgUrl}?t=${Date.now()}`;
+      img.alt = o.name || '';
+      card.appendChild(img);
+    } else {
+      appendText(card, 'div', 'No preview', 'placeholder');
+    }
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    appendText(meta, 'b', o.name || '');
+    appendText(meta, 'small', `${o.frame_count} frames · ${o.fps} fps · ${o.frame_width}×${o.frame_height}`);
+    appendText(meta, 'small', o.modified || '');
+    card.appendChild(meta);
+    g.appendChild(card);
+  });
   $$('.sprite-card', g).forEach(card=>card.addEventListener('click',()=>{
     selectedSpriteDir=card.dataset.path;
     $('#qualitySpriteDir').value=selectedSpriteDir;
@@ -212,9 +237,17 @@ function makeSparkline(values, strokeColor) {
     const y = height - 3 - ((val - min) / range) * (height - 6);
     return `${x},${y}`;
   }).join(' ');
-  return `<svg width="${width}" height="${height}" style="background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);">
-    <polyline fill="none" stroke="${strokeColor}" stroke-width="1.5" points="${coords}" />
-  </svg>`;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'sparkline');
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', strokeColor);
+  line.setAttribute('stroke-width', '1.5');
+  line.setAttribute('points', coords);
+  svg.appendChild(line);
+  return svg;
 }
 
 async function loadSpriteDetails(path) {
@@ -256,44 +289,50 @@ async function loadSpriteDetails(path) {
     if (qa) {
       loopRmse.textContent = qa.metrics?.loop_seam_rmse !== undefined ? Number(qa.metrics.loop_seam_rmse).toFixed(1) : '—';
       footStdev.textContent = qa.metrics?.foot_y_stdev_px !== undefined ? Number(qa.metrics.foot_y_stdev_px).toFixed(2) + 'px' : '—';
-      reportLink.innerHTML = `<a href="/file/${escapeHtml(path)}/report.html" target="_blank" style="color: #00adb5; text-decoration: underline;">Open Report</a>`;
+      clearNode(reportLink);
+      const reportAnchor = document.createElement('a');
+      reportAnchor.href = `/file/${encodeURI(path)}/report.html`;
+      reportAnchor.target = '_blank';
+      reportAnchor.className = 'text-link';
+      reportAnchor.textContent = 'Open Report';
+      reportLink.appendChild(reportAnchor);
       
       // Draw SVG sparklines
       if (qa.frames) {
         const driftData = qa.frames.map(f => f.foot_y).filter(y => y !== undefined);
-        driftContainer.innerHTML = driftData.length > 1 ? makeSparkline(driftData, '#ff4444') : '<span style="font-size: 11px; color: #a9b7d0;">Insufficient data</span>';
+        clearNode(driftContainer);
+        if (driftData.length > 1) driftContainer.appendChild(makeSparkline(driftData, '#ff4444'));
+        else setTextState(driftContainer, 'Insufficient data', 'hint-text');
         
         const covData = qa.frames.map(f => f.alpha_coverage).filter(c => c !== undefined);
-        coverageContainer.innerHTML = covData.length > 1 ? makeSparkline(covData, '#00adb5') : '<span style="font-size: 11px; color: #a9b7d0;">Insufficient data</span>';
+        clearNode(coverageContainer);
+        if (covData.length > 1) coverageContainer.appendChild(makeSparkline(covData, '#00adb5'));
+        else setTextState(coverageContainer, 'Insufficient data', 'hint-text');
       } else {
         driftContainer.textContent = 'No trend data';
         coverageContainer.textContent = 'No trend data';
       }
       
       // Populate dynamic alerts
-      issuesContainer.innerHTML = '';
+      clearNode(issuesContainer);
       if (qa.issues && qa.issues.length > 0) {
         qa.issues.forEach(issue => {
           const badge = document.createElement('span');
           badge.className = `chip ${issue.level === 'error' ? 'warn' : 'info'}`;
-          badge.style.fontSize = '9px';
-          badge.style.padding = '2px 5px';
-          badge.style.borderRadius = '4px';
-          badge.style.margin = '2px';
-          badge.style.display = 'inline-block';
+          badge.classList.add('issue-chip');
           badge.textContent = `${issue.code}: ${issue.message}`;
           issuesContainer.appendChild(badge);
         });
       } else {
-        issuesContainer.innerHTML = '<span style="color: #6affb8; font-size: 11px;">✓ Passed QA</span>';
+        setTextState(issuesContainer, 'Passed QA', 'pass-text');
       }
     } else {
       loopRmse.textContent = '—';
       footStdev.textContent = '—';
       reportLink.textContent = '—';
-      driftContainer.innerHTML = '<span style="font-size: 11px; color: #a9b7d0;">No QA data</span>';
-      coverageContainer.innerHTML = '<span style="font-size: 11px; color: #a9b7d0;">No QA data</span>';
-      issuesContainer.innerHTML = '<span style="color: #a9b7d0; font-size: 11px;">Run QA Report to analyze</span>';
+      setTextState(driftContainer, 'No QA data', 'hint-text');
+      setTextState(coverageContainer, 'No QA data', 'hint-text');
+      setTextState(issuesContainer, 'Run QA Report to analyze', 'hint-text');
     }
     
     // Check for sibling fixed/original folder for side-by-side comparison
@@ -311,7 +350,7 @@ async function loadSpriteDetails(path) {
     if (siblingToggle) {
       siblingToggle.checked = false;
       siblingToggle.disabled = true;
-      siblingToggle.parentElement.style.opacity = '0.5';
+      siblingToggle.parentElement.classList.add('is-disabled');
     }
     
     try {
@@ -322,7 +361,7 @@ async function loadSpriteDetails(path) {
         window._siblingImg = img;
         if (siblingToggle) {
           siblingToggle.disabled = false;
-          siblingToggle.parentElement.style.opacity = '1.0';
+          siblingToggle.parentElement.classList.remove('is-disabled');
         }
       };
     } catch (e) {
@@ -351,12 +390,7 @@ function renderInspectorFrame(index) {
     if (!canvas) {
       canvas = document.createElement('canvas');
       canvas.id = 'inspector-canvas';
-      canvas.style.maxHeight = '90%';
-      canvas.style.maxWidth = '90%';
-      canvas.style.objectFit = 'contain';
-      canvas.style.imageRendering = 'pixelated';
-      canvas.style.position = 'relative';
-      canvas.style.zIndex = '10';
+      canvas.className = 'inspector-img';
       const placeholder = $('#inspector-img');
       if (placeholder) {
         placeholder.replaceWith(canvas);
@@ -493,11 +527,9 @@ if ($('#toggleCheckerboard')) {
   $('#toggleCheckerboard').addEventListener('change', (e) => {
     const container = $('#inspector-canvas-container');
     if (e.target.checked) {
-      container.style.backgroundImage = 'linear-gradient(45deg, #181818 25%, transparent 25%), linear-gradient(-45deg, #181818 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #181818 75%), linear-gradient(-45deg, transparent 75%, #181818 75%)';
-      container.style.backgroundColor = '#0d0d0d';
+      container.classList.add('checkerboard');
     } else {
-      container.style.backgroundImage = 'none';
-      container.style.backgroundColor = '#000';
+      container.classList.remove('checkerboard');
     }
   });
 }
@@ -516,12 +548,23 @@ if ($('#getAdvisorBtn')) {
       if (rec.profile) form.querySelector('[name="profile"]').value = rec.profile;
       // Show rationale
       const box = $('#advisor-result');
-      let html = `<b>Recommendation:</b> Tier <code>${rec.tier}</code>, Profile <code>${rec.profile}</code>, ${rec.frame_count} frames, ${rec.fps} fps, ${rec.cell_size}.<br><small style="color:#aaa">${rec.rationale}</small>`;
+      clearNode(box);
+      const title = document.createElement('b');
+      title.textContent = 'Recommendation: ';
+      box.appendChild(title);
+      box.append('Tier ');
+      appendText(box, 'code', rec.tier || '');
+      box.append(', Profile ');
+      appendText(box, 'code', rec.profile || '');
+      box.append(`, ${rec.frame_count} frames, ${rec.fps} fps, ${rec.cell_size}.`);
+      appendText(box, 'small', rec.rationale || '', 'advisor-rationale');
       if (rec.warnings && rec.warnings.length) {
-        html += '<br>' + rec.warnings.map(w => `<span style="color:#f0a040">⚠ ${w}</span>`).join('<br>');
+        const warnings = document.createElement('div');
+        warnings.className = 'advisor-warnings';
+        rec.warnings.forEach(w => appendText(warnings, 'span', w));
+        box.appendChild(warnings);
       }
-      box.innerHTML = html;
-      box.style.display = 'block';
+      box.classList.remove('hidden');
       toast('Recommendation applied!');
     } catch(e) { toast('Advisor error: ' + e.message); }
   });
@@ -533,8 +576,8 @@ if ($('#getAdvisorBtn')) {
 if ($('#compareBtn')) {
   $('#compareBtn').addEventListener('click', () => {
     const section = $('#compare-section');
-    const vis = section.style.display === 'none';
-    section.style.display = vis ? 'block' : 'none';
+    const vis = section.classList.contains('hidden');
+    section.classList.toggle('hidden', !vis);
     if (vis && selectedSpriteDir) $('#compareA').value = selectedSpriteDir;
   });
 }
@@ -589,7 +632,7 @@ async function loadHistory() {
     const data = await api('/api/experiments');
     const body = $('#historyBody');
     if (!data.experiments || !data.experiments.length) {
-      tableEmpty(body, 9, 'No generation history yet.');
+      tableEmpty(body, 10, 'No generation history yet.');
       return;
     }
     clearNode(body);
@@ -608,6 +651,7 @@ async function loadHistory() {
       tr.appendChild(starCell);
 
       appendText(tr, 'td', String(r.created_at || '').slice(0, 16), 'nowrap muted-cell');
+      appendText(tr, 'td', r.project_name || '—', 'nowrap muted-cell');
       appendText(tr, 'td', r.sprite_action || '—');
       appendText(tr, 'td', r.direction || '—');
 
@@ -689,6 +733,12 @@ function queueStatusColor(s) {
   if (s === 'running') return '#fa0';
   return '#888';
 }
+function queueStatusClass(s) {
+  if (s === 'done') return 'status-done';
+  if (s === 'failed') return 'status-failed';
+  if (s === 'running') return 'status-running';
+  return 'status-muted';
+}
 
 async function loadQueues() {
   try {
@@ -715,7 +765,7 @@ async function loadQueues() {
       Object.entries(c).forEach(([k, v]) => {
         const pill = appendText(pills, 'span', `${k}:${v}`);
         pill.dataset.status = k;
-        pill.style.color = queueStatusColor(k);
+        pill.classList.add(queueStatusClass(k));
       });
       item.appendChild(pills);
       appendText(item, 'small', String(q.created_at || '').slice(0, 16));
@@ -744,15 +794,13 @@ async function loadQueueDetail(path) {
     }
     clearNode(body);
     data.jobs.forEach(j => {
-      const sc = queueStatusColor(j.status);
       const tr = document.createElement('tr');
       appendText(tr, 'td', j.id || '', 'mono-cell');
       appendText(tr, 'td', j.action || '');
       appendText(tr, 'td', j.direction || '');
       const status = document.createElement('td');
       const statusText = appendText(status, 'span', j.status || '');
-      statusText.className = 'queue-status';
-      statusText.style.color = sc;
+      statusText.className = `queue-status ${queueStatusClass(j.status)}`;
       tr.appendChild(status);
       appendText(tr, 'td', j.exit_code !== null && j.exit_code !== undefined ? String(j.exit_code) : '—', 'muted-cell');
       const output = document.createElement('td');

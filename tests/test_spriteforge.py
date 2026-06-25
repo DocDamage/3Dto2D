@@ -106,6 +106,26 @@ def test_build_action_command():
     assert "--project" in cmd
     assert str(project_manifest) in cmd
 
+    project_meta = {
+        "project_name": "hero",
+        "project_path": "projects/hero/spriteforge_project.json",
+        "project_root": "projects/hero",
+    }
+    with patch("services.project_service.ProjectService.metadata_for_path", return_value=project_meta):
+        payload = {
+            "action": "release_package",
+            "active_project": "projects/hero/spriteforge_project.json",
+            "name": "hero_release",
+            "sprites": ["output/demo_sprite_no_gpu"],
+        }
+        title, cmd = build_action_command(payload)
+    assert title == "Build release package"
+    assert "--project" in cmd
+    assert str(ROOT / "app" / "projects" / "hero" / "spriteforge_project.json") in cmd
+    assert "--output" in cmd
+    assert str(ROOT / "app" / "projects" / "hero" / "releases" / "hero_release") in cmd
+    assert payload["project_name"] == "hero"
+
 
 def test_model_summary_shape(monkeypatch):
     monkeypatch.setattr(
@@ -342,7 +362,7 @@ def test_job_lifecycle(tmp_path):
 
         with patch("subprocess.Popen", return_value=mock_proc):
             ok, job_id = JobService.start_job(
-                "New Test Job", ["echo", "hello"]
+                "New Test Job", ["echo", "hello"], metadata={"project_name": "hero"}
             )
             assert ok is True
             assert len(job_id) == 36
@@ -357,6 +377,7 @@ def test_job_lifecycle(tmp_path):
             active = JobService.get_active_job()
             assert active is not None
             assert active["pid"] == 9999
+            assert active["metadata"]["project_name"] == "hero"
 
             with patch(
                 "services.job_service.JobService._kill_process_tree"

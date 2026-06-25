@@ -244,6 +244,9 @@ def test_experiment_service(tmp_path, monkeypatch):
         profile="debug",
         sprite_action="walk",
         direction="right",
+        project_name="hero",
+        project_path="projects/hero/spriteforge_project.json",
+        project_root="projects/hero",
     )
     assert run_id
 
@@ -251,6 +254,8 @@ def test_experiment_service(tmp_path, monkeypatch):
     assert rec is not None
     assert rec["prompt"] == "test hero walk"
     assert rec["sprite_action"] == "walk"
+    assert rec["project_name"] == "hero"
+    assert rec["project_path"] == "projects/hero/spriteforge_project.json"
 
     history = ExperimentService.get_history()
     assert len(history) == 1

@@ -150,8 +150,8 @@
             <label class="switch"><input type="checkbox" name="start_comfy" checked /><span></span>Start ComfyUI if needed</label>
             <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run quality check after conversion</label>
           </div>
-          <div class="callout" id="advisor-result" style="display:none"></div>
-          <div class="button-row" style="margin-bottom:8px">
+          <div class="callout hidden" id="advisor-result"></div>
+          <div class="button-row form-actions-tight">
             <button class="ghost" id="getAdvisorBtn" type="button">⚡ Get Recommendation</button>
             <select id="advisorQuality">
               <option value="fast">Draft (fast)</option>
@@ -217,7 +217,7 @@
         <form class="card form" id="qualityForm">
           <label>Sprite output folder<input name="sprite_dir" id="qualitySpriteDir" placeholder="output\hero_walk_sprite" /></label>
           <div class="row">
-            <label>Loop blend frames<input name="blend_loop_frames" type="number" min="0" max="24" value="3" style="width: 100px; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 6px;" /></label>
+            <label>Loop blend frames<input class="short-number" name="blend_loop_frames" type="number" min="0" max="24" value="3" /></label>
           </div>
           <div class="button-row">
             <button class="primary" data-quality="qa" type="button">Run QA Report</button>
@@ -227,7 +227,7 @@
             <button class="ghost" data-quality="validate" type="button">Validate Export</button>
             <button class="ghost" id="compareBtn" type="button">Compare…</button>
           </div>
-          <div id="compare-section" style="display:none; margin-top:12px">
+          <div id="compare-section" class="compare-section hidden">
             <label>Compare A (current)<input id="compareA" readonly /></label>
             <label>Compare B<input id="compareB" placeholder="output\hero_idle_right_v2" /></label>
             <button class="ghost" id="runCompareBtn" type="button">Run Compare &amp; Open Report</button>
@@ -241,26 +241,26 @@
         </section>
       </div>
 
-      <section class="card glow" style="margin-top: 18px;" id="inspector-card">
+      <section class="card glow inspector-card" id="inspector-card">
         <h3>Visual Sprite Inspector</h3>
         <p class="description">Select a sprite, then scrub frames, inspect pivots, and check transparency overlays.</p>
-        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
+        <div class="inspector-layout">
           <!-- Left side: canvas display -->
-          <div style="flex: 1; min-width: 320px; display: flex; flex-direction: column; align-items: center; background: #030713; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; position: relative;">
-            <div id="inspector-canvas-container" style="width: 100%; height: 350px; display: flex; justify-content: center; align-items: center; overflow: hidden; background-image: linear-gradient(45deg, #181818 25%, transparent 25%), linear-gradient(-45deg, #181818 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #181818 75%), linear-gradient(-45deg, transparent 75%, #181818 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; background-color: #0d0d0d; position: relative; border-radius: 8px;">
-              <img id="inspector-img" style="max-height: 90%; max-width: 90%; object-fit: contain; image-rendering: pixelated; position: relative; z-index: 10;" />
+          <div class="inspector-stage">
+            <div id="inspector-canvas-container" class="inspector-canvas-container checkerboard">
+              <img id="inspector-img" class="inspector-img" />
               <!-- overlays -->
-              <div id="overlay-y" style="position: absolute; left: 0; right: 0; height: 2px; background: rgba(255, 68, 68, 0.7); display: none; z-index: 20;"></div>
-              <div id="overlay-x" style="position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 68, 68, 0.7); display: none; z-index: 20;"></div>
+              <div id="overlay-y" class="inspector-overlay overlay-y"></div>
+              <div id="overlay-x" class="inspector-overlay overlay-x"></div>
             </div>
-            <div style="width: 100%; margin-top: 12px; display: flex; gap: 10px; align-items: center;">
+            <div class="frame-control">
               <span>Frame:</span>
-              <input type="range" id="frameScrubber" min="0" max="0" value="0" style="flex: 1;" />
+              <input type="range" id="frameScrubber" min="0" max="0" value="0" />
               <span id="frameScrubberLabel">0 / 0</span>
             </div>
           </div>
           <!-- Right side: controls -->
-          <div style="width: 280px; display: flex; flex-direction: column; gap: 12px;">
+          <div class="inspector-controls">
             <div>
               <label class="switch"><input type="checkbox" id="toggleCheckerboard" checked /><span></span>Alpha Checkerboard</label>
             </div>
@@ -273,25 +273,25 @@
             <div>
               <label class="switch"><input type="checkbox" id="toggleCompareSibling" /><span></span>Compare Before/After</label>
             </div>
-            <div class="metric-list" style="margin-top: 5px; gap: 4px;">
-              <div><b>Selected Folder</b><span id="inspect-folder-name" style="word-break: break-all;">None</span></div>
+            <div class="metric-list compact-metrics">
+              <div><b>Selected Folder</b><span id="inspect-folder-name" class="breakable">None</span></div>
               <div><b>Width x Height</b><span id="inspect-dimensions">—</span></div>
               <div><b>Frame Count</b><span id="inspect-frames-count">—</span></div>
               <div><b>Loop Seam RMSE</b><span id="inspect-loop-rmse">—</span></div>
               <div><b>Foot Drift Stdev</b><span id="inspect-foot-stdev">—</span></div>
               <div><b>QA Report</b><span id="inspect-report-link">—</span></div>
             </div>
-            <div style="margin-top: 6px;">
-              <h4 style="margin: 0 0 4px 0; font-size: 12px; color: #a9b7d0;">Foot Anchor Drift Trend</h4>
-              <div id="driftChartContainer" style="height: 36px; display: flex; align-items: center;"></div>
+            <div class="mini-chart">
+              <h4>Foot Anchor Drift Trend</h4>
+              <div id="driftChartContainer" class="mini-chart-body"></div>
             </div>
-            <div style="margin-top: 4px;">
-              <h4 style="margin: 0 0 4px 0; font-size: 12px; color: #a9b7d0;">Alpha Coverage Trend</h4>
-              <div id="coverageChartContainer" style="height: 36px; display: flex; align-items: center;"></div>
+            <div class="mini-chart">
+              <h4>Alpha Coverage Trend</h4>
+              <div id="coverageChartContainer" class="mini-chart-body"></div>
             </div>
-            <div style="margin-top: 6px;">
-              <h4 style="margin: 0 0 4px 0; font-size: 12px; color: #a9b7d0;">QA Alerts</h4>
-              <div id="inspect-issues" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+            <div class="mini-chart">
+              <h4>QA Alerts</h4>
+              <div id="inspect-issues" class="issue-list"></div>
             </div>
           </div>
         </div>
@@ -414,6 +414,7 @@
               <tr>
                 <th>Keep</th>
                 <th>Time</th>
+                <th>Project</th>
                 <th>Action</th>
                 <th>Dir</th>
                 <th>Tier</th>
@@ -424,7 +425,7 @@
               </tr>
             </thead>
             <tbody id="historyBody">
-              <tr><td colspan="9" class="empty-cell">No generation history yet. Run a sprite job to see it here.</td></tr>
+              <tr><td colspan="10" class="empty-cell">No generation history yet. Run a sprite job to see it here.</td></tr>
             </tbody>
           </table>
         </div>

@@ -56,6 +56,21 @@ class ProjectService:
         }
 
     @staticmethod
+    def metadata_for_path(value: str) -> Optional[Dict[str, str]]:
+        path = ProjectService.resolve_project_path(value)
+        if not path:
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            data = {}
+        return {
+            "project_name": str(data.get("name") or path.parent.name),
+            "project_path": str(path.relative_to(ROOT)).replace("\\", "/"),
+            "project_root": str(path.parent.relative_to(ROOT)).replace("\\", "/"),
+        }
+
+    @staticmethod
     def list_projects() -> List[Dict[str, Any]]:
         with ProjectService._lock:
             PROJECTS_DIR.mkdir(parents=True, exist_ok=True)

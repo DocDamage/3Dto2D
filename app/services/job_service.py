@@ -100,7 +100,7 @@ class JobService:
             return False
 
     @staticmethod
-    def start_job(title: str, cmd: List[str]) -> Tuple[bool, str]:
+    def start_job(title: str, cmd: List[str], metadata: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
         with JobService._lock:
             active = JobService.get_active_job()
             if active and active.get("phase") == "running":
@@ -118,7 +118,8 @@ class JobService:
                 "exit_code": None,
                 "pid": None,
                 "logs": [],
-                "log_file": f"logs/web_job_{job_id}.log"
+                "log_file": f"logs/web_job_{job_id}.log",
+                "metadata": metadata or {},
             }
             JobService._active_job = job
             
@@ -278,6 +279,9 @@ class JobService:
                                 sprite_action=_arg("--action"),
                                 direction=_arg("--direction"),
                                 sprite_folder=sprite_folder,
+                                project_name=str(job.get("metadata", {}).get("project_name", "")),
+                                project_path=str(job.get("metadata", {}).get("project_path", "")),
+                                project_root=str(job.get("metadata", {}).get("project_root", "")),
                             )
                         except Exception:
                             pass  # Never break normal flow

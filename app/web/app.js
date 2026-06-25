@@ -705,11 +705,11 @@ async function loadHistory() {
 }
 
 if ($('#refreshHistory')) $('#refreshHistory').addEventListener('click', loadHistory);
-if ($('#exportHistory')) $('#exportHistory').addEventListener('click', () => { window.location.href = '/api/experiments/export'; });
+if ($('#exportHistory')) $('#exportHistory').addEventListener('click', () => { window.location.href = '/api/experiments/export' + projectQuery(); });
 if ($('#clearHistory')) $('#clearHistory').addEventListener('click', async () => {
   if (!confirm('Clear unstarred experiment history? Starred runs will be kept.')) return;
   try {
-    const result = await api('/api/experiments/clear', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keep_starred:true})});
+    const result = await api('/api/experiments/clear' + projectQuery(), {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keep_starred:true, active_project:activeProjectPath})});
     toast(`Removed ${result.removed || 0} history records`);
     await loadHistory();
   } catch(e) { toast('History clear failed: ' + e.message); }

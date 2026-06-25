@@ -214,6 +214,11 @@ def _project_workspace(project_meta: Optional[Dict[str, str]]) -> Dict[str, Any]
     }
 
 
+def _experiment_rows(project_meta: Optional[Dict[str, str]]) -> List[Dict[str, Any]]:
+    rows = ExperimentService.get_history()
+    return [rec for rec in rows if ProjectService.item_matches_project(rec, project_meta)] if project_meta else rows
+
+
 def _is_relative_to(path: Path, base: Path) -> bool:
     try:
         path.resolve().relative_to(base.resolve())
@@ -485,10 +490,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/experiments":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)
-            experiments = [rec for rec in ExperimentService.get_history() if ProjectService.item_matches_project(rec, project_meta)] if project_meta else ExperimentService.get_history()
-            return self.send_json({"experiments": experiments, "project_workspace": _project_workspace(project_meta)})
+            return self.send_json({"experiments": _experiment_rows(project_meta), "project_workspace": _project_workspace(project_meta)})
         if path == "/api/experiments/export":
-            data = ExperimentService.export_history()
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            data = ExperimentService.export_history(_experiment_rows(project_meta))
             payload = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
             stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
             return self.send_bytes(payload, content_type="application/json; charset=utf-8", filename=f"spriteforge_experiment_history_{stamp}.json")
@@ -567,7 +573,13 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/experiments/clear":
                 body = self.read_json()
                 keep_starred = bool(body.get("keep_starred", True))
-                removed = ExperimentService.clear_history(keep_starred=keep_starred)
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                project_meta = (
+                    ProjectService.metadata_for_path(str(body.get("active_project") or ""))
+                    or _project_meta_from_query(qs)
+                )
+                predicate = (lambda rec: ProjectService.item_matches_project(rec, project_meta)) if project_meta else None
+                removed = ExperimentService.clear_history(keep_starred=keep_starred, predicate=predicate)
                 return self.send_json({"ok": True, "removed": removed})
             if path == "/api/projects/create":
                 body = self.read_json()

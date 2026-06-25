@@ -436,6 +436,47 @@ def test_upload_limits():
     assert status in (400, 500)
 
 
+def test_experiment_clear_api_scopes_to_project(tmp_path, monkeypatch):
+    import services.experiment_service as es_mod
+    import spriteforge_web as web_mod
+    from services.experiment_service import ExperimentService
+
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "history.json")
+
+    hero_id = ExperimentService.append_run(
+        prompt="hero",
+        project_name="hero",
+        project_path="projects/hero/spriteforge_project.json",
+        project_root="projects/hero",
+    )
+    other_id = ExperimentService.append_run(
+        prompt="other",
+        project_name="other",
+        project_path="projects/other/spriteforge_project.json",
+        project_root="projects/other",
+    )
+    monkeypatch.setattr(
+        web_mod.ProjectService,
+        "metadata_for_path",
+        staticmethod(lambda value: {
+            "project_name": "hero",
+            "project_path": "projects/hero/spriteforge_project.json",
+            "project_root": "projects/hero",
+        } if value else None),
+    )
+
+    handler = MockHandler()
+    handler.path = "/api/experiments/clear?project=projects%2Fhero%2Fspriteforge_project.json"
+    handler.payload = {"keep_starred": True}
+    handler.do_POST()
+
+    data, status = handler.sent_jsons[0]
+    assert status == 200
+    assert data["removed"] == 1
+    assert ExperimentService.get_run(hero_id) is None
+    assert ExperimentService.get_run(other_id) is not None
+
+
 def test_job_lifecycle(tmp_path):
     from services.job_service import JobService
     import services.job_service

@@ -10,7 +10,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT_PATH = ROOT / "output" / "experiments" / "experiment_history.json"
@@ -169,23 +169,33 @@ class ExperimentService:
             return False
 
     @staticmethod
-    def export_history() -> Dict[str, Any]:
+    def export_history(records: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """Return a stable export document for all experiment records."""
         with ExperimentService._lock:
-            records = ExperimentService._load()
+            export_records = records if records is not None else ExperimentService._load()
             return {
                 "schema": "spriteforge_experiment_history_v1",
                 "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                "count": len(records),
-                "records": records,
+                "count": len(export_records),
+                "records": export_records,
             }
 
     @staticmethod
-    def clear_history(*, keep_starred: bool = True) -> int:
+    def clear_history(
+        *,
+        keep_starred: bool = True,
+        predicate: Optional[Callable[[Dict[str, Any]], bool]] = None,
+    ) -> int:
         """Clear experiment records and return the number removed."""
         with ExperimentService._lock:
             records = ExperimentService._load()
-            kept = [rec for rec in records if keep_starred and rec.get("starred")]
-            removed = len(records) - len(kept)
+            kept: List[Dict[str, Any]] = []
+            removed = 0
+            for rec in records:
+                in_scope = predicate(rec) if predicate else True
+                if not in_scope or (keep_starred and rec.get("starred")):
+                    kept.append(rec)
+                else:
+                    removed += 1
             ExperimentService._save(kept)
             return removed

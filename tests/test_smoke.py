@@ -367,6 +367,54 @@ def test_experiment_history_retention(tmp_path, monkeypatch):
     assert [rec["prompt"] for rec in history] == ["run 4", "run 3", "run 2"]
 
 
+def test_experiment_history_scoped_export_and_clear(tmp_path, monkeypatch):
+    """Project-mode history export/clear can operate on a filtered record set."""
+    from services import experiment_service as es_mod
+    from services.experiment_service import ExperimentService
+
+    test_path = tmp_path / "experiments" / "experiment_history.json"
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", test_path)
+
+    hero_id = ExperimentService.append_run(
+        prompt="hero",
+        project_name="hero",
+        project_path="projects/hero/spriteforge_project.json",
+        project_root="projects/hero",
+    )
+    other_id = ExperimentService.append_run(
+        prompt="other",
+        project_name="other",
+        project_path="projects/other/spriteforge_project.json",
+        project_root="projects/other",
+    )
+    assert ExperimentService.set_starred(hero_id, True)
+
+    hero_records = [
+        rec for rec in ExperimentService.get_history(limit=10)
+        if rec.get("project_name") == "hero"
+    ]
+    exported = ExperimentService.export_history(hero_records)
+    assert exported["count"] == 1
+    assert exported["records"][0]["project_name"] == "hero"
+
+    removed = ExperimentService.clear_history(
+        keep_starred=True,
+        predicate=lambda rec: rec.get("project_name") == "hero",
+    )
+    assert removed == 0
+    assert ExperimentService.get_run(hero_id) is not None
+    assert ExperimentService.get_run(other_id) is not None
+
+    assert ExperimentService.set_starred(hero_id, False)
+    removed = ExperimentService.clear_history(
+        keep_starred=True,
+        predicate=lambda rec: rec.get("project_name") == "hero",
+    )
+    assert removed == 1
+    assert ExperimentService.get_run(hero_id) is None
+    assert ExperimentService.get_run(other_id) is not None
+
+
 # ---------------------------------------------------------------------------
 # Advisor service smoke
 # ---------------------------------------------------------------------------

@@ -244,7 +244,13 @@ def git_clone_or_pull(url: str, dest: Path) -> None:
     if dest.exists() and (dest / ".git").exists():
         run(["git", "pull", "--ff-only"], cwd=dest, check=False)
     elif dest.exists() and any(dest.iterdir()):
-        print(f"Skipping clone because folder exists and is not empty: {dest}")
+        tmp = dest.parent / f".{dest.name}_clone_{int(time.time())}"
+        print(f"Repairing non-git folder by cloning into a temporary directory: {tmp}")
+        run(["git", "clone", url, str(tmp)])
+        try:
+            shutil.copytree(tmp, dest, dirs_exist_ok=True)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
     else:
         dest.parent.mkdir(parents=True, exist_ok=True)
         run(["git", "clone", url, str(dest)])
@@ -1090,9 +1096,23 @@ def cmd_generate_sprite(args: argparse.Namespace) -> None:
 
     name = chosen.stem + "_sprite"
     out_dir = cfg.sprite_output / name
-    run(build_sprite_args(chosen, out_dir, cfg))
+    extra = []
+    if getattr(args, "fps", None) is not None:
+        extra += ["--fps", str(args.fps)]
+    if getattr(args, "cell_size", None):
+        extra += ["--cell-size", str(args.cell_size)]
+    if getattr(args, "key_color", None):
+        extra += ["--key-color", str(args.key_color)]
+    run(build_sprite_args(chosen, out_dir, cfg, extra=extra))
     if getattr(args, "quality_check", False):
-        run([sys.executable, str(ROOT / "spriteforge_quality.py"), "quality", "--sprite-dir", str(out_dir)], check=False)
+        qc_extra = []
+        if getattr(args, "qa_threshold_loop_rmse", None) is not None:
+            qc_extra += ["--loop-rmse-threshold", str(args.qa_threshold_loop_rmse)]
+        if getattr(args, "qa_threshold_foot_drift", None) is not None:
+            qc_extra += ["--foot-drift-threshold", str(args.qa_threshold_foot_drift)]
+        if getattr(args, "qa_threshold_center_drift", None) is not None:
+            qc_extra += ["--center-drift-threshold", str(args.qa_threshold_center_drift)]
+        run([sys.executable, str(ROOT / "spriteforge_quality.py"), "quality", "--sprite-dir", str(out_dir)] + qc_extra, check=False)
     write_run_manifest(prompt_id, patched, response if isinstance(response, dict) else {}, outputs, chosen, out_dir)
     print(f"Generated sprite output: {out_dir}")
 
@@ -1425,6 +1445,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--no-history", action="store_true", help="Skip prompt_id /history tracking and use folder scan only")
     s.add_argument("--no-folder-fallback", action="store_true", help="Fail if prompt history does not resolve a usable output")
     s.add_argument("--quality-check", action="store_true", help="Run SpriteForge QC after converting the generated video")
+    s.add_argument("--cell-size", default=None)
+    s.add_argument("--fps", type=float, default=None)
+    s.add_argument("--key-color", default=None)
+    s.add_argument("--qa-threshold-loop-rmse", type=float, default=None)
+    s.add_argument("--qa-threshold-foot-drift", type=float, default=None)
+    s.add_argument("--qa-threshold-center-drift", type=float, default=None)
     s.set_defaults(func=cmd_generate_sprite)
 
     s = sub.add_parser("watch-output", help="Watch ComfyUI output and convert new videos into sprites")
@@ -1515,7 +1541,23 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--name", default=None)
     s.add_argument("--res-path", default=None)
     s.add_argument("--godot-mode", choices=["animatedsprite2d", "sprite2d"], default="animatedsprite2d")
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_engine_export.py"), "export", "--sprite-dir", a.sprite_dir, "--engine", a.engine] + (["--output", a.output] if a.output else []) + (["--project", a.project] if a.project else []) + (["--name", a.name] if a.name else []) + (["--res-path", a.res_path] if a.res_path else []) + (["--godot-mode", a.godot_mode] if a.engine == "godot" else [])))
+    s.add_argument("--naming-convention", default="default")
+    s.add_argument("--pivot-mode", default="bottom-center")
+    s.add_argument("--ppu", type=int, default=100)
+    s.add_argument("--filter-mode", default="nearest")
+    s.add_argument("--loop-flag", default="true")
+    s.add_argument("--import-path", default=None)
+    s.add_argument("--clip-name", default=None)
+    def _export_engine(a):
+        cmd = [sys.executable, str(ROOT / "spriteforge_engine_export.py"), "export", "--sprite-dir", a.sprite_dir, "--engine", a.engine]
+        for name in ["output", "project", "name", "res_path", "naming_convention", "pivot_mode", "ppu", "filter_mode", "loop_flag", "import_path", "clip_name"]:
+            val = getattr(a, name, None)
+            if val is not None:
+                cmd += [f"--{name.replace('_', '-')}", str(val)]
+        if a.engine == "godot":
+            cmd += ["--godot-mode", a.godot_mode]
+        run(cmd)
+    s.set_defaults(func=_export_engine)
 
     s = sub.add_parser("snapshot", help="Snapshot ComfyUI/custom-node git revisions before updates")
     s.add_argument("--name", default=None)
@@ -1706,7 +1748,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--deflicker", action="store_true")
     s.add_argument("--solidify", type=int, default=2)
     s.add_argument("--blend-loop-frames", type=int, default=3)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_qc.py"), "autofix", "--input", a.input] + (["--output", a.output] if a.output else []) + (["--drop-loop-duplicate"] if a.drop_loop_duplicate else []) + (["--stabilize-anchor"] if a.stabilize_anchor else []) + (["--deflicker"] if a.deflicker else []) + ["--solidify", str(a.solidify)] + ["--blend-loop-frames", str(a.blend_loop_frames)]))
+    s.add_argument("--sharpen", action="store_true", help="Sharpen sprite edges")
+    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_qc.py"), "autofix", "--input", a.input] + (["--output", a.output] if a.output else []) + (["--drop-loop-duplicate"] if a.drop_loop_duplicate else []) + (["--stabilize-anchor"] if a.stabilize_anchor else []) + (["--deflicker"] if a.deflicker else []) + ["--solidify", str(a.solidify)] + ["--blend-loop-frames", str(a.blend_loop_frames)] + (["--sharpen"] if a.sharpen else [])))
 
     s = sub.add_parser("character-pack", help="Create a character consistency pack: reference, palette, identity rules, actions, and batch BAT")
     s.add_argument("--name", required=True)

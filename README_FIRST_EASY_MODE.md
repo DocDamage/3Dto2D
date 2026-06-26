@@ -32,7 +32,11 @@ app/output/demo_sprite_no_gpu/report.html
 
 If the demo works but WAN does not, the problem is not the sprite converter. It is ComfyUI, models, GPU memory, driver setup, or workflow setup.
 
-A prebuilt example is included at `app/examples/prebuilt_demo_sprite/` so users can see what a successful output looks like before running anything.
+A prebuilt example is included at [prebuilt_demo_sprite](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/examples/prebuilt_demo_sprite) so users can see what a successful output looks like:
+- **Spritesheet PNG**: [sheet.png](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/examples/prebuilt_demo_sprite/sheet.png)
+- **Metadata JSON**: [sheet.json](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/examples/prebuilt_demo_sprite/sheet.json)
+- **Preview GIF**: [preview.gif](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/examples/prebuilt_demo_sprite/preview.gif)
+- **HTML Report**: [report.html](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/examples/prebuilt_demo_sprite/report.html)
 
 
 ## v10 Auto WAN install

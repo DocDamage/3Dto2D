@@ -21,18 +21,21 @@
       </div>
     </div>
     <nav>
-      <button class="nav active" data-view="dashboard">Dashboard</button>
+      <button class="nav active" data-view="guide">Guide</button>
+      <button class="nav" data-view="dashboard">Dashboard</button>
+      <button class="nav" data-view="tasks">Task Center</button>
       <button class="nav" data-view="launchpad">Launchpad</button>
-      <button class="nav" data-view="generate">Make Sprite</button>
-      <button class="nav" data-view="convert">Convert Video</button>
+      <button class="nav" data-view="generate">Generate Sprite</button>
+      <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
-      <button class="nav" data-view="packs">Packs & Atlas</button>
-      <button class="nav" data-view="queue">Queue Builder</button>
-      <button class="nav" data-view="queues">Queue Monitor</button>
+      <button class="nav mode-detail" data-view="packs">Packs & Atlas</button>
+      <button class="nav mode-detail" data-view="queue">Queue Builder</button>
+      <button class="nav mode-detail" data-view="queues">Queue Monitor</button>
       <button class="nav" data-view="history">History</button>
       <button class="nav" data-view="release">Release</button>
+      <button class="nav" data-view="cleanup">Cleanup Manager</button>
       <button class="nav" data-view="setup">Setup</button>
-      <button class="nav" data-view="logs">Logs</button>
+      <button class="nav mode-expert" data-view="logs">Logs</button>
     </nav>
     <div class="rail-card">
       <small>Pipeline</small>
@@ -47,10 +50,23 @@
         <p class="eyebrow">Final Polish Edition</p>
         <h1>Build game-ready sprite animations.</h1>
       </div>
-      <div class="status-row">
-        <div class="chip" id="chip-gpu">GPU: checking…</div>
-        <div class="chip" id="chip-comfy">ComfyUI: checking…</div>
-        <div class="chip" id="chip-models">WAN models: checking…</div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+        <div class="status-row" style="display: flex; align-items: center; gap: 8px;">
+          <div class="chip" id="chip-gpu">GPU: checking…</div>
+          <div class="chip" id="chip-comfy">ComfyUI: checking…</div>
+          <div class="chip" id="chip-models">WAN models: checking…</div>
+          <button class="icon-btn" id="notificationTrigger" title="Open Notifications" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative;">
+            🔔 <span class="badge" id="notificationBadge" style="position: absolute; top: -6px; right: -6px; background: var(--accent); color: #000; font-size: 10px; font-weight: bold; border-radius: 50%; padding: 2px 6px; display: none;">0</span>
+          </button>
+        </div>
+        <div class="mode-toggle-container">
+          <span class="mode-label">Interface:</span>
+          <div class="mode-buttons">
+            <button class="mode-btn active" id="modeBtnSimple" type="button" data-mode="simple">Simple</button>
+            <button class="mode-btn" id="modeBtnDetailed" type="button" data-mode="detailed">Detailed</button>
+            <button class="mode-btn" id="modeBtnExpert" type="button" data-mode="expert">Expert</button>
+          </div>
+        </div>
       </div>
       <div class="project-strip">
         <label>Project<select id="projectSelect"><option value="">No project</option></select></label>
@@ -60,7 +76,178 @@
       </div>
     </header>
 
-    <section class="view active" id="view-dashboard">
+    <!-- ============================================================
+         Inline Health Bar
+         ============================================================ -->
+    <div class="health-bar" id="healthBar" style="display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; margin-bottom: 20px; align-items: center; font-size: 12px; backdrop-filter: blur(8px);">
+      <div class="health-item" style="display: flex; align-items: center; gap: 6px;">
+        <span class="status-indicator" id="health-dot-comfy" style="width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block;"></span>
+        <span>ComfyUI: <strong id="health-val-comfy">checking...</strong></span>
+        <button class="mini hidden" id="healthLaunchComfyBtn" style="padding: 2px 6px; font-size: 10px; margin-left: 6px;">Start</button>
+      </div>
+      <div class="health-divider" style="width: 1px; height: 14px; background: rgba(255,255,255,0.1);"></div>
+      <div class="health-item" style="display: flex; align-items: center; gap: 6px;">
+        <span class="status-indicator" id="health-dot-models" style="width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block;"></span>
+        <span>Models: <strong id="health-val-models">checking...</strong></span>
+      </div>
+      <div class="health-divider" style="width: 1px; height: 14px; background: rgba(255,255,255,0.1);"></div>
+      <div class="health-item" style="display: flex; align-items: center; gap: 6px;">
+        <span class="status-indicator" id="health-dot-vram" style="width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block;"></span>
+        <span>VRAM: <strong id="health-val-vram">checking...</strong></span>
+      </div>
+      <div class="health-divider" style="width: 1px; height: 14px; background: rgba(255,255,255,0.1);"></div>
+      <div class="health-item" style="display: flex; align-items: center; gap: 6px;">
+        <span class="status-indicator" id="health-dot-disk" style="width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block;"></span>
+        <span>Disk: <strong id="health-val-disk">checking...</strong></span>
+      </div>
+      <div class="health-divider" style="width: 1px; height: 14px; background: rgba(255,255,255,0.1);"></div>
+      <div class="health-item" style="display: flex; align-items: center; gap: 6px;">
+        <span class="status-indicator" id="health-dot-queue" style="width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block;"></span>
+        <span>Queue: <strong id="health-val-queue">idle</strong></span>
+      </div>
+      <div class="health-divider hidden" id="health-divider-error" style="width: 1px; height: 14px; background: rgba(255,255,255,0.1);"></div>
+      <div class="health-item hidden" id="health-item-error" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #ff5555; animation: pulse 2s infinite;">
+        <span>⚠ Last Error: <strong id="health-val-error">none</strong></span>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         Exact Step Map Progress Bar
+         ============================================================ -->
+    <div class="step-map" id="stepMap">
+      <div class="step-map-item active" data-step="setup" data-view="setup">
+        <span class="step-num">1</span> <span class="step-label">1. Setup</span>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-map-item" data-step="describe" data-view="generate">
+        <span class="step-num">2</span> <span class="step-label">2. Describe</span>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-map-item" data-step="generate" data-view="queues">
+        <span class="step-num">3</span> <span class="step-label">3. Generate</span>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-map-item" data-step="review" data-view="quality">
+        <span class="step-num">4</span> <span class="step-label">4. Review</span>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step-map-item" data-step="export" data-view="release">
+        <span class="step-num">5</span> <span class="step-label">5. Export</span>
+      </div>
+    </div>
+
+    <section class="global-task-progress" id="globalTaskProgress">
+      <div class="global-task-copy">
+        <b id="globalTaskTitle">No task running</b>
+        <span id="globalTaskDetail">Ready</span>
+      </div>
+      <div class="task-progressbar" aria-label="Current task progress"><i id="globalProgressFill"></i></div>
+      <span id="globalProgressPct">0%</span>
+    </section>
+
+    <section class="view active" id="view-guide">
+      <div class="guide-shell">
+        <section class="guide-main card glow">
+          <div class="guide-intro">
+            <h2>Create a sprite without choosing every technical setting.</h2>
+            <p>Pick the result you want. SpriteForge will choose the practical defaults, then send you to review, repair, or export only when it matters.</p>
+          </div>
+
+          <div class="guide-steps" aria-label="Guided sprite workflow">
+            <button class="guide-step active" type="button" data-guide-step="1"><span>1</span><b>Goal</b></button>
+            <button class="guide-step" type="button" data-guide-step="2"><span>2</span><b>Character</b></button>
+            <button class="guide-step" type="button" data-guide-step="3"><span>3</span><b>Output</b></button>
+            <button class="guide-step" type="button" data-guide-step="4"><span>4</span><b>Quality</b></button>
+          </div>
+
+          <form id="guidedForm" class="guided-form">
+            <section class="guide-panel active" data-guide-panel="1">
+              <h3>What are you trying to make?</h3>
+              <div class="choice-grid">
+                <label class="choice-card"><input type="radio" name="goal" value="single" checked /><span><b>Single sprite</b><small>One action and direction, good for a first pass.</small></span></label>
+                <label class="choice-card"><input type="radio" name="goal" value="pack" /><span><b>Character pack</b><small>Creates a queue for common actions and directions.</small></span></label>
+                <label class="choice-card"><input type="radio" name="goal" value="convert" /><span><b>Convert video</b><small>Turn an existing ComfyUI or reference video into a sheet.</small></span></label>
+                <label class="choice-card"><input type="radio" name="goal" value="release" /><span><b>Prepare release</b><small>Package finished sprites after review.</small></span></label>
+              </div>
+            </section>
+
+            <section class="guide-panel" data-guide-panel="2">
+              <h3>Describe the character once.</h3>
+              <div class="guided-fields">
+                <label>Character name<input name="name" value="hero" /></label>
+                <label>Character description<textarea name="character" rows="4">single full body original game hero, clean readable silhouette, consistent outfit</textarea></label>
+                <label>Project template<select name="template">
+                  <option value="platformer">Platformer hero</option>
+                  <option value="topdown">Top-down RPG character</option>
+                  <option value="fighter">Fighting game character</option>
+                  <option value="enemy">Enemy creature</option>
+                  <option value="object">Item or object animation</option>
+                </select></label>
+              </div>
+            </section>
+
+            <section class="guide-panel" data-guide-panel="3">
+              <h3>Choose the animation set.</h3>
+              <div class="guided-fields">
+                <div class="action-pick" id="guidedActionPick">
+                  <label><input type="checkbox" value="idle" checked />Idle</label>
+                  <label><input type="checkbox" value="walk" checked />Walk</label>
+                  <label><input type="checkbox" value="run" />Run</label>
+                  <label><input type="checkbox" value="attack_light" />Attack</label>
+                  <label><input type="checkbox" value="hurt" />Hurt</label>
+                  <label><input type="checkbox" value="death" />Death</label>
+                </div>
+                <div class="row">
+                  <label>Direction<select name="direction"><option value="right" selected>Right</option><option value="front">Front</option><option value="left">Left</option><option value="back">Back</option><option value="three_quarter">Three-quarter</option></select></label>
+                  <label>Existing video path<input name="video_path" placeholder="Only needed for Convert video" /></label>
+                </div>
+              </div>
+            </section>
+
+            <section class="guide-panel" data-guide-panel="4">
+              <h3>Pick the quality level.</h3>
+              <div class="choice-grid quality-choices">
+                <label class="choice-card"><input type="radio" name="quality" value="fast" /><span><b>Fast test</b><small>Quick proof that the pipeline works.</small></span></label>
+                <label class="choice-card"><input type="radio" name="quality" value="balanced" checked /><span><b>Recommended</b><small>Best default for most local runs.</small></span></label>
+                <label class="choice-card"><input type="radio" name="quality" value="quality" /><span><b>Best local</b><small>Slower, cleaner result when setup is healthy.</small></span></label>
+              </div>
+              <div class="switches guide-switches">
+                <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run QA after generation</label>
+                <label class="switch"><input type="checkbox" name="start_comfy" checked /><span></span>Start ComfyUI if needed</label>
+              </div>
+            </section>
+
+            <div class="guide-actions">
+              <button class="ghost" id="guidedBack" type="button">Back</button>
+              <button class="ghost" id="guidedNext" type="button">Next</button>
+              <button class="primary" id="guidedRun" type="submit">Generate sprite</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="guide-side">
+          <section class="card">
+            <div class="card-head"><h3>Next click</h3><button class="mini" id="guidedRecommended" type="button">Do it</button></div>
+            <b id="guidedNextTitle">Checking setup...</b>
+            <p id="guidedNextReason" class="guide-muted">SpriteForge is reading your setup.</p>
+          </section>
+          <section class="card">
+            <div class="card-head"><h3>Recent results</h3><button class="mini" data-jump="quality" type="button">Review</button></div>
+            <div id="guidedGallery" class="guided-gallery"></div>
+          </section>
+          <section class="card guide-ship-card">
+            <h3>When it looks good</h3>
+            <div class="button-row">
+              <button class="ghost" data-jump="quality" type="button">Fix or QA</button>
+              <button class="ghost" data-jump="release" type="button">Ship ZIP</button>
+              <button class="ghost" data-jump="packs" type="button">Build atlas</button>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="view-dashboard">
       <div class="hero card glow">
         <div class="hero-copy">
           <span class="pill">RTX 3060 12GB workflow</span>
@@ -68,9 +255,9 @@
           <p>Generate with ComfyUI/WAN, convert the exact output video, clean the loop, preview the animation, and export helpers for Godot or Unity.</p>
           <div class="hero-actions">
             <button class="primary" data-jump="launchpad">Open Launchpad</button>
-            <button class="ghost" data-jump="generate">Make a Sprite</button>
+            <button class="ghost" data-jump="generate">Generate sprite</button>
             <button class="ghost" data-run="demo">Run No-GPU Demo</button>
-            <button class="ghost" data-open="output">Open Outputs</button>
+            <button class="ghost" data-open="output">Open output folder</button>
           </div>
         </div>
         <div class="pipeline-orb">
@@ -102,17 +289,147 @@
         </div>
       </section>
 
+      <section class="card success-showcase-card glow" style="margin-bottom: 24px;">
+        <div class="card-head"><h3>Success Showcase (First-Run Sample)</h3></div>
+        <div class="showcase-sample-container" style="display:flex; align-items:center; gap:20px; padding:12px;">
+          <img src="/file/app/examples/prebuilt_demo_sprite/preview.gif" alt="Success Sample preview" style="width:120px; height:120px; object-fit:contain; border-radius:6px; background:#000; border:1px solid rgba(255,255,255,0.1); image-rendering:pixelated;" />
+          <div>
+            <h4 style="margin:0 0 6px 0;">Demo Sprite Sheet Output</h4>
+            <p class="hint-text" style="margin-top: 4px; margin-bottom: 12px; color: #a9b7d0;">A 16-frame transparent looping character walk cycle generated by SpriteForge.</p>
+            <div class="button-row compact-actions" style="display:flex; gap:8px;">
+              <a href="/file/app/examples/prebuilt_demo_sprite/report.html" target="_blank" class="mini link-button text-link" style="padding: 4px 8px; background: rgba(255,255,255,0.08); border-radius: 4px; text-decoration: none; color: #fff;">View Sample Report</a>
+              <button class="mini" onclick="selectedSpriteDir='app/examples/prebuilt_demo_sprite'; $('#qualitySpriteDir').value=selectedSpriteDir; showView('quality'); loadSpriteDetails(selectedSpriteDir); toast('Loaded demo showcase');" type="button">Inspect Sample</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div class="split">
         <section class="card">
           <div class="card-head"><h3>Recent sprites</h3><button class="mini" id="refreshOutputs">Refresh</button></div>
           <div class="gallery" id="gallery"></div>
         </section>
         <section class="card command-card">
-          <div class="card-head"><h3>Live command</h3><button class="mini danger" id="cancelJob">Cancel</button></div>
+          <div class="card-head"><h3>Live command</h3><button class="mini danger" id="cancelJob">Cancel current job</button></div>
           <div class="job-line"><span id="job-title">Idle</span><span id="job-state" class="badge">ready</span></div>
           <div class="progressbar"><i id="progress-fill"></i></div>
+          <div id="job-time-state" style="font-size: 12px; color: var(--muted); margin-bottom: 10px; font-weight: 500;"></div>
           <pre class="terminal small" id="mini-log"></pre>
         </section>
+      </div>
+      
+      <!-- Project Dashboard Hub -->
+      <div id="projectDashboardHub" class="hidden" style="margin-top: 24px;">
+        <h3 style="margin-bottom: 12px; font-size: 20px; letter-spacing: -0.02em;">Project Workspace Hub</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <div class="card" style="padding: 16px;">
+            <div class="card-head"><h3>References</h3><button class="mini" data-jump="convert" type="button">Manage</button></div>
+            <div id="dashReferencesList" class="release-list" style="margin-top: 10px;"></div>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="card-head"><h3>Active Queues</h3><button class="mini" data-jump="queues" type="button">Manage</button></div>
+            <div id="dashQueuesList" class="release-list" style="margin-top: 10px;"></div>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <div class="card-head"><h3>Releases</h3><button class="mini" data-jump="release" type="button">Manage</button></div>
+            <div id="dashReleasesList" class="release-list" style="margin-top: 10px;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Unified Task Center View
+         ============================================================ -->
+    <section class="view" id="view-tasks">
+      <div class="section-title">
+        <p class="eyebrow">Task Dashboard</p>
+        <h2>Task Center</h2>
+      </div>
+      
+      <!-- Active Job Card -->
+      <div class="card glow" id="activeTaskCard" style="margin-bottom: 24px; padding: 20px;">
+        <div class="card-head" style="margin-bottom: 16px;">
+          <h3 style="margin: 0; font-size: 18px;">Active Process</h3>
+          <span class="badge" id="activeTaskState">idle</span>
+        </div>
+        <div id="activeTaskRunningArea" class="hidden">
+          <h4 id="activeTaskTitle" style="margin: 0 0 8px 0; font-size: 16px; color: var(--accent);">No task running</h4>
+          <div class="progressbar" style="height: 12px; margin-bottom: 12px;"><i id="activeTaskProgressFill" style="width: 0%;"></i></div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+            <span id="activeTaskProgressPct">0%</span>
+            <span id="activeTaskTimeState">⏱ Checking...</span>
+          </div>
+          
+          <!-- Failure Recovery Advisor inside Active Area -->
+          <div id="activeRecoveryAdvisor" class="callout hidden" style="margin-bottom: 16px; border: 1px solid rgba(255,85,85,0.3); background: rgba(255,85,85,0.05);">
+            <h4 style="margin: 0 0 6px 0; color: #ff5555;">⚡ Failure Recovery Advisor</h4>
+            <p id="activeRecoveryMessage" style="margin: 0 0 10px 0; font-size: 13px;"></p>
+            <div id="activeRecoveryActions" class="button-row"></div>
+          </div>
+          
+          <pre class="terminal" id="activeTaskTerminal" style="height: 180px; font-size: 11px; margin-bottom: 12px; padding: 12px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;"></pre>
+          <div class="button-row">
+            <button class="mini danger" id="activeTaskCancelBtn" type="button">Cancel Task</button>
+            <button class="mini" id="activeTaskCopyLogsBtn" type="button">Copy Logs</button>
+            <button class="mini primary hidden" id="activeTaskInspectBtn" type="button">Inspect Output</button>
+          </div>
+        </div>
+        <div id="activeTaskIdleArea" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+          <span style="font-size: 32px; display: block; margin-bottom: 12px;">💤</span>
+          <b>Pipeline is currently idle.</b>
+          <p style="margin: 6px 0 0 0; font-size: 13px;">Generate a sprite or run a queue to start background work.</p>
+        </div>
+      </div>
+      
+      <!-- Queued Jobs Card -->
+      <div class="card" id="queuedTasksCard" style="margin-bottom: 24px; padding: 20px;">
+        <div class="card-head" style="margin-bottom: 16px;">
+          <h3 style="margin: 0;">Queued Queue Items</h3>
+          <span id="queuedTasksCount" class="badge">0 pending</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Action</th>
+                <th>Direction</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="queuedTasksBody">
+              <tr><td colspan="6" class="empty-cell">No active queue processing.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Completed & Failed Jobs list -->
+      <div class="card table-card" style="padding: 20px;">
+        <div class="card-head table-card-head" style="margin-bottom: 16px;">
+          <h3 style="margin: 0;">Execution History</h3>
+          <button class="mini" id="refreshTasksHistoryBtn" type="button">Refresh</button>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Job Title / Action</th>
+                <th>Time Started</th>
+                <th>Duration</th>
+                <th>Exit</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tasksHistoryBody">
+              <tr><td colspan="6" class="empty-cell">No execution history found.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -120,10 +437,10 @@
       <div class="section-title"><p class="eyebrow">Guided workflow</p><h2>Launchpad</h2></div>
       <div class="launch-grid">
         <article class="card launch-step"><span>01</span><h3>Prove the app works</h3><p>Run the no-GPU demo first. If this fails, fix SpriteForge before touching WAN.</p><button class="primary" data-run="demo">Run Demo</button></article>
-        <article class="card launch-step"><span>02</span><h3>Finish setup</h3><p>Install ComfyUI, nodes, Manager, and the safe Wan 2.1 model set. Then launch ComfyUI.</p><div class="button-row"><button class="primary" data-run="install_all">Install Safe Setup</button><button class="ghost" id="launchComfy2">Launch ComfyUI</button></div></article>
-        <article class="card launch-step"><span>03</span><h3>Generate the first sprite</h3><p>Use debug first. Once that works, switch to the RTX 3060 / Wan 2.1 or Wan 2.2 5B tier.</p><button class="primary" data-jump="generate">Make Sprite</button></article>
-        <article class="card launch-step"><span>04</span><h3>QA and repair</h3><p>Click a recent sprite, run QA, auto-fix jitter/loop issues, then preview the result.</p><button class="primary" data-jump="quality">Open Quality Lab</button></article>
-        <article class="card launch-step"><span>05</span><h3>Build a release</h3><p>Package finished sprites, metadata, preview GIFs, engine notes, and a preflight report into a release ZIP.</p><button class="primary" data-jump="release">Open Release Builder</button></article>
+        <article class="card launch-step"><span>02</span><h3>Finish setup</h3><p>Install ComfyUI, nodes, Manager, and the safe Wan 2.1 model set. Then launch ComfyUI.</p><div class="button-row"><button class="primary" data-run="install_all">Install Safe Setup</button><button class="ghost" id="launchComfy2">Start ComfyUI</button></div></article>
+        <article class="card launch-step"><span>03</span><h3>Generate the first sprite</h3><p>Use debug first. Once that works, switch to the RTX 3060 / Wan 2.1 or Wan 2.2 5B tier.</p><button class="primary" data-jump="generate">Generate sprite</button></article>
+        <article class="card launch-step"><span>04</span><h3>QA and repair</h3><p>Click a recent sprite, run QA, auto-fix jitter/loop issues, then preview the result.</p><button class="primary" data-jump="quality">Run quality check</button></article>
+        <article class="card launch-step"><span>05</span><h3>Build a release</h3><p>Package finished sprites, metadata, preview GIFs, engine notes, and a preflight report into a release ZIP.</p><button class="primary" data-jump="release">Build release ZIP</button></article>
         <article class="card launch-step"><span>06</span><h3>Batch a character</h3><p>Create a persistent production queue for idle, walk, run, attacks, hurt, and directions.</p><button class="primary" data-jump="queue">Open Queue Builder</button></article>
       </div>
     </section>
@@ -132,6 +449,34 @@
       <div class="section-title"><p class="eyebrow">WAN generation</p><h2>Make Sprite</h2></div>
       <div class="grid-2">
         <form class="card form" id="generateForm">
+          <div class="preset-builder-card" style="padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px;">
+            <p class="eyebrow" style="margin-bottom: 8px;">Preset Manager &amp; Goal Defaults</p>
+            <div class="row preset-row" style="gap: 12px; align-items: flex-end;">
+              <label style="flex: 2;">Preset
+                <select id="presetSelect" name="preset_select">
+                  <option value="">-- Select Preset --</option>
+                </select>
+              </label>
+              <label style="flex: 2;">Preset name
+                <input type="text" id="presetName" placeholder="My custom style" />
+              </label>
+              <div class="button-row" style="margin-bottom: 4px;">
+                <button class="mini primary" id="savePresetBtn" type="button">Save Preset</button>
+                <button class="mini danger" id="deletePresetBtn" type="button">Delete</button>
+              </div>
+            </div>
+            <div class="quick-goals-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <span style="font-size: 11px; color: var(--muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Smarter Defaults:</span>
+              <button class="mini" type="button" id="btnGoalPixelArt">Pixel Art</button>
+              <button class="mini" type="button" id="btnGoalSmooth2D">Smooth 2D</button>
+              <button class="mini" type="button" id="btnGoalSideScroller">Side-Scroller</button>
+              <button class="mini" type="button" id="btnGoalTopDown">Top-Down RPG</button>
+              <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1); margin: 0 4px;"></span>
+              <span style="font-size: 11px; color: var(--muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Hardware:</span>
+              <button class="mini" type="button" id="btnGoalLocalFast">Local Fast</button>
+              <button class="mini" type="button" id="btnGoalLocalQuality">Local Quality</button>
+            </div>
+          </div>
           <label>Character description<textarea name="character" rows="3">single full body original game hero, simple outfit, boots, clean silhouette</textarea></label>
           <div class="row">
             <label>Action<select name="sprite_action"><option>idle</option><option selected>walk</option><option>run</option><option>attack_light</option><option>attack_heavy</option><option>cast</option><option>jump</option><option>hurt</option><option>death</option></select></label>
@@ -143,10 +488,41 @@
           </div>
           <div class="row">
             <label>Seed<input name="seed" placeholder="-1 for random" /></label>
+            <label>FPS<input name="fps" value="12" placeholder="12" /></label>
+            <label>Cell size<select name="cell_size">
+              <option value="512x512" selected>512x512</option>
+              <option value="256x256">256x256</option>
+              <option value="128x128">128x128</option>
+              <option value="64x64">64x64</option>
+            </select></label>
           </div>
           <label>Style<input name="style" value="clean 2D game sprite, crisp silhouette, consistent outfit, locked camera" /></label>
           <label>Optional full prompt override<textarea name="prompt" rows="4" placeholder="Leave empty to use automatic sprite prompt builder."></textarea></label>
           <label>Negative prompt<textarea name="negative" rows="3" placeholder="Optional. Example: camera movement, zoom, cuts, motion blur, extra limbs"></textarea></label>
+          
+          <details class="collapsible-section" style="margin-top: 12px; margin-bottom: 12px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);">
+            <summary style="cursor: pointer; font-weight: bold;">Advanced QA &amp; Defaults</summary>
+            <div class="row" style="margin-top:10px;">
+              <label>Loop RMSE Threshold
+                <input name="qa_threshold_loop_rmse" placeholder="15.0" />
+              </label>
+              <label>Foot Drift Threshold
+                <input name="qa_threshold_foot_drift" placeholder="2.0" />
+              </label>
+              <label>Center Drift Threshold
+                <input name="qa_threshold_center_drift" placeholder="5.0" />
+              </label>
+            </div>
+            <div class="row">
+              <label>Default Actions
+                <input name="default_actions" placeholder="idle,walk,run,jump,hurt" />
+              </label>
+              <label>Default Directions
+                <input name="default_directions" placeholder="left,right" />
+              </label>
+            </div>
+          </details>
+
           <div class="switches">
             <label class="switch"><input type="checkbox" name="start_comfy" checked /><span></span>Start ComfyUI if needed</label>
             <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run quality check after conversion</label>
@@ -160,7 +536,29 @@
               <option value="quality">High Quality</option>
             </select>
           </div>
-          <button class="primary big" type="submit">Generate WAN → Sprite</button>
+
+          <!-- Preflight Checklist (Feature 5) -->
+          <div class="preflight-checklist" id="generatePreflightContainer">
+            <h4>Preflight Checklist</h4>
+            <ul class="preflight-list">
+              <li id="check-comfy"><span class="check-icon">❓</span> ComfyUI online</li>
+              <li id="check-models"><span class="check-icon">❓</span> Model files found</li>
+              <li id="check-disk"><span class="check-icon">❓</span> Enough disk space</li>
+              <li id="check-output"><span class="check-icon">❓</span> Output folder ready</li>
+              <li id="check-job"><span class="check-icon">❓</span> No job currently running</li>
+            </ul>
+          </div>
+          <!-- Preflight Detailed Error Box -->
+          <div class="preflight-error-box hidden" id="generateErrorBox">
+            <p id="generateErrorMsg"></p>
+            <div class="error-actions" id="generateErrorActions"></div>
+            <details id="generateErrorDetails">
+              <summary>Show details</summary>
+              <pre id="generateErrorDebug"></pre>
+            </details>
+          </div>
+
+          <button class="primary big" id="btnSubmitGenerate" type="submit">Generate sprite</button>
         </form>
         <div class="card preview-panel">
           <h3>Sprite recipe</h3>
@@ -198,7 +596,7 @@
             <label class="switch"><input type="checkbox" name="preview_gif" checked /><span></span>Preview GIF</label>
             <label class="switch"><input type="checkbox" name="report" checked /><span></span>HTML report</label>
           </div>
-          <button class="primary big" type="submit">Convert to Sprite Sheet</button>
+          <button class="primary big" id="btnSubmitConvert" type="submit">Generate sprite</button>
         </form>
         <section class="card">
           <div class="card-head"><h3>Recent references</h3><button class="mini" id="refreshReferences" type="button">Refresh</button></div>
@@ -217,11 +615,57 @@
           <div class="row">
             <label>Loop blend frames<input class="short-number" name="blend_loop_frames" type="number" min="0" max="24" value="3" /></label>
           </div>
+          
+          <details class="collapsible-section" style="margin-top:12px; margin-bottom:12px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);">
+            <summary style="cursor: pointer; font-weight: bold;">Engine Export Profile Settings</summary>
+            <div class="row" style="margin-top:10px;">
+              <label>Naming Convention
+                <select name="export_naming">
+                  <option value="default" selected>Default (sprite_name)</option>
+                  <option value="prefix">Prefix (sheet_name)</option>
+                  <option value="suffix">Suffix (name_sheet)</option>
+                </select>
+              </label>
+              <label>Pivot Mode
+                <select name="export_pivot">
+                  <option value="bottom-center" selected>Bottom Center</option>
+                  <option value="center">Center</option>
+                  <option value="custom">Custom (defined in frames)</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Pixels Per Unit (Unity)
+                <input name="export_ppu" value="100" placeholder="100" />
+              </label>
+              <label>Texture Filtering
+                <select name="export_filter">
+                  <option value="nearest" selected>Nearest / Point</option>
+                  <option value="linear">Linear / Bilinear</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Loop Flag
+                <select name="export_loop_flag">
+                  <option value="true" selected>True (Looping)</option>
+                  <option value="false">False (One-Shot)</option>
+                </select>
+              </label>
+              <label>Animation Clip Name
+                <input name="export_clip_name" placeholder="Leave empty for auto" />
+              </label>
+            </div>
+            <label>Custom Import Subpath
+              <input name="export_import_path" placeholder="e.g. Assets/Sprites" />
+            </label>
+          </details>
+
           <div class="button-row">
-            <button class="primary" data-quality="qa" type="button">Run QA Report</button>
+            <button class="primary" data-quality="qa" type="button">Run quality check</button>
             <button class="ghost" data-quality="fix" type="button">Auto-Fix</button>
-            <button class="ghost" data-quality="godot" type="button">Export Godot</button>
-            <button class="ghost" data-quality="unity" type="button">Export Unity</button>
+            <button class="ghost" data-quality="godot" type="button">Export to Godot</button>
+            <button class="ghost" data-quality="unity" type="button">Export to Unity</button>
             <button class="ghost" data-quality="validate" type="button">Validate Export</button>
             <button class="ghost" id="compareBtn" type="button">Compare…</button>
           </div>
@@ -277,6 +721,78 @@
             <div>
               <label class="switch"><input type="checkbox" id="toggleCompareSibling" /><span></span>Compare Before/After</label>
             </div>
+            
+            <div class="inspector-edit-toolbox" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1); margin-top: 12px; margin-bottom: 12px;">
+              <p class="eyebrow" style="margin-bottom: 8px;">Frame Playback &amp; Edit Tools</p>
+              <div class="button-row compact-actions" style="margin-bottom: 8px;">
+                <button class="mini primary" id="inspectPlayBtn" type="button">▶ Play</button>
+                <label style="display:inline-flex; align-items:center; gap:4px; font-size:12px;">FPS: 
+                  <input type="number" id="inspectPlayFps" value="12" style="width:45px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:2px;" min="1" max="60" />
+                </label>
+              </div>
+              <div class="button-row compact-actions" style="margin-bottom: 8px; display:flex; flex-wrap:wrap; gap:4px;">
+                <button class="mini" id="inspectMarkBadBtn" type="button" title="Toggle Bad Frame Mark">⚠️ Mark Bad</button>
+                <button class="mini" id="inspectDuplicateBtn" type="button" title="Duplicate current frame">＋ Dup</button>
+                <button class="mini danger" id="inspectRemoveBtn" type="button" title="Remove current frame">❌ Del</button>
+                <button class="mini" id="inspectTrimBtn" type="button" title="Compute and trim transparency bounds">✂️ Trim</button>
+              </div>
+              <div class="inspector-quick-repairs" style="margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+                <span style="font-size:11px; color:#a9b7d0; display:block; margin-bottom:4px;">One-Click Quick Repairs:</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                  <button type="button" class="mini" id="labRepairCleanBtn" title="Solidify alpha boundaries">🧽 Clean BG</button>
+                  <button type="button" class="mini" id="labRepairStabilizeBtn" title="Anchor character baseline">👣 Stabilize Feet</button>
+                  <button type="button" class="mini" id="labRepairSeamBtn" title="Blend loop boundaries">🔄 Fix Seam</button>
+                  <button type="button" class="mini" id="labRepairFlickerBtn" title="Reduce global luminance flicker">💡 Reduce Flicker</button>
+                  <button type="button" class="mini" id="labRepairSharpenBtn" title="Sharpen character borders">✨ Sharpen</button>
+                  <button type="button" class="mini" id="labRepairPreviewBtn" title="Recompile preview and sheet">🖼 Rebuild GIF</button>
+                </div>
+              </div>
+              <div class="alignment-nudge-section" style="margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+                <span style="font-size:11px; color:#a9b7d0; display:block; margin-bottom:4px;">Nudge Frame Offset:</span>
+                <div class="nudge-grid" style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                  <button type="button" class="mini" id="nudgeUpBtn" style="padding:2px 8px;">▲</button>
+                  <div class="nudge-mid-row" style="display:flex; gap:6px;">
+                    <button type="button" class="mini" id="nudgeLeftBtn" style="padding:2px 8px;">◀</button>
+                    <button type="button" class="mini" id="nudgeRightBtn" style="padding:2px 8px;">▶</button>
+                  </div>
+                  <button type="button" class="mini" id="nudgeDownBtn" style="padding:2px 8px;">▼</button>
+                </div>
+              </div>
+              <div class="pivot-edit-section" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+                <span style="font-size:11px; color:#a9b7d0; display:block; margin-bottom:4px;">Custom Frame Pivot:</span>
+                <div class="row compact-fields" style="gap:4px; margin-bottom:4px;">
+                  <label style="font-size:11px;">X: <input type="number" id="pivotXInput" class="short-number" style="width:50px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:2px;" /></label>
+                  <label style="font-size:11px;">Y: <input type="number" id="pivotYInput" class="short-number" style="width:50px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:2px;" /></label>
+                </div>
+                <button type="button" class="mini" id="applyPivotAllBtn" style="width:100%;">Apply to All Frames</button>
+              </div>
+              <button class="primary" id="saveSpriteMetadataBtn" style="margin-top:10px; width:100%;" type="button">💾 Save Adjusted Metadata</button>
+            </div>
+
+            <!-- Result Review with Objective Metrics (Requirement 11) -->
+            <div class="objective-metrics-grid">
+              <div class="objective-metric-card">
+                <span>Frames</span>
+                <b id="obj-metric-frames">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Framerate</span>
+                <b id="obj-metric-fps">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Loop Score</span>
+                <b id="obj-metric-loop">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Foot Drift</span>
+                <b id="obj-metric-drift">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Export</span>
+                <b id="obj-metric-export">—</b>
+              </div>
+            </div>
+
             <div class="metric-list compact-metrics">
               <div><b>Selected Folder</b><span id="inspect-folder-name" class="breakable">None</span></div>
               <div><b>Width x Height</b><span id="inspect-dimensions">—</span></div>
@@ -368,6 +884,10 @@
         <form class="card form" id="releaseForm">
           <label>Release name<input name="name" value="hero_sprite_pack" /></label>
           <label>Sprite folders<textarea name="sprites" id="releaseSprites" rows="10" placeholder="output\hero_idle_sprite&#10;output\hero_walk_sprite&#10;output\hero_attack_sprite"></textarea></label>
+          <div id="releasePrecheckWarnings" class="release-warnings hidden" style="margin-bottom: 12px; max-height: 200px; overflow-y: auto; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 13px;"></div>
+          <div class="switches" style="margin-bottom: 12px;">
+            <label class="switch"><input type="checkbox" id="releaseStrictCheckbox" name="strict" /><span></span>Block release on QA errors (Strict mode)</label>
+          </div>
           <button class="primary big" type="submit">Build Release ZIP</button>
         </form>
         <section class="card">
@@ -388,10 +908,42 @@
 
     <section class="view" id="view-setup">
       <div class="section-title"><p class="eyebrow">Installer and recovery</p><h2>Setup</h2></div>
+      
+      <div class="card wizard-card glow" style="margin-bottom: 24px;">
+        <h3>First Run Check Wizard</h3>
+        <p class="description">Run an all-in-one onboarding diagnostic scan of your hardware, dependencies, model weights, ComfyUI connection, and demo assets.</p>
+        <button class="primary" id="runWizardBtn" type="button" style="margin-top: 10px; margin-bottom: 10px;">✨ Start First Run Diagnostic</button>
+        <div id="wizardResults" class="wizard-results hidden" style="margin-top: 16px;">
+          <div class="wizard-steps-status" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="wizard-step-item" id="wiz-step-disk" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">1</span> Disk Check: pending</div>
+            <div class="wizard-step-item" id="wiz-step-gpu" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">2</span> GPU Check: pending</div>
+            <div class="wizard-step-item" id="wiz-step-comfy" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">3</span> ComfyUI Connection: pending</div>
+            <div class="wizard-step-item" id="wiz-step-models" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">4</span> WAN Models: pending</div>
+            <div class="wizard-step-item" id="wiz-step-demo" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">5</span> Demo Check: pending</div>
+          </div>
+          <div class="wizard-summary-box callout" id="wizardSummary" style="margin-top: 16px; padding: 12px; border-radius: 8px; background: rgba(0, 173, 181, 0.1); border: 1px solid rgba(0, 173, 181, 0.3);"></div>
+        </div>
+      </div>
+
+      <!-- Preferences Panel (Requirement 10) -->
+      <div class="card preferences-card" style="margin-bottom: 24px;">
+        <h3>User Accessibility Preferences</h3>
+        <p class="description">Customize interface density, motion styles, contrast levels, and automation behavior.</p>
+        <div class="switches" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px;">
+          <label class="switch"><input type="checkbox" id="prefReduceMotion" /><span></span>Reduce motion</label>
+          <label class="switch"><input type="checkbox" id="prefHighContrast" /><span></span>High contrast mode</label>
+          <label class="switch"><input type="checkbox" id="prefCompact" /><span></span>Compact layout</label>
+          <label class="switch"><input type="checkbox" id="prefLargeText" /><span></span>Large text size</label>
+          <label class="switch"><input type="checkbox" id="prefAlwaysShowLogs" /><span></span>Always show logs pane</label>
+          <label class="switch"><input type="checkbox" id="prefNeverAutoSwitch" /><span></span>Never auto-switch tabs on start</label>
+          <label class="switch"><input type="checkbox" id="prefConfirmLongJobs" /><span></span>Confirm before running long jobs</label>
+        </div>
+      </div>
+
       <div class="setup-grid">
         <button class="setup-card primary-install" data-run="install_all"><span>01</span><b>Install Everything: Safe Wan 2.1</b><small>Recommended first install: ComfyUI, WAN nodes, Manager, and Wan 2.1 1.3B files.</small></button>
         <button class="setup-card primary-install" data-run="install_advanced"><span>02</span><b>Add Better Mode: Wan 2.2 5B</b><small>Advanced local add-on for better quality/motion after the safe setup works.</small></button>
-        <button class="setup-card" id="launchComfy"><span>03</span><b>Launch ComfyUI</b><small>Starts ComfyUI in its own window.</small></button>
+        <button class="setup-card" id="launchComfy"><span>03</span><b>Start ComfyUI</b><small>Starts ComfyUI in its own window.</small></button>
         <button class="setup-card" data-run="doctor"><span>04</span><b>Run Doctor</b><small>Checks hardware, models, nodes, workflows.</small></button>
         <button class="setup-card" data-run="validate_workflow"><span>05</span><b>Validate workflow</b><small>Checks the selected API workflow.</small></button>
         <button class="setup-card" data-run="download_models"><span>06</span><b>Repair Safe Model Download</b><small>Re-checks/finishes the Wan 2.1 model files if interrupted.</small></button>
@@ -408,10 +960,71 @@
       </div>
     </section>
 
+    <!-- ============================================================
+         Asset Cleanup Manager View
+         ============================================================ -->
+    <section class="view" id="view-cleanup">
+      <div class="section-title">
+        <p class="eyebrow">Storage Polish</p>
+        <h2>Asset Cleanup Manager</h2>
+      </div>
+      
+      <div class="bento" style="margin-bottom: 24px;">
+        <div class="card stat-card glow">
+          <span>Reclaimable Space</span>
+          <b id="cleanup-total-space">0.0 MB</b>
+          <small>Estimated old/temp files</small>
+        </div>
+        <div class="card stat-card">
+          <span>Temporary Renders</span>
+          <b id="cleanup-renders-space">0.0 MB</b>
+          <small id="cleanup-renders-count">0 files</small>
+        </div>
+        <div class="card stat-card">
+          <span>Failed Outputs</span>
+          <b id="cleanup-failed-space">0.0 MB</b>
+          <small id="cleanup-failed-count">0 folders</small>
+        </div>
+        <div class="card stat-card">
+          <span>Old Logs</span>
+          <b id="cleanup-logs-space">0.0 MB</b>
+          <small id="cleanup-logs-count">0 files</small>
+        </div>
+      </div>
+      
+      <div class="card" style="padding: 20px;">
+        <div class="card-head" style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+          <h3 style="margin: 0;">Scanned Workspace Files</h3>
+          <div class="button-row">
+            <button class="mini" id="scanCleanupBtn" type="button">Scan Workspace</button>
+            <button class="mini danger" id="purgeCleanupSelectedBtn" type="button" disabled>Delete Selected</button>
+            <button class="mini primary" id="autoCleanBtn" type="button">Safe Auto-Clean</button>
+          </div>
+        </div>
+        
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"><input type="checkbox" id="cleanupSelectAll" /></th>
+                <th>Category</th>
+                <th>File / Folder Path</th>
+                <th>Size</th>
+                <th>Age</th>
+              </tr>
+            </thead>
+            <tbody id="cleanupTableBody">
+              <tr><td colspan="5" class="empty-cell">Click Scan Workspace to search for cleanup targets.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section class="view" id="view-logs">
       <div class="section-title"><p class="eyebrow">Console</p><h2>Live Logs</h2></div>
       <section class="card command-card full">
-        <div class="card-head"><h3 id="log-title">Idle</h3><div><button class="mini" id="copyLog">Copy</button><button class="mini danger" id="cancelJob2">Cancel</button></div></div>
+        <div class="card-head"><h3 id="log-title">Idle</h3><div><button class="mini" id="copyLog">Copy</button><button class="mini danger" id="cancelJob2">Cancel current job</button></div></div>
         <pre class="terminal" id="full-log"></pre>
       </section>
     </section>
@@ -430,10 +1043,30 @@
             <button class="mini danger" id="clearHistory" type="button">Clear Unstarred</button>
           </div>
         </div>
+        
+        <div class="filter-row" style="display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; align-items: center;">
+          <label>Action: <input id="historyFilterAction" placeholder="e.g. walk" style="width: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px 4px; border-radius: 4px;" /></label>
+          <label>Direction: <input id="historyFilterDirection" placeholder="e.g. right" style="width: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px 4px; border-radius: 4px;" /></label>
+          <label>Tier: <select id="historyFilterTier" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px; border-radius: 4px;">
+            <option value="">All Tiers</option>
+            <option value="wan21_safe">Wan 2.1</option>
+            <option value="wan22_5b">Wan 2.2</option>
+          </select></label>
+          <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="historyFilterStarred" /> Starred only</label>
+          <label>Sort by: <select id="historySortBy" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px; border-radius: 4px;">
+            <option value="time_desc">Time (Newest)</option>
+            <option value="time_asc">Time (Oldest)</option>
+            <option value="qa_desc">QA Score (High)</option>
+            <option value="qa_asc">QA Score (Low)</option>
+          </select></label>
+          <button class="mini primary" id="historyCompareBtn" type="button" disabled style="margin-left: auto;">Compare Selected (0)</button>
+        </div>
+
         <div class="table-scroll">
           <table id="historyTable" class="data-table history-table">
             <thead>
               <tr>
+                <th>Compare</th>
                 <th>Keep</th>
                 <th>Time</th>
                 <th>Project</th>
@@ -447,7 +1080,7 @@
               </tr>
             </thead>
             <tbody id="historyBody">
-              <tr><td colspan="10" class="empty-cell">No generation history yet. Run a sprite job to see it here.</td></tr>
+              <tr><td colspan="11" class="empty-cell">No generation history yet. Run a sprite job to see it here.</td></tr>
             </tbody>
           </table>
         </div>
@@ -472,25 +1105,34 @@
           <div class="card-head">
             <h3 id="queueDetailName">Select a queue</h3>
             <div class="button-row">
-              <button class="ghost mini" id="queueRunBtn" disabled>▶ Run</button>
-              <button class="ghost mini" id="queueRetryBtn" disabled>↺ Retry Failed</button>
-              <button class="ghost mini danger" id="queueResetBtn" disabled>Reset All</button>
+              <button class="ghost mini" id="queueRunBtn" disabled>▶ Resume failed queue</button>
+              <button class="ghost mini" id="queueRetryBtn" disabled>↺ Retry only failed items</button>
+              <button class="ghost mini danger" id="queueResetBtn" disabled>Cancel current job</button>
             </div>
           </div>
+          
+          <div class="queue-operations-bar button-row compact-actions" style="margin: 8px 12px; display: flex; align-items: center; justify-content: space-between;">
+            <button class="mini primary" id="queueRunSelectedBtn" disabled>▶ Run Selected</button>
+            <div id="queueEstimates" style="font-size: 12px; color: #aab8d3;"></div>
+          </div>
+
           <div class="table-scroll">
             <table id="queueDetailTable" class="data-table queue-table">
               <thead>
                 <tr>
+                  <th style="width: 30px;"><input type="checkbox" id="queueSelectAllJobs" /></th>
                   <th>ID</th>
                   <th>Action</th>
                   <th>Dir</th>
                   <th>Status</th>
+                  <th>Progress</th>
                   <th>Exit</th>
-                  <th>Output</th>
+                  <th>Reason</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="queueDetailBody">
-                <tr><td colspan="6" class="empty-cell">No queue selected.</td></tr>
+                <tr><td colspan="9" class="empty-cell">No queue selected.</td></tr>
               </tbody>
             </table>
           </div>
@@ -499,6 +1141,98 @@
     </section>
 
   </main>
+
+  <div id="previewModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+    <div class="result-modal-backdrop" data-preview-close></div>
+    <section class="result-dialog">
+      <div class="result-dialog-head">
+        <div>
+          <h2 id="previewTitle">Review result</h2>
+          <p id="previewSubtitle">Video and sprite output</p>
+        </div>
+        <button class="mini" type="button" data-preview-close>Close</button>
+      </div>
+      <div class="result-media-grid">
+        <article class="result-media-panel">
+          <div class="result-panel-head">
+            <h3>Generated video</h3>
+            <span id="previewVideoMeta"></span>
+          </div>
+          <div id="previewVideoSlot" class="result-media-frame"></div>
+        </article>
+        <article class="result-media-panel">
+          <div class="result-panel-head">
+            <h3>Sprite preview</h3>
+            <span id="previewSpriteMeta"></span>
+          </div>
+          <div id="previewSpriteSlot" class="result-media-frame checker"></div>
+        </article>
+      </div>
+      <div class="result-qa-container" style="margin-top: 16px; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; background: rgba(255,255,255,0.015); padding: 16px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 14px;">
+          <div style="flex: 1; min-width: 180px;">
+            <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px;">QA GATES STATUS</span>
+            <div id="previewQaStatusBadge" class="badge" style="font-size: 14px; padding: 4px 10px; display: inline-block;">checking...</div>
+          </div>
+          <div style="flex: 1; min-width: 140px;">
+            <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px;">LOOP RMSE</span>
+            <strong id="previewLoopRmseVal" style="font-size: 16px; color: #fff;">—</strong>
+          </div>
+          <div style="flex: 1; min-width: 140px;">
+            <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px;">FOOT DRIFT</span>
+            <strong id="previewFootDriftVal" style="font-size: 16px; color: #fff;">—</strong>
+          </div>
+        </div>
+        
+        <!-- QA Warnings / Issues List -->
+        <div id="previewQaIssues" style="font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; color: #ffaa00;"></div>
+        
+        <!-- One-Click Repair Actions -->
+        <div class="repair-toolbar" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 12px; color: var(--muted); font-weight: 500;">ONE-CLICK SPRITE REPAIR</h4>
+          <div class="button-row compact-actions" id="previewRepairActions" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <button class="mini" data-repair="clean" type="button" title="Remove translucent pixels and solidify edges">🧽 Clean BG</button>
+            <button class="mini" data-repair="stabilize" type="button" title="Align character feet to a stable baseline">👣 Stabilize Feet</button>
+            <button class="mini" data-repair="seam" type="button" title="Blend start/end frames to remove loop pops">🔄 Fix Seam</button>
+            <button class="mini" data-repair="flicker" type="button" title="Reduce global frame luminance variations">💡 Reduce Flicker</button>
+            <button class="mini" data-repair="sharpen" type="button" title="Apply edge sharpening filter">✨ Sharpen Edges</button>
+            <button class="mini" data-repair="preview" type="button" title="Rebuild the preview GIF and sheets">🖼 Rebuild Preview</button>
+            <button class="mini" data-repair="qa" type="button" title="Force run the QA metrics audit script">🔍 Rerun QA</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Suggested Next Action Banner -->
+      <div id="previewSuggestedBanner" class="callout" style="margin-top: 16px; border: 1px solid rgba(0, 173, 181, 0.3); background: rgba(0, 173, 181, 0.05); display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 12px; border-radius: 8px;">
+        <div>
+          <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 2px;">SUGGESTED NEXT MOVE</span>
+          <span id="previewSuggestedText" style="font-size: 13px;">Review quality details and prepare engine export.</span>
+        </div>
+        <button class="mini primary" id="previewSuggestedActionBtn" type="button" style="padding: 6px 12px;">Run Action</button>
+      </div>
+
+      <div class="result-actions">
+        <button class="ghost" id="previewOpenFolder" type="button">Open folder</button>
+        <a class="ghost" id="previewOpenSheet" href="#" target="_blank" rel="noreferrer">Open sheet</a>
+        <a class="ghost" id="previewOpenReport" href="#" target="_blank" rel="noreferrer">Open report</a>
+        <button class="primary" id="previewUseForQuality" type="button">Review in Quality Lab</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Sliding Notification Drawer -->
+  <aside class="notification-drawer hidden" id="notificationDrawer" role="dialog" aria-label="Notification Drawer" style="position: fixed; top: 0; right: -400px; width: 380px; height: 100vh; background: #0f1322; border-left: 1px solid rgba(255,255,255,0.1); z-index: 100; box-shadow: -10px 0 30px rgba(0,0,0,0.5); transition: right 0.3s ease-in-out;">
+    <div class="drawer-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+      <h3 style="margin: 0; color: #fff;">Notifications</h3>
+      <div style="display: flex; gap: 8px;">
+        <button class="mini" id="clearNotificationsBtn" type="button">Clear All</button>
+        <button class="mini" id="closeDrawerBtn" type="button">Close</button>
+      </div>
+    </div>
+    <div class="drawer-body" id="notificationList" style="padding: 16px; overflow-y: auto; height: calc(100vh - 70px); display: flex; flex-direction: column; gap: 12px; box-sizing: border-box;">
+      <div class="empty-notifications" style="color: var(--muted); text-align: center; margin-top: 40px;">No notifications yet.</div>
+    </div>
+  </aside>
 
   <div id="toast" class="toast"></div>
   <script src="/web/app.js"></script>

@@ -158,7 +158,12 @@ def cmd_run(args: argparse.Namespace) -> None:
     data = load_queue(qpath)
     logs = qpath.parent / (qpath.stem + "_logs")
     logs.mkdir(parents=True, exist_ok=True)
+    only_jobs = None
+    if getattr(args, "only_jobs", None):
+        only_jobs = {j.strip() for j in args.only_jobs.split(",") if j.strip()}
     for job in data["jobs"]:
+        if only_jobs and job.get("id") not in only_jobs:
+            continue
         if job.get("status") == "done" and not args.rerun_done:
             continue
         if job.get("status") == "failed" and not args.retry_failed:
@@ -239,6 +244,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--retry-failed", action="store_true", default=True)
     s.add_argument("--rerun-done", action="store_true")
     s.add_argument("--continue-on-error", action="store_true")
+    s.add_argument("--only-jobs", default=None)
     s.set_defaults(func=cmd_run)
     s = sub.add_parser("status")
     s.add_argument("--queue", required=True)

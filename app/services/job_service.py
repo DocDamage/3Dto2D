@@ -226,6 +226,40 @@ class JobService:
                         job["exit_code"] = exit_code
                         job["progress"] = 100.0 if exit_code == 0 else job["progress"]
                     
+                    # Determine output sprite folder
+                    sprite_folder = ""
+                    if exit_code == 0:
+                        try:
+                            for idx, val in enumerate(cmd):
+                                if val in {"--output", "--sprite-dir"}:
+                                    out_val = cmd[idx + 1]
+                                    p_out = Path(out_val)
+                                    if p_out.is_absolute():
+                                        sprite_folder = str(p_out.relative_to(ROOT)).replace("\\", "/")
+                                    else:
+                                        sprite_folder = str(out_val).replace("\\", "/")
+                                    break
+                        except Exception:
+                            pass
+                        
+                        if not sprite_folder and any(x in str(c) for x in ("generate-sprite", "generate_sprite") for c in cmd):
+                            started_ts = job.get("started_at", "")
+                            try:
+                                import time as _time
+                                out_root = ROOT / "output"
+                                candidate = max(
+                                    (p for p in out_root.rglob("sheet.json")
+                                     if p.stat().st_mtime > (_time.mktime(_time.strptime(started_ts, "%Y-%m-%d %H:%M:%S")) if started_ts else 0)),
+                                    key=lambda p: p.stat().st_mtime,
+                                    default=None,
+                                )
+                                if candidate:
+                                    sprite_folder = str(candidate.parent.relative_to(ROOT)).replace("\\", "/")
+                            except Exception:
+                                pass
+                    if sprite_folder:
+                        job["metadata"]["sprite_folder"] = sprite_folder
+
                     append_log(f"■ Job finished with exit code {exit_code}")
                     
                     # Update in history file

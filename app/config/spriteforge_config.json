@@ -246,5 +246,18 @@
         "output_prefix": "SpriteForge/wan22_14b_cloud_sprite"
       }
     }
+  },
+  "hardware_advisor": {
+    "last_recommendation": {
+      "tier": "rtx3060_12gb",
+      "profile": "rtx3060_12gb",
+      "wan_path": "Use Wan 2.1 T2V 1.3B locally. Treat I2V/VACE/14B as cloud jobs.",
+      "sprite_defaults": {
+        "cell_size": "512x512",
+        "fps": 12,
+        "frames": 33
+      }
+    },
+    "last_applied_at": "2026-06-26 17:50:31"
   }
 }

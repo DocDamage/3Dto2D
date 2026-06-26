@@ -368,10 +368,107 @@ def make_release_readme(name: str, sprites: List[Dict[str, Any]], created: str) 
     return "\n".join(lines) + "\n"
 
 
+def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
+    warnings = []
+    errors = []
+    
+    for folder in sprite_dirs:
+        name = folder.name
+        meta_file = folder / "sheet.json"
+        if not meta_file.exists():
+            errors.append(f"Sprite '{name}': Missing sheet.json metadata.")
+            continue
+            
+        try:
+            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append(f"Sprite '{name}': Bad sheet.json metadata: {exc}")
+            continue
+            
+        fw = meta.get("frame_width")
+        fh = meta.get("frame_height")
+        if not fw or not fh:
+            errors.append(f"Sprite '{name}': Metadata frame size is not set.")
+            
+        sheet_png = folder / meta.get("image", "sheet.png")
+        if not sheet_png.exists():
+            errors.append(f"Sprite '{name}': Missing spritesheet image.")
+        else:
+            try:
+                from PIL import Image
+                with Image.open(sheet_png) as img:
+                    w, h = img.size
+                    cols = meta.get("columns", 1)
+                    rows = meta.get("rows", 1)
+                    if fw and fh:
+                        expected_w = fw * cols
+                        expected_h = fh * rows
+                        if w != expected_w or h != expected_h:
+                            errors.append(f"Sprite '{name}': sheet.png size ({w}x{h}) does not match metadata columns/rows expectation ({expected_w}x{expected_h}).")
+            except Exception as exc:
+                errors.append(f"Sprite '{name}': Failed to read sheet.png: {exc}")
+                
+        preview_gif = folder / "preview.gif"
+        if not preview_gif.exists():
+            warnings.append(f"Sprite '{name}': Missing preview.gif.")
+            
+        qa_json = folder / "qa_report.json"
+        quality_json = folder / "quality_report.json"
+        qa_file = qa_json if qa_json.exists() else (quality_json if quality_json.exists() else None)
+        if not qa_file:
+            warnings.append(f"Sprite '{name}': Missing QA report (run QA first).")
+        else:
+            try:
+                qa_data = json.loads(qa_file.read_text(encoding="utf-8"))
+                score = qa_data.get("score")
+                if score is not None:
+                    if float(score) < 75.0:
+                        errors.append(f"Sprite '{name}': Failed QA gate (score {score} is below 75).")
+            except Exception as exc:
+                errors.append(f"Sprite '{name}': Failed to read QA report: {exc}")
+                
+        godot_files = list(folder.glob("*.gd")) + list(folder.glob("godot_export/*.gd")) + list(folder.glob("*.tscn"))
+        unity_files = list(folder.glob("*.cs")) + list(folder.glob("unity_export/*.cs"))
+        if not godot_files and not unity_files:
+            warnings.append(f"Sprite '{name}': Missing Godot or Unity engine exports.")
+            
+    sizes = set()
+    for folder in sprite_dirs:
+        meta_file = folder / "sheet.json"
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                fw = meta.get("frame_width")
+                fh = meta.get("frame_height")
+                if fw and fh:
+                    sizes.add((fw, fh))
+            except Exception:
+                pass
+    if len(sizes) > 1:
+        warnings.append(f"Inconsistent frame sizes across sprites in this release: {list(sizes)}")
+        
+    return {
+        "ok": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings
+    }
+
+
 def cmd_release(args: argparse.Namespace) -> None:
     sprites = selected_sprite_dirs(args)
     if not sprites:
         raise SystemExit("No sprite outputs found. Pass --sprite-dir, --root, or --project.")
+        
+    # Run Quality Gates check
+    gate = check_release_quality_gates(sprites)
+    for err in gate["errors"]:
+        print(f"ERROR (Quality Gate): {err}", file=sys.stderr)
+    for warn in gate["warnings"]:
+        print(f"WARNING (Quality Gate): {warn}", file=sys.stderr)
+        
+    if not gate["ok"] and getattr(args, "strict", False):
+        raise SystemExit("Release build blocked by quality gate errors under strict mode.")
+        
     name = safe_name(args.name or (Path(args.project).stem if args.project else "spriteforge_release"))
     created = dt.datetime.now().isoformat(timespec="seconds")
     outroot = Path(args.output or (RELEASES / f"{name}_{time.strftime('%Y%m%d_%H%M%S')}"))
@@ -498,6 +595,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--output", default=None)
     s.add_argument("--zip", action="store_true")
     s.add_argument("--force", action="store_true")
+    s.add_argument("--strict", action="store_true")
     s.set_defaults(func=cmd_release)
 
     s = sub.add_parser("latest", help="Print/open latest sprite output")

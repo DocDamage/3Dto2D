@@ -4,26 +4,44 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, Union
 import numpy as np
 from PIL import Image, ImageChops, ImageFilter
+try:
+    import cv2  # type: ignore
+except Exception:  # pragma: no cover - optional acceleration
+    cv2 = None
 
 class SpriteService:
     @staticmethod
     def guess_key_color_from_corners(img: Image.Image) -> Tuple[int, int, int]:
         arr = np.asarray(img.convert("RGBA"))
         h, w, _ = arr.shape
-        # Sample corners
-        corners = [
-            arr[0, 0, :3],
-            arr[0, w - 1, :3],
-            arr[h - 1, 0, :3],
-            arr[h - 1, w - 1, :3]
-        ]
-        pixels = np.array(corners)
-        rgb = np.median(pixels, axis=0)
+        band = max(1, min(24, h // 8, w // 8))
+        border = np.concatenate(
+            [
+                arr[:band, :, :3].reshape(-1, 3),
+                arr[h - band :, :, :3].reshape(-1, 3),
+                arr[:, :band, :3].reshape(-1, 3),
+                arr[:, w - band :, :3].reshape(-1, 3),
+            ],
+            axis=0,
+        )
+
+        rgb_float = border.astype(np.float32)
+        saturation = rgb_float.max(axis=1) - rgb_float.min(axis=1)
+        brightness = rgb_float.max(axis=1)
+        saturated = border[(saturation >= 35) & (brightness >= 50)]
+        pixels = saturated if len(saturated) >= max(16, len(border) // 20) else border
+
+        quantized = (pixels // 16).astype(np.int16)
+        bins, counts = np.unique(quantized, axis=0, return_counts=True)
+        dominant_bin = bins[int(np.argmax(counts))]
+        dominant_pixels = pixels[np.all(quantized == dominant_bin, axis=1)]
+        rgb = np.median(dominant_pixels, axis=0)
         return tuple(int(round(x)) for x in rgb)  # type: ignore
 
     @staticmethod
     def apply_chroma_key(img: Image.Image, key_color: Union[Tuple[int, int, int], str], tolerance: float, feather: float) -> Image.Image:
         img = img.convert("RGBA")
+        auto_key = key_color == "auto"
         if key_color == "auto":
             rgb = SpriteService.guess_key_color_from_corners(img)
         else:
@@ -35,13 +53,103 @@ class SpriteService:
 
         tol = float(tolerance)
         feather = max(0.0, float(feather))
+        if auto_key:
+            rgb_sum = np.maximum(arr[:, :, :3].sum(axis=2, keepdims=True), 1.0)
+            key_sum = max(float(np.sum(rgb)), 1.0)
+            chroma_dist = np.linalg.norm((arr[:, :, :3] / rgb_sum) - (color / key_sum), axis=2) * 255.0
+            dist = np.minimum(dist, chroma_dist * 1.8)
+
         if feather <= 0:
             alpha_factor = (dist > tol).astype(np.float32)
         else:
             alpha_factor = np.clip((dist - tol) / feather, 0.0, 1.0)
 
+        if auto_key:
+            background = SpriteService._border_connected_background_mask(arr[:, :, :3])
+            alpha_factor[background] = 0.0
+            dark_border = SpriteService._border_connected_dark_mask(arr[:, :, :3])
+            alpha_factor[dark_border] = 0.0
+
         arr[:, :, 3] = arr[:, :, 3] * alpha_factor
         return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), mode="RGBA")
+
+    @staticmethod
+    def _border_connected_background_mask(rgb: np.ndarray, tolerance: int = 24) -> np.ndarray:
+        data = np.clip(rgb, 0, 255).astype(np.uint8)
+        h, w = data.shape[:2]
+        if cv2 is not None:
+            work = data.copy()
+            mask = np.zeros((h + 2, w + 2), dtype=np.uint8)
+            flags = 4 | (255 << 8)
+            diff = (tolerance, tolerance, tolerance)
+            for x in range(w):
+                if mask[1, x + 1] == 0:
+                    cv2.floodFill(work, mask, (x, 0), (255, 0, 255), diff, diff, flags)
+                if mask[h, x + 1] == 0:
+                    cv2.floodFill(work, mask, (x, h - 1), (255, 0, 255), diff, diff, flags)
+            for y in range(h):
+                if mask[y + 1, 1] == 0:
+                    cv2.floodFill(work, mask, (0, y), (255, 0, 255), diff, diff, flags)
+                if mask[y + 1, w] == 0:
+                    cv2.floodFill(work, mask, (w - 1, y), (255, 0, 255), diff, diff, flags)
+            return mask[1:-1, 1:-1] != 0
+
+        seen = np.zeros((h, w), dtype=bool)
+        stack = []
+        for x in range(w):
+            stack.append((0, x))
+            stack.append((h - 1, x))
+        for y in range(h):
+            stack.append((y, 0))
+            stack.append((y, w - 1))
+
+        while stack:
+            y, x = stack.pop()
+            if seen[y, x]:
+                continue
+            seen[y, x] = True
+            color = data[y, x].astype(np.int16)
+            for yy, xx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if yy < 0 or yy >= h or xx < 0 or xx >= w or seen[yy, xx]:
+                    continue
+                if np.linalg.norm(data[yy, xx].astype(np.int16) - color) <= tolerance:
+                    stack.append((yy, xx))
+        return seen
+
+    @staticmethod
+    def _border_connected_dark_mask(rgb: np.ndarray) -> np.ndarray:
+        max_channel = rgb.max(axis=2)
+        saturation = rgb.max(axis=2) - rgb.min(axis=2)
+        dark = (max_channel <= 38) & (saturation <= 28)
+        h, w = dark.shape
+        seen = np.zeros((h, w), dtype=bool)
+        stack = []
+
+        for x in range(w):
+            if dark[0, x]:
+                stack.append((0, x))
+            if dark[h - 1, x]:
+                stack.append((h - 1, x))
+        for y in range(h):
+            if dark[y, 0]:
+                stack.append((y, 0))
+            if dark[y, w - 1]:
+                stack.append((y, w - 1))
+
+        while stack:
+            y, x = stack.pop()
+            if seen[y, x] or not dark[y, x]:
+                continue
+            seen[y, x] = True
+            if y > 0:
+                stack.append((y - 1, x))
+            if y + 1 < h:
+                stack.append((y + 1, x))
+            if x > 0:
+                stack.append((y, x - 1))
+            if x + 1 < w:
+                stack.append((y, x + 1))
+        return seen
 
     @staticmethod
     def alpha_bbox(img: Image.Image, threshold: int = 8) -> Optional[Tuple[int, int, int, int]]:

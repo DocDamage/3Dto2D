@@ -127,7 +127,8 @@ def alpha_coverage(img: Image.Image, threshold: int = 8) -> float:
     return float((arr[:, :, 3] > threshold).sum() / (arr.shape[0] * arr.shape[1]))
 
 
-def analyze_frames(frames: Sequence[FrameRecord], meta: Dict[str, Any], duplicate_threshold: float = 1.25) -> Dict[str, Any]:
+def analyze_frames(frames: Sequence[FrameRecord], meta: Dict[str, Any], duplicate_threshold: float = 1.25,
+                   loop_rmse_threshold: float = 20.0, foot_drift_threshold: float = 3.0, center_drift_threshold: float = 8.0) -> Dict[str, Any]:
     rows: List[Dict[str, Any]] = []
     prev: Optional[FrameRecord] = None
     diffs: List[float] = []
@@ -204,15 +205,15 @@ def analyze_frames(frames: Sequence[FrameRecord], meta: Dict[str, Any], duplicat
         issue("error", "blank_frames", f"Blank/fully transparent frames: {metrics['blank_frames']}")
     if metrics["duplicate_frames_after_previous"]:
         issue("warn", "duplicates", f"Frames nearly identical to previous: {metrics['duplicate_frames_after_previous']}")
-    if metrics["foot_y_stdev_px"] > 3.0:
+    if metrics["foot_y_stdev_px"] > foot_drift_threshold:
         issue("warn", "foot_drift", f"Foot/ground anchor drifts by {metrics['foot_y_stdev_px']:.1f}px stdev; use bottom-center anchoring or autofix.")
-    if metrics["center_x_stdev_px"] > 8.0:
+    if metrics["center_x_stdev_px"] > center_drift_threshold:
         issue("warn", "center_jitter", f"Horizontal center jitters by {metrics['center_x_stdev_px']:.1f}px stdev.")
     if metrics["area_cv"] > 0.20:
         issue("warn", "silhouette_popping", f"Silhouette area varies {metrics['area_cv']*100:.1f}%; likely WAN identity/scale popping.")
     if metrics["brightness_stdev"] > 18.0:
         issue("warn", "flicker", f"Brightness varies by {metrics['brightness_stdev']:.1f}; use --deflicker or stronger prompt lighting lock.")
-    if metrics["loop_seam_rmse"] > max(20.0, metrics["consecutive_rmse_median"] * 2.25):
+    if metrics["loop_seam_rmse"] > max(loop_rmse_threshold, metrics["consecutive_rmse_median"] * 2.25):
         issue("warn", "loop_seam", f"First/last frame seam is high ({metrics['loop_seam_rmse']:.1f}); loop may pop.")
     if metrics["mean_alpha_coverage"] < 0.03:
         issue("warn", "tiny_subject", "Subject occupies very little of the cell; reduce padding/cell size or tighten crop.")
@@ -406,7 +407,16 @@ def pack_frames(frames: Sequence[FrameRecord], out_dir: Path, fps: float, animat
 def cmd_report(args: argparse.Namespace) -> None:
     src = Path(args.input).resolve()
     frames, meta = load_input(src)
-    report = analyze_frames(frames, meta, duplicate_threshold=args.duplicate_threshold)
+    loop_th = getattr(args, "loop_rmse_threshold", 20.0)
+    foot_th = getattr(args, "foot_drift_threshold", 3.0)
+    center_th = getattr(args, "center_drift_threshold", 8.0)
+    report = analyze_frames(
+        frames, meta,
+        duplicate_threshold=args.duplicate_threshold,
+        loop_rmse_threshold=loop_th,
+        foot_drift_threshold=foot_th,
+        center_drift_threshold=center_th
+    )
     out_dir = Path(args.output).resolve() if args.output else (src / "qa" if src.is_dir() else ROOT / "output" / "qa" / src.stem)
     ensure_dir(out_dir)
     (out_dir / "qa_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -462,6 +472,9 @@ def cmd_autofix(args: argparse.Namespace) -> None:
         fixed = new_fixed
     if args.deflicker:
         fixed = deflicker_frames(fixed)
+    if getattr(args, "sharpen", False):
+        from PIL import ImageFilter
+        fixed = [FrameRecord(fr.index, fr.image.filter(ImageFilter.SHARPEN), fr.name) for fr in fixed]
     if args.solidify > 0:
         fixed = [FrameRecord(i, solidify_transparent_rgb(fr.image, args.solidify), fr.name) for i, fr in enumerate(fixed)]
     if getattr(args, "blend_loop_frames", 0) > 0:
@@ -472,7 +485,7 @@ def cmd_autofix(args: argparse.Namespace) -> None:
     report = analyze_frames(new_frames, new_meta, duplicate_threshold=args.duplicate_threshold)
     ensure_dir(out_dir / "qa")
     (out_dir / "qa" / "qa_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    make_contact_sheet(new_frames, out_dir / "qa" / "qa_contact_sheet.jpg", thumb=96)
+    make_contact_sheet(new_frames, out_dir / "qa" / "qa_contact_sheet.jpg", thumb=args.thumb)
     write_html_report(report, out_dir / "qa" / "qa_report.html")
     print(f"Fixed sprite output: {out_dir}")
     print(f"QA report: {out_dir / 'qa' / 'qa_report.html'}")
@@ -515,6 +528,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--output", default=None)
     s.add_argument("--duplicate-threshold", type=float, default=1.25)
     s.add_argument("--thumb", type=int, default=96)
+    s.add_argument("--loop-rmse-threshold", type=float, default=20.0)
+    s.add_argument("--foot-drift-threshold", type=float, default=3.0)
+    s.add_argument("--center-drift-threshold", type=float, default=8.0)
     s.set_defaults(func=cmd_report)
 
     s = sub.add_parser("autofix", help="Make a stabilized fixed copy of a sprite folder")
@@ -529,6 +545,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--deflicker", action="store_true")
     s.add_argument("--solidify", type=int, default=2)
     s.add_argument("--blend-loop-frames", type=int, default=0)
+    s.add_argument("--sharpen", action="store_true", help="Sharpen sprite edges")
     s.set_defaults(func=cmd_autofix)
 
 

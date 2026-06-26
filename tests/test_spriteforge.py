@@ -35,6 +35,20 @@ def test_chroma_keying():
     arr_diff = np.asarray(keyed_diff)
     assert np.all(arr_diff[:, :, 3] == 255)
 
+def test_auto_chroma_key_ignores_letterbox_bars():
+    img = Image.new("RGBA", (120, 80), (0, 0, 0, 255))
+    pixels = np.asarray(img).copy()
+    pixels[20:80, :] = [0, 220, 20, 255]
+    pixels[36:58, 48:72] = [210, 40, 180, 255]
+    img = Image.fromarray(pixels, mode="RGBA")
+
+    keyed = SpriteService.apply_chroma_key(img, "auto", tolerance=45, feather=0)
+    arr = np.asarray(keyed)
+
+    assert arr[5, 10, 3] == 0
+    assert arr[30, 10, 3] == 0
+    assert arr[45, 60, 3] == 255
+
 def test_alpha_bbox():
     # Transparent image
     img = Image.new("RGBA", (100, 100), (0, 0, 0, 0))

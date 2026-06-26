@@ -57,12 +57,13 @@ def godot_res_path(project: Optional[Path], dest: Path, res_path: Optional[str],
     return f"res://assets/sprites/{sprite_name}/{filename}"
 
 
-def godot_sprite2d_script(fps: float, frame_count: int, cols: int, rows: int) -> str:
+def godot_sprite2d_script(fps: float, frame_count: int, cols: int, rows: int, loop: bool = True) -> str:
+    loop_str = "true" if loop else "false"
     return f'''extends Sprite2D
 
 @export var fps: float = {fps}
 @export var frame_count: int = {frame_count}
-@export var loop: bool = true
+@export var loop: bool = {loop_str}
 
 var _accum: float = 0.0
 
@@ -85,11 +86,12 @@ func _process(delta: float) -> void:
 '''
 
 
-def godot_animatedsprite2d_script(tex_path: str, fps: float, frame_count: int, frame_width: int, frame_height: int, cols: int, rows: int) -> str:
+def godot_animatedsprite2d_script(tex_path: str, fps: float, frame_count: int, frame_width: int, frame_height: int, cols: int, rows: int, loop: bool = True, anim_name: str = "default") -> str:
+    loop_str = "true" if loop else "false"
     return f'''extends AnimatedSprite2D
 
 @export var fps: float = {fps}
-@export var loop: bool = true
+@export var loop: bool = {loop_str}
 
 const FRAME_COUNT := {frame_count}
 const FRAME_WIDTH := {frame_width}
@@ -100,7 +102,7 @@ const SHEET := preload("{tex_path}")
 
 func _ready() -> void:
     var sf := SpriteFrames.new()
-    var anim := &"default"
+    var anim := &"{anim_name}"
     if not sf.has_animation(anim):
         sf.add_animation(anim)
     sf.set_animation_speed(anim, fps)
@@ -118,7 +120,15 @@ func _ready() -> void:
 '''
 
 
-def export_godot(sprite_dir: Path, output: Optional[Path], project: Optional[Path], name: Optional[str], res_path: Optional[str], mode: str) -> Path:
+def export_godot(
+    sprite_dir: Path, output: Optional[Path], project: Optional[Path], name: Optional[str], res_path: Optional[str], mode: str,
+    naming_convention: str = "default",
+    pivot_mode: str = "bottom-center",
+    ppu: int = 100,
+    filter_mode: str = "nearest",
+    loop_flag: bool = True,
+    clip_name: Optional[str] = None
+) -> Path:
     meta = load_meta(sprite_dir)
     sprite_name = safe_name(name or meta.get("animation") or sprite_dir.name)
     dest = output if output else (project / "assets" / "sprites" / sprite_name if project else sprite_dir / "godot_export")
@@ -136,14 +146,41 @@ def export_godot(sprite_dir: Path, output: Optional[Path], project: Optional[Pat
     folder_path = tex_path.rsplit("/", 1)[0]
     script_res_path = f"{folder_path}/{script_name}"
 
-    if mode == "animatedsprite2d":
-        script = godot_animatedsprite2d_script(tex_path, fps, frame_count, fw, fh, cols, rows)
-        node_type = "AnimatedSprite2D"
-        node_extra = f"autoplay = &\"default\"\n"
+    # Determine animation clip name
+    action_str = meta.get("animation") or sprite_dir.name
+    direction_str = meta.get("direction") or "right"
+    char_str = name or "hero"
+    if clip_name:
+        anim_name = clip_name.replace("[action]", action_str).replace("[direction]", direction_str).replace("[character]", char_str)
+    elif naming_convention == "prefix":
+        anim_name = f"{char_str}_{action_str}_{direction_str}"
+    elif naming_convention == "camel":
+        parts = [p.title() for p in f"{action_str}_{direction_str}".split("_") if p]
+        anim_name = "".join(parts)
     else:
-        script = godot_sprite2d_script(fps, frame_count, cols, rows)
+        anim_name = f"{action_str}_{direction_str}"
+    anim_name = safe_name(anim_name)
+
+    if mode == "animatedsprite2d":
+        script = godot_animatedsprite2d_script(tex_path, fps, frame_count, fw, fh, cols, rows, loop_flag, anim_name)
+        node_type = "AnimatedSprite2D"
+        node_extra = f"autoplay = &\"{anim_name}\"\n"
+    else:
+        script = godot_sprite2d_script(fps, frame_count, cols, rows, loop_flag)
         node_type = "Sprite2D"
-        node_extra = f"texture = ExtResource(\"1_texture\")\nhframes = {cols}\nvframes = {rows}\ncentered = true\nfps = {fps}\nframe_count = {frame_count}\nloop = true\n"
+        node_extra = f"texture = ExtResource(\"1_texture\")\nhframes = {cols}\nvframes = {rows}\n"
+        if pivot_mode == "bottom-center":
+            node_extra += f"centered = true\noffset = Vector2(0, {-fh // 2})\n"
+        elif pivot_mode == "center":
+            node_extra += f"centered = true\noffset = Vector2(0, 0)\n"
+        else:
+            node_extra += f"centered = false\n"
+        loop_val = "true" if loop_flag else "false"
+        node_extra += f"fps = {fps}\nframe_count = {frame_count}\nloop = {loop_val}\n"
+
+    # Add texture filter setting for Godot 4
+    filter_val = "1" if filter_mode == "nearest" else "2"
+    node_extra += f"texture_filter = {filter_val}\n"
 
     (dest / script_name).write_text(script, encoding="utf-8")
 
@@ -204,7 +241,8 @@ cell = {fw}x{fh}
     return dest
 
 
-def unity_runtime_script(class_name: str, fps: float, frame_count: int) -> str:
+def unity_runtime_script(class_name: str, fps: float, frame_count: int, loop: bool = True) -> str:
+    loop_str = "true" if loop else "false"
     return f'''using UnityEngine;
 
 [RequireComponent(typeof(SpriteRenderer))]
@@ -212,7 +250,7 @@ public class {class_name} : MonoBehaviour
 {{
     public Sprite[] frames;
     public float fps = {fps}f;
-    public bool loop = true;
+    public bool loop = {loop_str};
 
     private SpriteRenderer spriteRenderer;
     private float accum;
@@ -243,8 +281,14 @@ public class {class_name} : MonoBehaviour
 '''
 
 
-def unity_editor_importer() -> str:
-    return r'''#if UNITY_EDITOR
+def unity_editor_importer(ppu: int = 100, filter_mode: str = "nearest", pivot_mode: str = "bottom-center", loop_flag: bool = True) -> str:
+    filter_val = "FilterMode.Point" if filter_mode == "nearest" else "FilterMode.Bilinear"
+    pivot_x = 0.5
+    pivot_y = 0.5 if pivot_mode == "center" else 0.0
+    alignment_val = "(int)SpriteAlignment.Center" if pivot_mode == "center" else "(int)SpriteAlignment.Custom"
+    loop_bool_str = "true" if loop_flag else "false"
+    
+    return f'''#if UNITY_EDITOR
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -252,10 +296,10 @@ using UnityEditor;
 using UnityEngine;
 
 public static class SpriteForgeSheetImporter
-{
+{{
     [MenuItem("Tools/SpriteForge/Slice Selected SpriteForge Sheet")]
     public static void SliceSelected()
-    {
+    {{
         var texturePath = SelectedTexturePath();
         if (string.IsNullOrEmpty(texturePath)) return;
         var meta = LoadMeta(texturePath);
@@ -263,30 +307,31 @@ public static class SpriteForgeSheetImporter
 
         var importer = AssetImporter.GetAtPath(texturePath) as TextureImporter;
         if (importer == null)
-        {
+        {{
             Debug.LogError("Selected asset is not a TextureImporter texture.");
             return;
-        }
+        }}
 
         importer.textureType = TextureImporterType.Sprite;
         importer.spriteImportMode = SpriteImportMode.Multiple;
+        importer.spritePixelsPerUnit = {ppu};
         importer.mipmapEnabled = false;
-        importer.filterMode = FilterMode.Point;
+        importer.filterMode = {filter_val};
         importer.textureCompression = TextureImporterCompression.Uncompressed;
 
 #pragma warning disable 0618
         var sprites = new List<SpriteMetaData>();
         for (int i = 0; i < meta.frame_count; i++)
-        {
+        {{
             int col = i % meta.columns;
             int row = i / meta.columns;
             var smd = new SpriteMetaData();
             smd.name = meta.animation + "_" + i.ToString("0000");
             smd.rect = new Rect(col * meta.frame_width, (meta.rows - row - 1) * meta.frame_height, meta.frame_width, meta.frame_height);
-            smd.pivot = new Vector2(0.5f, 0.0f);
-            smd.alignment = (int)SpriteAlignment.Custom;
+            smd.pivot = new Vector2({pivot_x}f, {pivot_y}f);
+            smd.alignment = {alignment_val};
             sprites.Add(smd);
-        }
+        }}
         importer.spritesheet = sprites.ToArray();
 #pragma warning restore 0618
 
@@ -294,11 +339,11 @@ public static class SpriteForgeSheetImporter
         importer.SaveAndReimport();
         AssetDatabase.Refresh();
         Debug.Log("SpriteForge sheet sliced: " + texturePath);
-    }
+    }}
 
     [MenuItem("Tools/SpriteForge/Create Animation Clip From Selected Sheet")]
     public static void CreateAnimationClipFromSelectedSheet()
-    {
+    {{
         var texturePath = SelectedTexturePath();
         if (string.IsNullOrEmpty(texturePath)) return;
         var meta = LoadMeta(texturePath);
@@ -309,27 +354,27 @@ public static class SpriteForgeSheetImporter
             .OrderBy(s => s.name)
             .ToArray();
         if (sprites.Length == 0)
-        {
+        {{
             Debug.LogError("No sliced sprites found. Run Slice Selected SpriteForge Sheet first.");
             return;
-        }
+        }}
 
         var clip = new AnimationClip();
         clip.frameRate = Mathf.Max(1f, meta.fps);
         var binding = EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite");
         var keyframes = new ObjectReferenceKeyframe[sprites.Length];
         for (int i = 0; i < sprites.Length; i++)
-        {
+        {{
             keyframes[i] = new ObjectReferenceKeyframe
-            {
+            {{
                 time = i / clip.frameRate,
                 value = sprites[i]
-            };
-        }
+            }};
+        }}
         AnimationUtility.SetObjectReferenceCurve(clip, binding, keyframes);
 
         var settings = AnimationUtility.GetAnimationClipSettings(clip);
-        settings.loopTime = true;
+        settings.loopTime = {loop_bool_str};
         AnimationUtility.SetAnimationClipSettings(clip, settings);
 
         var clipPath = Path.Combine(Path.GetDirectoryName(texturePath), meta.animation + ".anim").Replace("\\", "/");
@@ -337,34 +382,34 @@ public static class SpriteForgeSheetImporter
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("Created SpriteForge animation clip: " + clipPath);
-    }
+    }}
 
     private static string SelectedTexturePath()
-    {
+    {{
         var obj = Selection.activeObject;
         var texturePath = AssetDatabase.GetAssetPath(obj);
         if (string.IsNullOrEmpty(texturePath) || !texturePath.EndsWith(".png"))
-        {
+        {{
             Debug.LogError("Select a SpriteForge sheet.png texture first.");
             return null;
-        }
+        }}
         return texturePath;
-    }
+    }}
 
     private static SpriteForgeMeta LoadMeta(string texturePath)
-    {
+    {{
         var jsonPath = Path.Combine(Path.GetDirectoryName(texturePath), "sheet.json");
         if (!File.Exists(jsonPath))
-        {
+        {{
             Debug.LogError("Could not find sheet.json next to the selected sheet.png.");
             return null;
-        }
+        }}
         return JsonUtility.FromJson<SpriteForgeMeta>(File.ReadAllText(jsonPath));
-    }
+    }}
 
     [System.Serializable]
     public class SpriteForgeMeta
-    {
+    {{
         public string animation;
         public int frame_width;
         public int frame_height;
@@ -372,23 +417,31 @@ public static class SpriteForgeSheetImporter
         public float fps;
         public int columns;
         public int rows;
-    }
-}
+    }}
+}}
 #endif
 '''
 
 
-def export_unity(sprite_dir: Path, output: Optional[Path], project: Optional[Path], name: Optional[str]) -> Path:
+def export_unity(
+    sprite_dir: Path, output: Optional[Path], project: Optional[Path], name: Optional[str],
+    naming_convention: str = "default",
+    pivot_mode: str = "bottom-center",
+    ppu: int = 100,
+    filter_mode: str = "nearest",
+    loop_flag: bool = True,
+    clip_name: Optional[str] = None
+) -> Path:
     meta = load_meta(sprite_dir)
     sprite_name = safe_name(name or meta.get("animation") or sprite_dir.name)
     dest = output if output else (project / "Assets" / "SpriteForge" / sprite_name if project else sprite_dir / "unity_export")
     copy_base_assets(sprite_dir, dest, meta)
 
     runtime_class = safe_name(sprite_name.title().replace("_", "")) + "Animator"
-    (dest / f"{runtime_class}.cs").write_text(unity_runtime_script(runtime_class, float(meta.get("fps", 12)), int(meta.get("frame_count", 1))), encoding="utf-8")
+    (dest / f"{runtime_class}.cs").write_text(unity_runtime_script(runtime_class, float(meta.get("fps", 12)), int(meta.get("frame_count", 1)), loop_flag), encoding="utf-8")
     editor_dir = dest / "Editor"
     editor_dir.mkdir(parents=True, exist_ok=True)
-    (editor_dir / "SpriteForgeSheetImporter.cs").write_text(unity_editor_importer(), encoding="utf-8")
+    (editor_dir / "SpriteForgeSheetImporter.cs").write_text(unity_editor_importer(ppu, filter_mode, pivot_mode, loop_flag), encoding="utf-8")
 
     notes = f'''# Unity import notes
 
@@ -425,10 +478,28 @@ def cmd_export(args: argparse.Namespace) -> None:
     sprite_dir = Path(args.sprite_dir).resolve()
     output = Path(args.output).resolve() if args.output else None
     project = Path(args.project).resolve() if args.project else None
+    loop_bool = getattr(args, "loop_flag", "true").lower() == "true"
+    
     if args.engine == "godot":
-        dest = export_godot(sprite_dir, output, project, args.name, args.res_path, args.godot_mode)
+        dest = export_godot(
+            sprite_dir, output, project, args.name, args.res_path, args.godot_mode,
+            naming_convention=getattr(args, "naming_convention", "default"),
+            pivot_mode=getattr(args, "pivot_mode", "bottom-center"),
+            ppu=getattr(args, "ppu", 100),
+            filter_mode=getattr(args, "filter_mode", "nearest"),
+            loop_flag=loop_bool,
+            clip_name=getattr(args, "clip_name", None)
+        )
     else:
-        dest = export_unity(sprite_dir, output, project, args.name)
+        dest = export_unity(
+            sprite_dir, output, project, args.name,
+            naming_convention=getattr(args, "naming_convention", "default"),
+            pivot_mode=getattr(args, "pivot_mode", "bottom-center"),
+            ppu=getattr(args, "ppu", 100),
+            filter_mode=getattr(args, "filter_mode", "nearest"),
+            loop_flag=loop_bool,
+            clip_name=getattr(args, "clip_name", None)
+        )
     print(f"Exported {args.engine} helper files: {dest}")
 
 
@@ -618,6 +689,13 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--name", default=None)
     e.add_argument("--res-path", default=None, help="Godot res:// folder path, for example res://assets/sprites/hero_walk")
     e.add_argument("--godot-mode", choices=["sprite2d", "animatedsprite2d"], default="animatedsprite2d")
+    e.add_argument("--naming-convention", default="default")
+    e.add_argument("--pivot-mode", default="bottom-center")
+    e.add_argument("--ppu", type=int, default=100)
+    e.add_argument("--filter-mode", default="nearest")
+    e.add_argument("--loop-flag", default="true")
+    e.add_argument("--import-path", default=None)
+    e.add_argument("--clip-name", default=None)
     e.set_defaults(func=cmd_export)
     v = s.add_parser("validate", help="Validate export files for correctness")
     v.add_argument("--sprite-dir", required=True, help="Sprite output folder")

@@ -195,6 +195,8 @@ def extract_video_frames(
 
             if frames:
                 meta = {
+                    "source_path": str(input_path),
+                    "source_name": input_path.name,
                     "source_fps": src_fps,
                     "source_frame_count": frame_count,
                     "source_width": width,
@@ -260,6 +262,8 @@ def extract_video_frames(
             raise RuntimeError("imageio/ffmpeg extracted 0 frames")
 
         meta = {
+            "source_path": str(input_path),
+            "source_name": input_path.name,
             "source_fps": src_fps,
             "source_frame_count": frame_count,
             "source_width": width,

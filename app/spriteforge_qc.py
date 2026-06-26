@@ -178,6 +178,15 @@ def analyze_frames(frames: Sequence[FrameRecord], meta: Dict[str, Any], duplicat
     means = np.array([r["mean_rgb"] for r in rows], dtype=np.float32) if rows else np.zeros((0, 3), dtype=np.float32)
 
     loop_rmse = rmse(frames[0].image, frames[-1].image) if len(frames) > 1 else 0.0
+    noise_count = 0
+    total_pixels = 0
+    for fr in frames:
+        arr = np.asarray(fr.image)
+        if arr.shape[2] == 4:
+            alpha = arr[:, :, 3]
+            noise_count += ((alpha > 0) & (alpha < 16)).sum()
+            total_pixels += alpha.size
+    alpha_cleanliness_val = float(noise_count / max(1, total_pixels))
     brightness = means.mean(axis=1) if len(means) else np.array([])
 
     metrics = {
@@ -195,6 +204,7 @@ def analyze_frames(frames: Sequence[FrameRecord], meta: Dict[str, Any], duplicat
         "area_cv": float(np.std(area) / max(1e-6, np.mean(area))) if area else 0.0,
         "brightness_stdev": float(np.std(brightness)) if len(brightness) else 0.0,
         "mean_alpha_coverage": float(np.mean(coverage)) if coverage else 0.0,
+        "alpha_cleanliness": alpha_cleanliness_val,
     }
 
     issues: List[Dict[str, str]] = []

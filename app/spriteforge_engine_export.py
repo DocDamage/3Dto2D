@@ -518,7 +518,8 @@ def validate_export(
     sprite_dir: Path,
     engine: Optional[str] = None,
     release_zip: Optional[Path] = None,
-) -> bool:
+    return_dict: bool = False,
+) -> bool | Dict[str, Any]:
     """Validate Godot/Unity export files for a sprite output directory.
 
     Returns True if all checks pass, False otherwise.
@@ -534,6 +535,8 @@ def validate_export(
     results.append(r)
     if not r["ok"]:
         all_ok = False
+        if return_dict:
+            return {"ok": False, "results": results}
         print(f"\nResult: FAIL ({sum(1 for r in results if r['ok'])}/{len(results)} passed)")
         return False
 
@@ -544,6 +547,8 @@ def validate_export(
         r = _check("sheet.json parseable", False, str(exc))
         all_ok = False
         results.append(r)
+        if return_dict:
+            return {"ok": False, "results": results}
         print(f"\nResult: FAIL ({sum(1 for r in results if r['ok'])}/{len(results)} passed)")
         return False
     results.append(r)
@@ -606,27 +611,50 @@ def validate_export(
         if not r["ok"]:
             all_ok = False
 
-        tres_files = list(sprite_dir.glob("*.tres")) + list(sprite_dir.glob("godot_export/*.tres"))
-        r = _check("Godot .tres resource present", bool(tres_files),
-                   f"found: {[f.name for f in tres_files]}" if tres_files else "no .tres file found")
+        tscn_files = list(sprite_dir.glob("*.tscn")) + list(sprite_dir.glob("godot_export/*.tscn"))
+        r = _check("Godot .tscn scene present", bool(tscn_files),
+                   f"found: {[f.name for f in tscn_files]}" if tscn_files else "no .tscn scene found")
         results.append(r)
         if not r["ok"]:
             all_ok = False
 
-        # Check hframes/vframes in .tres
-        if tres_files:
-            tres_text = tres_files[0].read_text(encoding="utf-8", errors="replace")
+        if tscn_files:
+            tscn_text = tscn_files[0].read_text(encoding="utf-8", errors="replace")
+            # 5a. Check columns/rows in tscn
             expected_hf = str(meta.get("columns", 1))
             expected_vf = str(meta.get("rows", 1))
-            hf_ok = f"hframes = {expected_hf}" in tres_text
-            vf_ok = f"vframes = {expected_vf}" in tres_text
-            r = _check("Godot .tres hframes matches metadata", hf_ok, f"expected hframes={expected_hf}")
+            hf_ok = f"hframes = {expected_hf}" in tscn_text
+            vf_ok = f"vframes = {expected_vf}" in tscn_text
+            r = _check("Godot scene hframes match columns", hf_ok, f"expected hframes={expected_hf}")
             results.append(r)
             if not hf_ok:
                 all_ok = False
-            r = _check("Godot .tres vframes matches metadata", vf_ok, f"expected vframes={expected_vf}")
+            r = _check("Godot scene vframes match rows", vf_ok, f"expected vframes={expected_vf}")
             results.append(r)
             if not vf_ok:
+                all_ok = False
+
+            # 5b. Validate Godot pivots/centered
+            has_centered = "centered = true" in tscn_text
+            has_offset = "offset = Vector2(" in tscn_text
+            pivot_ok = has_centered or has_offset or "centered = false" in tscn_text
+            r = _check("Godot pivot configuration present", pivot_ok)
+            results.append(r)
+            if not pivot_ok:
+                all_ok = False
+
+            # 5c. Validate Godot loop flags
+            has_loop = "loop = true" in tscn_text or "loop = false" in tscn_text or "autoplay = &" in tscn_text
+            r = _check("Godot animation loop config present", has_loop)
+            results.append(r)
+            if not has_loop:
+                all_ok = False
+
+            # 5d. Validate Godot filter mode
+            has_filter = "texture_filter = 1" in tscn_text or "texture_filter = 2" in tscn_text
+            r = _check("Godot texture filter mode set", has_filter)
+            results.append(r)
+            if not has_filter:
                 all_ok = False
 
     elif engine == "unity":
@@ -636,6 +664,27 @@ def validate_export(
         results.append(r)
         if not r["ok"]:
             all_ok = False
+
+        if cs_files:
+            cs_text = "".join(f.read_text(encoding="utf-8", errors="replace") for f in cs_files)
+            # Validate Unity pivots/PPU
+            has_ppu = "ppu" in cs_text.lower() or "pixelsperunit" in cs_text.lower() or "100" in cs_text
+            r = _check("Unity PPU configuration present", has_ppu)
+            results.append(r)
+            if not has_ppu:
+                all_ok = False
+
+            has_filter = "filtermode" in cs_text.lower() or "nearest" in cs_text.lower() or "point" in cs_text.lower()
+            r = _check("Unity texture filter mode present", has_filter)
+            results.append(r)
+            if not has_filter:
+                all_ok = False
+
+            has_pivot = "spritealignment" in cs_text.lower() or "pivot" in cs_text.lower() or "custom" in cs_text.lower()
+            r = _check("Unity pivot configuration present", has_pivot)
+            results.append(r)
+            if not has_pivot:
+                all_ok = False
 
     # --- 6. Release zip checks ---
     if release_zip and Path(release_zip).exists():
@@ -666,6 +715,8 @@ def validate_export(
     total = len(results)
     status_str = "PASS" if all_ok else "FAIL"
     print(f"\nResult: {status_str} ({passed}/{total} checks passed)")
+    if return_dict:
+        return {"ok": all_ok, "results": results}
     return all_ok
 
 

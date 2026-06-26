@@ -201,6 +201,13 @@ class ProjectService:
                         "hurt": 16,
                         "death": 40,
                     },
+                    "quality_gates": {
+                        "max_foot_drift": 2.0,
+                        "max_flicker": 1.0,
+                        "loop_seam_threshold": 15.0,
+                        "required_frame_count": None,
+                        "alpha_cleanliness": 0.05
+                    }
                 }
             manifest.write_text(json.dumps(data, indent=2), encoding="utf-8")
             return ProjectService.set_active_project(str(manifest)) or ProjectService._summary(manifest, data)

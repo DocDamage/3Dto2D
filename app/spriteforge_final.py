@@ -368,6 +368,45 @@ def make_release_readme(name: str, sprites: List[Dict[str, Any]], created: str) 
     return "\n".join(lines) + "\n"
 
 
+def get_project_quality_gates(sprite_dir: Path) -> Dict[str, Any]:
+    # Look for spriteforge_project.json in parent directories
+    p = sprite_dir
+    for _ in range(4):
+        p = p.parent
+        proj_manifest = p / "spriteforge_project.json"
+        if proj_manifest.exists():
+            try:
+                data = json.loads(proj_manifest.read_text(encoding="utf-8"))
+                if "quality_gates" in data:
+                    return data["quality_gates"]
+            except Exception:
+                pass
+                
+    # Fallback to active project in config
+    try:
+        config_path = Path(__file__).resolve().parent / "config" / "spriteforge_config.json"
+        if config_path.exists():
+            config_data = json.loads(config_path.read_text(encoding="utf-8"))
+            active_p = config_data.get("active_project")
+            if active_p:
+                proj_path = (Path(__file__).resolve().parent / active_p).resolve()
+                if proj_path.exists():
+                    data = json.loads(proj_path.read_text(encoding="utf-8"))
+                    if "quality_gates" in data:
+                        return data["quality_gates"]
+    except Exception:
+        pass
+        
+    # Default gates
+    return {
+        "max_foot_drift": 2.0,
+        "max_flicker": 1.0,
+        "loop_seam_threshold": 15.0,
+        "required_frame_count": None,
+        "alpha_cleanliness": 0.05
+    }
+
+
 def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
     warnings = []
     errors = []
@@ -415,11 +454,57 @@ def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
         qa_json = folder / "qa_report.json"
         quality_json = folder / "quality_report.json"
         qa_file = qa_json if qa_json.exists() else (quality_json if quality_json.exists() else None)
+        
+        gates = get_project_quality_gates(folder)
+        
         if not qa_file:
             warnings.append(f"Sprite '{name}': Missing QA report (run QA first).")
         else:
             try:
+                import numpy as np
                 qa_data = json.loads(qa_file.read_text(encoding="utf-8"))
+                metrics = qa_data.get("metrics", {})
+                
+                # Check Quality Gates
+                drift = metrics.get("foot_y_stdev_px", 0.0)
+                max_drift = gates.get("max_foot_drift")
+                if max_drift is not None and drift > float(max_drift):
+                    errors.append(f"Sprite '{name}': Foot drift {drift:.2f}px exceeds gate threshold {max_drift}px.")
+                    
+                flicker = metrics.get("brightness_stdev", 0.0)
+                max_flicker = gates.get("max_flicker")
+                if max_flicker is not None and flicker > float(max_flicker):
+                    errors.append(f"Sprite '{name}': Flicker {flicker:.2f} exceeds gate threshold {max_flicker}.")
+                    
+                seam = metrics.get("loop_seam_rmse", 0.0)
+                max_seam = gates.get("loop_seam_threshold")
+                if max_seam is not None and seam > float(max_seam):
+                    errors.append(f"Sprite '{name}': Loop seam RMSE {seam:.2f} exceeds gate threshold {max_seam}.")
+                    
+                frames_cnt = metrics.get("frame_count")
+                req_frames = gates.get("required_frame_count")
+                if req_frames is not None and frames_cnt is not None and int(frames_cnt) != int(req_frames):
+                    errors.append(f"Sprite '{name}': Frame count {frames_cnt} does not match required gate {req_frames}.")
+                    
+                # Alpha cleanliness (semi-transparent pixel noise)
+                cleanliness = metrics.get("alpha_cleanliness")
+                if cleanliness is None:
+                    # calculate on the fly
+                    if sheet_png.exists():
+                        try:
+                            with Image.open(sheet_png) as img:
+                                arr = np.asarray(img.convert("RGBA"))
+                                alpha = arr[:, :, 3]
+                                cleanliness = float(((alpha > 0) & (alpha < 16)).sum() / max(1, alpha.size))
+                        except Exception:
+                            cleanliness = 0.0
+                    else:
+                        cleanliness = 0.0
+                
+                max_clean = gates.get("alpha_cleanliness")
+                if max_clean is not None and cleanliness > float(max_clean):
+                    errors.append(f"Sprite '{name}': Alpha noise ratio {cleanliness:.4f} exceeds cleanliness gate threshold {max_clean}.")
+                    
                 score = qa_data.get("score")
                 if score is not None:
                     if float(score) < 75.0:

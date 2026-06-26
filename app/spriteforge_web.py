@@ -121,6 +121,369 @@ def safe_name(value: str) -> str:
     return cleaned or "file"
 
 
+PROJECTS = ROOT / "projects"
+AB_RUNS_PATH = ROOT / "output" / "experiments" / "ab_runs.json"
+
+def _sprite_version_save(sprite_dir_str: str, label: str) -> Dict[str, Any]:
+    sprite_dir = _resolve_sprite_output_dir(sprite_dir_str)
+    versions_dir = sprite_dir / ".versions"
+    versions_dir.mkdir(exist_ok=True)
+    vfile = versions_dir / "versions.json"
+    data = load_json(vfile, {"versions": []})
+    
+    vid = f"v_{int(time.time())}"
+    v_subdir = versions_dir / vid
+    v_subdir.mkdir(exist_ok=True)
+    
+    # Copy files
+    for name in ["sheet.png", "sheet.json", "preview.gif", "report.html"]:
+        f = sprite_dir / name
+        if f.exists():
+            shutil.copy2(f, v_subdir / name)
+            
+    # Copy frames_processed
+    frames_dir = sprite_dir / "frames_processed"
+    if frames_dir.exists():
+        v_frames_dir = v_subdir / "frames_processed"
+        shutil.copytree(frames_dir, v_frames_dir, dirs_exist_ok=True)
+        
+    data["versions"].append({
+        "id": vid,
+        "label": label or f"Snapshot {len(data['versions'])+1}",
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
+    })
+    data["active_version"] = vid
+    save_json(vfile, data)
+    return {"ok": True, "version_id": vid, "versions": data["versions"]}
+
+def _sprite_version_list(sprite_dir_str: str) -> Dict[str, Any]:
+    sprite_dir = _resolve_sprite_output_dir(sprite_dir_str)
+    versions_dir = sprite_dir / ".versions"
+    vfile = versions_dir / "versions.json"
+    return load_json(vfile, {"active_version": "current", "versions": []})
+
+def _sprite_version_rollback(sprite_dir_str: str, vid: str) -> Dict[str, Any]:
+    sprite_dir = _resolve_sprite_output_dir(sprite_dir_str)
+    v_subdir = sprite_dir / ".versions" / vid
+    if not v_subdir.exists():
+        raise FileNotFoundError(f"Version backup {vid} not found.")
+        
+    # Copy files back
+    for name in ["sheet.png", "sheet.json", "preview.gif", "report.html"]:
+        f = v_subdir / name
+        dest = sprite_dir / name
+        if f.exists():
+            shutil.copy2(f, dest)
+        elif dest.exists():
+            dest.unlink()
+            
+    # Copy frames_processed back
+    v_frames_dir = v_subdir / "frames_processed"
+    dest_frames_dir = sprite_dir / "frames_processed"
+    if v_frames_dir.exists():
+        if dest_frames_dir.exists():
+            shutil.rmtree(dest_frames_dir)
+        shutil.copytree(v_frames_dir, dest_frames_dir)
+        
+    vfile = sprite_dir / ".versions" / "versions.json"
+    data = load_json(vfile, {"versions": []})
+    data["active_version"] = vid
+    save_json(vfile, data)
+    return {"ok": True, "active_version": vid}
+
+def _ab_run_create(payload: Dict[str, Any]) -> Dict[str, Any]:
+    import uuid
+    ab_id = str(uuid.uuid4())
+    name = str(payload.get("name") or f"A/B Run {time.strftime('%Y%m%d_%H%M%S')}")
+    
+    variant_a = payload.get("variant_a", {})
+    variant_b = payload.get("variant_b", {})
+    
+    # Build commands for both
+    title_a, cmd_a = build_action_command(variant_a)
+    title_b, cmd_b = build_action_command(variant_b)
+    
+    q_data = {
+        "schema": "spriteforge_queue_v12",
+        "name": name,
+        "ab_id": ab_id,
+        "project_name": payload.get("project_name", ""),
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "jobs": [
+            {
+                "id": f"ab_{ab_id}_A",
+                "action": variant_a.get("action", "generate_sprite"),
+                "command": cmd_a,
+                "status": "pending",
+                "variant_label": "Variant A"
+            },
+            {
+                "id": f"ab_{ab_id}_B",
+                "action": variant_b.get("action", "generate_sprite"),
+                "command": cmd_b,
+                "status": "pending",
+                "variant_label": "Variant B"
+            }
+        ]
+    }
+    
+    q_dir = ROOT / "output" / "jobs"
+    q_dir.mkdir(parents=True, exist_ok=True)
+    q_path = q_dir / f"ab_run_{ab_id}_queue.json"
+    save_json(q_path, q_data)
+    
+    runs = load_json(AB_RUNS_PATH, [])
+    runs.insert(0, {
+        "id": ab_id,
+        "name": name,
+        "project_name": payload.get("project_name", ""),
+        "queue_path": str(q_path.relative_to(ROOT)).replace("\\", "/"),
+        "variant_a": variant_a,
+        "variant_b": variant_b,
+        "created_at": q_data["created_at"]
+    })
+    save_json(AB_RUNS_PATH, runs)
+    
+    cmd = [sys.executable, "spriteforge_queue.py", "run", "--queue", str(q_path), "--continue-on-error"]
+    ok, job_id_or_err = JobService.start_job(f"A/B Run Queue: {name}", cmd, metadata={"ab_id": ab_id})
+    return {"ok": ok, "ab_id": ab_id, "job_id": job_id_or_err if ok else None, "message": "A/B Run queue started." if ok else job_id_or_err}
+
+def _ab_run_list() -> List[Dict[str, Any]]:
+    return load_json(AB_RUNS_PATH, [])
+
+def _qa_batch_summary(project_meta: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    sprites = sprite_outputs(80, project_meta)
+    summary_list = []
+    
+    for s in sprites:
+        sprite_path_str = s.get("path")
+        if not sprite_path_str:
+            continue
+        sprite_dir = ROOT / sprite_path_str
+        name = sprite_dir.name
+        
+        # Load quality report
+        qa_data = None
+        for report_name in ["qa_report.json", "quality_report.json"]:
+            p = sprite_dir / report_name
+            if p.exists():
+                try:
+                    qa_data = json.loads(p.read_text(encoding="utf-8"))
+                    break
+                except Exception:
+                    pass
+        
+        metrics = qa_data.get("metrics", {}) if qa_data else {}
+        
+        # Determine export readiness / engine files
+        godot_files = list(sprite_dir.glob("*.gd")) + list(sprite_dir.glob("godot_export/*.gd")) + list(sprite_dir.glob("*.tscn"))
+        unity_files = list(sprite_dir.glob("*.cs")) + list(sprite_dir.glob("unity_export/*.cs"))
+        has_exports = bool(godot_files or unity_files)
+        
+        # Load quality gates to check pass status
+        from spriteforge_final import get_project_quality_gates
+        gates = get_project_quality_gates(sprite_dir)
+        
+        passed_gates = True
+        gate_details = {}
+        
+        drift = metrics.get("foot_y_stdev_px", 0.0)
+        max_drift = gates.get("max_foot_drift")
+        gate_details["foot_drift"] = {"value": drift, "threshold": max_drift, "ok": max_drift is None or drift <= float(max_drift)}
+        if not gate_details["foot_drift"]["ok"]:
+            passed_gates = False
+            
+        flicker = metrics.get("brightness_stdev", 0.0)
+        max_flicker = gates.get("max_flicker")
+        gate_details["flicker"] = {"value": flicker, "threshold": max_flicker, "ok": max_flicker is None or flicker <= float(max_flicker)}
+        if not gate_details["flicker"]["ok"]:
+            passed_gates = False
+            
+        seam = metrics.get("loop_seam_rmse", 0.0)
+        max_seam = gates.get("loop_seam_threshold")
+        gate_details["loop_quality"] = {"value": seam, "threshold": max_seam, "ok": max_seam is None or seam <= float(max_seam)}
+        if not gate_details["loop_quality"]["ok"]:
+            passed_gates = False
+            
+        frames_cnt = metrics.get("frame_count")
+        req_frames = gates.get("required_frame_count")
+        gate_details["frame_count"] = {"value": frames_cnt, "threshold": req_frames, "ok": req_frames is None or frames_cnt is None or int(frames_cnt) == int(req_frames)}
+        if not gate_details["frame_count"]["ok"]:
+            passed_gates = False
+            
+        cleanliness = metrics.get("alpha_cleanliness")
+        if cleanliness is None and qa_data:
+            # calculate on the fly
+            sheet_png = sprite_dir / qa_data.get("metadata", {}).get("image", "sheet.png")
+            if sheet_png.exists():
+                try:
+                    from PIL import Image
+                    import numpy as np
+                    with Image.open(sheet_png) as img:
+                        arr = np.asarray(img.convert("RGBA"))
+                        alpha = arr[:, :, 3]
+                        cleanliness = float(((alpha > 0) & (alpha < 16)).sum() / max(1, alpha.size))
+                except Exception:
+                    cleanliness = 0.0
+            else:
+                cleanliness = 0.0
+        cleanliness = cleanliness or 0.0
+        max_clean = gates.get("alpha_cleanliness")
+        gate_details["alpha_cleanliness"] = {"value": cleanliness, "threshold": max_clean, "ok": max_clean is None or cleanliness <= float(max_clean)}
+        if not gate_details["alpha_cleanliness"]["ok"]:
+            passed_gates = False
+            
+        # check missing frames
+        sheet_json_path = sprite_dir / "sheet.json"
+        missing_frames = False
+        if sheet_json_path.exists():
+            try:
+                sheet_json = json.loads(sheet_json_path.read_text(encoding="utf-8"))
+                exp_cnt = sheet_json.get("frame_count", 0)
+                if exp_cnt and frames_cnt and frames_cnt < exp_cnt:
+                    missing_frames = True
+            except Exception:
+                pass
+                
+        summary_list.append({
+            "name": name,
+            "path": sprite_path_str,
+            "has_qa": qa_data is not None,
+            "loop_quality": seam,
+            "foot_drift": drift,
+            "flicker": flicker,
+            "alpha_coverage": metrics.get("mean_alpha_coverage", 0.0),
+            "alpha_cleanliness": cleanliness,
+            "missing_frames": missing_frames,
+            "has_exports": has_exports,
+            "passed_gates": passed_gates,
+            "gate_details": gate_details,
+            "ready": passed_gates and has_exports
+        })
+        
+    return {"summary": summary_list}
+
+def _library_json_path(project_name: str) -> Path:
+    p_dir = PROJECTS / safe_name(project_name)
+    p_dir.mkdir(parents=True, exist_ok=True)
+    return p_dir / "library.json"
+
+def _library_list(project_name: str) -> List[Dict[str, Any]]:
+    if not project_name:
+        return []
+    pfile = _library_json_path(project_name)
+    return load_json(pfile, [])
+
+def _library_save(project_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    import uuid
+    pfile = _library_json_path(project_name)
+    library = load_json(pfile, [])
+    
+    asset_id = payload.get("id") or str(uuid.uuid4())
+    existing = None
+    for item in library:
+        if item["id"] == asset_id:
+            existing = item
+            break
+            
+    now = time.strftime("%Y-%m-%d %H:%M:%S")
+    item_data = {
+        "id": asset_id,
+        "title": payload.get("title", "Untitled Asset"),
+        "category": payload.get("category", "pose"),
+        "content": payload.get("content", ""),
+        "reference_path": payload.get("reference_path", ""),
+        "updated_at": now
+    }
+    
+    if existing:
+        existing.update(item_data)
+    else:
+        item_data["created_at"] = now
+        library.insert(0, item_data)
+        
+    save_json(pfile, library)
+    return {"ok": True, "asset": item_data}
+
+def _library_delete(project_name: str, asset_id: str) -> Dict[str, Any]:
+    pfile = _library_json_path(project_name)
+    library = load_json(pfile, [])
+    updated = [item for item in library if item["id"] != asset_id]
+    save_json(pfile, updated)
+    return {"ok": True}
+
+def _sprite_edit_frames(sprite_dir_str: str, actions: List[Dict[str, Any]], new_fps: Optional[int]) -> Dict[str, Any]:
+    import math
+    sprite_dir = _resolve_sprite_output_dir(sprite_dir_str)
+    frames_dir = sprite_dir / "frames_processed"
+    if not frames_dir.exists():
+        raise FileNotFoundError("Processed frames directory not found. Lite Editor requires frames_processed directory.")
+        
+    frame_files = sorted(list(frames_dir.glob("*.png")))
+    temp_dir = sprite_dir / "temp_edit_frames"
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir(parents=True)
+    
+    current_frames = list(frame_files)
+    
+    for act in actions:
+        atype = act.get("type")
+        if atype == "delete":
+            indices = set(act.get("indices") or [])
+            current_frames = [f for idx, f in enumerate(current_frames) if idx not in indices]
+        elif atype == "hold":
+            idx = int(act.get("index"))
+            count = int(act.get("count", 1))
+            if 0 <= idx < len(current_frames):
+                frame_to_hold = current_frames[idx]
+                current_frames = current_frames[:idx] + [frame_to_hold] * (count + 1) + current_frames[idx+1:]
+        elif atype == "reorder":
+            mapping = act.get("mapping")
+            if mapping:
+                current_frames = [current_frames[i] for i in mapping if 0 <= i < len(current_frames)]
+        elif atype == "trim":
+            start = int(act.get("start", 0))
+            end = int(act.get("end", len(current_frames)))
+            current_frames = current_frames[start:end]
+            
+    for idx, f in enumerate(current_frames):
+        shutil.copy2(f, temp_dir / f"frame_{idx:04d}.png")
+        
+    shutil.rmtree(frames_dir)
+    shutil.copytree(temp_dir, frames_dir)
+    shutil.rmtree(temp_dir)
+    
+    meta_file = sprite_dir / "sheet.json"
+    meta = load_json(meta_file, {})
+    if new_fps:
+        meta["fps"] = float(new_fps)
+        
+    new_count = len(current_frames)
+    meta["frame_count"] = new_count
+    
+    cols = int(meta.get("columns", 4))
+    rows = int(math.ceil(new_count / cols))
+    meta["columns"] = cols
+    meta["rows"] = rows
+    
+    save_json(meta_file, meta)
+    
+    cmd = [
+        sys.executable, "spriteforge.py", "pack",
+        "--input", str(frames_dir),
+        "--output", str(sprite_dir),
+        "--fps", str(meta["fps"]),
+        "--cell-size", f"{meta.get('frame_width', 256)}x{meta.get('frame_height', 256)}",
+        "--animation", str(meta.get("animation", "demo_idle")),
+        "--anchor", str(meta.get("anchor", "bottom-center")),
+        "--solidify", "0",
+        "--preview-gif",
+        "--report"
+    ]
+    
+    ok, job_id_or_err = JobService.start_job(f"Repack edited frames: {sprite_dir.name}", cmd)
+    return {"ok": ok, "job_id": job_id_or_err if ok else None, "message": "Repack job started." if ok else job_id_or_err}
 
 
 def next_step_status() -> Dict[str, Any]:
@@ -1210,6 +1573,72 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": str(exc)}, 403)
             except Exception as exc:
                 return self.send_json({"error": str(exc)}, 500)
+
+        if path == "/api/project/config":
+            active = ProjectService.get_active_project()
+            if not active:
+                return self.send_json({"error": "No active project"}, 400)
+            p_path = ROOT / active["path"]
+            if not p_path.exists():
+                return self.send_json({"error": "Project file not found"}, 404)
+            try:
+                data = json.loads(p_path.read_text(encoding="utf-8"))
+                if "quality_gates" not in data:
+                    data["quality_gates"] = {
+                        "max_foot_drift": 2.0,
+                        "max_flicker": 1.0,
+                        "loop_seam_threshold": 15.0,
+                        "required_frame_count": None,
+                        "alpha_cleanliness": 0.05
+                    }
+                return self.send_json(data)
+            except Exception as exc:
+                return self.send_json({"error": str(exc)}, 500)
+                
+        if path == "/api/library/list":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_name = (qs.get("project_name") or [""])[0]
+            if not project_name:
+                active = ProjectService.get_active_project()
+                project_name = active["name"] if active else ""
+            return self.send_json({"library": _library_list(project_name)})
+            
+        if path == "/api/sprite/version/list":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            sprite_path_str = (qs.get("path") or [""])[0]
+            if not sprite_path_str:
+                self.send_error(400, "Missing sprite path")
+                return
+            try:
+                return self.send_json(_sprite_version_list(sprite_path_str))
+            except Exception as exc:
+                self.send_error(500, str(exc))
+                return
+                
+        if path == "/api/ab_run/list":
+            return self.send_json({"ab_runs": _ab_run_list()})
+            
+        if path == "/api/qa/batch_summary":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            project_meta = _project_meta_from_query(qs)
+            return self.send_json(_qa_batch_summary(project_meta))
+            
+        if path == "/api/sprite/validate_engine":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            sprite_path_str = (qs.get("path") or [""])[0]
+            engine = (qs.get("engine") or [None])[0]
+            if not sprite_path_str:
+                self.send_error(400, "Missing sprite path")
+                return
+            try:
+                sprite_dir = _resolve_sprite_output_dir(sprite_path_str)
+                from spriteforge_engine_export import validate_export
+                res = validate_export(sprite_dir, engine=engine, return_dict=True)
+                return self.send_json(res)
+            except Exception as exc:
+                self.send_error(500, str(exc))
+                return
+
         self.send_error(404, "Not found")
 
     def do_POST(self) -> None:
@@ -1217,6 +1646,29 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/api/run":
                 payload = self.read_json()
+                force = bool(payload.get("force", False))
+                action = payload.get("action", "generate_sprite")
+                
+                # Disk Budget Guard check
+                estimated_gb = 1.0
+                if action == "generate_sprite":
+                    act_list = [a.strip() for a in str(payload.get("default_actions") or "").split(",") if a.strip()]
+                    dir_list = [d.strip() for d in str(payload.get("default_directions") or "").split(",") if d.strip()]
+                    num_jobs = max(1, len(act_list) * len(dir_list))
+                    estimated_gb = num_jobs * 0.8
+                
+                total, used, free = shutil.disk_usage(ROOT)
+                free_gb = free / (1024**3)
+                
+                if not force and (free_gb - estimated_gb < 5.0):
+                    return self.send_json({
+                        "ok": False,
+                        "warning": "low_disk",
+                        "free_gb": round(free_gb, 2),
+                        "estimated_gb": round(estimated_gb, 2),
+                        "message": f"Disk warning: Task requires ~{estimated_gb:.1f} GB. Free space is {free_gb:.1f} GB, which may drop below the 5.0 GB safety threshold."
+                    })
+
                 title, cmd = build_action_command(payload)
                 metadata = {
                     key: payload.get(key)
@@ -1572,6 +2024,94 @@ class Handler(BaseHTTPRequestHandler):
                     open_local_path(p)
                     return self.send_json({"ok": True})
                 return self.send_json({"ok": False, "message": "Path does not exist."}, 404)
+            if path == "/api/project/config":
+                active = ProjectService.get_active_project()
+                if not active:
+                    return self.send_json({"ok": False, "message": "No active project"}, 400)
+                p_path = ROOT / active["path"]
+                if not p_path.exists():
+                    return self.send_json({"ok": False, "message": "Project file not found"}, 404)
+                
+                body = self.read_json()
+                try:
+                    data = json.loads(p_path.read_text(encoding="utf-8"))
+                    for key in ["character", "style", "actions", "directions", "fps", "cell_size", "frames_by_action", "quality_gates"]:
+                        if key in body:
+                            data[key] = body[key]
+                    data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                    save_json(p_path, data)
+                    return self.send_json({"ok": True, "config": data})
+                except Exception as exc:
+                    return self.send_json({"ok": False, "message": str(exc)}, 500)
+                    
+            if path == "/api/library/save":
+                body = self.read_json()
+                project_name = body.get("project_name")
+                if not project_name:
+                    active = ProjectService.get_active_project()
+                    project_name = active["name"] if active else ""
+                if not project_name:
+                    return self.send_json({"ok": False, "message": "No project context"}, 400)
+                res = _library_save(project_name, body)
+                return self.send_json(res)
+                
+            if path == "/api/library/delete":
+                body = self.read_json()
+                project_name = body.get("project_name")
+                asset_id = body.get("id")
+                if not project_name:
+                    active = ProjectService.get_active_project()
+                    project_name = active["name"] if active else ""
+                if not project_name or not asset_id:
+                    return self.send_json({"ok": False, "message": "project_name and id are required"}, 400)
+                res = _library_delete(project_name, asset_id)
+                return self.send_json(res)
+                
+            if path == "/api/sprite/version/save":
+                body = self.read_json()
+                sprite_path_str = body.get("path")
+                label = body.get("label")
+                if not sprite_path_str:
+                    return self.send_json({"ok": False, "message": "path is required"}, 400)
+                res = _sprite_version_save(sprite_path_str, label)
+                return self.send_json(res)
+                
+            if path == "/api/sprite/version/rollback":
+                body = self.read_json()
+                sprite_path_str = body.get("path")
+                version_id = body.get("version_id")
+                if not sprite_path_str or not version_id:
+                    return self.send_json({"ok": False, "message": "path and version_id are required"}, 400)
+                res = _sprite_version_rollback(sprite_path_str, version_id)
+                return self.send_json(res)
+                
+            if path == "/api/ab_run/create":
+                body = self.read_json()
+                force = bool(body.get("force", False))
+                estimated_gb = 2.0
+                total, used, free = shutil.disk_usage(ROOT)
+                free_gb = free / (1024**3)
+                if not force and (free_gb - estimated_gb < 5.0):
+                    return self.send_json({
+                        "ok": False,
+                        "warning": "low_disk",
+                        "free_gb": round(free_gb, 2),
+                        "estimated_gb": round(estimated_gb, 2),
+                        "message": f"Disk warning: A/B Run requires ~2.0 GB. Free space is {free_gb:.1f} GB, which may drop below the 5.0 GB safety threshold."
+                    })
+                res = _ab_run_create(body)
+                return self.send_json(res)
+                
+            if path == "/api/sprite/edit_frames":
+                body = self.read_json()
+                sprite_path_str = body.get("path")
+                actions = body.get("actions", [])
+                new_fps = body.get("fps")
+                if not sprite_path_str:
+                    return self.send_json({"ok": False, "message": "path is required"}, 400)
+                res = _sprite_edit_frames(sprite_path_str, actions, new_fps)
+                return self.send_json(res)
+
             if path == "/api/upload":
                 return self.handle_upload()
             return self.send_json({"ok": False, "message": "Not found"}, 404)

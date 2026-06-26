@@ -28,6 +28,9 @@
       <button class="nav" data-view="generate">Generate Sprite</button>
       <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
+      <button class="nav" data-view="ab_runs">A/B Runs</button>
+      <button class="nav" data-view="library">Pose Library</button>
+      <button class="nav" data-view="qa_dashboard">QA Dashboard</button>
       <button class="nav mode-detail" data-view="packs">Packs & Atlas</button>
       <button class="nav mode-detail" data-view="queue">Queue Builder</button>
       <button class="nav mode-detail" data-view="queues">Queue Monitor</button>
@@ -695,8 +698,9 @@
         <div class="inspector-layout">
           <!-- Left side: canvas display -->
           <div class="inspector-stage">
-            <div id="inspector-canvas-container" class="inspector-canvas-container checkerboard">
+            <div id="inspector-canvas-container" class="inspector-canvas-container checkerboard" style="position: relative;">
               <img id="inspector-img" class="inspector-img" />
+              <img id="inspector-img-compare" class="inspector-img comparison-overlay hidden" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 11; pointer-events: none; opacity: 0.5;" />
               <!-- overlays -->
               <div id="overlay-y" class="inspector-overlay overlay-y"></div>
               <div id="overlay-x" class="inspector-overlay overlay-x"></div>
@@ -722,6 +726,40 @@
               <label class="switch"><input type="checkbox" id="toggleCompareSibling" /><span></span>Compare Before/After</label>
             </div>
             
+            <!-- On-Canvas Comparison & Versioning -->
+            <div class="inspector-versioning-box" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1); margin-top: 12px; margin-bottom: 12px;">
+              <p class="eyebrow" style="margin-bottom: 8px;">Version Control &amp; Comparison</p>
+              <div style="margin-bottom: 8px;">
+                <label style="font-size:11px; display:block; margin-bottom:4px;">Active Version:</label>
+                <select id="inspectActiveVersion" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:4px; border-radius:4px;">
+                  <option value="current">Current Working Copy</option>
+                </select>
+              </div>
+              <div class="button-row compact-actions" style="margin-bottom: 8px; display:flex; gap:4px;">
+                <button class="mini" id="inspectSaveSnapshotBtn" type="button">📸 Snapshot</button>
+                <button class="mini danger" id="inspectRollbackBtn" type="button" disabled>↺ Rollback</button>
+              </div>
+              <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; margin-top: 6px;">
+                <label style="display:inline-flex; align-items:center; gap:4px; font-size:11px; margin-bottom:4px; cursor:pointer;">
+                  <input type="checkbox" id="inspectCompareEnable" /> Compare with snapshot:
+                </label>
+                <select id="inspectCompareVersion" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:4px; border-radius:4px; margin-bottom:6px;" disabled>
+                  <option value="">Choose snapshot...</option>
+                </select>
+                <div id="inspectCompareBlendControls" class="hidden">
+                  <label style="font-size:11px; display:block; margin-bottom:4px;">Blend Mode:
+                    <select id="inspectCompareMode" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:4px; border-radius:4px;">
+                      <option value="overlay">Alpha Blend Overlay</option>
+                      <option value="sidebyside">Side-by-Side (Split)</option>
+                    </select>
+                  </label>
+                  <label style="font-size:11px; display:block; margin-top:4px;">Overlay Opacity:
+                    <input type="range" id="inspectCompareOpacity" min="0" max="1" step="0.05" value="0.5" style="width:100%;" />
+                  </label>
+                </div>
+              </div>
+            </div>
+            
             <div class="inspector-edit-toolbox" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1); margin-top: 12px; margin-bottom: 12px;">
               <p class="eyebrow" style="margin-bottom: 8px;">Frame Playback &amp; Edit Tools</p>
               <div class="button-row compact-actions" style="margin-bottom: 8px;">
@@ -731,10 +769,14 @@
                 </label>
               </div>
               <div class="button-row compact-actions" style="margin-bottom: 8px; display:flex; flex-wrap:wrap; gap:4px;">
-                <button class="mini" id="inspectMarkBadBtn" type="button" title="Toggle Bad Frame Mark">⚠️ Mark Bad</button>
-                <button class="mini" id="inspectDuplicateBtn" type="button" title="Duplicate current frame">＋ Dup</button>
-                <button class="mini danger" id="inspectRemoveBtn" type="button" title="Remove current frame">❌ Del</button>
-                <button class="mini" id="inspectTrimBtn" type="button" title="Compute and trim transparency bounds">✂️ Trim</button>
+                <button class="mini danger" id="inspectDeleteFrameBtn" type="button" title="Delete current frame">❌ Delete</button>
+                <button class="mini" id="inspectHoldFrameBtn" type="button" title="Hold Frame (Duplicate)">⏱️ Hold</button>
+                <button class="mini" id="inspectTrimStartBtn" type="button" title="Trim all frames before current">✂️ Trim Start</button>
+                <button class="mini" id="inspectTrimEndBtn" type="button" title="Trim all frames after current">✂️ Trim End</button>
+                <button class="mini" id="inspectReorderFrameBtn" type="button" title="Move frame position">⇅ Reorder</button>
+              </div>
+              <div class="button-row compact-actions" style="margin-bottom: 8px;">
+                <button class="mini primary" id="inspectSavePackBtn" type="button" style="width: 100%;">⚙️ Apply Edits &amp; Repack Sheet</button>
               </div>
               <div class="inspector-quick-repairs" style="margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
                 <span style="font-size:11px; color:#a9b7d0; display:block; margin-bottom:4px;">One-Click Quick Repairs:</span>
@@ -1138,6 +1180,195 @@
           </div>
         </section>
       </div>
+    </section>
+
+    <!-- ============================================================
+         A/B Runs view
+    ============================================================ -->
+    <section class="view" id="view-ab_runs">
+      <div class="section-title"><p class="eyebrow">A/B Testing</p><h2>A/B Prompt Runs</h2></div>
+      <div class="split ab-layout">
+        <!-- Left: A/B Form -->
+        <section class="card ab-form-card">
+          <div class="card-head"><h3>New A/B Run</h3></div>
+          <form id="abRunForm" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+            <div>
+              <label>Run Name: <input type="text" id="abRunName" placeholder="A/B Run name..." required style="width:100%;" /></label>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- Variant A -->
+              <div class="variant-box" style="border: 1px solid rgba(255,255,255,0.06); padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 6px;">
+                <h4 style="color:#00e5ff; margin-bottom:4px;">Variant A Settings</h4>
+                <label>Action: <input type="text" name="a_action" value="generate_sprite" required style="width:100%;" /></label>
+                <label>Prompt Idea: <textarea name="a_character" rows="3" style="width:100%;" required>single full body platformer hero, side view</textarea></label>
+                <label>Style prompt: <textarea name="a_style" rows="2" style="width:100%;">pixel-art game sprite, simple palette</textarea></label>
+                <label>Negative Prompt: <input type="text" name="a_negative" value="camera movement, zoom" style="width:100%;" /></label>
+                <label>Seed: <input type="number" name="a_seed" value="-1" style="width:100%;" /></label>
+              </div>
+              
+              <!-- Variant B -->
+              <div class="variant-box" style="border: 1px solid rgba(255,255,255,0.06); padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 6px;">
+                <h4 style="color:#ff00e5; margin-bottom:4px;">Variant B Settings</h4>
+                <label>Action: <input type="text" name="b_action" value="generate_sprite" required style="width:100%;" /></label>
+                <label>Prompt Idea: <textarea name="b_character" rows="3" style="width:100%;" required>single full body platformer hero, side view</textarea></label>
+                <label>Style prompt: <textarea name="b_style" rows="2" style="width:100%;">classic 16-bit pixel-art style, rich colors</textarea></label>
+                <label>Negative Prompt: <input type="text" name="b_negative" value="camera movement, zoom" style="width:100%;" /></label>
+                <label>Seed: <input type="number" name="b_seed" value="-1" style="width:100%;" /></label>
+              </div>
+            </div>
+            
+            <button class="primary" type="submit" style="margin-top:12px;">Start A/B Run</button>
+          </form>
+        </section>
+        
+        <!-- Right: comparison / history list -->
+        <section class="card ab-results-card">
+          <div class="card-head"><h3>A/B History &amp; Compare</h3></div>
+          <div style="padding:12px; display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <label>Select A/B Run: <select id="abRunSelect" style="width:100%;"><option value="">Choose a past run...</option></select></label>
+            </div>
+            
+            <div id="abCompareDisplay" class="hidden" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+              <!-- Variant A Display -->
+              <div class="variant-display" style="border: 1px solid rgba(0,229,255,0.3); padding: 12px; border-radius: 8px; background: rgba(0,229,255,0.02);">
+                <h3 style="color:#00e5ff;">Variant A</h3>
+                <div class="ab-preview-container checkerboard" style="aspect-ratio:1; display:flex; justify-content:center; align-items:center; border: 1px solid rgba(255,255,255,0.1); border-radius:4px; margin: 8px 0; overflow:hidden; position:relative; background:#000;">
+                  <img id="abPreviewImgA" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;" />
+                </div>
+                <table class="data-table compact" style="width:100%; margin-top:8px;">
+                  <tr><td>QA Score:</td><td id="abScoreA" style="font-weight:bold;">-</td></tr>
+                  <tr><td>File Size:</td><td id="abSizeA">-</td></tr>
+                  <tr><td>Foot Drift:</td><td id="abDriftA">-</td></tr>
+                  <tr><td>Flicker:</td><td id="abFlickerA">-</td></tr>
+                </table>
+              </div>
+              
+              <!-- Variant B Display -->
+              <div class="variant-display" style="border: 1px solid rgba(255,0,229,0.3); padding: 12px; border-radius: 8px; background: rgba(255,0,229,0.02);">
+                <h3 style="color:#ff00e5;">Variant B</h3>
+                <div class="ab-preview-container checkerboard" style="aspect-ratio:1; display:flex; justify-content:center; align-items:center; border: 1px solid rgba(255,255,255,0.1); border-radius:4px; margin: 8px 0; overflow:hidden; position:relative; background:#000;">
+                  <img id="abPreviewImgB" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;" />
+                </div>
+                <table class="data-table compact" style="width:100%; margin-top:8px;">
+                  <tr><td>QA Score:</td><td id="abScoreB" style="font-weight:bold;">-</td></tr>
+                  <tr><td>File Size:</td><td id="abSizeB">-</td></tr>
+                  <tr><td>Foot Drift:</td><td id="abDriftB">-</td></tr>
+                  <tr><td>Flicker:</td><td id="abFlickerB">-</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Pose & Reference Library view
+    ============================================================ -->
+    <section class="view" id="view-library">
+      <div class="section-title"><p class="eyebrow">Reusable references</p><h2>Pose &amp; Reference Library</h2></div>
+      <div class="split library-layout">
+        <!-- Left: library form -->
+        <section class="card library-form-card">
+          <div class="card-head"><h3>Save Asset</h3></div>
+          <form id="libraryAssetForm" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+            <input type="hidden" id="libraryAssetId" />
+            <div>
+              <label>Title: <input type="text" id="libraryAssetTitle" required placeholder="Name this pose or character..." style="width:100%;" /></label>
+            </div>
+            <div>
+              <label>Category: 
+                <select id="libraryAssetCategory" style="width:100%;">
+                  <option value="pose">Reusable Pose / Silhouette</option>
+                  <option value="description">Character Description</option>
+                  <option value="palette">Color Palette Notes</option>
+                  <option value="recipe">Style Recipe</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <label>Content Text / Prompt Snippet: 
+                <textarea id="libraryAssetContent" rows="4" placeholder="Enter reference text, prompt snippet or styling instructions..." style="width:100%;" required></textarea>
+              </label>
+            </div>
+            <div>
+              <label>Upload Reference Video/Image: 
+                <input type="file" id="libraryAssetFile" style="width:100%;" />
+              </label>
+              <div id="libraryAssetFileStatus" style="font-size:11px; margin-top:4px; color:#00e5ff;"></div>
+            </div>
+            <button class="primary" type="submit">Save to Library</button>
+          </form>
+        </section>
+        
+        <!-- Right: library list -->
+        <section class="card library-list-card">
+          <div class="card-head"><h3>Project Reference Assets</h3><button class="mini" id="refreshLibrary" type="button">Refresh</button></div>
+          <div id="libraryGrid" class="library-grid">
+            <div class="empty">No assets saved in reference library yet.</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         QA matrix dashboard view
+    ============================================================ -->
+    <section class="view" id="view-qa_dashboard">
+      <div class="section-title"><p class="eyebrow">Project Quality Gates &amp; Matrices</p><h2>Batch QA Dashboard</h2></div>
+      
+      <!-- Project Quality Gates setup panel -->
+      <section class="card config-card" style="margin-bottom: 16px;">
+        <div class="card-head"><h3>Quality Gates Configuration</h3></div>
+        <form id="projectConfigForm" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:12px;">
+            <div>
+              <label>Max Foot Drift (stdev px): <input type="number" step="0.1" name="max_foot_drift" value="2.0" required /></label>
+            </div>
+            <div>
+              <label>Max Flicker (brightness): <input type="number" step="0.1" name="max_flicker" value="1.0" required /></label>
+            </div>
+            <div>
+              <label>Loop Seam RMSE threshold: <input type="number" step="0.5" name="loop_seam_threshold" value="15.0" required /></label>
+            </div>
+            <div>
+              <label>Required Frame Count: <input type="number" name="required_frame_count" placeholder="Any" /></label>
+            </div>
+            <div>
+              <label>Max Alpha Noise ratio: <input type="number" step="0.01" name="alpha_cleanliness" value="0.05" required /></label>
+            </div>
+          </div>
+          <button class="mini primary" type="submit" style="align-self: flex-start;">Save Gate Rules</button>
+        </form>
+      </section>
+      
+      <!-- Batch QA dashboard Matrix -->
+      <section class="card dashboard-card">
+        <div class="card-head"><h3>Sprite Release Readiness Matrix</h3><button class="mini" id="refreshQaDashboard" type="button">Refresh Dashboard</button></div>
+        <div class="table-scroll">
+          <table class="data-table qa-dashboard-table" style="width: 100%;">
+            <thead>
+              <tr>
+                <th>Sprite Name</th>
+                <th>QA State</th>
+                <th>Loop Seam</th>
+                <th>Foot Drift</th>
+                <th>Flicker</th>
+                <th>Alpha Coverage</th>
+                <th>Alpha Noise</th>
+                <th>Missing Frames?</th>
+                <th>Exports?</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="qaDashboardBody">
+              <tr><td colspan="10" class="empty-cell">No sprites found in current project.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
   </main>

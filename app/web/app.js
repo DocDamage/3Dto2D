@@ -48,6 +48,17 @@ async function runAction(action, extra={}){
 
   try {
     const data=await api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,active_project:activeProjectPath,...extra})});
+    if (data.warning === 'low_disk') {
+      if (confirm(`${data.message}\n\nRunning this task might consume critical disk space. Proceed anyway?`)) {
+        const forceData=await api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,active_project:activeProjectPath,force:true,...extra})});
+        toast(forceData.message||'Started (forced)');
+        await refreshAll();
+        if (localStorage.getItem('prefNeverAutoSwitch') !== 'true') {
+          showView('logs');
+        }
+      }
+      return;
+    }
     toast(data.message||'Started');
     await refreshAll();
     
@@ -122,6 +133,13 @@ function showView(name){
     else if (step === 'export') active = ['packs', 'release'].includes(name);
     item.classList.toggle('active', active);
   });
+  
+  if (name === 'library') refreshLibrary();
+  if (name === 'qa_dashboard') {
+    loadProjectConfig();
+    refreshQaDashboard();
+  }
+  if (name === 'ab_runs') refreshAbRuns();
 }
 function relativePath(p){ return p || ''; }
 function clearNode(node){ while(node.firstChild) node.removeChild(node.firstChild); }
@@ -436,6 +454,11 @@ async function refreshAll(){
     // UX polish updates
     if (typeof updateHealthBar === 'function') updateHealthBar(s);
     if (typeof renderTaskCenter === 'function') renderTaskCenter(s);
+    
+    const currentView = localStorage.getItem('activeView') || 'guide';
+    if (currentView === 'library') refreshLibrary();
+    if (currentView === 'qa_dashboard') refreshQaDashboard();
+    if (currentView === 'ab_runs') refreshAbRuns();
     
     // Auto-trigger Result Review Modal on Job Completion
     const activeJob = s.job;
@@ -1030,6 +1053,8 @@ async function loadSpriteDetails(path) {
       exportEl.style.color = ready ? '#56c590' : '#dc4d70';
     }
 
+    frameEdits = [];
+    loadSpriteVersions(path);
     renderInspectorFrame(0);
   } catch (e) {
     console.error(e);
@@ -1115,6 +1140,9 @@ function renderInspectorFrame(index) {
     
     $('#frameScrubberLabel').textContent = `${index + 1} / ${meta.frame_count}`;
     updateOverlays(fw, fh, index);
+    if (typeof updateCompareOverlay === 'function') {
+      updateCompareOverlay();
+    }
   };
 }
 
@@ -1445,6 +1473,30 @@ function renderHistory() {
     } else {
       output.textContent = '—';
     }
+    
+    const memoryBtn = document.createElement('button');
+    memoryBtn.type = 'button';
+    memoryBtn.className = 'mini';
+    memoryBtn.textContent = 'Use Settings';
+    memoryBtn.title = 'Load prompts/settings into Generator';
+    memoryBtn.style.marginLeft = '4px';
+    memoryBtn.addEventListener('click', () => {
+      const form = $('#generateForm');
+      if (form) {
+        if (r.character) form.querySelector('[name="character"]').value = r.character;
+        if (r.style) form.querySelector('[name="style"]').value = r.style;
+        if (r.negative_prompt) form.querySelector('[name="negative"]').value = r.negative_prompt;
+        if (r.seed !== undefined) form.querySelector('[name="seed"]').value = r.seed;
+        if (r.model_tier) form.querySelector('[name="tier"]').value = r.model_tier;
+        if (r.profile) form.querySelector('[name="profile"]').value = r.profile;
+        if (r.fps) form.querySelector('[name="fps"]').value = r.fps;
+        if (r.cell_size) form.querySelector('[name="cell_size"]').value = r.cell_size;
+        showView('generate');
+        toast('Loaded prompts/settings into Generator!');
+      }
+    });
+    output.appendChild(memoryBtn);
+    
     tr.appendChild(output);
 
     appendText(tr, 'td', r.notes || '', 'notes-cell');
@@ -3789,6 +3841,695 @@ document.addEventListener('keydown', e => {
     }
   }
 });
+
+// ===========================================================================
+// Pose & Reference Library, A/B Runs, Batch QA Dashboard matrix, Versioning, Frame edits
+// ===========================================================================
+let frameEdits = [];
+
+function activeProjectName() {
+  if (!activeProjectPath) return '';
+  const parts = activeProjectPath.split('/');
+  if (parts.length >= 2) {
+    return parts[parts.length - 2];
+  }
+  return '';
+}
+
+function extractColors(text) {
+  const hexRegex = /#([0-9a-fA-F]{3,8})\b/g;
+  return text.match(hexRegex) || [];
+}
+
+async function refreshLibrary() {
+  const grid = $('#libraryGrid');
+  if (!grid) return;
+  clearNode(grid);
+  const pName = activeProjectName();
+  if (!pName) {
+    grid.innerHTML = '<div class="empty">No active project. Create or select a project first.</div>';
+    return;
+  }
+  try {
+    const res = await api(`/api/library/list?project_name=${encodeURIComponent(pName)}`);
+    if (!res.library || res.library.length === 0) {
+      grid.innerHTML = '<div class="empty">No assets saved in reference library yet.</div>';
+      return;
+    }
+    res.library.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'library-card card';
+      
+      const badge = document.createElement('span');
+      badge.className = `category-tag ${item.category}`;
+      badge.textContent = item.category.toUpperCase();
+      card.appendChild(badge);
+      
+      const title = document.createElement('h4');
+      title.textContent = item.title;
+      card.appendChild(title);
+      
+      const content = document.createElement('div');
+      content.className = 'content-text';
+      content.textContent = item.content;
+      card.appendChild(content);
+      
+      if (item.category === 'palette') {
+        const colors = extractColors(item.content);
+        if (colors.length > 0) {
+          const chips = document.createElement('div');
+          chips.className = 'palette-chips';
+          colors.forEach(col => {
+            const chip = document.createElement('div');
+            chip.className = 'palette-chip';
+            chip.style.backgroundColor = col;
+            chips.appendChild(chip);
+          });
+          card.appendChild(chips);
+        }
+      }
+      
+      const btnRow = document.createElement('div');
+      btnRow.className = 'button-row compact-actions';
+      btnRow.style.marginTop = 'auto';
+      btnRow.style.display = 'flex';
+      btnRow.style.gap = '4px';
+      
+      const loadBtn = document.createElement('button');
+      loadBtn.className = 'mini primary';
+      loadBtn.type = 'button';
+      loadBtn.textContent = 'Load';
+      loadBtn.addEventListener('click', () => {
+        const genForm = $('#generateForm');
+        if (genForm) {
+          genForm.querySelector('[name="character"]').value = item.content;
+          showView('generate');
+          toast('Loaded prompt text to Generator!');
+        }
+      });
+      btnRow.appendChild(loadBtn);
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'mini danger ghost';
+      delBtn.type = 'button';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', async () => {
+        if (confirm(`Delete reference asset "${item.title}"?`)) {
+          try {
+            await api('/api/library/delete', {
+              method: 'POST',
+              headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({id: item.id, project_name: pName})
+            });
+            toast('Deleted asset.');
+            refreshLibrary();
+          } catch(err) { toast(err.message); }
+        }
+      });
+      btnRow.appendChild(delBtn);
+      card.appendChild(btnRow);
+      grid.appendChild(card);
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function refreshQaDashboard() {
+  const tbody = $('#qaDashboardBody');
+  if (!tbody) return;
+  clearNode(tbody);
+  try {
+    const res = await api('/api/qa/batch_summary' + projectQuery());
+    if (!res.summary || res.summary.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-cell">No sprites found in current project.</td></tr>';
+      return;
+    }
+    res.summary.forEach(s => {
+      const tr = document.createElement('tr');
+      
+      const tdName = document.createElement('td');
+      tdName.textContent = s.name;
+      tr.appendChild(tdName);
+      
+      const tdState = document.createElement('td');
+      const stateBadge = document.createElement('span');
+      stateBadge.className = `qa-gate-badge ${s.has_qa ? (s.passed_gates ? 'pass' : 'fail') : 'warn'}`;
+      stateBadge.textContent = s.has_qa ? (s.passed_gates ? 'PASS' : 'FAIL') : 'NO QA';
+      tdState.appendChild(stateBadge);
+      tr.appendChild(tdState);
+      
+      const tdSeam = document.createElement('td');
+      tdSeam.textContent = s.loop_quality ? s.loop_quality.toFixed(1) : '—';
+      tdSeam.style.color = s.gate_details?.loop_quality?.ok ? '#2ecc71' : '#e74c3c';
+      tr.appendChild(tdSeam);
+      
+      const tdDrift = document.createElement('td');
+      tdDrift.textContent = s.foot_drift ? s.foot_drift.toFixed(2) + 'px' : '—';
+      tdDrift.style.color = s.gate_details?.foot_drift?.ok ? '#2ecc71' : '#e74c3c';
+      tr.appendChild(tdDrift);
+      
+      const tdFlicker = document.createElement('td');
+      tdFlicker.textContent = s.flicker ? s.flicker.toFixed(2) : '—';
+      tdFlicker.style.color = s.gate_details?.flicker?.ok ? '#2ecc71' : '#e74c3c';
+      tr.appendChild(tdFlicker);
+      
+      const tdCoverage = document.createElement('td');
+      tdCoverage.textContent = s.alpha_coverage ? (s.alpha_coverage * 100).toFixed(1) + '%' : '—';
+      tr.appendChild(tdCoverage);
+      
+      const tdNoise = document.createElement('td');
+      tdNoise.textContent = s.alpha_cleanliness !== undefined ? (s.alpha_cleanliness * 100).toFixed(2) + '%' : '—';
+      tdNoise.style.color = s.gate_details?.alpha_cleanliness?.ok ? '#2ecc71' : '#e74c3c';
+      tr.appendChild(tdNoise);
+      
+      const tdMissing = document.createElement('td');
+      tdMissing.textContent = s.missing_frames ? 'YES' : 'NO';
+      tdMissing.style.color = s.missing_frames ? '#e74c3c' : '#2ecc71';
+      tr.appendChild(tdMissing);
+      
+      const tdExports = document.createElement('td');
+      tdExports.textContent = s.has_exports ? 'YES' : 'NO';
+      tdExports.style.color = s.has_exports ? '#2ecc71' : '#f1c40f';
+      tr.appendChild(tdExports);
+      
+      const tdAct = document.createElement('td');
+      tdAct.style.whiteSpace = 'nowrap';
+      
+      const qaBtn = document.createElement('button');
+      qaBtn.className = 'mini';
+      qaBtn.type = 'button';
+      qaBtn.textContent = 'Run QA';
+      qaBtn.addEventListener('click', async () => {
+        await runAction('qa_report', { sprite_dir: s.path });
+        refreshQaDashboard();
+      });
+      tdAct.appendChild(qaBtn);
+      
+      const valBtn = document.createElement('button');
+      valBtn.className = 'mini primary';
+      valBtn.type = 'button';
+      valBtn.textContent = 'Validate';
+      valBtn.style.marginLeft = '4px';
+      valBtn.addEventListener('click', async () => {
+        try {
+          const valRes = await api(`/api/sprite/validate_engine?path=${encodeURIComponent(s.path)}`);
+          if (valRes.ok) {
+            alert(`Export is VALID! All ${valRes.results.length} checks passed.`);
+          } else {
+            const failed = valRes.results.filter(r => !r.ok).map(r => ` - ${r.label}: ${r.detail}`).join('\n');
+            alert(`Export has failures!\n\n${failed}`);
+          }
+        } catch (err) {
+          alert('Validation failed: ' + err.message);
+        }
+      });
+      tdAct.appendChild(valBtn);
+      
+      tr.appendChild(tdAct);
+      tbody.appendChild(tr);
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function refreshAbRuns() {
+  const select = $('#abRunSelect');
+  if (!select) return;
+  try {
+    const res = await api('/api/ab_run/list');
+    window._abRuns = res.ab_runs || [];
+    
+    select.innerHTML = '<option value="">Choose a past run...</option>';
+    window._abRuns.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = `${r.name} (${r.created_at})`;
+      select.appendChild(opt);
+    });
+  } catch(e) { console.error(e); }
+}
+
+function resolveSpriteDirNameFromCommand(cmd) {
+  if (!cmd || !Array.isArray(cmd)) return null;
+  const idx = cmd.indexOf('--output');
+  if (idx !== -1 && idx + 1 < cmd.length) {
+    const val = cmd[idx+1];
+    return val.replace(/^output\//, '').replace(/^projects\/[^/]+\/sprites\//, '');
+  }
+  return null;
+}
+
+async function updateCompareOverlay() {
+  const enabled = $('#inspectCompareEnable') && $('#inspectCompareEnable').checked;
+  const compareImg = $('#inspector-img-compare');
+  if (!compareImg) return;
+  if (!enabled) {
+    compareImg.classList.add('hidden');
+    const canvas = $('#inspector-canvas');
+    if (canvas) canvas.classList.remove('sidebyside-left');
+    return;
+  }
+  const versionId = $('#inspectCompareVersion').value;
+  if (!versionId || !selectedSpriteDir) {
+    compareImg.src = '';
+    return;
+  }
+  const frameIdx = parseInt($('#frameScrubber').value) || 0;
+  const padIdx = String(frameIdx).padStart(4, '0');
+  const mode = $('#inspectCompareMode').value;
+  
+  compareImg.src = `/file/${selectedSpriteDir}/.versions/${versionId}/frames_processed/frame_${padIdx}.png?t=` + Date.now();
+  compareImg.classList.remove('hidden');
+  
+  if (mode === 'sidebyside') {
+    compareImg.style.opacity = 1;
+    compareImg.classList.add('sidebyside-right');
+    const canvas = $('#inspector-canvas');
+    if (canvas) canvas.classList.add('sidebyside-left');
+  } else {
+    compareImg.style.opacity = $('#inspectCompareOpacity').value;
+    compareImg.classList.remove('sidebyside-right');
+    const canvas = $('#inspector-canvas');
+    if (canvas) canvas.classList.remove('sidebyside-left');
+  }
+}
+
+async function loadSpriteVersions(spritePath) {
+  try {
+    const res = await api(`/api/sprite/version/list?path=${encodeURIComponent(spritePath)}`);
+    const activeSel = $('#inspectActiveVersion');
+    const compareSel = $('#inspectCompareVersion');
+    if (!activeSel || !compareSel) return;
+    
+    activeSel.innerHTML = '<option value="current">Current Working Copy</option>';
+    compareSel.innerHTML = '<option value="">Choose snapshot...</option>';
+    
+    (res.versions || []).forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = `${v.label} (${v.created_at})`;
+      activeSel.appendChild(opt.cloneNode(true));
+      compareSel.appendChild(opt);
+    });
+    
+    activeSel.value = res.active_version || 'current';
+    if ($('#inspectRollbackBtn')) {
+      $('#inspectRollbackBtn').disabled = activeSel.value === 'current';
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+}
+
+async function loadProjectConfig() {
+  try {
+    const res = await api('/api/project/config');
+    const gates = res.quality_gates || {};
+    const form = $('#projectConfigForm');
+    if (form) {
+      form.elements.max_foot_drift.value = gates.max_foot_drift !== undefined ? gates.max_foot_drift : 2.0;
+      form.elements.max_flicker.value = gates.max_flicker !== undefined ? gates.max_flicker : 1.0;
+      form.elements.loop_seam_threshold.value = gates.loop_seam_threshold !== undefined ? gates.loop_seam_threshold : 15.0;
+      form.elements.required_frame_count.value = gates.required_frame_count !== undefined && gates.required_frame_count !== null ? gates.required_frame_count : '';
+      form.elements.alpha_cleanliness.value = gates.alpha_cleanliness !== undefined ? gates.alpha_cleanliness : 0.05;
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+}
+
+// Binders for A/B Form & detail selectors
+if ($('#abRunForm')) {
+  $('#abRunForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const name = $('#abRunName').value;
+    const pName = activeProjectName();
+    
+    const variant_a = {
+      action: form.elements.a_action.value,
+      character: form.elements.a_character.value,
+      style: form.elements.a_style.value,
+      negative: form.elements.a_negative.value,
+      seed: parseInt(form.elements.a_seed.value) || -1,
+      project_name: pName
+    };
+    const variant_b = {
+      action: form.elements.b_action.value,
+      character: form.elements.b_character.value,
+      style: form.elements.b_style.value,
+      negative: form.elements.b_negative.value,
+      seed: parseInt(form.elements.b_seed.value) || -1,
+      project_name: pName
+    };
+    
+    try {
+      const res = await api('/api/ab_run/create', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name, variant_a, variant_b, project_name: pName })
+      });
+      if (res.ok) {
+        toast('A/B Run queue started!');
+        showView('logs');
+        refreshAbRuns();
+      } else if (res.warning === 'low_disk') {
+        if (confirm(`${res.message}\n\nProceed anyway?`)) {
+          const resForce = await api('/api/ab_run/create', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ name, variant_a, variant_b, project_name: pName, force: true })
+          });
+          if (resForce.ok) {
+            toast('A/B Run queue started (forced)!');
+            showView('logs');
+            refreshAbRuns();
+          } else {
+            toast(resForce.message || 'Error starting A/B run');
+          }
+        }
+      } else {
+        toast(res.message || 'Error starting A/B run');
+      }
+    } catch(err) { toast(err.message); }
+  });
+}
+
+if ($('#abRunSelect')) {
+  $('#abRunSelect').addEventListener('change', async () => {
+    const abSelect = $('#abRunSelect');
+    const runId = abSelect.value;
+    if (!runId) {
+      $('#abCompareDisplay').classList.add('hidden');
+      return;
+    }
+    const run = window._abRuns.find(r => r.id === runId);
+    if (!run) return;
+    
+    try {
+      const qData = await api(`/api/queues/detail?path=${encodeURIComponent(run.queue_path)}`);
+      const jobA = qData.jobs[0];
+      const jobB = qData.jobs[1];
+      
+      $('#abCompareDisplay').classList.remove('hidden');
+      
+      $('#abScoreA').textContent = 'Loading...';
+      $('#abSizeA').textContent = '-';
+      $('#abDriftA').textContent = '-';
+      $('#abFlickerA').textContent = '-';
+      $('#abPreviewImgA').removeAttribute('src');
+      
+      if (jobA.status === 'completed') {
+        const spriteDirName = resolveSpriteDirNameFromCommand(jobA.command);
+        if (spriteDirName) {
+          try {
+            const bundle = await api(`/api/sprite/preview?path=${encodeURIComponent(spriteDirName)}`);
+            $('#abPreviewImgA').src = '/file/' + bundle.preview_gif;
+            if (bundle.qa_report && bundle.qa_report.metrics) {
+              const metrics = bundle.qa_report.metrics;
+              $('#abScoreA').textContent = bundle.qa_report.score !== undefined ? bundle.qa_report.score : '—';
+              $('#abDriftA').textContent = metrics.foot_y_stdev_px !== undefined ? metrics.foot_y_stdev_px.toFixed(2) + 'px' : '—';
+              $('#abFlickerA').textContent = metrics.brightness_stdev !== undefined ? metrics.brightness_stdev.toFixed(2) : '—';
+            }
+            if (bundle.sheet_png_size) {
+              $('#abSizeA').textContent = (bundle.sheet_png_size / 1024).toFixed(1) + ' KB';
+            }
+          } catch(e) { $('#abScoreA').textContent = 'Error loading bundle'; }
+        }
+      } else {
+        $('#abScoreA').textContent = jobA.status.toUpperCase();
+      }
+      
+      $('#abScoreB').textContent = 'Loading...';
+      $('#abSizeB').textContent = '-';
+      $('#abDriftB').textContent = '-';
+      $('#abFlickerB').textContent = '-';
+      $('#abPreviewImgB').removeAttribute('src');
+      
+      if (jobB.status === 'completed') {
+        const spriteDirName = resolveSpriteDirNameFromCommand(jobB.command);
+        if (spriteDirName) {
+          try {
+            const bundle = await api(`/api/sprite/preview?path=${encodeURIComponent(spriteDirName)}`);
+            $('#abPreviewImgB').src = '/file/' + bundle.preview_gif;
+            if (bundle.qa_report && bundle.qa_report.metrics) {
+              const metrics = bundle.qa_report.metrics;
+              $('#abScoreB').textContent = bundle.qa_report.score !== undefined ? bundle.qa_report.score : '—';
+              $('#abDriftB').textContent = metrics.foot_y_stdev_px !== undefined ? metrics.foot_y_stdev_px.toFixed(2) + 'px' : '—';
+              $('#abFlickerB').textContent = metrics.brightness_stdev !== undefined ? metrics.brightness_stdev.toFixed(2) : '—';
+            }
+            if (bundle.sheet_png_size) {
+              $('#abSizeB').textContent = (bundle.sheet_png_size / 1024).toFixed(1) + ' KB';
+            }
+          } catch(e) { $('#abScoreB').textContent = 'Error loading bundle'; }
+        }
+      } else {
+        $('#abScoreB').textContent = jobB.status.toUpperCase();
+      }
+    } catch(err) { toast('Error loading details: ' + err.message); }
+  });
+}
+
+// Binders for Library Form & list refresh
+if ($('#libraryAssetForm')) {
+  $('#libraryAssetForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = $('#libraryAssetTitle').value;
+    const category = $('#libraryAssetCategory').value;
+    const content = $('#libraryAssetContent').value;
+    const pName = activeProjectName();
+    
+    let reference_path = '';
+    const fileInput = $('#libraryAssetFile');
+    if (fileInput.files.length > 0) {
+      const file = fileInput.files[0];
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('active_project', activeProjectPath);
+      
+      $('#libraryAssetFileStatus').textContent = 'Uploading file...';
+      try {
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: fd
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.ok) {
+          reference_path = uploadData.relative;
+          $('#libraryAssetFileStatus').textContent = 'Upload complete.';
+        } else {
+          toast(uploadData.message || 'Upload failed');
+          $('#libraryAssetFileStatus').textContent = 'Upload failed.';
+          return;
+        }
+      } catch(err) {
+        toast('Upload error: ' + err.message);
+        $('#libraryAssetFileStatus').textContent = 'Upload failed.';
+        return;
+      }
+    }
+    
+    try {
+      const saveRes = await api('/api/library/save', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          title,
+          category,
+          content,
+          reference_path,
+          project_name: pName
+        })
+      });
+      if (saveRes.ok) {
+        toast('Reference asset saved!');
+        $('#libraryAssetForm').reset();
+        $('#libraryAssetFileStatus').textContent = '';
+        refreshLibrary();
+      }
+    } catch(err) { toast(err.message); }
+  });
+}
+
+if ($('#refreshLibrary')) $('#refreshLibrary').addEventListener('click', refreshLibrary);
+if ($('#refreshQaDashboard')) $('#refreshQaDashboard').addEventListener('click', refreshQaDashboard);
+
+// Quality Gates configuration
+if ($('#projectConfigForm')) {
+  $('#projectConfigForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const gates = {
+      max_foot_drift: parseFloat(form.elements.max_foot_drift.value),
+      max_flicker: parseFloat(form.elements.max_flicker.value),
+      loop_seam_threshold: parseFloat(form.elements.loop_seam_threshold.value),
+      required_frame_count: form.elements.required_frame_count.value ? parseInt(form.elements.required_frame_count.value) : null,
+      alpha_cleanliness: parseFloat(form.elements.alpha_cleanliness.value)
+    };
+    try {
+      await api('/api/project/config', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ quality_gates: gates })
+      });
+      toast('Quality gates updated successfully!');
+      refreshQaDashboard();
+    } catch (err) {
+      toast('Error updating gates: ' + err.message);
+    }
+  });
+}
+
+// Versioning and comparison overlay widgets
+if ($('#inspectSaveSnapshotBtn')) {
+  $('#inspectSaveSnapshotBtn').addEventListener('click', async () => {
+    if (!selectedSpriteDir) {
+      toast('Select a sprite first.');
+      return;
+    }
+    const label = prompt('Enter a label for this version snapshot (e.g. original, autofix, QA pass):');
+    if (label === null) return;
+    try {
+      const res = await api('/api/sprite/version/save', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ path: selectedSpriteDir, label })
+      });
+      if (res.ok) {
+        toast('Snapshot saved successfully!');
+        loadSpriteVersions(selectedSpriteDir);
+      }
+    } catch (err) {
+      toast('Error saving snapshot: ' + err.message);
+    }
+  });
+}
+
+if ($('#inspectRollbackBtn')) {
+  $('#inspectRollbackBtn').addEventListener('click', async () => {
+    const activeSel = $('#inspectActiveVersion');
+    const versionId = activeSel.value;
+    if (versionId === 'current' || !selectedSpriteDir) return;
+    if (!confirm('Are you sure you want to rollback to this version? All unsaved edits since this snapshot will be lost.')) {
+      return;
+    }
+    try {
+      const res = await api('/api/sprite/version/rollback', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ path: selectedSpriteDir, version_id: versionId })
+      });
+      if (res.ok) {
+        toast('Rollback completed!');
+        loadSpriteDetails(selectedSpriteDir);
+      }
+    } catch (err) {
+      toast('Error rolling back: ' + err.message);
+    }
+  });
+}
+
+if ($('#inspectActiveVersion')) {
+  $('#inspectActiveVersion').addEventListener('change', () => {
+    const activeSel = $('#inspectActiveVersion');
+    if ($('#inspectRollbackBtn')) {
+      $('#inspectRollbackBtn').disabled = activeSel.value === 'current';
+    }
+  });
+}
+
+if ($('#inspectCompareEnable')) {
+  $('#inspectCompareEnable').addEventListener('change', (e) => {
+    const enabled = e.target.checked;
+    $('#inspectCompareVersion').disabled = !enabled;
+    $('#inspectCompareBlendControls').classList.toggle('hidden', !enabled);
+    const compareImg = $('#inspector-img-compare');
+    if (compareImg) compareImg.classList.toggle('hidden', !enabled);
+    updateCompareOverlay();
+  });
+}
+
+if ($('#inspectCompareVersion')) $('#inspectCompareVersion').addEventListener('change', updateCompareOverlay);
+if ($('#inspectCompareMode')) $('#inspectCompareMode').addEventListener('change', updateCompareOverlay);
+if ($('#inspectCompareOpacity')) {
+  $('#inspectCompareOpacity').addEventListener('input', (e) => {
+    const compareImg = $('#inspector-img-compare');
+    if (compareImg) compareImg.style.opacity = e.target.value;
+  });
+}
+
+// Sprite Sheet Editor Lite frame manipulations
+if ($('#inspectDeleteFrameBtn')) {
+  $('#inspectDeleteFrameBtn').addEventListener('click', () => {
+    const frameIdx = parseInt($('#frameScrubber').value) || 0;
+    frameEdits.push({ type: 'delete', indices: [frameIdx] });
+    toast(`Frame ${frameIdx} marked for deletion.`);
+  });
+}
+
+if ($('#inspectHoldFrameBtn')) {
+  $('#inspectHoldFrameBtn').addEventListener('click', () => {
+    const frameIdx = parseInt($('#frameScrubber').value) || 0;
+    const count = parseInt(prompt('Hold for how many additional frames?', '1')) || 1;
+    frameEdits.push({ type: 'hold', index: frameIdx, count });
+    toast(`Frame ${frameIdx} set to hold for ${count} frames.`);
+  });
+}
+
+if ($('#inspectTrimStartBtn')) {
+  $('#inspectTrimStartBtn').addEventListener('click', () => {
+    const frameIdx = parseInt($('#frameScrubber').value) || 0;
+    frameEdits.push({ type: 'trim', start: frameIdx });
+    toast(`Trim start set at frame ${frameIdx}.`);
+  });
+}
+
+if ($('#inspectTrimEndBtn')) {
+  $('#inspectTrimEndBtn').addEventListener('click', () => {
+    const frameIdx = parseInt($('#frameScrubber').value) || 0;
+    frameEdits.push({ type: 'trim', end: frameIdx + 1 });
+    toast(`Trim end set at frame ${frameIdx}.`);
+  });
+}
+
+if ($('#inspectReorderFrameBtn')) {
+  $('#inspectReorderFrameBtn').addEventListener('click', () => {
+    const orderStr = prompt('Enter new order mapping as comma-separated indices (e.g. 0,1,3,2,4):');
+    if (!orderStr) return;
+    const mapping = orderStr.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+    frameEdits.push({ type: 'reorder', mapping });
+    toast('Custom reorder applied.');
+  });
+}
+
+if ($('#inspectSavePackBtn')) {
+  $('#inspectSavePackBtn').addEventListener('click', async () => {
+    if (!selectedSpriteDir) return;
+    if (frameEdits.length === 0) {
+      toast('No edits to pack.');
+      return;
+    }
+    const newFps = parseInt($('#inspectPlayFps').value) || 12;
+    try {
+      const res = await api('/api/sprite/edit_frames', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          path: selectedSpriteDir,
+          actions: frameEdits,
+          fps: newFps
+        })
+      });
+      if (res.ok) {
+        toast('Repacking job started. Check Log console.');
+        frameEdits = [];
+        showView('logs');
+      } else {
+        toast('Repacking failed: ' + res.message);
+      }
+    } catch (err) {
+      toast('Repacking error: ' + err.message);
+    }
+  });
+}
 
 // Restore active view (Continue where I left off) & load state
 const savedView = localStorage.getItem('activeView') || 'guide';

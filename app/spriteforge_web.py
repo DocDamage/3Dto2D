@@ -2225,7 +2225,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--smoke", action="store_true")
     args = parser.parse_args(argv)
     if args.smoke:
-        missing = [str(WEB / name) for name in ["index.html", "styles.css", "app.js"] if not (WEB / name).exists()]
+        expected_files = [
+            "index.html",
+            "styles.css",
+            "js/globals.js",
+            "js/project.js",
+            "js/gallery.js",
+            "js/editor.js",
+            "js/experiments.js",
+            "js/qa.js",
+            "js/app_main.js",
+        ]
+        missing = [str(WEB / name) for name in expected_files if not (WEB / name).exists()]
         if missing:
             print("Missing web assets:", missing)
             return 1

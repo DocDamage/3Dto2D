@@ -1,0 +1,346 @@
+const $ = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
+let currentOutputs = [];
+let selectedSpriteDir = '';
+let lastLogText = '';
+let recommendedAction = '';
+let activeProjectPath = '';
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toast(msg){
+  const t=$('#toast');
+  if (!t) return;
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+function formData(form){
+  const data={};
+  new FormData(form).forEach((v,k)=>{data[k]=v});
+  $$('input[type="checkbox"]', form).forEach(i=>data[i.name]=i.checked);
+  return data;
+}
+
+async function api(path, opts={}){
+  const r=await fetch(path, opts);
+  const txt=await r.text();
+  let data={};
+  try{data=JSON.parse(txt)}catch{data={text:txt}}
+  if(!r.ok) throw new Error(data.message||txt||r.statusText);
+  return data;
+}
+
+async function runAction(action, extra={}){
+  // 1. Confirm before long jobs
+  if (['generate_sprite', 'convert_video', 'character_pack', 'atlas', 'run_queue'].includes(action)) {
+    if (localStorage.getItem('prefConfirmLongJobs') === 'true') {
+      if (!confirm(`Confirm: Do you want to start this generation job? It will take several minutes.`)) {
+        return;
+      }
+    }
+  }
+
+  // 2. Preflight validation check
+  if (action === 'generate_sprite') {
+    const status = window._latestStatus;
+    if (status) {
+      if (!status.comfy_running) {
+        const displayMsg = 'ComfyUI is offline. SpriteForge cannot generate until it is running.';
+        showPreflightErrorBox(displayMsg, 'comfy');
+        return;
+      }
+      if (!status.models.ok) {
+        const displayMsg = 'WAN model files are missing. Check WAN Models checkmarks or repair downloads in Setup.';
+        showPreflightErrorBox(displayMsg, 'models');
+        return;
+      }
+    }
+  }
+
+  try {
+    const data=await api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,active_project:activeProjectPath,...extra})});
+    if (data.warning === 'low_disk') {
+      if (confirm(`${data.message}\n\nRunning this task might consume critical disk space. Proceed anyway?`)) {
+        const forceData=await api('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,active_project:activeProjectPath,force:true,...extra})});
+        toast(forceData.message||'Started (forced)');
+        await refreshAll();
+        if (localStorage.getItem('prefNeverAutoSwitch') !== 'true') {
+          showView('logs');
+        }
+      }
+      return;
+    }
+    toast(data.message||'Started');
+    await refreshAll();
+    
+    // 3. Auto-switch to logs view unless disabled
+    if (['generate_sprite', 'convert_video', 'character_pack', 'atlas', 'run_queue'].includes(action)) {
+      if (localStorage.getItem('prefNeverAutoSwitch') !== 'true') {
+        showView('logs');
+      }
+    }
+  } catch(e) {
+    let displayMsg = 'Error: ' + e.message;
+    if (e.message && (e.message.includes('ComfyUI') || e.message.includes('offline')) || (action === 'generate_sprite' && window._latestStatus && !window._latestStatus.comfy_running)) {
+      displayMsg = 'ComfyUI is offline. SpriteForge cannot generate until it is running.';
+      showPreflightErrorBox(displayMsg, 'comfy');
+    } else {
+      toast(displayMsg);
+    }
+  }
+}
+
+function showPreflightErrorBox(msg, type) {
+  const box = $('#generateErrorBox');
+  const msgEl = $('#generateErrorMsg');
+  const actionsEl = $('#generateErrorActions');
+  const debugEl = $('#generateErrorDebug');
+  if (!box || !msgEl) return;
+
+  box.classList.remove('hidden');
+  msgEl.textContent = msg;
+  clearNode(actionsEl);
+
+  if (type === 'comfy') {
+    const startBtn = document.createElement('button');
+    startBtn.type = 'button';
+    startBtn.className = 'mini primary';
+    startBtn.textContent = 'Start ComfyUI';
+    startBtn.addEventListener('click', async () => {
+      try {
+        await api('/api/launch_comfy', {method: 'POST'});
+        toast('ComfyUI launch requested');
+        box.classList.add('hidden');
+        setTimeout(refreshAll, 1800);
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    actionsEl.appendChild(startBtn);
+  }
+
+  if (debugEl) {
+    debugEl.textContent = `Action: generate\nTimestamp: ${new Date().toISOString()}\nError Details: ${msg}\nStatus State: ${JSON.stringify(window._latestStatus || {}, null, 2)}`;
+  }
+}
+
+async function openPath(path){
+  try{
+    await api('/api/open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})});
+  }catch(e){
+    toast(e.message);
+  }
+}
+
+function setChip(id, state, text){
+  const el=$(id);
+  if (el) {
+    el.className='chip '+state;
+    el.textContent=text;
+  }
+}
+
+function showView(name){
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  $('#view-'+name)?.classList.add('active');
+  $$('.nav').forEach(n=>n.classList.toggle('active',n.dataset.view===name));
+  
+  localStorage.setItem('activeView', name);
+  
+  // Update Step Map
+  $$('.step-map-item').forEach(item => {
+    let active = false;
+    const step = item.dataset.step;
+    if (step === 'setup') active = ['setup', 'launchpad'].includes(name);
+    else if (step === 'describe') active = ['guide', 'generate', 'convert'].includes(name);
+    else if (step === 'generate') active = ['queue', 'queues', 'logs'].includes(name);
+    else if (step === 'review') active = ['quality'].includes(name);
+    else if (step === 'export') active = ['packs', 'release'].includes(name);
+    item.classList.toggle('active', active);
+  });
+  
+  if (name === 'library' && typeof refreshLibrary === 'function') refreshLibrary();
+  if (name === 'qa_dashboard') {
+    if (typeof loadProjectConfig === 'function') loadProjectConfig();
+    if (typeof refreshQaDashboard === 'function') refreshQaDashboard();
+  }
+  if (name === 'ab_runs' && typeof refreshAbRuns === 'function') refreshAbRuns();
+}
+
+function relativePath(p){ return p || ''; }
+
+function clearNode(node){
+  if (node) {
+    while(node.firstChild) node.removeChild(node.firstChild);
+  }
+}
+
+function appendText(parent, tag, text, className=''){
+  const el=document.createElement(tag);
+  if(className) el.className=className;
+  el.textContent=text;
+  if (parent) parent.appendChild(el);
+  return el;
+}
+
+function tableEmpty(tbody, colspan, text){
+  clearNode(tbody);
+  const tr=document.createElement('tr');
+  const td=document.createElement('td');
+  td.colSpan=colspan;
+  td.className='empty-cell';
+  td.textContent=text;
+  tr.appendChild(td);
+  if (tbody) tbody.appendChild(tr);
+}
+
+function setTextState(node, text, className=''){
+  clearNode(node);
+  appendText(node, 'span', text, className);
+}
+
+function clampProgress(value){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, n));
+}
+
+function setProgressFill(fill, pct, state=''){
+  if(!fill) return;
+  const value = clampProgress(pct);
+  fill.style.width = `${value}%`;
+  fill.className = state || '';
+  fill.dataset.percent = String(Math.round(value));
+}
+
+function progressElement(pct, state=''){
+  const wrap = document.createElement('div');
+  wrap.className = 'task-progressbar compact';
+  const fill = document.createElement('i');
+  setProgressFill(fill, pct, state);
+  wrap.appendChild(fill);
+  return wrap;
+}
+
+function inferredJobProgress(job, running){
+  const raw = clampProgress(job?.progress);
+  if(!running) return job?.exit_code === 0 ? 100 : raw;
+  if(raw > 0) return raw;
+  const title = String(job?.title || '').toLowerCase();
+  const logs = (job?.logs || []).join('\n').toLowerCase();
+  if(logs.includes('sheet:') || logs.includes('metadata:') || logs.includes('preview:')) return 95;
+  if(logs.includes('converting video') || logs.includes('extract') || logs.includes('opencv')) return 72;
+  if(logs.includes('history outputs') || logs.includes('chosen_output') || logs.includes('generated sprite output')) return 82;
+  if(logs.includes('waiting for exact') || logs.includes('prompt history')) return 38;
+  if(logs.includes('loading') || logs.includes('model') || logs.includes('weights')) return 18;
+  if(title.includes('queue')) return 20;
+  if(title.includes('install')) return 12;
+  return 10;
+}
+
+function renderGlobalProgress(job){
+  const box = $('#globalTaskProgress');
+  if(!box) return;
+  const running = !!job?.running;
+  const done = !running && job?.exit_code === 0;
+  const failed = !running && job?.exit_code;
+  const pct = inferredJobProgress(job || {}, running);
+  box.classList.toggle('idle', !running && !done && !failed);
+  box.classList.toggle('failed', !!failed);
+  box.classList.toggle('done', !!done);
+  $('#globalTaskTitle').textContent = running ? (job.title || 'Task running') : (done ? 'Last task complete' : failed ? 'Last task failed' : 'No task running');
+  $('#globalTaskDetail').textContent = running ? 'Running now' : (job?.finished_at || 'Ready');
+  $('#globalProgressPct').textContent = `${Math.round(clampProgress(pct))}%`;
+  setProgressFill($('#globalProgressFill'), pct, running ? 'busy' : done ? 'done' : failed ? 'failed' : '');
+}
+
+function projectQuery(){
+  return activeProjectPath ? `?project=${encodeURIComponent(activeProjectPath)}` : '';
+}
+
+function mediaEmpty(text){
+  const div = document.createElement('div');
+  div.className = 'result-empty';
+  div.textContent = text;
+  return div;
+}
+
+function setPreviewLink(id, url){
+  const el = $(id);
+  if(!el) return;
+  if(url){
+    el.href = url;
+    el.classList.remove('hidden');
+  } else {
+    el.href = '#';
+    el.classList.add('hidden');
+  }
+}
+
+function closeResultPreview(){
+  const modal = $('#previewModal');
+  if(!modal) return;
+  modal.classList.add('hidden');
+  const videoSlot = $('#previewVideoSlot');
+  const spriteSlot = $('#previewSpriteSlot');
+  if(videoSlot) clearNode(videoSlot);
+  if(spriteSlot) clearNode(spriteSlot);
+}
+
+async function openResultPreview(spritePath){
+  if(!spritePath){ toast('No sprite output selected.'); return; }
+  try{
+    const data = await api('/api/sprite/preview?path=' + encodeURIComponent(spritePath));
+    const modal = $('#previewModal');
+    const videoSlot = $('#previewVideoSlot');
+    const spriteSlot = $('#previewSpriteSlot');
+    if(!modal || !videoSlot || !spriteSlot) return;
+    clearNode(videoSlot);
+    clearNode(spriteSlot);
+
+    $('#previewTitle').textContent = data.name || 'Review result';
+    $('#previewSubtitle').textContent = data.path || '';
+    $('#previewVideoMeta').textContent = data.video_path ? data.video_path.split('/').pop() : 'No source video found';
+    $('#previewSpriteMeta').textContent = `${data.frame_count || '?'} frames · ${data.fps || '?'} fps · ${data.frame_width || '?'}×${data.frame_height || '?'}`;
+
+    if(data.video_url){
+      const video = document.createElement('video');
+      video.controls = true;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.src = data.video_url + '?t=' + Date.now();
+      videoSlot.appendChild(video);
+    } else {
+      videoSlot.appendChild(mediaEmpty('Source video was not found for this older output.'));
+    }
+
+    const spriteUrl = data.preview_url || data.sheet_url;
+    if(spriteUrl){
+      const img = document.createElement('img');
+      img.src = spriteUrl + '?t=' + Date.now();
+      img.alt = data.name || 'Sprite preview';
+      spriteSlot.appendChild(img);
+    } else {
+      spriteSlot.appendChild(mediaEmpty('No sprite preview image found.'));
+    }
+
+    $('#previewOpenFolder').dataset.openPath = data.path || spritePath;
+    $('#previewUseForQuality').dataset.spritePath = data.path || spritePath;
+    setPreviewLink('#previewOpenSheet', data.sheet_url || data.preview_url || '');
+    setPreviewLink('#previewOpenReport', data.report_url || data.qa_url || '');
+    modal.classList.remove('hidden');
+  } catch(e){
+    toast('Preview failed: ' + e.message);
+  }
+}

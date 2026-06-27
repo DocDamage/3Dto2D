@@ -13,6 +13,9 @@ app/logs/
 app/output/
 app/releases/
 app/input/uploaded_videos/
+app/state/
+app/config/*.bak_*
+
 
 # External dependencies and model payloads are installed/downloaded locally.
 app/vendor/*

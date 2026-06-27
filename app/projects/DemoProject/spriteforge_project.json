@@ -1,0 +1,41 @@
+{
+  "schema": "spriteforge_project_v1",
+  "name": "DemoProject",
+  "created_at": "2026-06-26T19:59:16",
+  "updated_at": "2026-06-26T19:59:16",
+  "character": "single full body original game character, consistent outfit, readable silhouette",
+  "style": "2D game sprite animation, crisp edges, readable silhouette, production sprite sheet style",
+  "background": "plain bright green chroma key background, evenly lit, no shadows on background",
+  "profile": "rtx3060_12gb",
+  "mode": "t2v",
+  "actions": [
+    "idle",
+    "walk",
+    "run",
+    "attack_light",
+    "hurt"
+  ],
+  "directions": [
+    "right"
+  ],
+  "fps": 12,
+  "cell_size": "512x512",
+  "frames_by_action": {
+    "idle": 24,
+    "walk": 33,
+    "run": 25,
+    "attack_light": 24,
+    "attack_heavy": 32,
+    "cast": 32,
+    "jump": 24,
+    "hurt": 16,
+    "death": 40
+  },
+  "quality_gates": {
+    "max_foot_drift": 2.0,
+    "max_flicker": 1.0,
+    "loop_seam_threshold": 15.0,
+    "required_frame_count": null,
+    "alpha_cleanliness": 0.05
+  }
+}

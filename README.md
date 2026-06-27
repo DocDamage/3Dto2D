@@ -66,3 +66,35 @@ Detailed guides are located in the [app/docs/](file:///c:/Users/dferr/OneDrive/D
 - **Model details & VRAM requirements:** [docs/WAN_MODEL_TIERS_v11.md](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/docs/WAN_MODEL_TIERS_v11.md)
 - **End-user workflow guide:** [docs/END_USER_GUIDE.md](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/docs/END_USER_GUIDE.md)
 - **Cheat Sheet & prompt suggestions:** [docs/ONE_PAGE_CHEAT_SHEET.md](file:///c:/Users/dferr/OneDrive/Desktop/spriteforge_studio_v12_final_polish/app/docs/ONE_PAGE_CHEAT_SHEET.md)
+
+---
+
+## 🔄 Advanced Features & Workflow (v12 Polish)
+
+The v12 Final Polish edition introduces an integrated suite of advanced tools for pro-level sprite workflows:
+
+### 1. Sprite Versioning & Blended Comparison
+- **Save Snapshots:** Inside the **Quality Lab**, click **Save Version** to snapshot your sprite's state (images, metadata, and individual frames).
+- **Blended Canvas Overlay:** Choose a version from the compare dropdown to overlay it on your current sprite. Use the opacity slider and blend mode options to compare differences frame-by-frame.
+- **Rollback:** Restore your workspace to any previous snapshot with a single click.
+
+### 2. A/B Prompt Variants
+- **Run Variants Side-by-Side:** Under the **A/B Runs** tab, specify two different prompt/style settings (Variant A vs Variant B).
+- **Sequential Execution:** The pipeline runs them sequentially to prevent GPU/VRAM overload.
+- **Side-by-Side Review:** Compare output videos, sprite sheets, QA scores, and final file sizes side-by-side.
+
+### 3. Project Pose & Reference Library
+- **Reusable Assets:** Save reference descriptions, palettes, prompt recipes, or silhouettes in the **Pose Library**.
+- **Project Scoping:** Save assets per project to maintain high stylistic consistency across actions and directions.
+
+### 4. Batch QA Dashboard
+- **Quality Matrix:** Inspect the **QA Dashboard** tab to view Loop Quality (RMSE), Foot Drift, Flicker, Alpha Cleanliness, and missing frames for every sprite in your project.
+- **Quality Gates:** Defines strict validation rules (e.g., maximum foot drift or alpha noise) under **Setup / Quality Gates**. Sprites failing these gates are highlighted and blocked from release exports.
+
+### 5. Sprite Sheet Editor Lite
+- **Frame Editing:** Trim start/end frames, delete bad frames, hold/duplicate frames, and adjust FPS on the fly.
+- **Fast Repacking:** Click **Save & Repack** to trigger `spriteforge.py pack` programmatically, immediately regenerating sheets and previews.
+
+### 6. Engine Export Validator
+- **Validate Engine Integrations:** After exporting animations for Godot or Unity, use the validator to verify pivots, loop flags, texture filtering, and expected files to avoid import issues.
+

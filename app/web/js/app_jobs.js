@@ -131,14 +131,29 @@ function renderJob(job) {
       }
 
       timeStateEl.style.display = 'block';
-      const eta = job.metadata?.eta?.label || estTime;
+      const eta = job.eta_label || job.metadata?.eta?.label || estTime;
+      const elapsed = job.elapsed_seconds ? `Elapsed: ${formatDuration(job.elapsed_seconds)} · ` : '';
+      const remaining = job.remaining_seconds !== null && job.remaining_seconds !== undefined ? ` · Remaining: ${formatDuration(job.remaining_seconds)}` : '';
       const progressMode = job.progress_mode === 'comfy_ws' ? 'Exact ComfyUI websocket progress' : 'Estimated progress';
-      timeStateEl.innerHTML = `Estimated time: ${eta}<br>${progressMode}: ${currentStep}`;
+      const detail = job.stage_detail || currentStep;
+      timeStateEl.innerHTML = `${elapsed}ETA: ${eta}${remaining}<br>${progressMode}: ${detail}`;
     } else {
       timeStateEl.style.display = 'none';
       timeStateEl.innerHTML = '';
     }
   }
+}
+
+function formatDuration(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    return `${hours}h ${mins % 60}m`;
+  }
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
 }
 
 // Connect SSE on load

@@ -1189,6 +1189,8 @@ def cmd_generate_sprite(args: argparse.Namespace) -> None:
         extra += ["--key-color", str(args.key_color)]
     if getattr(args, "resolutions", None):
         extra += ["--resolutions", str(args.resolutions)]
+    if getattr(args, "power_of_two", False):
+        extra.append("--power-of-two")
     run(build_sprite_args(chosen, out_dir, cfg, extra=extra))
     if getattr(args, "quality_check", False):
         qc_extra = []
@@ -1338,6 +1340,33 @@ def cmd_download_model_tier(args: argparse.Namespace) -> None:
     if not args.dry_run:
         for manifest in manifests:
             cmd_model_report(argparse.Namespace(manifest=manifest, json=True))
+
+
+def cmd_qa_report(args: argparse.Namespace) -> None:
+    from services.qa_threshold_service import resolve_qa_thresholds, threshold_cli_args
+
+    sprite_dir = Path(args.input)
+    if not sprite_dir.is_absolute():
+        sprite_dir = ROOT / sprite_dir
+    thresholds = resolve_qa_thresholds(ROOT, sprite_dir, getattr(args, "qa_preset", "auto"))
+    if getattr(args, "loop_rmse_threshold", None) is not None:
+        thresholds["loop_rmse_threshold"] = float(args.loop_rmse_threshold)
+    if getattr(args, "foot_drift_threshold", None) is not None:
+        thresholds["foot_drift_threshold"] = float(args.foot_drift_threshold)
+    if getattr(args, "center_drift_threshold", None) is not None:
+        thresholds["center_drift_threshold"] = float(args.center_drift_threshold)
+    cmd = [
+        sys.executable,
+        str(ROOT / "spriteforge_qc.py"),
+        "report",
+        "--input",
+        args.input,
+        "--duplicate-threshold",
+        str(args.duplicate_threshold),
+    ] + threshold_cli_args(thresholds)
+    if args.output:
+        cmd += ["--output", args.output]
+    run(cmd)
 
 
 def cmd_open_model_pages(args: argparse.Namespace) -> None:
@@ -1518,6 +1547,9 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument("--resolutions", default=None)
         s.add_argument("--preview", action="store_true")
         s.add_argument("--style-image", default=None)
+        s.add_argument("--batch-size", type=int, default=None, help="VRAM fallback hint for workflows with batch controls")
+        s.add_argument("--vram-fallback", default=None, help="Internal retry hint: fp8, batch, resolution, or cpu_offload")
+        s.add_argument("--cpu-offload", default=None, help="Internal retry hint for CPU/offload mode")
 
     s = sub.add_parser("submit-wan", help="Submit the included native Wan 2.1 T2V API workflow to a running ComfyUI server")
     add_wan_args(s)
@@ -1540,6 +1572,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--qa-threshold-loop-rmse", type=float, default=None)
     s.add_argument("--qa-threshold-foot-drift", type=float, default=None)
     s.add_argument("--qa-threshold-center-drift", type=float, default=None)
+    s.add_argument("--power-of-two", action="store_true", help="Pad final sheet to power-of-two dimensions")
     s.set_defaults(func=cmd_generate_sprite)
 
     s = sub.add_parser("watch-output", help="Watch ComfyUI output and convert new videos into sprites")
@@ -1827,7 +1860,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--input", required=True, help="SpriteForge output folder or image-frame folder")
     s.add_argument("--output", default=None)
     s.add_argument("--duplicate-threshold", type=float, default=1.25)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_qc.py"), "report", "--input", a.input] + (["--output", a.output] if a.output else []) + ["--duplicate-threshold", str(a.duplicate_threshold)]))
+    s.add_argument("--qa-preset", default="auto", help="Named QA preset or 'auto' to use active/project quality gates")
+    s.add_argument("--loop-rmse-threshold", type=float, default=None)
+    s.add_argument("--foot-drift-threshold", type=float, default=None)
+    s.add_argument("--center-drift-threshold", type=float, default=None)
+    s.set_defaults(func=cmd_qa_report)
 
     s = sub.add_parser("autofix-sprite", help="Create a stabilized fixed copy of a sprite output folder")
     s.add_argument("--input", required=True)
@@ -1864,9 +1901,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--output", default=None)
     s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_character.py"), "batch", "--profile", a.profile, "--mode", a.mode, "--seed", str(a.seed)] + (["--actions", a.actions] if a.actions else []) + (["--directions", a.directions] if a.directions else []) + (["--local-profile", a.local_profile] if a.local_profile else []) + (["--output", a.output] if a.output else [])))
 
-    s = sub.add_parser("export-atlas", help="Export TexturePacker/Phaser/PixiJS/CSS atlas metadata")
+    s = sub.add_parser("export-atlas", help="Export TexturePacker/Phaser/PixiJS/Aseprite/CSS/XML atlas metadata")
     s.add_argument("--sprite-dir", required=True)
-    s.add_argument("--format", required=True, choices=["texturepacker", "phaser", "pixijs", "css"])
+    s.add_argument("--format", required=True, choices=["texturepacker", "phaser", "pixijs", "aseprite", "css", "xml"])
     s.add_argument("--output", default=None)
     s.add_argument("--copy-image", action="store_true")
     s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_pack_formats.py"), "export", "--sprite-dir", a.sprite_dir, "--format", a.format] + (["--output", a.output] if a.output else []) + (["--copy-image"] if a.copy_image else [])))

@@ -1,0 +1,41 @@
+.drop-target-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.drop-target-card {
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1.5px dashed rgba(85, 241, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(85, 241, 255, 0.045);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  cursor: pointer;
+}
+
+.drop-target-card.drag-active {
+  border-color: var(--pink);
+  background: rgba(255, 101, 189, 0.1);
+  color: var(--text);
+}
+
+.drop-target-card input {
+  display: none;
+}
+
+.drop-target-card span {
+  color: var(--text);
+  font-size: 13px;
+}
+
+@media (max-width: 620px) {
+  .drop-target-row {
+    grid-template-columns: 1fr;
+  }
+}

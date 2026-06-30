@@ -33,6 +33,7 @@ DROP_VIDEOS_DIR = ROOT / "01_DROP_VIDEOS_HERE"
 IMAGE_EXTS = ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp")
 
 
+from services.open_path_service import open_path as open_system_path
 from spriteforge_utils import load_json, save_json, app_python, PYTHON, get_app_version, apply_dark_theme
 
 def python_preference() -> str:
@@ -51,12 +52,7 @@ def resolve_root_path(value: str) -> Path:
 def open_path(path: Path) -> None:
     path = path.resolve()
     path.mkdir(parents=True, exist_ok=True) if not path.suffix else None
-    if os.name == "nt":
-        os.startfile(str(path))  # type: ignore[attr-defined]
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(path)])
-    else:
-        subprocess.Popen(["xdg-open", str(path)])
+    open_system_path(path)
 
 
 def is_comfy_running(host: str = "127.0.0.1", port: int = 8188, timeout: float = 0.75) -> bool:

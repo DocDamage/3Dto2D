@@ -8,7 +8,7 @@ from services.job_service import JobService
 from services.comfy_service import ComfyService
 from services.model_service import ModelService
 from services.model_service import ModelService
-from services.generation_intelligence import estimate_job_eta, preflight_generation, safer_retry_payload, rerun_similar_payload
+from services.generation_intelligence import estimate_job_eta, preflight_generation, safer_retry_payload, rerun_similar_payload, update_job_timing
 from web_helpers import (
     ROOT, OUTPUT, LOGS, PYTHON,
     build_action_command, _project_meta_from_query, _project_workspace,
@@ -20,19 +20,26 @@ from web_helpers import (
 
 routes_jobs = Blueprint("routes_jobs", __name__)
 
+
+def _job_status_payload(job, running: bool):
+    if not job:
+        return {"running": False, "title": "Idle", "progress": 0.0, "exit_code": None, "logs": [], "started_at": None, "finished_at": None}
+    job_status = dict(job)
+    job_status["running"] = running
+    return update_job_timing(job_status)
+
+
 @routes_jobs.route("/api/job", methods=["GET"])
 def get_job():
     active_job = JobService.get_active_job()
     if active_job:
-        job_status = dict(active_job)
-        job_status["running"] = True
+        job_status = _job_status_payload(active_job, True)
     else:
         history = JobService.get_history()
         if history:
-            job_status = dict(history[0])
-            job_status["running"] = False
+            job_status = _job_status_payload(history[0], False)
         else:
-            job_status = {"running": False, "title": "Idle", "progress": 0.0, "exit_code": None, "logs": [], "started_at": None, "finished_at": None}
+            job_status = _job_status_payload(None, False)
     return jsonify(job_status)
 
 @routes_jobs.route("/api/job/history", methods=["GET"])
@@ -52,7 +59,7 @@ def get_job_detail():
     if not job:
         return jsonify({"error": "Job not found"}), 404
     
-    job_dict = dict(job)
+    job_dict = update_job_timing(dict(job))
     log_file = ROOT / job_dict.get("log_file", f"logs/web_job_{job_id}.log")
     if log_file.exists():
         try:
@@ -99,15 +106,13 @@ def status_stream():
         while True:
             active_job = JobService.get_active_job()
             if active_job:
-                job_status = dict(active_job)
-                job_status["running"] = True
+                job_status = _job_status_payload(active_job, True)
             else:
                 history = JobService.get_history()
                 if history:
-                    job_status = dict(history[0])
-                    job_status["running"] = False
+                    job_status = _job_status_payload(history[0], False)
                 else:
-                    job_status = {"running": False, "title": "Idle", "progress": 0.0, "exit_code": None, "logs": [], "started_at": None, "finished_at": None}
+                    job_status = _job_status_payload(None, False)
             
             data = {
                 "comfy_running": ComfyService.is_running(),

@@ -226,12 +226,8 @@ class Wizard(tk.Tk):
 
     def open_path(self, path: Path) -> None:
         try:
-            if os.name == "nt":
-                os.startfile(str(path))  # type: ignore[attr-defined]
-            elif sys.platform == "darwin":
-                subprocess.Popen(["open", str(path)])
-            else:
-                subprocess.Popen(["xdg-open", str(path)])
+            from services.open_path_service import open_path as open_system_path
+            open_system_path(path)
         except Exception as exc:
             self.log(f"Could not open {path}: {exc}")
 

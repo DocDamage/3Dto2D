@@ -262,6 +262,14 @@ Inside Unity:
 3. Run Tools > SpriteForge > Create Animation Clip From Selected Sheet.
 ```
 
+## Unreal Engine export
+
+```bat
+python spriteforge_unified.py export-engine --engine unreal --sprite-dir output\hero_walk_repaired --project C:\Path\To\UnrealProject --name hero_walk --import-path /Game/Characters/Hero
+```
+
+The Unreal export copies `sheet.png` and `sheet.json`, then writes `unreal_import_helper.py` and `UNREAL_IMPORT_NOTES.md`. Run the helper from Unreal's Python console after enabling the Python Editor Script and Paper2D plugins. The helper imports the texture, configures sprite-friendly filtering, slices frames from the SpriteForge metadata, and creates a Paper2D flipbook.
+
 ## Snapshot / rollback
 
 Before major ComfyUI/custom-node updates:
@@ -328,6 +336,15 @@ python spriteforge_unified.py qa-report --input output\hero_walk_sprite
 python spriteforge_unified.py autofix-sprite --input output\hero_walk_sprite --output output\hero_walk_fixed --drop-loop-duplicate --stabilize-anchor --deflicker --solidify 2
 ```
 
+`qa-report` uses the active project's `quality_gates` by default. You can also force a named preset or override individual gates:
+
+```bat
+python spriteforge_unified.py qa-report --input output\hero_walk_sprite --qa-preset "Top-Down RPG Character"
+python spriteforge_unified.py qa-report --input output\hero_walk_sprite --foot-drift-threshold 4 --loop-rmse-threshold 18
+```
+
+The test suite includes visual regression coverage through `services.visual_regression_service.compare_sprite_to_golden`, which compares a current `sheet.png` against a golden SpriteForge output folder and records pixel-delta metrics.
+
 The report checks loop seam distance, duplicate frames, foot/ground drift, horizontal jitter, silhouette popping, blank frames, and brightness flicker.
 
 ### Character consistency pack
@@ -369,7 +386,9 @@ This submits the workflow to the remote ComfyUI API, waits for exact `/history` 
 python spriteforge_unified.py export-atlas --sprite-dir output\hero_walk_sprite --format texturepacker --copy-image
 python spriteforge_unified.py export-atlas --sprite-dir output\hero_walk_sprite --format phaser
 python spriteforge_unified.py export-atlas --sprite-dir output\hero_walk_sprite --format pixijs
+python spriteforge_unified.py export-atlas --sprite-dir output\hero_walk_sprite --format aseprite
 python spriteforge_unified.py export-atlas --sprite-dir output\hero_walk_sprite --format css
+python spriteforge_unified.py export-atlas --sprite-dir output\hero_walk_sprite --format xml
 ```
 
 Use these when your engine or web renderer expects common atlas JSON instead of the default SpriteForge `sheet.json`.

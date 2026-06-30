@@ -6,6 +6,19 @@
   <title>SpriteForge Studio v12</title>
   <link rel="icon" href="/web/logo.svg" />
   <link rel="stylesheet" href="/web/styles.css" />
+  <link rel="stylesheet" href="/web/sprite_preview.css" />
+  <link rel="stylesheet" href="/web/prompt_builder.css" />
+  <link rel="stylesheet" href="/web/seed_gallery.css" />
+  <link rel="stylesheet" href="/web/frame_review.css" />
+  <link rel="stylesheet" href="/web/palette_harmonizer.css" />
+  <link rel="stylesheet" href="/web/theme.css" />
+  <link rel="stylesheet" href="/web/mobile_nav.css" />
+  <link rel="stylesheet" href="/web/drag_drop.css" />
+  <link rel="stylesheet" href="/web/audio_cues.css" />
+  <link rel="stylesheet" href="/web/state_machine.css" />
+  <link rel="stylesheet" href="/web/marketplace_gallery.css" />
+  <link rel="stylesheet" href="/web/scene_compositor.css" />
+  <link rel="stylesheet" href="/web/consistency_lock.css" />
   <script>
     window.viewComponentsLoaded = (async () => {
       const views = [
@@ -39,6 +52,8 @@
   <div class="aurora aurora-one"></div>
   <div class="aurora aurora-two"></div>
   <div class="aurora aurora-three"></div>
+  <button class="mobile-rail-toggle" id="mobileRailToggle" type="button" aria-label="Open navigation" aria-expanded="false"><span></span></button>
+  <div class="mobile-rail-backdrop" id="mobileRailBackdrop"></div>
 
   <aside class="rail">
     <div class="brand">
@@ -96,6 +111,7 @@
             <button class="mode-btn active" id="modeBtnSimple" type="button" data-mode="simple">Simple</button>
             <button class="mode-btn" id="modeBtnDetailed" type="button" data-mode="detailed">Detailed</button>
             <button class="mode-btn" id="modeBtnExpert" type="button" data-mode="expert">Expert</button>
+            <button class="mode-btn theme-toggle" id="themeToggle" type="button" aria-pressed="false">Dark</button>
           </div>
         </div>
       </div>
@@ -338,7 +354,22 @@
         '/web/js/globals.js',
         '/web/js/project.js',
         '/web/js/gallery.js',
+        '/web/js/editor_history.js',
         '/web/js/editor.js',
+        '/web/js/sprite_preview.js',
+        '/web/js/prompt_builder.js',
+        '/web/js/seed_gallery.js',
+        '/web/js/frame_review.js',
+        '/web/js/palette_harmonizer.js',
+        '/web/js/keyboard_shortcuts.js',
+        '/web/js/theme_toggle.js',
+        '/web/js/mobile_nav.js',
+        '/web/js/drag_drop.js',
+        '/web/js/audio_cues.js',
+        '/web/js/state_machine.js',
+        '/web/js/marketplace_gallery.js',
+        '/web/js/scene_compositor.js',
+        '/web/js/consistency_lock.js',
         '/web/js/experiments.js',
         '/web/js/qa.js',
         '/web/js/app_status.js',

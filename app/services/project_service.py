@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from services.logging_service import get_logger
 from spriteforge_utils import safe_name
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -14,6 +15,7 @@ PROJECTS_DIR = ROOT / "projects"
 STATE_PATH = ROOT / "output" / "projects" / "project_state.json"
 DEFAULT_ACTIONS = ["idle", "walk", "run", "attack_light", "hurt"]
 DEFAULT_DIRECTIONS = ["right"]
+logger = get_logger("project_service")
 
 
 class ProjectService:
@@ -30,8 +32,7 @@ class ProjectService:
             try:
                 return json.loads(STATE_PATH.read_text(encoding="utf-8"))
             except Exception as e:
-                import sys
-                print(f"Error loading project state: {e}", file=sys.stderr)
+                logger.warning("Error loading project state", exc_info=e)
         return {}
 
     @staticmethod
@@ -61,8 +62,7 @@ class ProjectService:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception as e:
-            import sys
-            print(f"Error loading project metadata: {e}", file=sys.stderr)
+            logger.warning("Error loading project metadata", extra={"path": str(path)}, exc_info=e)
             data = {}
         return {
             "project_name": str(data.get("name") or path.parent.name),
@@ -103,8 +103,7 @@ class ProjectService:
                     data = json.loads(manifest.read_text(encoding="utf-8"))
                     rows.append(ProjectService._summary(manifest, data))
                 except Exception as e:
-                    import sys
-                    print(f"Error loading manifest at {manifest}: {e}", file=sys.stderr)
+                    logger.warning("Error loading project manifest", extra={"path": str(manifest)}, exc_info=e)
                     continue
             rows.sort(key=lambda row: (row.get("updated_at") or row.get("created_at") or "", row.get("name", "")), reverse=True)
             return rows
@@ -121,8 +120,7 @@ class ProjectService:
             try:
                 return ProjectService._summary(path, json.loads(path.read_text(encoding="utf-8")))
             except Exception as e:
-                import sys
-                print(f"Error loading active project: {e}", file=sys.stderr)
+                logger.warning("Error loading active project", extra={"path": str(path)}, exc_info=e)
                 return None
 
     @staticmethod

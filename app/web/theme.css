@@ -1,0 +1,86 @@
+body.theme-light {
+  --bg: #eef2f7;
+  --panel: rgba(255, 255, 255, 0.96);
+  --panel2: rgba(247, 250, 253, 0.96);
+  --line: rgba(21, 35, 58, 0.14);
+  --text: #172033;
+  --muted: #5c6b82;
+  --cyan: #2276ad;
+  --violet: #6557c8;
+  --pink: #ad4b83;
+  --green: #237a55;
+  --yellow: #9b6c12;
+  --danger: #b83355;
+  --shadow: 0 12px 34px rgba(26, 42, 68, 0.14);
+  background: #eef2f7;
+  color: var(--text);
+}
+
+body.theme-light .rail,
+body.theme-light .card,
+body.theme-light .global-task-progress,
+body.theme-light .result-dialog,
+body.theme-light .notification-drawer {
+  background: var(--panel);
+}
+
+body.theme-light .rail-card,
+body.theme-light .sprite-card,
+body.theme-light .recipe div,
+body.theme-light .release-item,
+body.theme-light .queue-item,
+body.theme-light .choice-card span,
+body.theme-light .guided-result,
+body.theme-light .quality-grid div,
+body.theme-light .metric-list div {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+body.theme-light .nav:hover,
+body.theme-light .nav.active,
+body.theme-light .guide-step.active {
+  background: rgba(34, 118, 173, 0.12);
+}
+
+body.theme-light .ghost,
+body.theme-light .mini,
+body.theme-light .chip,
+body.theme-light .project-summary {
+  background: rgba(255, 255, 255, 0.66);
+}
+
+body.theme-light .form input,
+body.theme-light .form textarea,
+body.theme-light .form select,
+body.theme-light .project-strip select,
+body.theme-light .project-strip input,
+body.theme-light .guided-fields input,
+body.theme-light .guided-fields textarea,
+body.theme-light .guided-fields select {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(21, 35, 58, 0.18);
+}
+
+body.theme-light .terminal {
+  background: #182132;
+  color: #c7ffe3;
+}
+
+body.theme-light .data-table thead tr {
+  background: #e2e8f2;
+  color: #48576d;
+}
+
+body.theme-light .data-table th,
+body.theme-light .data-table td {
+  border-bottom-color: #d9e0ea;
+}
+
+.theme-toggle {
+  min-width: 72px;
+}
+
+.theme-toggle[aria-pressed="true"] {
+  border-color: rgba(34, 118, 173, 0.36);
+  background: rgba(34, 118, 173, 0.12);
+}

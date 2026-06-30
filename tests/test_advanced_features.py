@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import shutil
 from pathlib import Path
 import pytest
@@ -10,10 +11,14 @@ APP = ROOT / "app"
 sys.path.insert(0, str(APP))
 
 from services.project_service import ProjectService
+from services.frame_status_service import update_frame_status
+from services.palette_harmonizer_service import harmonize_palette
+from services.audio_cue_service import remove_audio_cue, upsert_audio_cue
+from services.state_machine_service import build_state_machine
 from web_helpers import (
     _sprite_version_save, _sprite_version_list, _sprite_version_rollback,
     _ab_run_create, _ab_run_list, _library_save, _library_list, _library_delete,
-    _qa_batch_summary
+    _qa_batch_summary, sprite_preview_bundle
 )
 
 def test_project_quality_gates(tmp_path, monkeypatch):
@@ -113,3 +118,130 @@ def test_sprite_versioning(tmp_path, monkeypatch):
     # Read back sheet.json
     meta = json.loads((sprite_dir / "sheet.json").read_text(encoding="utf-8"))
     assert meta["image"] == "sheet.png"
+
+
+def test_sprite_preview_bundle_includes_frame_manifest(tmp_path, monkeypatch):
+    sprite_dir = tmp_path / "output" / "my_hero"
+    sprite_dir.mkdir(parents=True)
+    (sprite_dir / "sheet.json").write_text(json.dumps({
+        "frame_count": 2,
+        "fps": 12,
+        "image": "sheet.png",
+        "frame_width": 64,
+        "frame_height": 64,
+        "columns": 2,
+        "rows": 1,
+        "frames": [
+            {"index": 0, "x": 0, "y": 0, "w": 64, "h": 64},
+            {"index": 1, "x": 64, "y": 0, "w": 64, "h": 64}
+        ]
+    }), encoding="utf-8")
+    (sprite_dir / "sheet.png").write_text("fake_png", encoding="utf-8")
+    frames_dir = sprite_dir / "frames_processed"
+    frames_dir.mkdir()
+    (frames_dir / "frame_0000.png").write_text("f0", encoding="utf-8")
+    (frames_dir / "frame_0001.png").write_text("f1", encoding="utf-8")
+
+    monkeypatch.setattr("web_helpers.OUTPUT", tmp_path / "output")
+    monkeypatch.setattr("web_helpers.ROOT", tmp_path)
+
+    bundle = sprite_preview_bundle("output/my_hero")
+
+    assert bundle["frame_manifest"]["frame_count"] == 2
+    assert bundle["frame_manifest"]["fps"] == 12
+    assert bundle["frames"][0]["index"] == 0
+    assert bundle["frames"][0]["url"].endswith("/file/output/my_hero/frames_processed/frame_0000.png")
+    assert bundle["frames"][0]["sheet_rect"] == {"x": 0, "y": 0, "w": 64, "h": 64}
+
+
+def test_example_plugin_hooks(tmp_path):
+    plugin_path = APP / "plugins" / "example_quality_metric.py"
+    spec = importlib.util.spec_from_file_location("example_quality_metric", plugin_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    sprite_dir = tmp_path / "sprite"
+    frames_dir = sprite_dir / "frames_processed"
+    frames_dir.mkdir(parents=True)
+    (frames_dir / "frame_0000.png").write_text("fake", encoding="utf-8")
+    report = {}
+    module.on_qa_check(sprite_dir, report)
+
+    metric = report["plugin_metrics"]["example_quality_metric"]
+    assert metric["value"] == 1
+    assert metric["ok"] is True
+
+    export_dir = tmp_path / "export"
+    export_dir.mkdir()
+    module.on_export_engine(sprite_dir, "godot", export_dir)
+    note = export_dir / "plugin_example_export_note.txt"
+    assert note.exists()
+    assert "godot" in note.read_text(encoding="utf-8")
+
+
+def test_frame_status_updates_sheet_metadata(tmp_path):
+    sprite_dir = tmp_path / "sprite"
+    sprite_dir.mkdir()
+    (sprite_dir / "sheet.json").write_text(json.dumps({
+        "frame_count": 2,
+        "frames": [{"index": 0}, {"index": 1}]
+    }), encoding="utf-8")
+
+    summary = update_frame_status(sprite_dir, 1, "needs_edit", "left foot jumps")
+    meta = json.loads((sprite_dir / "sheet.json").read_text(encoding="utf-8"))
+
+    assert summary["counts"]["needs_edit"] == 1
+    assert summary["counts"]["unreviewed"] == 1
+    assert meta["frames"][1]["review_status"] == "needs_edit"
+    assert meta["frames"][1]["review_note"] == "left foot jumps"
+
+
+def test_palette_harmonizer_writes_report_and_remapped_sheets(tmp_path):
+    output = tmp_path / "output"
+    idle = output / "hero_idle"
+    walk = output / "hero_walk"
+    idle.mkdir(parents=True)
+    walk.mkdir(parents=True)
+    (idle / "sheet.json").write_text(json.dumps({"image": "sheet.png"}), encoding="utf-8")
+    (walk / "sheet.json").write_text(json.dumps({"image": "sheet.png"}), encoding="utf-8")
+    Image.new("RGBA", (4, 4), (220, 40, 50, 255)).save(idle / "sheet.png")
+    Image.new("RGBA", (4, 4), (40, 80, 220, 255)).save(walk / "sheet.png")
+
+    report = harmonize_palette([idle, walk], colors=4, root=tmp_path)
+
+    assert report["ok"] is True
+    assert report["colors"] >= 2
+    assert (output / "_palette_harmonization" / "palette_harmonization.json").exists()
+    assert (idle / "sheet_harmonized.png").exists()
+    assert (walk / "sheet_harmonized.png").exists()
+    assert report["sprites"][0]["harmonized_sheet_url"].startswith("/file/output/")
+
+
+def test_audio_cue_manifest_upsert_and_remove(tmp_path):
+    sprite_dir = tmp_path / "sprite"
+    sprite_dir.mkdir()
+
+    manifest = upsert_audio_cue(sprite_dir, 3, "input/sfx/step.wav", "footstep")
+    assert manifest["cues"][0]["frame_index"] == 3
+    assert manifest["cues"][0]["audio_path"] == "input/sfx/step.wav"
+
+    removed = remove_audio_cue(sprite_dir, 3)
+    assert removed["cues"] == []
+
+
+def test_state_machine_service_exports_manifest_and_scripts(tmp_path):
+    result = build_state_machine({
+        "name": "hero_controller",
+        "initial_state": "idle",
+        "states": [
+            {"name": "idle", "sprite_path": "output/hero_idle"},
+            {"name": "walk", "sprite_path": "output/hero_walk"},
+        ],
+        "transitions": [{"from": "idle", "to": "walk", "condition": "move"}],
+    }, tmp_path / "state_machine")
+
+    assert result["ok"] is True
+    assert (tmp_path / "state_machine" / "state_machine.json").exists()
+    assert "set_state(\"walk\")" in (tmp_path / "state_machine" / "SpriteForgeStateMachine.gd").read_text(encoding="utf-8")
+    assert "HandleCondition" in (tmp_path / "state_machine" / "SpriteForgeStateMachine.cs").read_text(encoding="utf-8")

@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""SpriteForge QA and auto-fix tools.
-
-Adds production checks that matter for game sprites:
-- alpha/bounds/blank-frame checks
-- foot/anchor drift
-- center jitter
-- loop seam distance
-- duplicate frames
-- exposure flicker
-- optional anchor stabilization and brightness deflicker
-"""
+"""SpriteForge QA and auto-fix tools."""
 from __future__ import annotations
 
 import argparse
@@ -26,16 +16,12 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
-
 from spriteforge_utils import natural_key
-
 ROOT = Path(__file__).resolve().parent
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 
-
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
-
 
 def parse_size(value: Optional[str]) -> Optional[Tuple[int, int]]:
     if not value:
@@ -46,13 +32,11 @@ def parse_size(value: Optional[str]) -> Optional[Tuple[int, int]]:
     a, b = value.split("x", 1)
     return int(a), int(b)
 
-
 @dataclass
 class FrameRecord:
     index: int
     image: Image.Image
     name: str
-
 
 def load_sheet_frames(sprite_dir: Path) -> Tuple[List[FrameRecord], Dict[str, Any]]:
     meta_path = sprite_dir / "sheet.json"
@@ -406,11 +390,9 @@ def pack_frames(frames: Sequence[FrameRecord], out_dir: Path, fps: float, animat
         ],
     }
     (out_dir / "sheet.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    # Preview GIF
     imgs = [fr.image.convert("RGBA") for fr in frames]
     if imgs:
         imgs[0].save(out_dir / "preview.gif", save_all=True, append_images=imgs[1:], duration=duration_ms, loop=0, disposal=2)
-
 
 def cmd_report(args: argparse.Namespace) -> None:
     src = Path(args.input).resolve()
@@ -425,6 +407,12 @@ def cmd_report(args: argparse.Namespace) -> None:
         foot_drift_threshold=foot_th,
         center_drift_threshold=center_th
     )
+    report["thresholds"] = {
+        "duplicate_threshold": args.duplicate_threshold,
+        "loop_rmse_threshold": loop_th,
+        "foot_drift_threshold": foot_th,
+        "center_drift_threshold": center_th,
+    }
     out_dir = Path(args.output).resolve() if args.output else (src / "qa" if src.is_dir() else ROOT / "output" / "qa" / src.stem)
     ensure_dir(out_dir)
     (out_dir / "qa_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -437,7 +425,6 @@ def cmd_report(args: argparse.Namespace) -> None:
         for it in report["issues"]:
             print(f" - [{it['level']}] {it['code']}: {it['message']}")
 
-
 def cmd_autofix(args: argparse.Namespace) -> None:
     src = Path(args.input).resolve()
     frames, meta = load_input(src)
@@ -447,11 +434,8 @@ def cmd_autofix(args: argparse.Namespace) -> None:
     if args.drop_loop_duplicate:
         fixed = drop_loop_duplicate(fixed, threshold=args.duplicate_threshold)
     if args.stabilize_anchor:
-        # Bottom-center anchor, with a small baseline margin.
         w, h = fixed[0].image.size
         target_anchor = (w * 0.5, h - args.baseline_margin)
-        
-        # Calculate raw anchors for all frames
         raw_anchors = []
         for fr in fixed:
             bbox = alpha_bbox(fr.image)
@@ -460,8 +444,6 @@ def cmd_autofix(args: argparse.Namespace) -> None:
                 raw_anchors.append(((l + r) / 2.0, float(b)))
             else:
                 raw_anchors.append((w * 0.5, h - args.baseline_margin))
-                
-        # Smooth the anchors using a rolling median filter (window size 5)
         xs = [x for x, y in raw_anchors]
         ys = [y for x, y in raw_anchors]
         smoothed_xs = smooth_sequence(xs, window_size=5)
@@ -488,7 +470,6 @@ def cmd_autofix(args: argparse.Namespace) -> None:
     if getattr(args, "blend_loop_frames", 0) > 0:
         fixed = blend_loop_seam(fixed, args.blend_loop_frames)
     pack_frames(fixed, out_dir, fps=fps, animation=args.animation or str(meta.get("animation", src.name + "_fixed")))
-    # QA the result.
     new_frames, new_meta = load_sheet_frames(out_dir)
     report = analyze_frames(new_frames, new_meta, duplicate_threshold=args.duplicate_threshold)
     ensure_dir(out_dir / "qa")
@@ -497,8 +478,6 @@ def cmd_autofix(args: argparse.Namespace) -> None:
     write_html_report(report, out_dir / "qa" / "qa_report.html")
     print(f"Fixed sprite output: {out_dir}")
     print(f"QA report: {out_dir / 'qa' / 'qa_report.html'}")
-
-
 
 def cmd_compare(args: argparse.Namespace) -> None:
     a_path = Path(args.a).resolve()
@@ -532,29 +511,26 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="SpriteForge sprite QA and auto-fix")
     sub = p.add_subparsers(dest="command", required=True)
     s = sub.add_parser("report", help="Analyze a SpriteForge output folder or image-frame folder")
-    s.add_argument("--input", required=True)
-    s.add_argument("--output", default=None)
-    s.add_argument("--duplicate-threshold", type=float, default=1.25)
-    s.add_argument("--thumb", type=int, default=96)
-    s.add_argument("--loop-rmse-threshold", type=float, default=20.0)
-    s.add_argument("--foot-drift-threshold", type=float, default=3.0)
-    s.add_argument("--center-drift-threshold", type=float, default=8.0)
+    for name, kwargs in [
+        ("--input", {"required": True}), ("--output", {"default": None}),
+        ("--duplicate-threshold", {"type": float, "default": 1.25}), ("--thumb", {"type": int, "default": 96}),
+        ("--loop-rmse-threshold", {"type": float, "default": 20.0}),
+        ("--foot-drift-threshold", {"type": float, "default": 3.0}),
+        ("--center-drift-threshold", {"type": float, "default": 8.0}),
+    ]:
+        s.add_argument(name, **kwargs)
     s.set_defaults(func=cmd_report)
 
     s = sub.add_parser("autofix", help="Make a stabilized fixed copy of a sprite folder")
-    s.add_argument("--input", required=True)
-    s.add_argument("--output", default=None)
-    s.add_argument("--fps", type=float, default=None)
-    s.add_argument("--animation", default=None)
-    s.add_argument("--drop-loop-duplicate", action="store_true")
-    s.add_argument("--duplicate-threshold", type=float, default=1.25)
-    s.add_argument("--stabilize-anchor", action="store_true")
-    s.add_argument("--baseline-margin", type=int, default=4)
-    s.add_argument("--deflicker", action="store_true")
-    s.add_argument("--solidify", type=int, default=2)
-    s.add_argument("--blend-loop-frames", type=int, default=0)
-    s.add_argument("--thumb", type=int, default=96)
-    s.add_argument("--sharpen", action="store_true", help="Sharpen sprite edges")
+    for name, kwargs in [
+        ("--input", {"required": True}), ("--output", {"default": None}), ("--fps", {"type": float, "default": None}),
+        ("--animation", {"default": None}), ("--drop-loop-duplicate", {"action": "store_true"}),
+        ("--duplicate-threshold", {"type": float, "default": 1.25}), ("--stabilize-anchor", {"action": "store_true"}),
+        ("--baseline-margin", {"type": int, "default": 4}), ("--deflicker", {"action": "store_true"}),
+        ("--solidify", {"type": int, "default": 2}), ("--blend-loop-frames", {"type": int, "default": 0}),
+        ("--thumb", {"type": int, "default": 96}), ("--sharpen", {"action": "store_true", "help": "Sharpen sprite edges"}),
+    ]:
+        s.add_argument(name, **kwargs)
     s.set_defaults(func=cmd_autofix)
 
 

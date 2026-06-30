@@ -22,6 +22,8 @@ from services.sprite_service import SpriteService
 from services.export_service import ExportService
 from services.experiment_service import ExperimentService
 from services.project_service import ProjectService
+from services.preview_manifest_service import build_frame_manifest
+from services.audio_cue_service import load_audio_cues
 from services.advisor_service import advise as advisor_advise
 from services.generation_intelligence import (
     cleanup_suggestions,
@@ -46,6 +48,7 @@ LOGS = ROOT / "logs"
 CONFIG = ROOT / "config" / "spriteforge_config.json"
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".flac"}
 ALLOWED_SUBDIRS = {"output", "input", "projects", "releases", "workflows", "examples"}
 
 DEFAULT_PRESETS = {
@@ -864,7 +867,7 @@ def _list_quality_reports(project_meta: Optional[Dict[str, str]] = None, limit: 
     return results[:limit]
 
 def _list_references(project_meta: Optional[Dict[str, str]] = None, limit: int = 80) -> List[Dict[str, Any]]:
-    allowed = VIDEO_SUFFIXES | IMAGE_SUFFIXES
+    allowed = VIDEO_SUFFIXES | IMAGE_SUFFIXES | AUDIO_SUFFIXES
     if project_meta and project_meta.get("project_root"):
         root = (ROOT / str(project_meta["project_root"]) / "references").resolve()
         if not _is_relative_to(root, (ROOT / "projects").resolve()):
@@ -878,7 +881,8 @@ def _list_references(project_meta: Optional[Dict[str, str]] = None, limit: int =
         try:
             if not path.is_file() or path.suffix.lower() not in allowed:
                 continue
-            kind = "video" if path.suffix.lower() in VIDEO_SUFFIXES else "image"
+            suffix = path.suffix.lower()
+            kind = "video" if suffix in VIDEO_SUFFIXES else "audio" if suffix in AUDIO_SUFFIXES else "image"
             mtime = path.stat().st_mtime
             results.append({
                 "name": path.name,
@@ -957,7 +961,7 @@ def _project_asset_counts(project_meta: Optional[Dict[str, str]]) -> Dict[str, i
     root = (ROOT / project_root).resolve()
     if not _is_relative_to(root, (ROOT / "projects").resolve()) or not root.exists():
         return counts
-    allowed_refs = VIDEO_SUFFIXES | IMAGE_SUFFIXES
+    allowed_refs = VIDEO_SUFFIXES | IMAGE_SUFFIXES | AUDIO_SUFFIXES
     counts["references"] = sum(1 for path in (root / "references").glob("*") if path.is_file() and path.suffix.lower() in allowed_refs) if (root / "references").exists() else 0
     counts["packs"] = sum(1 for path in root.rglob("pack_manifest.json") if path.is_file())
     counts["prompts"] = sum(1 for path in (root / "prompts").glob("*.json") if path.is_file()) if (root / "prompts").exists() else 0
@@ -1109,6 +1113,11 @@ def sprite_preview_bundle(sprite_path: str) -> Dict[str, Any]:
     visual_report = load_json(visual_json, {}) if visual_json.exists() else {}
     visual_contact = sprite_dir / "visual_report" / "contact_sheet.jpg"
     experiment = _matching_experiment(rel(sprite_dir))
+    frames, frame_manifest = build_frame_manifest(sprite_dir, meta, rel, _file_url)
+    audio_cues = load_audio_cues(sprite_dir)
+    for cue in audio_cues.get("cues", []):
+        audio_path = _resolve_existing_file(str(cue.get("audio_path") or ""))
+        cue["audio_url"] = _file_url(audio_path)
                 
     return {
         "name": sprite_dir.name,
@@ -1132,6 +1141,9 @@ def sprite_preview_bundle(sprite_path: str) -> Dict[str, Any]:
         "columns": meta.get("columns", "?"),
         "rows": meta.get("rows", "?"),
         "source": meta.get("extra", {}).get("source", {}) if isinstance(meta.get("extra"), dict) else {},
+        "frames": frames,
+        "frame_manifest": frame_manifest,
+        "audio_cues": audio_cues,
     }
 
 def _is_relative_to(path: Path, base: Path) -> bool:
@@ -1231,6 +1243,8 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
                 cmd += [arg, value]
         if payload.get("quality_check", True):
             cmd.append("--quality-check")
+        if payload.get("power_of_two", False):
+            cmd.append("--power-of-two")
         return "Generate WAN sprite", cmd
     if action == "convert_video":
         inp = str(payload.get("input") or "").strip()
@@ -1253,6 +1267,8 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             extra.append("--preview-gif")
         if payload.get("report", True):
             extra.append("--report")
+        if payload.get("power_of_two", False):
+            extra.append("--power-of-two")
         if extra:
             cmd += ["--"] + extra
         return "Convert video to spritesheet", cmd
@@ -1394,10 +1410,5 @@ def launch_detached(title: str, args: Sequence[str]) -> None:
         subprocess.Popen(list(args), cwd=str(ROOT))
 
 def open_local_path(path: Path) -> None:
-    path = path.resolve()
-    if os.name == "nt":
-        os.startfile(str(path))  # type: ignore[attr-defined]
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(path)])
-    else:
-        subprocess.Popen(["xdg-open", str(path)])
+    from services.open_path_service import open_path
+    open_path(path)

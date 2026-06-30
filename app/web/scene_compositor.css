@@ -1,0 +1,25 @@
+.scene-compositor-card {
+  grid-column: 1 / -1;
+}
+
+.scene-compositor-canvas {
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.06) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.06) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.06) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.06) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  image-rendering: pixelated;
+}
+
+.scene-compositor-status {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}

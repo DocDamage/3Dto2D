@@ -16,7 +16,9 @@ from typing import Optional, Sequence
 
 from flask import Flask
 
+from services.config_service import ConfigService
 from services.job_service import JobService
+from services.logging_service import configure_logging
 from web_helpers import ROOT, WEB, LOGS, OUTPUT, INPUT
 from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static
 
@@ -42,6 +44,7 @@ def find_free_port(preferred: int) -> int:
 def run_server(port: int, no_browser: bool = False) -> int:
     for folder in [LOGS, OUTPUT, INPUT, WEB]:
         folder.mkdir(parents=True, exist_ok=True)
+    configure_logging(ConfigService.get_config())
     port = find_free_port(port)
     url = f"http://127.0.0.1:{port}/"
     print("SpriteForge Studio v12 Final Polish Edition (Flask Core)")

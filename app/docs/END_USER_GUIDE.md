@@ -62,7 +62,7 @@ Use **QA / Export**:
 
 - **Run QA** finds jitter, loop seams, duplicates, flicker, and edge problems.
 - **Auto-Fix** attempts anchor stabilization, loop duplicate removal, and edge cleanup.
-- **Export Godot** and **Export Unity** create engine helper files.
+- **Export Godot**, **Export Unity**, and **Export Unreal** create engine helper files.
 
 ## Updating safely
 

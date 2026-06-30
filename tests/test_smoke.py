@@ -41,6 +41,110 @@ def test_web_smoke():
     assert "passed" in result.stdout.lower()
 
 
+def test_cross_platform_launchers():
+    launchers = {
+        "start.sh": "spriteforge_launcher.py \"$@\"",
+        "start.command": "spriteforge_launcher.py \"$@\"",
+        "run_demo_no_gpu.sh": "spriteforge_launcher.py --demo",
+        "start_first_run_wizard.sh": "spriteforge_launcher.py --wizard",
+    }
+    for name, expected in launchers.items():
+        text = (ROOT / name).read_text(encoding="utf-8")
+        assert text.startswith("#!/usr/bin/env sh")
+        assert "cd \"$SCRIPT_DIR/app\"" in text
+        assert expected in text
+
+
+def test_keyboard_shortcuts_module_loaded():
+    index = (APP / "web" / "index.html").read_text(encoding="utf-8")
+    script = (APP / "web" / "js" / "keyboard_shortcuts.js").read_text(encoding="utf-8")
+
+    assert "/web/js/keyboard_shortcuts.js" in index
+    for shortcut in ["'g'", "'q'", "'s'", "'arrowleft'", "'arrowright'"]:
+        assert shortcut in script
+    assert "shortcutTargetAllowsTyping" in script
+
+
+def test_theme_toggle_assets_loaded():
+    index = (APP / "web" / "index.html").read_text(encoding="utf-8")
+    script = (APP / "web" / "js" / "theme_toggle.js").read_text(encoding="utf-8")
+    css = (APP / "web" / "theme.css").read_text(encoding="utf-8")
+
+    assert "/web/theme.css" in index
+    assert "/web/js/theme_toggle.js" in index
+    assert 'id="themeToggle"' in index
+    assert "spriteforgeTheme" in script
+    assert "theme-light" in css
+
+
+def test_mobile_nav_assets_loaded():
+    index = (APP / "web" / "index.html").read_text(encoding="utf-8")
+    script = (APP / "web" / "js" / "mobile_nav.js").read_text(encoding="utf-8")
+    css = (APP / "web" / "mobile_nav.css").read_text(encoding="utf-8")
+
+    assert "/web/mobile_nav.css" in index
+    assert "/web/js/mobile_nav.js" in index
+    assert 'id="mobileRailToggle"' in index
+    assert "mobile-rail-open" in script
+    assert "@media (max-width: 760px)" in css
+
+
+def test_drag_drop_assets_loaded():
+    index = (APP / "web" / "index.html").read_text(encoding="utf-8")
+    script = (APP / "web" / "js" / "drag_drop.js").read_text(encoding="utf-8")
+    css = (APP / "web" / "drag_drop.css").read_text(encoding="utf-8")
+
+    assert "/web/drag_drop.css" in index
+    assert "/web/js/drag_drop.js" in index
+    assert "referenceDropTarget" in script
+    assert "qualityDropTarget" in script
+    assert ".drop-target-card" in css
+
+
+def test_power_of_two_web_option_forwarded():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+    generate_html = (APP / "web" / "components" / "generate.html").read_text(encoding="utf-8")
+    convert_html = (APP / "web" / "components" / "convert.html").read_text(encoding="utf-8")
+
+    _, generate_cmd = build_action_command({
+        "action": "generate_sprite",
+        "power_of_two": True,
+        "quality_check": False,
+    })
+    _, convert_cmd = build_action_command({
+        "action": "convert_video",
+        "input": "test.mp4",
+        "power_of_two": True,
+    })
+
+    assert "--power-of-two" in generate_cmd
+    assert "--power-of-two" in convert_cmd
+    assert 'name="power_of_two"' in generate_html
+    assert 'name="power_of_two"' in convert_html
+    parsed = build_parser().parse_args(["generate-sprite", "--power-of-two"])
+    assert parsed.power_of_two is True
+
+
+def test_open_path_service_uses_platform_openers(tmp_path, monkeypatch):
+    import services.open_path_service as opener
+
+    target = tmp_path / "report.html"
+    target.write_text("ok", encoding="utf-8")
+    calls = []
+    monkeypatch.setattr(opener.subprocess, "Popen", lambda cmd: calls.append(cmd))
+
+    assert opener.open_command_for_platform("darwin", target.resolve()) == ["open", str(target.resolve())]
+    assert opener.open_command_for_platform("linux", target.resolve()) == ["xdg-open", str(target.resolve())]
+
+    if opener.os.name != "nt":
+        opener.open_path(target)
+        assert calls[-1] in (
+            ["open", str(target.resolve())],
+            ["xdg-open", str(target.resolve())],
+        )
+
+
 # ---------------------------------------------------------------------------
 # Compare smoke
 # ---------------------------------------------------------------------------

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import math
-import os
 import subprocess
-import sys
 from pathlib import Path
 from PIL import Image, ImageDraw
+
+from services.open_path_service import open_path as open_system_path
 
 ROOT = Path(__file__).resolve().parent
 FRAMES = ROOT / "output" / "_demo_frames"
@@ -16,12 +16,7 @@ OUT = ROOT / "output" / "demo_sprite_no_gpu"
 
 def open_path(path: Path) -> None:
     try:
-        if os.name == "nt":
-            os.startfile(str(path))  # type: ignore[attr-defined]
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", str(path)])
-        else:
-            subprocess.Popen(["xdg-open", str(path)])
+        open_system_path(path)
     except Exception:
         pass
 

@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 
 from services.sprite_service import SpriteService
+from services.frame_status_service import update_frame_status
+from services.palette_harmonizer_service import harmonize_palette
+from services.audio_cue_service import load_audio_cues, remove_audio_cue, upsert_audio_cue
 from web_helpers import (
     ROOT, _resolve_sprite_output_dir, _project_meta_from_query,
     _project_workspace, sprite_outputs, sprite_preview_bundle,
@@ -97,6 +100,81 @@ def edit_sprite_frames():
     try:
         res = _sprite_edit_frames(sprite_path, actions, new_fps)
         return jsonify(res)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_sprites.route("/api/sprite/frame/status", methods=["POST"])
+def set_sprite_frame_status():
+    body = request.json or {}
+    sprite_path = str(body.get("path") or "").strip()
+    status = str(body.get("status") or "").strip()
+    note = str(body.get("note") or "").strip()
+    try:
+        frame_index = int(body.get("frame_index"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "message": "frame_index is required."}), 400
+    if not sprite_path or not status:
+        return jsonify({"ok": False, "message": "path and status are required."}), 400
+    try:
+        sprite_dir = _resolve_sprite_output_dir(sprite_path)
+        summary = update_frame_status(sprite_dir, frame_index, status, note)
+        return jsonify({"ok": True, "summary": summary})
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except (IndexError, ValueError) as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_sprites.route("/api/sprites/palette_harmonize", methods=["POST"])
+def harmonize_sprite_palettes():
+    body = request.json or {}
+    sprites = body.get("sprites") or []
+    if isinstance(sprites, str):
+        sprites = [line.strip() for line in sprites.splitlines() if line.strip()]
+    if len(sprites) < 2:
+        return jsonify({"ok": False, "message": "At least two sprite folders are required."}), 400
+    try:
+        colors = int(body.get("colors") or 32)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "message": "colors must be a number."}), 400
+    write_images = bool(body.get("write_images", True))
+    try:
+        sprite_dirs = [_resolve_sprite_output_dir(str(path)) for path in sprites]
+        report = harmonize_palette(sprite_dirs, colors=colors, write_images=write_images, root=ROOT)
+        return jsonify(report)
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_sprites.route("/api/sprite/audio_cue", methods=["GET", "POST", "DELETE"])
+def sprite_audio_cue():
+    body = request.get_json(silent=True) or {}
+    sprite_path = str(body.get("path") or request.args.get("path") or "").strip()
+    if not sprite_path:
+        return jsonify({"ok": False, "message": "path is required."}), 400
+    try:
+        sprite_dir = _resolve_sprite_output_dir(sprite_path)
+        if request.method == "GET":
+            return jsonify({"ok": True, "audio_cues": load_audio_cues(sprite_dir)})
+        try:
+            frame_index = int(body.get("frame_index"))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "message": "frame_index is required."}), 400
+        if request.method == "DELETE":
+            return jsonify({"ok": True, "audio_cues": remove_audio_cue(sprite_dir, frame_index)})
+        audio_path = str(body.get("audio_path") or "").strip()
+        if not audio_path:
+            return jsonify({"ok": False, "message": "audio_path is required."}), 400
+        manifest = upsert_audio_cue(sprite_dir, frame_index, audio_path, str(body.get("label") or ""))
+        return jsonify({"ok": True, "audio_cues": manifest})
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 

@@ -58,6 +58,12 @@ debug → sprite_fast → rtx3060_12gb → quality_local
 
 For a first real test, use fewer frames and fewer steps. Avoid I2V 14B locally unless you are prepared to use heavy offload or cloud GPU.
 
+When a web-launched generation hits CUDA OOM, SpriteForge now retries through a progressive VRAM fallback chain: safer fp8/tier hints, forced batch size 1, reduced output resolutions, then a final CPU/offload hint. The Logs view records each retry attempt and the adjusted command.
+
+## Logging level and JSON logs
+
+Web runs configure named `spriteforge.*` loggers from `app/config/spriteforge_config.json`. Set `logging.level` to `DEBUG`, `INFO`, `WARNING`, or `ERROR`; set `logging.json` to `true` when you want structured JSON records on stderr for log collectors.
+
 ## Video converts but background is visible
 
 Use a flat green/blue background in the WAN prompt and convert with chroma key:

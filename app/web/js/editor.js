@@ -455,70 +455,12 @@ if ($('#inspectSavePackBtn')) {
   });
 }
 
-// Undo/Redo Stack Implementation
-let undoStack = [];
-let redoStack = [];
-
 function saveUndoState() {
-  if (window._currentMeta) {
-    undoStack.push(JSON.stringify(window._currentMeta));
-    redoStack = []; // Clear redo on new action
-    updateUndoRedoButtons();
-  }
-}
-
-function undo() {
-  if (undoStack.length > 0) {
-    redoStack.push(JSON.stringify(window._currentMeta));
-    const state = JSON.parse(undoStack.pop());
-    window._currentMeta = state;
-    restoreEditorState();
-    updateUndoRedoButtons();
-    toast("Undo performed");
-  }
-}
-
-function redo() {
-  if (redoStack.length > 0) {
-    undoStack.push(JSON.stringify(window._currentMeta));
-    const state = JSON.parse(redoStack.pop());
-    window._currentMeta = state;
-    restoreEditorState();
-    updateUndoRedoButtons();
-    toast("Redo performed");
-  }
-}
-
-function restoreEditorState() {
-  const meta = window._currentMeta;
-  const scrub = $('#frameScrubber');
-  if (scrub && meta) {
-    scrub.max = meta.frame_count - 1;
-    const val = Math.min(parseInt(scrub.value) || 0, meta.frame_count - 1);
-    scrub.value = val;
-    if (typeof renderInspectorFrame === 'function') renderInspectorFrame(val);
-  }
+  window.SpriteForgeEditorHistory?.save();
 }
 
 function updateUndoRedoButtons() {
-  const undoBtn = $('#inspectUndoBtn');
-  const redoBtn = $('#inspectRedoBtn');
-  if (undoBtn) undoBtn.disabled = undoStack.length === 0;
-  if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+  window.SpriteForgeEditorHistory?.updateButtons();
 }
 
-// Wire up Undo/Redo Buttons
-if ($('#inspectUndoBtn')) $('#inspectUndoBtn').addEventListener('click', undo);
-if ($('#inspectRedoBtn')) $('#inspectRedoBtn').addEventListener('click', redo);
-
-// Add Ctrl+Z and Ctrl+Y keydown listeners
-document.addEventListener('keydown', e => {
-  if (e.ctrlKey && e.key.toLowerCase() === 'z') {
-    e.preventDefault();
-    undo();
-  }
-  if (e.ctrlKey && e.key.toLowerCase() === 'y') {
-    e.preventDefault();
-    redo();
-  }
-});
+window.SpriteForgeEditorHistory?.bind();

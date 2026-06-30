@@ -12,6 +12,10 @@
     "listen": "127.0.0.1",
     "extra_args": []
   },
+  "logging": {
+    "level": "INFO",
+    "json": false
+  },
   "sprite_defaults": {
     "fps": 12,
     "cell_size": "512x512",

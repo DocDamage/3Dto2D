@@ -4,8 +4,12 @@ import json
 from pathlib import Path
 
 from services.project_service import ProjectService
+from services.consistency_lock_service import build_consistency_lock
+from services.prompt_builder_service import build_structured_prompt, prompt_builder_options
+from services.scene_compositor_service import build_scene_manifest
+from services.state_machine_service import build_state_machine
 from web_helpers import (
-    ROOT, UPLOADS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
+    ROOT, UPLOADS, VIDEO_SUFFIXES, IMAGE_SUFFIXES, AUDIO_SUFFIXES,
     _get_presets, _library_list, _library_save, _library_delete,
     _project_artifact_path, rel, safe_name
 )
@@ -48,6 +52,36 @@ def set_active_project():
 @routes_projects.route("/api/presets", methods=["GET"])
 def get_presets():
     return jsonify({"presets": _get_presets()})
+
+@routes_projects.route("/api/prompt_builder/options", methods=["GET"])
+def get_prompt_builder_options():
+    return jsonify(prompt_builder_options())
+
+@routes_projects.route("/api/prompt_builder/build", methods=["POST"])
+def build_prompt_from_fields():
+    body = request.json or {}
+    try:
+        return jsonify({"ok": True, "prompt": build_structured_prompt(body)})
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_projects.route("/api/consistency_lock/save", methods=["POST"])
+def save_consistency_lock():
+    body = request.json or {}
+    name = safe_name(str(body.get("name") or "character_lock"))
+    active_project = str(body.get("active_project") or "")
+    project_meta = ProjectService.metadata_for_path(active_project) if active_project else None
+    output_dir = (
+        _project_artifact_path(project_meta, "references", name)
+        if project_meta
+        else ROOT / "output" / "consistency_locks" / name
+    )
+    try:
+        return jsonify(build_consistency_lock(ROOT, body, output_dir))
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
 
 @routes_projects.route("/api/presets/save", methods=["POST"])
 def save_preset():
@@ -159,6 +193,31 @@ def delete_library_asset():
     res = _library_delete(project_name, asset_id)
     return jsonify(res)
 
+@routes_projects.route("/api/state_machine/build", methods=["POST"])
+def build_state_machine_route():
+    body = request.json or {}
+    name = safe_name(str(body.get("name") or "sprite_state_machine"))
+    active_project = str(body.get("active_project") or "")
+    project_meta = ProjectService.metadata_for_path(active_project) if active_project else None
+    output_dir = _project_artifact_path(project_meta, "exports", name) if project_meta else ROOT / "output" / "state_machines" / name
+    try:
+        result = build_state_machine(body, output_dir)
+        return jsonify(result)
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_projects.route("/api/scene_compositor/preview", methods=["POST"])
+def build_scene_compositor_preview():
+    body = request.json or {}
+    try:
+        return jsonify(build_scene_manifest(ROOT, body))
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
 @routes_projects.route("/api/upload", methods=["POST"])
 def upload_file():
     # Check upload size limit (100MB)
@@ -176,7 +235,7 @@ def upload_file():
     active_project = request.form.get("active_project", "")
     filename = safe_name(Path(file.filename).name)
     suffix = Path(filename).suffix.lower()
-    if suffix not in VIDEO_SUFFIXES and suffix not in IMAGE_SUFFIXES:
+    if suffix not in VIDEO_SUFFIXES and suffix not in IMAGE_SUFFIXES and suffix not in AUDIO_SUFFIXES:
         return jsonify({"ok": False, "message": "Unsupported file type."}), 400
         
     project_meta = ProjectService.metadata_for_path(active_project) if active_project else None

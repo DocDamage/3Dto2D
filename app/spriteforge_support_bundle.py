@@ -104,8 +104,8 @@ def main() -> int:
     shutil.rmtree(tmp, ignore_errors=True)
     print(f"Support bundle created:\n{bundle}")
     try:
-        if os.name == "nt":
-            os.startfile(str(bundle.parent))  # type: ignore[attr-defined]
+        from services.open_path_service import open_path
+        open_path(bundle.parent)
     except Exception:
         pass
     return 0

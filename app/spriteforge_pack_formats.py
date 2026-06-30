@@ -6,6 +6,7 @@ import argparse
 import json
 import shutil
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -72,6 +73,73 @@ def pixijs_json(meta: Dict[str, Any], image_name: str = "sheet.png") -> Dict[str
     return data
 
 
+def aseprite_json(meta: Dict[str, Any], image_name: str = "sheet.png") -> Dict[str, Any]:
+    fw, fh = int(meta["frame_width"]), int(meta["frame_height"])
+    fps = float(meta.get("fps", 12))
+    duration = int(round(1000 / fps)) if fps > 0 else 83
+    frames: List[Dict[str, Any]] = []
+    for i in range(int(meta["frame_count"])):
+        fr = meta.get("frames", [])[i] if i < len(meta.get("frames", [])) else {
+            "x": (i % int(meta.get("columns", 1))) * fw,
+            "y": (i // int(meta.get("columns", 1))) * fh,
+            "w": fw,
+            "h": fh,
+        }
+        frames.append({
+            "filename": frame_name(meta, i),
+            "frame": {"x": int(fr["x"]), "y": int(fr["y"]), "w": int(fr.get("w", fw)), "h": int(fr.get("h", fh))},
+            "rotated": False,
+            "trimmed": False,
+            "spriteSourceSize": {"x": 0, "y": 0, "w": fw, "h": fh},
+            "sourceSize": {"w": fw, "h": fh},
+            "duration": int(fr.get("duration_ms", duration)),
+        })
+    return {
+        "frames": frames,
+        "meta": {
+            "app": "SpriteForge Studio",
+            "version": "1",
+            "image": image_name,
+            "format": "RGBA8888",
+            "size": {"w": int(meta.get("columns", 1)) * fw, "h": int(meta.get("rows", 1)) * fh},
+            "scale": "1",
+            "frameTags": [{
+                "name": str(meta.get("animation", "anim")),
+                "from": 0,
+                "to": max(0, int(meta["frame_count"]) - 1),
+                "direction": "forward",
+            }],
+        },
+    }
+
+
+def xml_atlas(meta: Dict[str, Any], image_name: str = "sheet.png") -> str:
+    fw, fh = int(meta["frame_width"]), int(meta["frame_height"])
+    root = ET.Element("TextureAtlas", {
+        "imagePath": image_name,
+        "width": str(int(meta.get("columns", 1)) * fw),
+        "height": str(int(meta.get("rows", 1)) * fh),
+    })
+    for i in range(int(meta["frame_count"])):
+        fr = meta.get("frames", [])[i] if i < len(meta.get("frames", [])) else {
+            "x": (i % int(meta.get("columns", 1))) * fw,
+            "y": (i // int(meta.get("columns", 1))) * fh,
+        }
+        ET.SubElement(root, "SubTexture", {
+            "name": frame_name(meta, i),
+            "x": str(int(fr["x"])),
+            "y": str(int(fr["y"])),
+            "width": str(fw),
+            "height": str(fh),
+            "frameX": "0",
+            "frameY": "0",
+            "frameWidth": str(fw),
+            "frameHeight": str(fh),
+        })
+    ET.indent(root, space="  ")
+    return ET.tostring(root, encoding="unicode")
+
+
 def css_export(meta: Dict[str, Any], image_name: str = "sheet.png") -> str:
     anim = str(meta.get("animation", "anim")).replace(" ", "_")
     fw, fh = int(meta["frame_width"]), int(meta["frame_height"])
@@ -115,9 +183,16 @@ def cmd_export(args: argparse.Namespace) -> None:
         data = pixijs_json(meta, image_name)
         out = out_dir / "pixijs_spritesheet.json"
         out.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    elif args.format == "aseprite":
+        data = aseprite_json(meta, image_name)
+        out = out_dir / "aseprite_data.json"
+        out.write_text(json.dumps(data, indent=2), encoding="utf-8")
     elif args.format == "css":
         out = out_dir / "sprite.css"
         out.write_text(css_export(meta, image_name), encoding="utf-8")
+    elif args.format == "xml":
+        out = out_dir / "atlas.xml"
+        out.write_text(xml_atlas(meta, image_name), encoding="utf-8")
     else:
         raise ValueError(args.format)
     print(f"Exported {args.format}: {out}")
@@ -128,7 +203,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = p.add_subparsers(dest="command", required=True)
     e = s.add_parser("export")
     e.add_argument("--sprite-dir", required=True)
-    e.add_argument("--format", required=True, choices=["texturepacker", "phaser", "pixijs", "css"])
+    e.add_argument("--format", required=True, choices=["texturepacker", "phaser", "pixijs", "aseprite", "css", "xml"])
     e.add_argument("--output", default=None)
     e.add_argument("--image-name", default=None)
     e.add_argument("--copy-image", action="store_true")

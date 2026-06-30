@@ -8,6 +8,8 @@ import sys
 import urllib.parse
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
+from services.job_artifact_service import command_sprite_folder
+from services.oom_recovery_service import progressive_vram_fallback
 
 ROOT = Path(__file__).resolve().parent.parent
 HISTORY_PATH = ROOT / "output" / "jobs" / "job_history.json"
@@ -21,48 +23,7 @@ class JobService:
 
     @staticmethod
     def adjust_cmd_for_vram_fallback(cmd: List[str]) -> List[str]:
-        new_cmd = list(cmd)
-        
-        # 1. Downgrade tier from wan22_5b to wan21_safe
-        for idx, arg in enumerate(new_cmd):
-            if arg == "--tier" and idx + 1 < len(new_cmd):
-                if new_cmd[idx + 1] == "wan22_5b":
-                    new_cmd[idx + 1] = "wan21_safe"
-                    break
-                    
-        # 2. Downgrade profile to sprite_fast
-        for idx, arg in enumerate(new_cmd):
-            if arg == "--profile" and idx + 1 < len(new_cmd):
-                if new_cmd[idx + 1] in {"quality_local", "wan22_5b_3060_best", "wan22_5b_local"}:
-                    new_cmd[idx + 1] = "sprite_fast"
-                    break
-                    
-        # 3. Scale down resolutions/cell-size
-        for idx, arg in enumerate(new_cmd):
-            if arg == "--cell-size" and idx + 1 < len(new_cmd):
-                size_str = new_cmd[idx + 1]
-                try:
-                    w, h = map(int, size_str.lower().split("x"))
-                    new_w = max(128, w // 2)
-                    new_h = max(128, h // 2)
-                    new_cmd[idx + 1] = f"{new_w}x{new_h}"
-                except Exception:
-                    pass
-                    
-        for idx, arg in enumerate(new_cmd):
-            if arg == "--resolutions" and idx + 1 < len(new_cmd):
-                res_str = new_cmd[idx + 1]
-                try:
-                    res_parts = res_str.split(",")
-                    new_res_parts = []
-                    for p in res_parts:
-                        w, h = map(int, p.lower().split("x"))
-                        new_res_parts.append(f"{max(128, w // 2)}x{max(128, h // 2)}")
-                    new_cmd[idx + 1] = ",".join(new_res_parts)
-                except Exception:
-                    pass
-                    
-        return new_cmd
+        return progressive_vram_fallback(cmd, attempt=1).command
 
     @staticmethod
     def _watch_comfy_websocket(job: Dict[str, Any]) -> None:
@@ -381,20 +342,22 @@ class JobService:
                     JobService._current_proc = None
                     # If cancelled, don't overwrite cancelled status
                     if job["phase"] == "running":
-                        if exit_code != 0 and oom_detected and job.setdefault("metadata", {}).setdefault("vram_retry_count", 0) < 2:
+                        if exit_code != 0 and oom_detected and job.setdefault("metadata", {}).setdefault("vram_retry_count", 0) < 4:
                             retry_count = job["metadata"]["vram_retry_count"] + 1
                             job["metadata"]["vram_retry_count"] = retry_count
                             
-                            new_cmd = JobService.adjust_cmd_for_vram_fallback(cmd)
-                            cmd = new_cmd
-                            job["command"] = new_cmd
+                            fallback = progressive_vram_fallback(cmd, retry_count)
+                            cmd = fallback.command
+                            job["command"] = fallback.command
+                            job["metadata"]["vram_fallback"] = fallback.label
                             
-                            append_log(f"⚠️ CUDA Out of Memory detected. Retrying with lower VRAM profile (Attempt {retry_count}/2)...")
-                            append_log(f"New Command: {' '.join(new_cmd)}")
+                            append_log(f"CUDA Out of Memory detected. Retrying with {fallback.label} (Attempt {retry_count}/4).")
+                            append_log(fallback.detail)
+                            append_log(f"New Command: {' '.join(fallback.command)}")
                             
                             job["stage"] = "queued"
                             job["stage_label"] = "Retrying (VRAM Fallback)"
-                            job["stage_detail"] = f"Retrying with lower VRAM profile (Attempt {retry_count})."
+                            job["stage_detail"] = f"{fallback.detail} Attempt {retry_count}/4."
                             job["progress"] = 0.0
                             
                             # Update in history
@@ -418,36 +381,7 @@ class JobService:
                         job["progress"] = 100.0 if exit_code == 0 else max(float(job.get("progress") or 0.0), 100.0)
                     
                     # Determine output sprite folder
-                    sprite_folder = ""
-                    if exit_code == 0:
-                        try:
-                            for idx, val in enumerate(cmd):
-                                if val in {"--output", "--sprite-dir"}:
-                                    out_val = cmd[idx + 1]
-                                    p_out = Path(out_val)
-                                    if p_out.is_absolute():
-                                        sprite_folder = str(p_out.relative_to(ROOT)).replace("\\", "/")
-                                    else:
-                                        sprite_folder = str(out_val).replace("\\", "/")
-                                    break
-                        except Exception:
-                            pass
-                        
-                        if not sprite_folder and any(x in str(c) for x in ("generate-sprite", "generate_sprite") for c in cmd):
-                            started_ts = job.get("started_at", "")
-                            try:
-                                import time as _time
-                                out_root = ROOT / "output"
-                                candidate = max(
-                                    (p for p in out_root.rglob("sheet.json")
-                                     if p.stat().st_mtime > (_time.mktime(_time.strptime(started_ts, "%Y-%m-%d %H:%M:%S")) if started_ts else 0)),
-                                    key=lambda p: p.stat().st_mtime,
-                                    default=None,
-                                )
-                                if candidate:
-                                    sprite_folder = str(candidate.parent.relative_to(ROOT)).replace("\\", "/")
-                            except Exception:
-                                pass
+                    sprite_folder = command_sprite_folder(ROOT, cmd, str(job.get("started_at") or "")) if exit_code == 0 else ""
                     if sprite_folder:
                         job["metadata"]["sprite_folder"] = sprite_folder
                         if any("generate-sprite" in str(c) or "generate_sprite" in str(c) for c in cmd):
@@ -496,23 +430,7 @@ class JobService:
                                 except ValueError:
                                     return default
 
-                            # Find newest output sprite folder created since this job started
-                            sprite_folder = ""
-                            started_ts = job.get("started_at", "")
-                            try:
-                                from pathlib import Path as _Path
-                                import time as _time
-                                out_root = ROOT / "output"
-                                candidate = max(
-                                    (p for p in out_root.rglob("sheet.json")
-                                     if p.stat().st_mtime > (_time.mktime(_time.strptime(started_ts, "%Y-%m-%d %H:%M:%S")) if started_ts else 0)),
-                                    key=lambda p: p.stat().st_mtime,
-                                    default=None,
-                                )
-                                if candidate:
-                                    sprite_folder = str(candidate.parent.relative_to(ROOT)).replace("\\", "/")
-                            except Exception:
-                                pass
+                            sprite_folder = command_sprite_folder(ROOT, cmd, str(job.get("started_at") or ""))
 
                             seed_str = _arg("--seed")
                             _ES.append_run(

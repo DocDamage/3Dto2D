@@ -9,6 +9,8 @@ from services.config_service import ConfigService
 from services.comfy_service import ComfyService
 from services.model_service import ModelService
 from services.experiment_service import ExperimentService
+from services.seed_gallery_service import build_seed_gallery
+from services.marketplace_service import marketplace_gallery
 from services.project_service import ProjectService
 from services.advisor_service import advise as advisor_advise
 from services.generation_intelligence import (
@@ -144,6 +146,22 @@ def get_experiments():
         "experiments": _experiment_rows(project_meta),
         "project_workspace": _project_workspace(project_meta)
     })
+
+@routes_misc.route("/api/seeds/gallery", methods=["GET"])
+def get_seed_gallery():
+    project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
+    try:
+        limit = int(request.args.get("limit", "24"))
+    except ValueError:
+        limit = 24
+    return jsonify({
+        "seeds": build_seed_gallery(_experiment_rows(project_meta), root=ROOT, rel_path=rel, limit=limit),
+        "project_workspace": _project_workspace(project_meta),
+    })
+
+@routes_misc.route("/api/marketplace/gallery", methods=["GET"])
+def get_marketplace_gallery():
+    return jsonify({"ok": True, **marketplace_gallery(ROOT)})
 
 @routes_misc.route("/api/experiments/export", methods=["GET"])
 def get_experiments_export():

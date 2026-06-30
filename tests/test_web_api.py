@@ -8,6 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 import pytest
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT / "app"
@@ -84,6 +85,63 @@ def test_list_presets(client):
     assert "presets" in data
 
 
+def test_prompt_builder_options(client):
+    response = client.get("/api/prompt_builder/options")
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert "walk" in data["actions"]
+    assert "heroic" in data["body_styles"]
+
+
+def test_prompt_builder_builds_structured_prompt(client):
+    payload = {
+        "character_type": "clockwork knight",
+        "body_style": "heavy",
+        "outfit": "brass armor with blue cloth",
+        "action": "walk",
+        "direction": "right",
+        "camera": "side",
+        "art_style": "pixel",
+        "negative_extra": "oversized weapon"
+    }
+    response = client.post(
+        "/api/prompt_builder/build",
+        data=json.dumps(payload),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    prompt = data["prompt"]
+    assert data["ok"] is True
+    assert "clockwork knight" in prompt["positive"]
+    assert "clean walk cycle loop" in prompt["positive"]
+    assert "pixel-art inspired" in prompt["positive"]
+    assert "brass armor" in prompt["generated_character"]
+    assert "side-view locked camera" in prompt["generated_style"]
+    assert "oversized weapon" in prompt["negative"]
+
+
+def test_seed_gallery_api_groups_seed_records(client, tmp_path, monkeypatch):
+    from services import experiment_service as es_mod
+    from services.experiment_service import ExperimentService
+
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "history.json")
+    project = "test_integration_project"
+    ExperimentService.append_run(seed=42, sprite_action="walk", direction="right", qa_score=75.0, project_name=project)
+    ExperimentService.append_run(seed=42, sprite_action="idle", direction="front", qa_score=88.0, project_name=project)
+    ExperimentService.append_run(seed=-1, sprite_action="run", project_name=project)
+    ExperimentService.append_run(seed=7, sprite_action="attack_light", qa_score=20.0, project_name=project)
+
+    response = client.get("/api/seeds/gallery")
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+
+    assert [item["seed"] for item in data["seeds"]] == [42, 7]
+    assert data["seeds"][0]["uses"] == 2
+    assert data["seeds"][0]["best_score"] == 88.0
+    assert data["seeds"][0]["examples"][0]["action"] in {"walk", "idle"}
+
+
 def test_status_diagnostics(client):
     """GET /api/status should return system diagnostic information."""
     response = client.get("/api/status")
@@ -120,3 +178,124 @@ def test_invalid_rollback(client):
     data = json.loads(response.data.decode("utf-8"))
     assert data["ok"] is False
     assert "required" in data["message"].lower()
+
+
+def test_frame_status_api_updates_sprite_metadata(client, tmp_path, monkeypatch):
+    import web_helpers as web_mod
+
+    sprite_dir = tmp_path / "output" / "hero"
+    sprite_dir.mkdir(parents=True)
+    (sprite_dir / "sheet.json").write_text(json.dumps({
+        "frame_count": 1,
+        "frames": [{"index": 0}]
+    }), encoding="utf-8")
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+
+    response = client.post(
+        "/api/sprite/frame/status",
+        data=json.dumps({"path": "output/hero", "frame_index": 0, "status": "approved"}),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["summary"]["counts"]["approved"] == 1
+    meta = json.loads((sprite_dir / "sheet.json").read_text(encoding="utf-8"))
+    assert meta["frames"][0]["review_status"] == "approved"
+
+
+def test_palette_harmonize_api_creates_report(client, tmp_path, monkeypatch):
+    import web_helpers as web_mod
+
+    output = tmp_path / "output"
+    idle = output / "hero_idle"
+    walk = output / "hero_walk"
+    idle.mkdir(parents=True)
+    walk.mkdir(parents=True)
+    for folder, color in [(idle, (210, 60, 60, 255)), (walk, (60, 90, 210, 255))]:
+        (folder / "sheet.json").write_text(json.dumps({"image": "sheet.png"}), encoding="utf-8")
+        Image.new("RGBA", (3, 3), color).save(folder / "sheet.png")
+    monkeypatch.setattr(web_mod, "OUTPUT", output)
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+
+    response = client.post(
+        "/api/sprites/palette_harmonize",
+        data=json.dumps({"sprites": ["output/hero_idle", "output/hero_walk"], "colors": 4}),
+        content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert len(data["sprites"]) == 2
+    assert (output / "_palette_harmonization" / "palette_harmonization.json").exists()
+    assert (idle / "sheet_harmonized.png").exists()
+
+
+def test_audio_cue_api_updates_preview_bundle(client, tmp_path, monkeypatch):
+    import web_helpers as web_mod
+
+    sprite_dir = tmp_path / "output" / "hero"
+    sprite_dir.mkdir(parents=True)
+    (sprite_dir / "sheet.json").write_text(json.dumps({
+        "frame_count": 1,
+        "fps": 12,
+        "image": "sheet.png",
+        "frame_width": 16,
+        "frame_height": 16,
+        "columns": 1,
+        "rows": 1,
+        "frames": [{"index": 0, "x": 0, "y": 0, "w": 16, "h": 16}]
+    }), encoding="utf-8")
+    Image.new("RGBA", (16, 16), (255, 0, 0, 255)).save(sprite_dir / "sheet.png")
+    audio = tmp_path / "input" / "step.wav"
+    audio.parent.mkdir()
+    audio.write_bytes(b"RIFFfake")
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+
+    response = client.post(
+        "/api/sprite/audio_cue",
+        data=json.dumps({
+            "path": "output/hero",
+            "frame_index": 0,
+            "audio_path": "input/step.wav",
+            "label": "step",
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+
+    preview = client.get("/api/sprite/preview?path=output/hero")
+    data = json.loads(preview.data.decode("utf-8"))
+    cue = data["audio_cues"]["cues"][0]
+    assert cue["label"] == "step"
+    assert cue["audio_url"] == "/file/input/step.wav"
+
+
+def test_state_machine_api_exports_manifest(client, tmp_path, monkeypatch):
+    import importlib
+    import web_helpers as web_mod
+    routes_projects_mod = importlib.import_module("web_routes.routes_projects")
+
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(routes_projects_mod, "ROOT", tmp_path)
+
+    response = client.post(
+        "/api/state_machine/build",
+        data=json.dumps({
+            "name": "hero_controller",
+            "initial_state": "idle",
+            "states": [
+                {"name": "idle", "sprite_path": "output/hero_idle"},
+                {"name": "walk", "sprite_path": "output/hero_walk"},
+            ],
+            "transitions": [{"from": "idle", "to": "walk", "condition": "move"}],
+        }),
+        content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["manifest"]["initial_state"] == "idle"
+    assert (tmp_path / "output" / "state_machines" / "hero_controller" / "state_machine.json").exists()

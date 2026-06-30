@@ -142,6 +142,27 @@ def estimate_job_eta(metadata: Dict[str, Any], history: Optional[List[Dict[str, 
     return {"seconds": seconds, "label": _format_duration(seconds), "sample_count": len(durations)}
 
 
+def update_job_timing(job: Dict[str, Any]) -> Dict[str, Any]:
+    started = _parse_stamp(job.get("started_at"))
+    now = time.time()
+    elapsed = int(round(max(0.0, now - started))) if started else 0
+    progress = max(0.0, min(100.0, float(job.get("progress") or 0.0)))
+    metadata = job.get("metadata") if isinstance(job.get("metadata"), dict) else {}
+    eta = metadata.get("eta") if isinstance(metadata.get("eta"), dict) else {}
+    total = eta.get("seconds")
+    remaining = None
+    if isinstance(total, (int, float)) and total > 0:
+        remaining = max(0, int(round(float(total) - elapsed)))
+        label = f"{_format_duration(remaining)} remaining"
+    else:
+        label = str(eta.get("label") or "learning from this run")
+    job["elapsed_seconds"] = elapsed
+    job["remaining_seconds"] = remaining
+    job["eta_label"] = label
+    job["progress_percent"] = round(progress, 1)
+    return job
+
+
 def summarize_qa_gates(report: Dict[str, Any]) -> Dict[str, Any]:
     issues = report.get("issues") or []
     errors = [i for i in issues if str(i.get("level", "")).lower() in {"error", "fail", "failed"}]

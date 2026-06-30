@@ -1,0 +1,23 @@
+.state-machine-card {
+  display: grid;
+  gap: 10px;
+}
+
+.state-machine-card textarea {
+  min-height: 94px;
+}
+
+.state-machine-result {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.state-machine-result code {
+  color: var(--text);
+  word-break: break-all;
+}

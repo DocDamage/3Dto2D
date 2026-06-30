@@ -1,0 +1,34 @@
+.frame-review-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.frame-review-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.frame-review-btn.active {
+  border-color: var(--cyan);
+  background: rgba(73, 160, 224, 0.2);
+  color: var(--text);
+}
+
+#frameReviewNote {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  background: rgba(0,0,0,.18);
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+#frameReviewSummary {
+  color: var(--muted);
+  font-size: 10px;
+}

@@ -261,8 +261,9 @@ def cmd_preflight(args: argparse.Namespace) -> None:
     print(f"Preflight JSON: {json_path}")
     print(f"Preflight HTML: {html_path}")
     print(f"Recommended next step: {data['checks']['next_step']['step']}")
-    if args.open and os.name == "nt":
-        os.startfile(str(html_path))  # type: ignore[attr-defined]
+    if args.open:
+        from services.open_path_service import open_path
+        open_path(html_path)
 
 
 def copy_if_exists(src: Path, dest: Path) -> Optional[str]:
@@ -639,8 +640,9 @@ def cmd_dashboard(args: argparse.Namespace) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(render_dashboard_html(records, data), encoding="utf-8")
     print(f"Dashboard: {out}")
-    if args.open and os.name == "nt":
-        os.startfile(str(out))  # type: ignore[attr-defined]
+    if args.open:
+        from services.open_path_service import open_path
+        open_path(out)
 
 
 def cmd_open_latest(args: argparse.Namespace) -> None:
@@ -650,8 +652,9 @@ def cmd_open_latest(args: argparse.Namespace) -> None:
         return
     latest = sprites[0]
     print(latest)
-    if args.open and os.name == "nt":
-        os.startfile(str(latest))  # type: ignore[attr-defined]
+    if args.open:
+        from services.open_path_service import open_path
+        open_path(latest)
 
 
 def build_parser() -> argparse.ArgumentParser:

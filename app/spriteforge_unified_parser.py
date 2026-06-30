@@ -267,7 +267,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--root", default="output")
     s.add_argument("--output", default=None)
     s.add_argument("--fail-under", type=float, default=None)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_quality.py"), "batch", "--root", a.root] + (["--output", a.output] if a.output else []) + (["--fail-under", str(a.fail_under)] if a.fail_under is not None else []), check=False))
+    s.add_argument("--junit-xml", default=None, help="Write JUnit XML report for CI dashboards")
+    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_quality.py"), "batch", "--root", a.root] + (["--output", a.output] if a.output else []) + (["--fail-under", str(a.fail_under)] if a.fail_under is not None else []) + (["--junit-xml", a.junit_xml] if a.junit_xml else []), check=False))
 
     s = sub.add_parser("atlas-build", help="Build one multi-animation atlas from multiple SpriteForge output folders")
     s.add_argument("--sprites", nargs="*", default=[])
@@ -491,5 +492,33 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--apply", action="store_true", help="Back up config and apply recommended sprite defaults")
     s.add_argument("--output", default=None)
     s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_hardware.py"), "apply"] if a.apply else [sys.executable, str(ROOT / "spriteforge_hardware.py"), "report"] + (["--output", a.output] if a.output else [])))
+
+    s = sub.add_parser("ci-check", help="CI quality-gate check over sprite outputs (JUnit XML for dashboards)")
+    s.add_argument("--root", default="output")
+    s.add_argument("--fail-under", type=float, default=70.0)
+    s.add_argument("--junit-xml", default=None)
+    s.add_argument("--json", default=None)
+    s.add_argument("--quiet", action="store_true")
+    def _ci_check(a):
+        from services.ci_check_service import run_ci_check
+        args = ["--root", a.root, "--fail-under", str(a.fail_under)]
+        if a.junit_xml:
+            args += ["--junit-xml", a.junit_xml]
+        if a.json:
+            args += ["--json", a.json]
+        if a.quiet:
+            args.append("--quiet")
+        return run_ci_check(args)
+    s.set_defaults(func=_ci_check)
+
+    s = sub.add_parser("prompt-lint", help="Score and lint a prompt for sprite-generation quality")
+    s.add_argument("--prompt", required=True)
+    s.add_argument("--negative", default="")
+    s.add_argument("--action", default="")
+    def _prompt_lint(a):
+        from services.prompt_linter_service import lint_prompt
+        import json
+        print(json.dumps(lint_prompt(a.prompt, negative=a.negative, action=a.action), indent=2))
+    s.set_defaults(func=_prompt_lint)
 
     return p

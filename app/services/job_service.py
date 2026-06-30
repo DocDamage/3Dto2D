@@ -83,6 +83,19 @@ class JobService:
                     pass
 
     @staticmethod
+    def _notify_async(kind: str, job: Dict[str, Any]) -> None:
+        def runner() -> None:
+            try:
+                from services.notification_service import notify_on_job_complete, notify_on_job_start
+                if kind == "start":
+                    notify_on_job_start(job)
+                else:
+                    notify_on_job_complete(job)
+            except Exception:
+                pass
+        threading.Thread(target=runner, daemon=True).start()
+
+    @staticmethod
     def cancel_job(job_id: str) -> bool:
         with JobService._lock:
             if JobService._active_job and JobService._active_job.get("id") == job_id:
@@ -144,6 +157,7 @@ class JobService:
             history = JobService._load_history()
             history.insert(0, job)
             JobService._save_history(history)
+            JobService._notify_async("start", dict(job))
 
         def worker():
             nonlocal cmd
@@ -367,6 +381,7 @@ class JobService:
                             hist[idx] = job
                             break
                     JobService._save_history(hist)
+                    JobService._notify_async("complete", dict(job))
                     JobService._active_job = None
 
                     # Record experiment history for generation jobs

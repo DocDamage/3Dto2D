@@ -102,8 +102,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        args.func(args)
-        return 0
+        result = args.func(args)
+        return int(result) if isinstance(result, int) else 0
     except KeyboardInterrupt:
         print("Stopped.", file=sys.stderr)
         return 130

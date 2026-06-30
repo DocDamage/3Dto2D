@@ -1,0 +1,50 @@
+# Auto-detect text files and ensure LF line endings
+* text=auto
+
+# Python
+*.py text eol=lf
+
+# Web
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+
+# Config / dotfiles
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.editorconfig text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
+*.ini text eol=lf
+
+# Batch files require CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell scripts require LF
+*.sh text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.mp4 binary
+*.webm binary
+*.mov binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary

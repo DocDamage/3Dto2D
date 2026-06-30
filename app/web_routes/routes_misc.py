@@ -17,6 +17,7 @@ from services.generation_intelligence import (
     cleanup_suggestions, explain_model_profile, preflight_generation,
     mark_review_decision, rerun_similar_payload
 )
+from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score
 from web_helpers import (
     ROOT, UPLOADS, OUTPUT, LOGS, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
     _project_meta_from_query, _project_workspace, _experiment_rows,
@@ -113,6 +114,40 @@ def scan_cleanup():
                     "id": str(f.relative_to(ROOT)).replace("\\", "/")
                 })
     return jsonify({"files": files})
+
+@routes_misc.route("/api/prompt/lint", methods=["POST"])
+def lint_prompt_endpoint():
+    body = request.json or {}
+    prompt = str(body.get("prompt") or "").strip()
+    negative = str(body.get("negative") or "").strip()
+    action = str(body.get("action") or "").strip()
+    if not prompt:
+        return jsonify({"ok": False, "message": "prompt is required"}), 400
+    try:
+        full = body.get("full_payload")
+        if full and isinstance(full, dict):
+            result = lint_from_payload(full)
+        else:
+            result = lint_prompt(prompt, negative=negative, action=action)
+        result["ok"] = True
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/archetypes", methods=["GET"])
+def get_archetypes():
+    from spriteforge_utils import load_json
+    archetypes_path = ROOT / "config" / "character_archetypes.json"
+    data = load_json(archetypes_path, {"archetypes": [], "meta": {}})
+    tag = request.args.get("tag", "")
+    search = request.args.get("search", "")
+    archetypes = data.get("archetypes", [])
+    if tag:
+        archetypes = [a for a in archetypes if tag in a.get("tags", [])]
+    if search:
+        sl = search.lower()
+        archetypes = [a for a in archetypes if sl in a.get("name", "").lower() or sl in a.get("description", "").lower() or any(sl in t.lower() for t in a.get("tags", []))]
+    return jsonify({"ok": True, "archetypes": archetypes, "meta": data.get("meta", {}), "total": len(archetypes)})
 
 @routes_misc.route("/api/advisor", methods=["GET"])
 def get_advisor():

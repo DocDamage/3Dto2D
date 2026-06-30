@@ -1,0 +1,23 @@
+[flake8]
+max-line-length = 120
+extend-ignore = E203, E266, E501, W503
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    node_modules,
+    ComfyUI,
+    comfyui,
+    *.egg-info,
+    build,
+    dist,
+    scratch,
+    .mypy_cache,
+    .pytest_cache,
+per-file-ignores =
+    __init__.py:F401,F403
+    tests/*:F811
+    app/spriteforge_unified_parser.py:E501
+    app/web_helpers.py:E501
+    app/spriteforge_web.py:E501

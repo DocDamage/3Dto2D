@@ -7,7 +7,6 @@ from pathlib import Path
 from services.job_service import JobService
 from services.comfy_service import ComfyService
 from services.model_service import ModelService
-from services.model_service import ModelService
 from services.generation_intelligence import estimate_job_eta, preflight_generation, safer_retry_payload, rerun_similar_payload, update_job_timing
 from web_helpers import (
     ROOT, OUTPUT, LOGS, PYTHON,
@@ -102,29 +101,52 @@ def get_queue_detail():
 @routes_jobs.route("/api/status/stream", methods=["GET"])
 def status_stream():
     def event_stream():
-        last_log_line = 0
-        while True:
-            active_job = JobService.get_active_job()
-            if active_job:
-                job_status = _job_status_payload(active_job, True)
-            else:
-                history = JobService.get_history()
-                if history:
-                    job_status = _job_status_payload(history[0], False)
-                else:
-                    job_status = _job_status_payload(None, False)
+        heartbeat_interval = 15
+        last_heartbeat = 0
+        try:
+            while True:
+                try:
+                    active_job = JobService.get_active_job()
+                    if active_job:
+                        job_status = _job_status_payload(active_job, True)
+                    else:
+                        history = JobService.get_history()
+                        if history:
+                            job_status = _job_status_payload(history[0], False)
+                        else:
+                            job_status = _job_status_payload(None, False)
+                    
+                    data = {
+                        "comfy_running": ComfyService.is_running(),
+                        "comfy_url": ComfyService.get_url(),
+                        "gpu": ComfyService.get_gpu_info(),
+                        "job": job_status,
+                        "time": time.strftime("%H:%M:%S")
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+                    
+                    now = time.time()
+                    if now - last_heartbeat > heartbeat_interval:
+                        yield ": heartbeat\n\n"
+                        last_heartbeat = now
+                    
+                    time.sleep(0.5)
+                except GeneratorExit:
+                    break
+                except Exception:
+                    time.sleep(1)
+        except GeneratorExit:
+            pass
             
-            data = {
-                "comfy_running": ComfyService.is_running(),
-                "comfy_url": ComfyService.get_url(),
-                "gpu": ComfyService.get_gpu_info(),
-                "job": job_status,
-                "time": time.strftime("%H:%M:%S")
-            }
-            yield f"data: {json.dumps(data)}\n\n"
-            time.sleep(0.5)
-            
-    return Response(event_stream(), mimetype="text/event-stream")
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive"
+        }
+    )
 
 @routes_jobs.route("/api/run", methods=["POST"])
 def run_action():

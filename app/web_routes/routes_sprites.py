@@ -12,7 +12,7 @@ from web_helpers import (
     _sprite_version_list, _sprite_version_save, _sprite_version_rollback,
     _sprite_edit_frames, _qa_batch_summary
 )
-from spriteforge_utils import save_json
+from spriteforge_utils import save_json, load_json
 
 routes_sprites = Blueprint("routes_sprites", __name__)
 
@@ -242,7 +242,9 @@ def save_edited_frame():
             dest_folder = sprite_dir / "frames"
         dest_folder.mkdir(parents=True, exist_ok=True)
         
-        dest_file = dest_folder / frame_name
+        # Sanitize frame_name to prevent path traversal
+        safe_frame_name = Path(frame_name).name
+        dest_file = dest_folder / safe_frame_name
         dest_file.write_bytes(img_bytes)
         
         sheet_json_path = sprite_dir / "sheet.json"

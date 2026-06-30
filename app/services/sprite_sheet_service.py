@@ -165,6 +165,44 @@ def write_godot_notes(path: Path, frame_count: int, columns: int, rows: int, fps
     )
 
 
+def export_apng(frames: Sequence[FrameItem], path: Path, fps: float) -> None:
+    """Export frames as animated PNG (lossless)."""
+    if not frames:
+        return
+    # APNG is natively supported by Pillow since 9.1
+    duration = int(round(1000.0 / fps)) if fps > 0 else 83
+    imgs = [f.image.convert("RGBA") for f in frames]
+    # Pillow saves APNG when saving PNG with save_all and append_images
+    imgs[0].save(
+        path,
+        format="PNG",
+        save_all=True,
+        append_images=imgs[1:],
+        duration=duration,
+        loop=0,
+        disposal=2,
+    )
+
+
+def export_webp_anim(frames: Sequence[FrameItem], path: Path, fps: float, quality: int = 85) -> None:
+    """Export frames as animated WebP."""
+    if not frames:
+        return
+    duration = int(round(1000.0 / fps)) if fps > 0 else 83
+    imgs = [f.image.convert("RGBA") for f in frames]
+    imgs[0].save(
+        path,
+        format="WEBP",
+        save_all=True,
+        append_images=imgs[1:],
+        duration=duration,
+        loop=0,
+        lossless=False,
+        quality=quality,
+        method=4,
+    )
+
+
 def write_report(path: Path, sheet_name: str, output_dir: Path, frame_count: int, fps: float,
                  cell_size: Tuple[int, int], columns: int, rows: int, extra: Dict[str, Any]) -> None:
     preview_exists = (output_dir / "preview.gif").exists()

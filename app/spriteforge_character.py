@@ -74,8 +74,8 @@ def build_prompt_pack(action: str, direction: str, character: str, style: str, b
         import spriteforge_prompts as prompts
         return prompts.build_prompt(action=action, direction=direction, character=character, style=style, background=background)
     except Exception:
-        positive = f"{character}, {action} animation, {direction} view, {style}, locked camera, centered, {background}, full body game sprite, clean silhouette"
-        negative = "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, watermark, deformed body, extra limbs"
+        positive = f"{character}, professional appealing character design, heroic adult proportions, distinctive outfit, strong shape language, {action} animation, {direction} view, {style}, locked camera, centered, {background}, full body game sprite, clean silhouette"
+        negative = "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, watermark, deformed body, extra limbs, missing limbs, bad anatomy, childlike drawing, amateur doodle, crude sketch, messy linework, ugly face, muddy colors"
         return {"positive": positive, "negative": negative}
 
 
@@ -255,7 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--name", required=True)
     s.add_argument("--description", required=True)
     s.add_argument("--reference-image", default=None)
-    s.add_argument("--style", default="clean 2D game sprite, crisp edges, consistent palette")
+    s.add_argument("--style", default="polished 2D game sprite, professional character design, crisp cel-shaded edges, consistent palette")
     s.add_argument("--background", default="plain bright green background")
     s.add_argument("--actions", default=",".join(DEFAULT_ACTIONS))
     s.add_argument("--directions", default=",".join(DEFAULT_DIRECTIONS))

@@ -555,6 +555,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--deflicker", action="store_true")
     s.add_argument("--solidify", type=int, default=2)
     s.add_argument("--blend-loop-frames", type=int, default=0)
+    s.add_argument("--thumb", type=int, default=96)
     s.add_argument("--sharpen", action="store_true", help="Sharpen sprite edges")
     s.set_defaults(func=cmd_autofix)
 

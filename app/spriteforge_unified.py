@@ -155,7 +155,7 @@ def manifests_for_install_tier(cfg: Config, tier: Optional[str]) -> List[str]:
 def merged_wan_defaults(cfg: Config, profile: Optional[str], mode: Optional[str] = None, tier: Optional[str] = None) -> Dict[str, Any]:
     wd: Dict[str, Any] = dict(cfg.raw.get("wan_defaults", {}))
     tc: Dict[str, Any] = {}
-    if tier:
+    if tier or not mode or mode == "auto":
         tc = tier_config(cfg, tier)
     effective_mode = mode if mode and mode != "auto" else tc.get("mode") or "t2v"
     wd["mode"] = effective_mode
@@ -558,6 +558,14 @@ def install_node(url: str, dest: Path, py: Path) -> None:
     install_requirements(py, dest / "requirements.txt", optional=True)
 
 
+def install_wanvideo_optional_requirements(dest: Path, py: Path) -> None:
+    install_requirements(py, dest / "fantasyportrait" / "requirements.txt", optional=True)
+    sage_packages = ["sageattention"]
+    if platform.system().lower() == "windows":
+        sage_packages.insert(0, "triton-windows<3.8")
+    run([str(py), "-m", "pip", "install", *sage_packages], check=False)
+
+
 def cmd_install_nodes(args: argparse.Namespace) -> None:
     cfg = load_config()
     cn = cfg.comfy_dir / "custom_nodes"
@@ -569,6 +577,8 @@ def cmd_install_nodes(args: argparse.Namespace) -> None:
     ]
     for url, dest in nodes:
         install_node(url, dest, py)
+        if dest.name == "ComfyUI-WanVideoWrapper":
+            install_wanvideo_optional_requirements(dest, py)
     if getattr(args, "manager", False):
         install_node("https://github.com/Comfy-Org/ComfyUI-Manager.git", cn / "comfyui-manager", py)
     print("WAN/Video custom nodes install/update complete.")
@@ -770,8 +780,16 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: argparse.Namespace, cfg: Co
     mode = wd.get("mode") or ("t2v" if requested_mode == "auto" else requested_mode)
 
     prompt_pack = spriteforge_prompt_from_args(args)
-    positive = args.prompt or (prompt_pack or {}).get("positive") or "single full body character walking cycle, side view, locked camera, centered, plain bright green background, game sprite animation, clean silhouette"
-    negative = args.negative or (prompt_pack or {}).get("negative") or "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, watermark, deformed body, extra limbs, low quality"
+    positive = args.prompt or (prompt_pack or {}).get("positive") or (
+        "single full body original game character walking cycle, professional appealing character design, heroic adult proportions, "
+        "clear readable face, distinctive outfit, strong shape language, cohesive color palette, side view, locked orthographic camera, "
+        "centered, full body visible, plain bright green background, high quality 2D game sprite animation, crisp cel-shaded edges, clean silhouette"
+    )
+    negative = args.negative or (prompt_pack or {}).get("negative") or (
+        "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, "
+        "watermark, deformed body, extra limbs, missing limbs, bad anatomy, childlike drawing, amateur doodle, crude sketch, scribbles, "
+        "messy linework, ugly face, melted face, lumpy body, shapeless outfit, muddy colors, low quality"
+    )
 
     pos_inputs, neg_inputs = clip_text_nodes(out)
     pos_inputs["text"] = positive
@@ -801,6 +819,8 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: argparse.Namespace, cfg: Co
         staged_reference = stage_file_to_comfy_input(cfg, args.reference_image)
         patched_images = patch_load_image_nodes(out, staged_reference)
         print(f"Patched reference image nodes: {patched_images} -> {staged_reference}")
+        if patched_images == 0:
+            print("[WARN] This workflow has no LoadImage/image input nodes, so the reference image will not affect generation. Use an I2V/custom reference workflow for image-guided character preservation.")
 
     clip_vision_name = getattr(args, "clip_vision", None) or wd.get("clip_vision")
     patched_clip_vision = patch_clip_vision_nodes(out, clip_vision_name)
@@ -1397,7 +1417,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     def add_wan_args(s: argparse.ArgumentParser) -> None:
         s.add_argument("--workflow", default=None)
-        s.add_argument("--tier", default="wan21_safe", help="Model tier: wan21_safe, wan22_5b, or wan22_14b_cloud. Aliases: safe, advanced, cloud.")
+        s.add_argument("--tier", default=None, help="Model tier: wan21_safe, wan22_5b, or wan22_14b_cloud. Defaults to config default_model_tier. Aliases: safe, advanced, cloud.")
         s.add_argument("--mode", default="auto", choices=["auto", "t2v", "ti2v22", "i2v", "vace", "custom"], help="WAN mode. auto chooses the mode from --tier.")
         s.add_argument("--profile", default="auto", help="WAN preset. auto uses the profile recommended by --tier.")
         s.add_argument("--prompt", required=False)
@@ -1695,8 +1715,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("pack-init", help="Create a multi-action/multi-direction character pack plan with prompts and optional posepacks")
     s.add_argument("--name", default="character_pack")
-    s.add_argument("--character", default="single full body original game character, consistent outfit, clean silhouette")
-    s.add_argument("--style", default="2D game sprite animation, crisp edges, readable silhouette")
+    s.add_argument("--character", default="single full body original game character, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette")
+    s.add_argument("--style", default="high quality 2D game sprite animation, polished concept-art quality, crisp cel-shaded edges, readable silhouette")
     s.add_argument("--background", default="plain bright green chroma key background")
     s.add_argument("--extra", default="")
     s.add_argument("--actions", default="idle,walk,run,attack_light,hurt,death")
@@ -1755,7 +1775,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--name", required=True)
     s.add_argument("--description", required=True)
     s.add_argument("--reference-image", default=None)
-    s.add_argument("--style", default="clean 2D game sprite, crisp edges, consistent palette")
+    s.add_argument("--style", default="polished 2D game sprite, professional character design, crisp cel-shaded edges, consistent palette")
     s.add_argument("--background", default="plain bright green background")
     s.add_argument("--actions", default="idle,walk,run,attack_light,attack_heavy,hurt,death")
     s.add_argument("--directions", default="right")

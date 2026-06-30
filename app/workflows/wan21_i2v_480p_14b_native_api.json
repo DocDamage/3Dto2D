@@ -45,14 +45,14 @@
     "class_type": "CLIPTextEncode",
     "inputs": {
       "clip": ["38", 0],
-      "text": "single full body character idle animation, preserve supplied reference image identity and outfit, locked camera, plain bright green background, clean silhouette"
+      "text": "single full body original game character idle animation, preserve supplied reference image identity and outfit, professional appealing character design, heroic adult proportions, clear readable face, distinctive outfit, strong shape language, cohesive color palette, locked orthographic camera, full body visible, plain bright green background, high quality 2D game sprite animation, crisp cel-shaded edges, clean silhouette"
     }
   },
   "7": {
     "class_type": "CLIPTextEncode",
     "inputs": {
       "clip": ["38", 0],
-      "text": "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, watermark, low quality, deformed body, extra limbs"
+      "text": "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, watermark, low quality, deformed body, extra limbs, missing limbs, bad anatomy, childlike drawing, amateur doodle, crude sketch, scribbles, messy linework, ugly face, melted face, lumpy body, shapeless outfit, muddy colors"
     }
   },
   "50": {

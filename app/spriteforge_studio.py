@@ -107,12 +107,12 @@ class Studio(tk.Tk):
         self.prompt = tk.Text(self.gen_tab, height=7, wrap="word")
         self.prompt.insert(
             "1.0",
-            "single full body character walking cycle, side view, locked camera, no zoom, centered, plain bright green background, game sprite animation, clean silhouette",
+            "single full body original game character walking cycle, professional appealing character design, heroic adult proportions, clear readable face, distinctive outfit, strong shape language, cohesive color palette, side view, locked orthographic camera, no zoom, centered, full body visible, plain bright green background, high quality 2D game sprite animation, crisp cel-shaded edges, clean silhouette",
         )
         self.negative = tk.Text(self.gen_tab, height=4, wrap="word")
         self.negative.insert(
             "1.0",
-            "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, watermark, deformed body, extra limbs, low quality",
+            "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, watermark, deformed body, extra limbs, missing limbs, bad anatomy, childlike drawing, amateur doodle, crude sketch, scribbles, messy linework, ugly face, melted face, lumpy body, shapeless outfit, muddy colors, low quality",
         )
 
         profiles = sorted(self.cfg.get("profiles", {}).keys()) or ["rtx3060_12gb"]
@@ -230,7 +230,7 @@ class Studio(tk.Tk):
 
     def build_prod_tab(self):
         self.pack_name = tk.StringVar(value="hero_pack")
-        self.pack_character = tk.StringVar(value="single full body original game character, consistent outfit, clean silhouette")
+        self.pack_character = tk.StringVar(value="single full body original game character, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette")
         self.pack_root = tk.StringVar(value=str(ROOT / "output" / "packs" / "hero_pack"))
         self.qa_sprite_dir = tk.StringVar(value="")
         self.repair_output = tk.StringVar(value="")

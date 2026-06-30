@@ -5,6 +5,7 @@ import threading
 import time
 import uuid
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -17,6 +18,55 @@ class JobService:
     _lock = threading.RLock()
     _current_proc: Optional[subprocess.Popen] = None
     _active_job: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def _watch_comfy_websocket(job: Dict[str, Any]) -> None:
+        """Bridge ComfyUI websocket progress into the active job when available."""
+        prompt_id = str((job.get("metadata") or {}).get("comfy_prompt_id") or "")
+        if not prompt_id:
+            return
+        try:
+            import websocket  # type: ignore
+            from services.comfy_service import ComfyService
+            from services.generation_intelligence import apply_comfy_ws_message
+        except Exception:
+            with JobService._lock:
+                job.setdefault("logs", []).append(f"[{time.strftime('%H:%M:%S')}] ComfyUI websocket bridge unavailable; install websocket-client for exact WAN progress.")
+            return
+
+        url = ComfyService.get_url()
+        parsed = urllib.parse.urlparse(url)
+        scheme = "wss" if parsed.scheme == "https" else "ws"
+        client_id = str(job.get("id") or uuid.uuid4())
+        ws_url = f"{scheme}://{parsed.netloc}/ws?clientId={urllib.parse.quote(client_id)}"
+        try:
+            ws = websocket.create_connection(ws_url, timeout=3)
+            with JobService._lock:
+                job["progress_mode"] = "comfy_ws"
+                job.setdefault("metadata", {})["comfy_ws_bridge"] = "connected"
+            while True:
+                with JobService._lock:
+                    if job.get("phase") != "running":
+                        break
+                raw = ws.recv()
+                try:
+                    message = json.loads(raw)
+                except Exception:
+                    continue
+                with JobService._lock:
+                    apply_comfy_ws_message(job, message)
+                    done = job.get("stage") in {"complete", "failed", "cancelled"}
+                if done:
+                    break
+        except Exception as exc:
+            with JobService._lock:
+                job.setdefault("metadata", {})["comfy_ws_bridge"] = "error"
+                job.setdefault("logs", []).append(f"[{time.strftime('%H:%M:%S')}] ComfyUI websocket bridge stopped: {exc}")
+        finally:
+            try:
+                ws.close()  # type: ignore[name-defined]
+            except Exception:
+                pass
 
     @staticmethod
     def _load_history() -> List[Dict[str, Any]]:
@@ -85,8 +135,12 @@ class JobService:
                         JobService._current_proc.terminate()
                     
                     JobService._active_job["phase"] = "cancelled"
+                    JobService._active_job["stage"] = "cancelled"
+                    JobService._active_job["stage_label"] = "Cancelled"
+                    JobService._active_job["stage_detail"] = "Task was cancelled by the user."
                     JobService._active_job["finished_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
                     JobService._active_job["exit_code"] = -1
+                    JobService._active_job["progress"] = 100.0
                     JobService._active_job["logs"].append(f"[{time.strftime('%H:%M:%S')}] Job cancelled by user (process tree killed).")
                     
                     # Update in history
@@ -112,7 +166,11 @@ class JobService:
                 "title": title,
                 "command": cmd,
                 "phase": "running",
+                "stage": "queued",
+                "stage_label": "Queued",
+                "stage_detail": "Waiting for the worker to start.",
                 "progress": 0.0,
+                "progress_mode": "estimated",
                 "started_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "finished_at": None,
                 "exit_code": None,
@@ -150,6 +208,58 @@ class JobService:
             progress_pat2 = re.compile(r'(?:[Ss]tep|[Ss]teps|[Kk]sampler|progress)?[:\s]*(\d+)\s*/\s*(\d+)', re.IGNORECASE)
             progress_pat3 = re.compile(r'(?:[Pp]rompt\s+)?progress[:\s]*(\d+)%', re.IGNORECASE)
 
+            def set_reported_progress(inner_pct: float) -> None:
+                stage = str(job.get("stage") or "")
+                if stage in {"wan_sampling", "queued_comfy", "starting"} or any("generate-sprite" in str(c) for c in cmd):
+                    whole = 18.0 + (max(0.0, min(100.0, inner_pct)) * 0.42)
+                else:
+                    whole = inner_pct
+                with JobService._lock:
+                    job["progress"] = max(float(job.get("progress") or 0.0), min(99.0, float(whole)))
+                    job["progress_mode"] = "reported"
+
+            def set_stage(stage: str, label: str, detail: str, progress: Optional[float] = None, mode: str = "estimated") -> None:
+                with JobService._lock:
+                    job["stage"] = stage
+                    job["stage_label"] = label
+                    job["stage_detail"] = detail
+                    job["progress_mode"] = mode
+                    if progress is not None:
+                        job["progress"] = max(float(job.get("progress") or 0.0), min(99.0, float(progress)))
+
+            def infer_stage_from_line(line_text: str) -> None:
+                text = line_text.lower()
+                if "queued comfyui prompt" in text or "prompt id:" in text:
+                    set_stage("queued_comfy", "Queued in ComfyUI", "Prompt accepted by ComfyUI.", 12)
+                    try:
+                        prompt_match = re.search(r"prompt id[:\s]+([0-9a-fA-F-]+)", line_text, re.IGNORECASE)
+                        if prompt_match:
+                            with JobService._lock:
+                                metadata = job.setdefault("metadata", {})
+                                if not metadata.get("comfy_prompt_id"):
+                                    metadata["comfy_prompt_id"] = prompt_match.group(1)
+                                    threading.Thread(target=JobService._watch_comfy_websocket, args=(job,), daemon=True).start()
+                    except Exception:
+                        pass
+                elif "waiting for exact comfyui prompt history output" in text:
+                    set_stage("wan_sampling", "Generating video", "ComfyUI is running the WAN workflow.", 18)
+                elif "resolved output" in text or "history output" in text or "chosen output" in text:
+                    set_stage("resolve_output", "Resolving output", "Finding the exact video produced by this prompt.", 62)
+                elif "converting" in text and ("video" in text or "spritesheet" in text):
+                    set_stage("convert_video", "Converting video", "Extracting frames and preparing the sprite sheet.", 72)
+                elif "sprite output" in text or "sheet:" in text or "preview:" in text or "metadata:" in text:
+                    set_stage("pack_sprite", "Packing sprite", "Writing sheet, preview, and metadata.", 88)
+                elif "quality" in text or "qa report" in text:
+                    set_stage("qa", "Quality check", "Running quality analysis and writing the report.", 92)
+                elif "download" in text:
+                    set_stage("download", "Downloading", "Downloading or checking model files.", 35)
+                elif "install" in text:
+                    set_stage("install", "Installing", "Installing or updating dependencies.", 35)
+                elif "error:" in text or "traceback" in text or "returned non-zero" in text:
+                    set_stage("error", "Error detected", line_text[-180:], None)
+
+            set_stage("starting", "Starting", "Launching command process.", 2)
+
             try:
                 with log_path.open("w", encoding="utf-8", errors="replace") as fp:
                     preexec = None
@@ -184,21 +294,20 @@ class JobService:
                         fp.write(line + "\n")
                         fp.flush()
                         append_log(line)
+                        infer_stage_from_line(line)
                         
                         # Progress parsing
                         m3 = progress_pat3.search(line)
                         if m3:
                             try:
-                                with JobService._lock:
-                                    job["progress"] = float(m3.group(1))
+                                set_reported_progress(float(m3.group(1)))
                             except Exception:
                                 pass
                         else:
                             m1 = progress_pat1.search(line)
                             if m1:
                                 try:
-                                    with JobService._lock:
-                                        job["progress"] = float(m1.group(1))
+                                    set_reported_progress(float(m1.group(1)))
                                 except Exception:
                                     pass
                             else:
@@ -208,8 +317,7 @@ class JobService:
                                         curr = int(m2.group(1))
                                         tot = int(m2.group(2))
                                         if tot > 0:
-                                            with JobService._lock:
-                                                job["progress"] = round((curr / tot) * 100.0, 1)
+                                            set_reported_progress(round((curr / tot) * 100.0, 1))
                                     except Exception:
                                         pass
 
@@ -222,9 +330,12 @@ class JobService:
                     # If cancelled, don't overwrite cancelled status
                     if job["phase"] == "running":
                         job["phase"] = "completed" if exit_code == 0 else "failed"
+                        job["stage"] = "complete" if exit_code == 0 else "failed"
+                        job["stage_label"] = "Passed" if exit_code == 0 else "Failed"
+                        job["stage_detail"] = "Task completed successfully." if exit_code == 0 else f"Task failed with exit code {exit_code}."
                         job["finished_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
                         job["exit_code"] = exit_code
-                        job["progress"] = 100.0 if exit_code == 0 else job["progress"]
+                        job["progress"] = 100.0 if exit_code == 0 else max(float(job.get("progress") or 0.0), 100.0)
                     
                     # Determine output sprite folder
                     sprite_folder = ""
@@ -259,6 +370,27 @@ class JobService:
                                 pass
                     if sprite_folder:
                         job["metadata"]["sprite_folder"] = sprite_folder
+                        if any("generate-sprite" in str(c) or "generate_sprite" in str(c) for c in cmd):
+                            try:
+                                from services.generation_intelligence import build_visual_report, summarize_qa_gates
+
+                                sprite_abs = (ROOT / sprite_folder).resolve()
+                                visual = build_visual_report(sprite_abs)
+                                job["metadata"]["visual_report"] = visual
+                                qa_data: Dict[str, Any] = {}
+                                for report_rel in ["qa/qa_report.json", "qa_report.json", "quality_report.json"]:
+                                    p = sprite_abs / report_rel
+                                    if p.exists():
+                                        qa_data = json.loads(p.read_text(encoding="utf-8"))
+                                        break
+                                job["metadata"]["qa_gate"] = summarize_qa_gates(qa_data) if qa_data else {
+                                    "status": "warning",
+                                    "reasons": ["QA report was not found after generation."],
+                                    "score": None,
+                                    "issue_count": 0,
+                                }
+                            except Exception as exc:
+                                job["metadata"]["visual_report_error"] = str(exc)
 
                     append_log(f"■ Job finished with exit code {exit_code}")
                     

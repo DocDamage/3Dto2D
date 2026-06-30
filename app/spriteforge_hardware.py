@@ -61,9 +61,9 @@ def recommendation(total_mib: int) -> Dict[str, Any]:
         }
     if gb >= 11:
         return {
-            "tier": "rtx3060_12gb",
-            "profile": "rtx3060_12gb",
-            "wan_path": "Use Wan 2.1 T2V 1.3B locally. Treat I2V/VACE/14B as cloud jobs.",
+            "tier": "wan22_5b",
+            "profile": "wan22_5b_3060_best",
+            "wan_path": "Use Wan 2.2 TI2V 5B locally for the best character quality your 12GB card can reasonably handle. Treat I2V/VACE/14B as cloud jobs.",
             "sprite_defaults": {"cell_size": "512x512", "fps": 12, "frames": 33},
         }
     if gb >= 8:

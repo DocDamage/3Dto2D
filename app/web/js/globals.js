@@ -52,18 +52,17 @@ async function runAction(action, extra={}){
 
   // 2. Preflight validation check
   if (action === 'generate_sprite') {
-    const status = window._latestStatus;
-    if (status) {
-      if (!status.comfy_running) {
-        const displayMsg = 'ComfyUI is offline. SpriteForge cannot generate until it is running.';
-        showPreflightErrorBox(displayMsg, 'comfy');
-        return;
+    const params = new URLSearchParams({action, ...extra});
+    try {
+      const preflight = await api('/api/preflight/generation?' + params.toString());
+      if (preflight.status !== 'pass') {
+        const displayMsg = preflight.reasons.join(' ');
+        showPreflightErrorBox(displayMsg, displayMsg.toLowerCase().includes('model') ? 'models' : 'comfy');
+        if (!confirm(`Preflight ${preflight.status.toUpperCase()}:\n\n${preflight.reasons.join('\n')}\n\nStart anyway?`)) return;
       }
-      if (!status.models.ok) {
-        const displayMsg = 'WAN model files are missing. Check WAN Models checkmarks or repair downloads in Setup.';
-        showPreflightErrorBox(displayMsg, 'models');
-        return;
-      }
+    } catch(e) {
+      toast('Preflight check failed: ' + e.message);
+      return;
     }
   }
 
@@ -96,6 +95,9 @@ async function runAction(action, extra={}){
       showPreflightErrorBox(displayMsg, 'comfy');
     } else {
       toast(displayMsg);
+      if (typeof addNotification === 'function') {
+        addNotification('Task Did Not Start', displayMsg, 'error', { label: 'Open Logs', view: 'logs' });
+      }
     }
   }
 }
@@ -221,12 +223,16 @@ function setProgressFill(fill, pct, state=''){
   fill.style.width = `${value}%`;
   fill.className = state || '';
   fill.dataset.percent = String(Math.round(value));
+  fill.setAttribute('aria-valuenow', String(Math.round(value)));
 }
 
 function progressElement(pct, state=''){
   const wrap = document.createElement('div');
   wrap.className = 'task-progressbar compact';
   const fill = document.createElement('i');
+  wrap.setAttribute('role', 'progressbar');
+  wrap.setAttribute('aria-valuemin', '0');
+  wrap.setAttribute('aria-valuemax', '100');
   setProgressFill(fill, pct, state);
   wrap.appendChild(fill);
   return wrap;
@@ -248,6 +254,25 @@ function inferredJobProgress(job, running){
   return 10;
 }
 
+function jobStageText(job, running){
+  if(!job) return 'Ready';
+  if(job.stage_label) {
+    const suffix = job.progress_mode === 'reported' ? 'reported' : 'estimated';
+    return running ? `${job.stage_label} · ${suffix}` : job.stage_label;
+  }
+  if(running) return 'Running';
+  if(job.exit_code === 0) return 'Passed';
+  if(job.exit_code !== null && job.exit_code !== undefined) return 'Failed';
+  return 'Ready';
+}
+
+function jobStageDetail(job, running){
+  if(!job) return 'No task running';
+  if(job.stage_detail) return job.stage_detail;
+  if(running) return 'Running now';
+  return job.finished_at || 'Ready';
+}
+
 function renderGlobalProgress(job){
   const box = $('#globalTaskProgress');
   if(!box) return;
@@ -259,7 +284,9 @@ function renderGlobalProgress(job){
   box.classList.toggle('failed', !!failed);
   box.classList.toggle('done', !!done);
   $('#globalTaskTitle').textContent = running ? (job.title || 'Task running') : (done ? 'Last task complete' : failed ? 'Last task failed' : 'No task running');
-  $('#globalTaskDetail').textContent = running ? 'Running now' : (job?.finished_at || 'Ready');
+  const eta = job?.metadata?.eta?.label ? ` · ETA ${job.metadata.eta.label}` : '';
+  const mode = job?.progress_mode === 'comfy_ws' ? ' · exact ComfyUI progress' : '';
+  $('#globalTaskDetail').textContent = running ? jobStageText(job, true) + ' — ' + jobStageDetail(job, true) + eta + mode : (done || failed ? jobStageDetail(job, false) : 'Ready');
   $('#globalProgressPct').textContent = `${Math.round(clampProgress(pct))}%`;
   setProgressFill($('#globalProgressFill'), pct, running ? 'busy' : done ? 'done' : failed ? 'failed' : '');
 }
@@ -339,6 +366,31 @@ async function openResultPreview(spritePath){
     $('#previewUseForQuality').dataset.spritePath = data.path || spritePath;
     setPreviewLink('#previewOpenSheet', data.sheet_url || data.preview_url || '');
     setPreviewLink('#previewOpenReport', data.report_url || data.qa_url || '');
+    setPreviewLink('#previewOpenContactSheet', data.contact_sheet_url || '');
+
+    const qaGate = data.qa_gate || {};
+    const qaBadge = $('#previewQaStatusBadge');
+    if (qaBadge) {
+      qaBadge.textContent = (qaGate.status || 'warning').toUpperCase();
+      qaBadge.className = 'badge ' + (qaGate.status === 'pass' ? 'ok' : qaGate.status === 'fail' ? 'bad' : 'warn');
+    }
+    const loopVal = data.qa_report?.metrics?.loop_seam_rmse;
+    const driftVal = data.qa_report?.metrics?.foot_y_stdev_px || data.qa_report?.metrics?.center_x_stdev_px;
+    if ($('#previewLoopRmseVal')) $('#previewLoopRmseVal').textContent = loopVal == null ? '—' : Number(loopVal).toFixed(2);
+    if ($('#previewFootDriftVal')) $('#previewFootDriftVal').textContent = driftVal == null ? '—' : Number(driftVal).toFixed(2);
+    const issues = $('#previewQaIssues');
+    if (issues) {
+      clearNode(issues);
+      (qaGate.reasons || []).forEach(reason => appendText(issues, 'div', reason));
+    }
+    const starBtn = $('#previewStarResult');
+    const rejectBtn = $('#previewRejectResult');
+    const rerunBtn = $('#previewRerunSimilar');
+    const experimentId = data.experiment?.id || '';
+    [starBtn, rejectBtn, rerunBtn].forEach(btn => { if (btn) btn.disabled = !experimentId; });
+    if (starBtn) starBtn.dataset.experimentId = experimentId;
+    if (rejectBtn) rejectBtn.dataset.experimentId = experimentId;
+    if (rerunBtn) rerunBtn.dataset.experimentId = experimentId;
     modal.classList.remove('hidden');
   } catch(e){
     toast('Preview failed: ' + e.message);

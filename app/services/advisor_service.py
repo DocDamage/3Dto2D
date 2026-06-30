@@ -15,16 +15,19 @@ _QUALITY_PRESETS: Dict[str, Dict[str, Any]] = {
         "steps_override": 15,
         "frames_scale": 0.5,
         "label": "Fast / Draft",
+        "prefer_advanced": False,
     },
     "balanced": {
-        "steps_override": 20,
+        "steps_override": 24,
         "frames_scale": 1.0,
         "label": "Balanced",
+        "prefer_advanced": True,
     },
     "quality": {
-        "steps_override": 30,
-        "frames_scale": 1.25,
+        "steps_override": 28,
+        "frames_scale": 1.0,
         "label": "High Quality",
+        "prefer_advanced": True,
     },
 }
 
@@ -97,14 +100,29 @@ def advise(quality_goal: str = "balanced") -> Dict[str, Any]:
     if not advanced_ok:
         warnings.append("Wan 2.2 advanced models not installed — advanced tier unavailable.")
 
-    # Downgrade tier if required models are missing
-    tier = base_tier
-    if "advanced" in tier and not advanced_ok:
+    # Normalize older hardware-tier labels into real model tiers.
+    if base_tier in {"rtx3060_12gb", "cloud_or_24gb_local", "heavy_local"}:
+        base_tier = "wan22_5b"
+    elif base_tier in {"low_vram_8gb", "not_recommended_for_local_wan"}:
+        base_tier = "wan21_safe"
+
+    # Pick the best tier for the quality goal and installed files.
+    preset = _QUALITY_PRESETS.get(quality_goal, _QUALITY_PRESETS["balanced"])
+    if quality_goal == "fast":
         tier = "wan21_safe"
-        warnings.append(f"Tier downgraded from {base_tier!r} to 'wan21_safe' (advanced models absent).")
+        base_profile = "sprite_fast"
+    else:
+        tier = "wan22_5b" if preset.get("prefer_advanced") and advanced_ok and vram_mib >= 11000 else base_tier
+
+    if tier == "wan22_5b":
+        base_profile = "wan22_5b_3060_best" if quality_goal == "quality" else "wan22_5b_local"
+
+    if tier == "wan22_5b" and not advanced_ok:
+        tier = "wan21_safe"
+        base_profile = "rtx3060_12gb"
+        warnings.append("Tier downgraded to 'wan21_safe' because Wan 2.2 5B files are absent.")
 
     # --- apply quality-goal scaling ---
-    preset = _QUALITY_PRESETS.get(quality_goal, _QUALITY_PRESETS["balanced"])
     steps: int = preset["steps_override"]
     frames: int = max(9, int(base_frames * preset["frames_scale"]))
 

@@ -129,6 +129,17 @@
       "sampler": "uni_pc",
       "scheduler": "simple"
     },
+    "wan22_5b_3060_best": {
+      "width": 832,
+      "height": 480,
+      "frames": 33,
+      "fps": 12,
+      "steps": 28,
+      "cfg": 5.5,
+      "shift": 8,
+      "sampler": "uni_pc",
+      "scheduler": "simple"
+    },
     "wan22_5b_quality": {
       "width": 960,
       "height": 544,
@@ -197,7 +208,7 @@
     "remote_spriteforge_dir": "SpriteForge",
     "keep_api_keys_out_of_config": true
   },
-  "default_model_tier": "wan21_safe",
+  "default_model_tier": "wan22_5b",
   "model_tiers": {
     "wan21_safe": {
       "label": "Wan 2.1 T2V 1.3B - safest local default",
@@ -220,11 +231,11 @@
       "label": "Wan 2.2 TI2V 5B - advanced local quality",
       "short_label": "Better / Wan 2.2 5B",
       "mode": "ti2v22",
-      "default_profile": "wan22_5b_local",
+      "default_profile": "wan22_5b_3060_best",
       "manifest": "model_manifests/wan22_ti2v_5b_native.json",
       "local_ok": true,
       "min_vram_gb": 8,
-      "recommended_for": "Better motion/prompt adherence on local GPUs with native offloading",
+      "recommended_for": "Best local character quality on RTX 3060 12GB-class GPUs with native offloading",
       "defaults": {
         "api_workflow": "workflows/wan22_ti2v_5b_native_api.json",
         "model": "wan2.2_ti2v_5B_fp16.safetensors",
@@ -249,9 +260,9 @@
   },
   "hardware_advisor": {
     "last_recommendation": {
-      "tier": "rtx3060_12gb",
-      "profile": "rtx3060_12gb",
-      "wan_path": "Use Wan 2.1 T2V 1.3B locally. Treat I2V/VACE/14B as cloud jobs.",
+      "tier": "wan22_5b",
+      "profile": "wan22_5b_3060_best",
+      "wan_path": "Use Wan 2.2 TI2V 5B locally for best character quality. Treat I2V/VACE/14B as cloud jobs.",
       "sprite_defaults": {
         "cell_size": "512x512",
         "fps": 12,

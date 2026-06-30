@@ -28,8 +28,8 @@ try:
 except Exception:
     ACTION_TEMPLATES = {}
     DIRECTIONS = {}
-    DEFAULT_CHARACTER = "single full body original game character, consistent outfit, clean silhouette"
-    DEFAULT_STYLE = "2D game sprite animation, crisp edges, readable silhouette"
+    DEFAULT_CHARACTER = "single full body original game character, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette"
+    DEFAULT_STYLE = "high quality 2D game sprite animation, polished concept-art quality, crisp cel-shaded edges, readable silhouette"
     DEFAULT_BACKGROUND = "plain bright green chroma key background"
     build_prompt = None
     make_posepack = None

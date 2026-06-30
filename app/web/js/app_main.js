@@ -5,7 +5,7 @@ function renderJob(job){
   const running=!!job.running;
   const progress = inferredJobProgress(job, running);
   $('#job-title').textContent=job.title||'Idle'; $('#log-title').textContent=job.title||'Idle';
-  $('#job-state').textContent=running?'running':(job.exit_code===0?'done':(job.exit_code?'failed':'ready'));
+  $('#job-state').textContent=running?(job.stage_label || 'running'):(job.exit_code===0?'passed':(job.exit_code?'failed':'ready'));
   $('#job-state').className='badge '+(running?'busy':'');
   setProgressFill($('#progress-fill'), progress, running ? 'busy' : job.exit_code === 0 ? 'done' : job.exit_code ? 'failed' : '');
   renderGlobalProgress(job);
@@ -58,7 +58,9 @@ function renderJob(job){
       }
 
       timeStateEl.style.display = 'block';
-      timeStateEl.innerHTML = `⏱ Estimated time: ${estTime}<br>⚡ Current step: ${currentStep}`;
+      const eta = job.metadata?.eta?.label || estTime;
+      const progressMode = job.progress_mode === 'comfy_ws' ? 'Exact ComfyUI websocket progress' : 'Estimated progress';
+      timeStateEl.innerHTML = `Estimated time: ${eta}<br>${progressMode}: ${currentStep}`;
     } else {
       timeStateEl.style.display = 'none';
       timeStateEl.innerHTML = '';
@@ -106,18 +108,23 @@ async function refreshAll(){
       const spriteFolder = activeJob.metadata ? activeJob.metadata.sprite_folder : null;
       
       if (exitCode === 0) {
-        addNotification('Task Completed Successfully', `Task "${activeJob.title}" finished successfully.`, 'success', spriteFolder ? {
+        const duration = formatDuration(activeJob.started_at, activeJob.finished_at);
+        const message = `${activeJob.title || 'Task'} passed in ${duration}. ${activeJob.stage_detail || ''}`.trim();
+        addNotification('Task Passed', message, 'success', spriteFolder ? {
           label: 'Inspect Output',
-          action: () => openResultPreview(spriteFolder)
+          spriteFolder
         } : null);
         
         if (spriteFolder) {
           openResultPreview(spriteFolder);
         }
       } else {
-        addNotification('Task Failed', `Task "${activeJob.title}" failed with exit code ${exitCode}.`, 'error', {
+        const logs = (activeJob.logs || []).slice(-8).join(' ');
+        const detail = activeJob.stage_detail || `Exit code ${exitCode}.`;
+        const hint = logs.match(/ERROR:?\s*([^[]+)/i);
+        addNotification('Task Failed', `${activeJob.title || 'Task'} failed. ${detail}${hint ? ' ' + hint[1].trim() : ''}`, 'error', {
           label: 'View in Task Center',
-          action: () => showView('tasks')
+          view: 'tasks'
         });
       }
     }
@@ -154,27 +161,27 @@ function updatePreflightChecklist(s) {
 
 const GUIDE_TEMPLATES = {
   platformer: {
-    style: 'clean 2D platformer sprite, readable side-view silhouette, crisp pixel-friendly edges, locked camera',
+    style: 'polished 2D platformer sprite, professional character design, readable side-view silhouette, crisp pixel-friendly edges, locked camera',
     actions: ['idle', 'walk', 'run', 'jump', 'attack_light', 'hurt'],
     direction: 'right',
   },
   topdown: {
-    style: 'clean top-down RPG sprite, readable small-scale silhouette, consistent outfit, locked orthographic camera',
+    style: 'polished top-down RPG sprite, professional character design, readable small-scale silhouette, consistent outfit, locked orthographic camera',
     actions: ['idle', 'walk', 'attack_light', 'hurt'],
     direction: 'front',
   },
   fighter: {
-    style: 'fighting game sprite animation, strong pose clarity, clean silhouette, consistent costume, locked camera',
+    style: 'polished fighting game sprite animation, professional character design, strong pose clarity, clean silhouette, consistent costume, locked camera',
     actions: ['idle', 'walk', 'attack_light', 'attack_heavy', 'hurt'],
     direction: 'right',
   },
   enemy: {
-    style: 'game enemy sprite, bold readable creature silhouette, clean animation poses, locked camera',
+    style: 'polished game enemy sprite, bold readable silhouette, strong shape language, clean animation poses, locked camera',
     actions: ['idle', 'walk', 'attack_light', 'hurt', 'death'],
     direction: 'right',
   },
   object: {
-    style: 'game object sprite animation, centered object, clean outline, locked camera, transparent-ready background',
+    style: 'polished game object sprite animation, centered object, clean outline, cohesive palette, locked camera, transparent-ready background',
     actions: ['idle'],
     direction: 'front',
   },
@@ -210,9 +217,9 @@ async function guideRecommendation(quality){
   try{
     return await api(`/api/advisor?quality=${encodeURIComponent(quality || 'balanced')}`);
   }catch(e){
-    if(quality === 'quality') return {tier:'wan22_5b', profile:'wan22_5b_local'};
+    if(quality === 'quality') return {tier:'wan22_5b', profile:'wan22_5b_3060_best'};
     if(quality === 'fast') return {tier:'wan21_safe', profile:'debug'};
-    return {tier:'wan21_safe', profile:'auto'};
+    return {tier:'wan22_5b', profile:'wan22_5b_local'};
   }
 }
 
@@ -222,8 +229,8 @@ function guideBasePayload(form, rec){
   const actions = guidedActions();
   return {
     name: data.name || 'hero',
-    character: data.character || 'single full body original game hero',
-    description: data.character || 'single full body original game hero',
+    character: data.character || 'single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette',
+    description: data.character || 'single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette',
     style: template.style,
     sprite_action: actions[0],
     actions: actions.join(','),
@@ -506,7 +513,10 @@ if ($('#referenceList')) {
   $('#referenceList').addEventListener('click', async (e) => {
     const useBtn = e.target.closest('[data-reference-path]');
     if (useBtn) {
-      $('#videoPath').value = useBtn.dataset.referencePath;
+      const refPath = useBtn.dataset.referencePath;
+      const generateRef = $('#generationReferenceImage');
+      if (generateRef) generateRef.value = refPath;
+      if ($('#videoPath')) $('#videoPath').value = refPath;
       toast('Reference selected');
       return;
     }
@@ -1253,6 +1263,58 @@ if ($('#previewRepairActions')) {
   });
 }
 
+async function updateModelProfileExplainer() {
+  const form = $('#generateForm');
+  if (!form) return;
+  const tier = form.querySelector('[name="tier"]')?.value || '';
+  const profile = form.querySelector('[name="profile"]')?.value || '';
+  try {
+    const info = await api(`/api/model/explain?tier=${encodeURIComponent(tier)}&profile=${encodeURIComponent(profile)}`);
+    if ($('#modelProfileExplainerTitle')) $('#modelProfileExplainerTitle').textContent = info.label || 'Model/profile';
+    if ($('#modelProfileExplainerBody')) $('#modelProfileExplainerBody').textContent = `${info.why_selected || ''} ${info.tradeoffs || ''}`.trim();
+  } catch(e) {
+    if ($('#modelProfileExplainerBody')) $('#modelProfileExplainerBody').textContent = 'Could not load model explanation.';
+  }
+}
+if ($('#generateForm')) {
+  ['tier', 'profile'].forEach(name => {
+    const el = $('#generateForm').querySelector(`[name="${name}"]`);
+    if (el) el.addEventListener('change', updateModelProfileExplainer);
+  });
+}
+
+async function reviewExperiment(decision, id) {
+  if (!id) { toast('This result is not linked to a recorded generation run.'); return; }
+  try {
+    await api('/api/experiments/review', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({id, decision})
+    });
+    toast(decision === 'star' ? 'Result starred' : decision === 'reject' ? 'Result rejected' : 'Review saved');
+    await refreshAll();
+  } catch(e) { toast('Review failed: ' + e.message); }
+}
+if ($('#previewStarResult')) $('#previewStarResult').addEventListener('click', e => reviewExperiment('star', e.currentTarget.dataset.experimentId));
+if ($('#previewRejectResult')) $('#previewRejectResult').addEventListener('click', e => reviewExperiment('reject', e.currentTarget.dataset.experimentId));
+if ($('#previewRerunSimilar')) {
+  $('#previewRerunSimilar').addEventListener('click', async e => {
+    const id = e.currentTarget.dataset.experimentId;
+    if (!id) { toast('This result is not linked to a recorded generation run.'); return; }
+    try {
+      const res = await api('/api/experiments/rerun_similar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id})
+      });
+      toast(res.message || 'Similar run started');
+      closeResultPreview();
+      showView('logs');
+      await refreshAll();
+    } catch(err) { toast('Rerun failed: ' + err.message); }
+  });
+}
+
 const repairButtons = [
   { id: '#labRepairCleanBtn', type: 'clean' },
   { id: '#labRepairStabilizeBtn', type: 'stabilize' },
@@ -1290,13 +1352,13 @@ const GOAL_DEFAULTS = {
     negative: 'pixelated, noisy, dithering, photorealistic, camera zoom'
   },
   'side_scroller': {
-    style: 'clean 2D side-scroller sprite, readable side profile silhouette, locked camera',
+    style: 'polished 2D side-scroller sprite, professional character design, readable side profile silhouette, locked camera',
     fps: 12,
     cell_size: '512x512',
     negative: 'top-down view, perspective tilt, camera zoom, background details'
   },
   'top_down': {
-    style: 'clean top-down RPG sprite, readable small-scale silhouette, locked orthographic camera',
+    style: 'polished top-down RPG sprite, professional character design, readable small-scale silhouette, locked orthographic camera',
     fps: 12,
     cell_size: '512x512',
     negative: 'side-view, platformer view, perspective, rotation, camera zoom'
@@ -1309,7 +1371,7 @@ const GOAL_DEFAULTS = {
   },
   'local_quality': {
     tier: 'wan22_5b',
-    profile: 'quality_local',
+    profile: 'wan22_5b_3060_best',
     fps: 12,
     cell_size: '512x512'
   }
@@ -1349,19 +1411,35 @@ function loadNotifications() {
 function saveNotifications() {
   localStorage.setItem('notifications', JSON.stringify(notifications));
 }
+function notifySystem(title, message) {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body: message });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') new Notification(title, { body: message });
+      });
+    }
+  } catch (e) {}
+}
 function addNotification(title, message, type = 'info', action = null) {
+  const safeAction = action && typeof action.action === 'function'
+    ? { label: action.label || 'Open', view: action.view || null, spriteFolder: action.spriteFolder || null }
+    : action;
   const newNotif = {
     id: Date.now() + Math.random().toString(36).substr(2, 9),
     title,
     message,
     type,
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    action
+    action: safeAction
   };
   notifications.unshift(newNotif);
   saveNotifications();
   renderNotifications();
-  toast(`🔔 ${title}`);
+  toast(title);
+  if (type === 'success' || type === 'error' || type === 'warning') notifySystem(title, message);
 }
 function renderNotifications() {
   const list = $('#notificationList');
@@ -1407,9 +1485,9 @@ function renderNotifications() {
       const actBtn = document.createElement('button');
       actBtn.className = 'action-btn';
       actBtn.textContent = n.action.label;
-      actBtn.addEventListener('click', () => {
-        if (typeof n.action.action === 'function') {
-          n.action.action();
+    actBtn.addEventListener('click', () => {
+        if (n.action.spriteFolder) {
+          openResultPreview(n.action.spriteFolder);
         } else if (n.action.view) {
           showView(n.action.view);
         }
@@ -1554,7 +1632,7 @@ function renderTaskCenter(s) {
     if (progressFill) progressFill.style.width = `${pct}%`;
     if (progressPct) progressPct.textContent = `${Math.round(pct)}%`;
     const duration = formatDuration(activeJob.started_at, null);
-    if (timeState) timeState.textContent = `⏱ Running: ${duration}`;
+    if (timeState) timeState.textContent = `Running: ${duration} · ${jobStageText(activeJob, true)} · ${jobStageDetail(activeJob, true)}`;
     const logs = (activeJob.logs || []).join('\n');
     if (terminal) {
       terminal.textContent = logs;
@@ -1574,7 +1652,7 @@ function renderTaskCenter(s) {
       if (progressFill) progressFill.style.width = `${pct}%`;
       if (progressPct) progressPct.textContent = `${Math.round(pct)}%`;
       const duration = formatDuration(activeJob.started_at, activeJob.finished_at);
-      if (timeState) timeState.textContent = `⏱ Duration: ${duration}`;
+      if (timeState) timeState.textContent = `Duration: ${duration} · ${jobStageText(activeJob, false)} · ${jobStageDetail(activeJob, false)}`;
       const logs = (activeJob.logs || []).join('\n');
       if (terminal) terminal.textContent = logs;
       
@@ -1839,6 +1917,22 @@ function checkFailureRecovery(job) {
     actionBtn.textContent = recoveryOption.actionLabel;
     actionBtn.addEventListener('click', recoveryOption.run);
     recoveryActions.appendChild(actionBtn);
+    const safeRetry = document.createElement('button');
+    safeRetry.className = 'mini';
+    safeRetry.textContent = 'Retry with safer settings';
+    safeRetry.addEventListener('click', async () => {
+      try {
+        const res = await api('/api/job/retry_safe', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({id: job.id})
+        });
+        toast(res.message || 'Safer retry started');
+        showView('logs');
+        await refreshAll();
+      } catch(err) { toast('Safer retry failed: ' + err.message); }
+    });
+    recoveryActions.appendChild(safeRetry);
     recoveryAdvisor.classList.remove('hidden');
   } else {
     recoveryAdvisor.classList.add('hidden');
@@ -2154,6 +2248,7 @@ loadNotifications();
 loadProjects();
 loadPresets();
 applyGuideTemplate('platformer');
+updateModelProfileExplainer();
 setGuideStep(1);
 refreshAll(); setInterval(refreshAll, 3000);
 initAccessibilityPreferences();

@@ -34,33 +34,43 @@ from services.export_service import ExportService
 from services.experiment_service import ExperimentService
 from services.project_service import ProjectService
 from services.advisor_service import advise as advisor_advise
+from services.generation_intelligence import (
+    cleanup_suggestions,
+    estimate_job_eta,
+    explain_model_profile,
+    mark_review_decision,
+    preflight_generation,
+    rerun_similar_payload,
+    safer_retry_payload,
+    summarize_qa_gates,
+)
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_PRESETS = {
     "Classic Platformer (Side-Scroller)": {
-        "character": "single full body platformer hero, side view, simple outfit, boots, clean silhouette",
-        "style": "pixel-art inspired game sprite, clean silhouette, simple palette",
-        "tier": "wan21_safe",
-        "profile": "rtx3060_12gb",
+        "character": "single full body platformer hero, professional appealing character design, heroic adult proportions, side view, distinctive outfit, boots, clean silhouette",
+        "style": "pixel-art inspired game sprite, strong shape language, clean silhouette, cohesive palette",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
         "fps": "12",
         "cell_size": "512x512",
         "default_actions": "idle,walk,run,jump,hurt",
         "default_directions": "left,right",
-        "negative": "camera movement, zoom, cuts, rotation, background details",
+        "negative": "camera movement, zoom, cuts, rotation, background details, childlike drawing, amateur doodle, crude sketch, bad anatomy, muddy colors",
         "qa_threshold_loop_rmse": "15.0",
         "qa_threshold_foot_drift": "2.0",
         "qa_threshold_center_drift": "5.0"
     },
     "Top-Down RPG Character": {
-        "character": "single full body RPG adventurer, top-down view, crisp details",
-        "style": "clean 2D game sprite, crisp silhouette, consistent outfit",
-        "tier": "wan21_safe",
-        "profile": "rtx3060_12gb",
+        "character": "single full body RPG adventurer, professional appealing character design, heroic adult proportions, distinctive outfit, top-down view, crisp details",
+        "style": "polished 2D game sprite, professional character design, crisp silhouette, consistent outfit",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
         "fps": "12",
         "cell_size": "512x512",
         "default_actions": "idle,walk,attack_light,hurt,death",
         "default_directions": "front,back,left,right",
-        "negative": "camera movement, zoom, cuts, rotation, shadow on floor",
+        "negative": "camera movement, zoom, cuts, rotation, shadow on floor, childlike drawing, amateur doodle, crude sketch, bad anatomy, muddy colors",
         "qa_threshold_loop_rmse": "18.0",
         "qa_threshold_foot_drift": "3.0",
         "qa_threshold_center_drift": "8.0"
@@ -1046,6 +1056,10 @@ def sprite_preview_bundle(sprite_path: str) -> Dict[str, Any]:
                 break
             except Exception:
                 pass
+    visual_json = sprite_dir / "visual_report" / "visual_report.json"
+    visual_report = load_json(visual_json, {}) if visual_json.exists() else {}
+    visual_contact = sprite_dir / "visual_report" / "contact_sheet.jpg"
+    experiment = _matching_experiment(rel(sprite_dir))
                 
     return {
         "name": sprite_dir.name,
@@ -1057,6 +1071,10 @@ def sprite_preview_bundle(sprite_path: str) -> Dict[str, Any]:
         "report_url": _file_url(report),
         "qa_url": _file_url(qa_report),
         "qa_report": qa_data,
+        "qa_gate": summarize_qa_gates(qa_data) if qa_data else {"status": "warning", "reasons": ["QA report has not been generated yet."], "score": None, "issue_count": 0},
+        "visual_report": visual_report,
+        "contact_sheet_url": _file_url(visual_contact),
+        "experiment": experiment,
         "json_url": _file_url(meta_path),
         "frame_count": meta.get("frame_count", "?"),
         "fps": meta.get("fps", "?"),
@@ -1140,7 +1158,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         cmd = [PYTHON, "spriteforge_unified.py", "generate-sprite"]
         if payload.get("start_comfy", True):
             cmd.append("--start-comfy")
-        tier = str(payload.get("tier") or "wan21_safe")
+        tier = str(payload.get("tier") or "wan22_5b")
         cmd += ["--tier", tier]
         cmd += ["--profile", str(payload.get("profile") or "auto")]
         for key, arg in [("sprite_action", "--action"), ("direction", "--direction"), ("character", "--character"), ("style", "--style"), ("prompt", "--prompt"), ("negative", "--negative"), ("reference_image", "--reference-image"), ("seed", "--seed")]:
@@ -1254,7 +1272,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             "--name",
             name,
             "--character",
-            str(payload.get("description") or "single full body original game hero"),
+            str(payload.get("description") or "single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette"),
             "--actions",
             str(payload.get("actions") or "idle,walk,run,attack_light,hurt"),
             "--directions",
@@ -1297,7 +1315,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         cmd = [PYTHON, "spriteforge_unified.py", "queue-create"]
         if project_path:
             cmd += ["--project", str(project_path)]
-        cmd += ["--name", name, "--character", str(payload.get("description") or "single full body original game hero"), "--actions", str(payload.get("actions") or "idle,walk,run,attack_light,hurt"), "--directions", str(payload.get("directions") or "right"), "--tier", str(payload.get("tier") or "wan21_safe"), "--profile", str(payload.get("profile") or "auto")]
+        cmd += ["--name", name, "--character", str(payload.get("description") or "single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette"), "--actions", str(payload.get("actions") or "idle,walk,run,attack_light,hurt"), "--directions", str(payload.get("directions") or "right"), "--tier", str(payload.get("tier") or "wan22_5b"), "--profile", str(payload.get("profile") or "wan22_5b_3060_best")]
         return "Create persistent production queue", cmd
     if action == "validate_export":
         sprite_dir = str(payload.get("sprite_dir") or "").strip()
@@ -1395,6 +1413,7 @@ class Handler(BaseHTTPRequestHandler):
                 "gpu": ComfyService.get_gpu_info(),
                 "models": ModelService.get_summary(),
                 "disk": ModelService.get_disk_summary(),
+                "cleanup_suggestions": cleanup_suggestions(ROOT)[:8],
                 "next_step": next_step_status(),
                 "outputs": sprite_outputs(24, project_meta),
                 "project_workspace": _project_workspace(project_meta),
@@ -1522,6 +1541,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(advisor_advise(quality))
             except Exception as exc:
                 return self.send_json({"error": str(exc)}, 500)
+        if path == "/api/model/explain":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            tier = (qs.get("tier") or [""])[0]
+            profile = (qs.get("profile") or [""])[0]
+            return self.send_json(explain_model_profile(tier, profile))
+        if path == "/api/preflight/generation":
+            qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            payload = {key: values[0] for key, values in qs.items() if values}
+            return self.send_json(preflight_generation(
+                payload,
+                models=ModelService.get_summary(),
+                gpu=ComfyService.get_gpu_info(),
+                disk=ModelService.get_disk_summary(),
+                comfy_running=ComfyService.is_running(),
+            ))
         if path == "/api/queues":
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             project_meta = _project_meta_from_query(qs)
@@ -1672,9 +1706,18 @@ class Handler(BaseHTTPRequestHandler):
                 title, cmd = build_action_command(payload)
                 metadata = {
                     key: payload.get(key)
-                    for key in ["project_name", "project_path", "project_root"]
+                    for key in ["project_name", "project_path", "project_root", "tier", "profile", "sprite_action", "direction", "seed"]
                     if payload.get(key)
                 }
+                if action == "generate_sprite":
+                    metadata["eta"] = estimate_job_eta(metadata)
+                    metadata["preflight"] = preflight_generation(
+                        payload,
+                        models=ModelService.get_summary(),
+                        gpu=ComfyService.get_gpu_info(),
+                        disk=ModelService.get_disk_summary(),
+                        comfy_running=ComfyService.is_running(),
+                    )
                 ok, job_id_or_err = JobService.start_job(title, cmd, metadata=metadata)
                 if ok:
                     active = JobService.get_job(job_id_or_err)
@@ -1706,6 +1749,42 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({"ok": True, "message": "Job retried.", "job": active})
                 else:
                     return self.send_json({"ok": False, "message": job_id_or_err, "job": None}, 409)
+            if path == "/api/job/retry_safe":
+                body = self.read_json()
+                job_id = str(body.get("id") or "").strip()
+                job = JobService.get_job(job_id) if job_id else None
+                if not job:
+                    return self.send_json({"ok": False, "message": "Job not found in history"}, 404)
+                logs = "\n".join(job.get("logs") or [])
+                original_payload = dict(job.get("metadata") or {})
+                original_payload["action"] = "generate_sprite" if any("generate-sprite" in str(c) for c in job.get("command") or []) else original_payload.get("action", "")
+                retry_payload = safer_retry_payload(logs, original_payload)
+                if retry_payload.get("action") == "launch_comfy":
+                    ok = ComfyService.launch()
+                    return self.send_json({"ok": ok, "message": "ComfyUI launch requested.", "payload": retry_payload})
+                title, cmd = build_action_command(retry_payload)
+                ok, job_id_or_err = JobService.start_job(title, cmd, metadata=retry_payload)
+                active = JobService.get_job(job_id_or_err) if ok else None
+                return self.send_json({"ok": ok, "message": "Safer retry started." if ok else job_id_or_err, "job": active, "payload": retry_payload}, 200 if ok else 409)
+            if path == "/api/experiments/review":
+                body = self.read_json()
+                run_id = str(body.get("id") or "").strip()
+                decision = str(body.get("decision") or "").strip()
+                if not run_id or decision not in {"star", "reject", "reviewed"}:
+                    return self.send_json({"ok": False, "message": "id and decision are required"}, 400)
+                rec = mark_review_decision(run_id, decision)
+                return self.send_json({"ok": True, "experiment": rec})
+            if path == "/api/experiments/rerun_similar":
+                body = self.read_json()
+                run_id = str(body.get("id") or "").strip()
+                rec = ExperimentService.get_run(run_id)
+                if not rec:
+                    return self.send_json({"ok": False, "message": "Experiment not found"}, 404)
+                payload = rerun_similar_payload(rec)
+                title, cmd = build_action_command(payload)
+                ok, job_id_or_err = JobService.start_job(title, cmd, metadata=payload)
+                active = JobService.get_job(job_id_or_err) if ok else None
+                return self.send_json({"ok": ok, "message": "Similar run started." if ok else job_id_or_err, "job": active, "payload": payload}, 200 if ok else 409)
             if path == "/api/cleanup/purge":
                 body = self.read_json()
                 file_ids = body.get("ids") or []
@@ -1778,8 +1857,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({"ok": False, "message": "Project name required."}, 400)
                 project = ProjectService.create_project(
                     name=name,
-                    character=str(body.get("character") or "single full body original game character, consistent outfit, readable silhouette"),
-                    style=str(body.get("style") or "2D game sprite animation, crisp edges, readable silhouette, production sprite sheet style"),
+                    character=str(body.get("character") or "single full body original game character, professional appealing character design, heroic adult proportions, distinctive outfit, readable silhouette"),
+                    style=str(body.get("style") or "high quality 2D game sprite animation, polished concept-art quality, crisp cel-shaded edges, clean linework, readable silhouette"),
                 )
                 return self.send_json({"ok": True, "project": project})
             if path == "/api/projects/active":

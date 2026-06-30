@@ -77,13 +77,22 @@ ACTION_TEMPLATES: Dict[str, Dict[str, object]] = {
     },
 }
 
-DEFAULT_CHARACTER = "single full body original game character, consistent face, consistent outfit, clean silhouette"
-DEFAULT_STYLE = "2D game sprite animation, crisp edges, readable silhouette, production sprite sheet style"
+DEFAULT_CHARACTER = (
+    "single full body original game character, professional appealing character design, heroic adult proportions, "
+    "clear readable face, expressive eyes, confident pose, distinctive outfit, strong shape language, "
+    "cohesive color palette, consistent face, consistent outfit, clean silhouette"
+)
+DEFAULT_STYLE = (
+    "high quality 2D game sprite animation, polished concept-art quality, crisp cel-shaded edges, "
+    "clean linework, tasteful detail density, readable silhouette, balanced anatomy, production sprite sheet style"
+)
 DEFAULT_BACKGROUND = "plain bright green chroma key background, evenly lit, no shadows on background"
 DEFAULT_NEGATIVE = (
     "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, changing face, "
     "extra limbs, missing limbs, deformed body, broken hands, bad anatomy, inconsistent silhouette, complex background, "
-    "text, subtitles, watermark, logo, blur, low quality, flicker, frame jump, occlusion, cropped body"
+    "childlike drawing, amateur doodle, crude sketch, scribbles, messy linework, ugly face, blank face, melted face, "
+    "lumpy body, shapeless outfit, muddy colors, flat boring design, bad proportions, text, subtitles, watermark, "
+    "logo, blur, low quality, flicker, frame jump, occlusion, cropped body"
 )
 
 
@@ -105,10 +114,12 @@ def build_prompt(
     spec = ACTION_TEMPLATES[action]
     modifiers = [
         str(character).strip(),
+        "attractive polished game-ready design, intentional costume shapes, clear facial features, clean hands, balanced limbs",
         str(spec["motion"]),
         DIRECTIONS[direction],
         "locked orthographic-feeling camera, no camera movement, character centered, full body visible, feet visible",
         "loopable animation, first frame and final frame compatible, stable scale, stable ground position",
+        "consistent anatomy, consistent head size, consistent costume details, no morphing between frames",
         str(style).strip(),
         str(background).strip(),
     ]

@@ -419,7 +419,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--name", required=True)
     s.add_argument("--output", default=None)
     s.add_argument("--character", required=True)
-    s.add_argument("--style", default="clean 2D game sprite, crisp outline")
+    s.add_argument("--style", default="polished 2D game sprite, professional character design, crisp cel-shaded edges, crisp outline")
     s.add_argument("--background", default=prompts.DEFAULT_BACKGROUND)
     s.add_argument("--direction", default="right")
     s.add_argument("--views", default=None)

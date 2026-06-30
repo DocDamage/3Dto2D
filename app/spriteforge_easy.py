@@ -391,11 +391,11 @@ class EasyApp(tk.Tk):
         self.notebook.add(tab, text="Make Sprite")
 
         form = self.section(tab, "Generate a sprite from a text prompt", 0, 0, sticky="ew")
-        self.character_var = self.v("character", "single full body original game hero, simple outfit, boots, clean silhouette")
+        self.character_var = self.v("character", "single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette")
         self.action_var = self.v("action", "idle")
         self.direction_var = self.v("direction", "front")
-        self.style_var = self.v("style", "clean 2D game sprite, crisp edges, readable silhouette")
-        self.profile_var = self.v("profile", "debug")
+        self.style_var = self.v("style", "polished 2D game sprite, professional character design, crisp cel-shaded edges, readable silhouette")
+        self.profile_var = self.v("profile", "wan22_5b_3060_best")
         self.extra_prompt_var = self.v("extra_prompt", "locked camera, no zoom, centered, plain bright green background")
         self.reference_image_var = self.v("reference_image", "")
         self.seed_var = self.v("seed", "-1")
@@ -791,7 +791,7 @@ class EasyApp(tk.Tk):
         cloud = self.section(tab, "Remote / cloud ComfyUI", 0, 0, 2, "ew")
         self.remote_server_var = self.v("remote_server", "http://YOUR_SERVER:8188")
         self.remote_workflow_var = self.v("remote_workflow", "")
-        self.remote_prompt_var = self.v("remote_prompt", "single full body character walking cycle, side view, plain green background")
+        self.remote_prompt_var = self.v("remote_prompt", "single full body original game character walking cycle, professional appealing character design, heroic adult proportions, distinctive outfit, crisp cel-shaded edges, side view, plain green background")
         self.make_text_row(cloud, "Server", self.remote_server_var, 0)
         self.make_text_row(cloud, "Workflow API JSON", self.remote_workflow_var, 1, browse=self.browse_remote_workflow)
         self.make_text_row(cloud, "Prompt", self.remote_prompt_var, 2)
@@ -1060,11 +1060,11 @@ class EasyApp(tk.Tk):
 
     # ---------- Make sprite ----------
     def fill_safe_test(self) -> None:
-        self.character_var.set("single full body original game hero, simple outfit, boots, clean silhouette")
+        self.character_var.set("single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette")
         self.action_var.set("idle")
         self.direction_var.set("front")
         self.profile_var.set("debug")
-        self.style_var.set("clean 2D game sprite, crisp edges, readable silhouette")
+        self.style_var.set("polished 2D game sprite, professional character design, crisp cel-shaded edges, readable silhouette")
         self.extra_prompt_var.set("locked camera, no zoom, centered, plain bright green background")
 
     def browse_reference_image(self) -> None:
@@ -1085,7 +1085,7 @@ class EasyApp(tk.Tk):
             "--action", self.action_var.get().strip() or "idle",
             "--direction", self.direction_var.get().strip() or "front",
             "--character", character,
-            "--style", self.style_var.get().strip() or "clean 2D game sprite",
+            "--style", self.style_var.get().strip() or "polished 2D game sprite, professional character design",
             "--background", "plain bright green chroma key background",
             "--extra-prompt", self.extra_prompt_var.get().strip() or "locked camera, no zoom, centered",
             "--seed", self.seed_var.get().strip() or "-1",
@@ -1108,8 +1108,8 @@ class EasyApp(tk.Tk):
             "spriteforge_unified.py", "build-prompt",
             "--action", self.action_var.get().strip() or "idle",
             "--direction", self.direction_var.get().strip() or "front",
-            "--character", self.character_var.get().strip() or "single full body character",
-            "--style", self.style_var.get().strip() or "clean 2D game sprite",
+            "--character", self.character_var.get().strip() or "single full body original game character, professional appealing character design",
+            "--style", self.style_var.get().strip() or "polished 2D game sprite, professional character design",
             "--background", "plain bright green background",
             "--extra", self.extra_prompt_var.get().strip() or "locked camera, no zoom",
             "--output", str(out / name),

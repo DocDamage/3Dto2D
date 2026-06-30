@@ -178,7 +178,7 @@
               <h3>Describe the character once.</h3>
               <div class="guided-fields">
                 <label>Character name<input name="name" value="hero" /></label>
-                <label>Character description<textarea name="character" rows="4">single full body original game hero, clean readable silhouette, consistent outfit</textarea></label>
+                <label>Character description<textarea name="character" rows="4">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea></label>
                 <label>Project template<select name="template">
                   <option value="platformer">Platformer hero</option>
                   <option value="topdown">Top-down RPG character</option>
@@ -480,14 +480,14 @@
               <button class="mini" type="button" id="btnGoalLocalQuality">Local Quality</button>
             </div>
           </div>
-          <label>Character description<textarea name="character" rows="3">single full body original game hero, simple outfit, boots, clean silhouette</textarea></label>
+          <label>Character description<textarea name="character" rows="3">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette</textarea></label>
           <div class="row">
             <label>Action<select name="sprite_action"><option>idle</option><option selected>walk</option><option>run</option><option>attack_light</option><option>attack_heavy</option><option>cast</option><option>jump</option><option>hurt</option><option>death</option></select></label>
             <label>Direction<select name="direction"><option>front</option><option selected>right</option><option>left</option><option>back</option><option>three_quarter</option></select></label>
           </div>
           <div class="row">
-            <label>Model tier<select name="tier"><option selected value="wan21_safe">Safe: Wan 2.1 1.3B</option><option value="wan22_5b">Better: Wan 2.2 TI2V 5B</option><option value="wan22_14b_cloud">Cloud only: Wan 2.2 14B</option></select></label>
-            <label>Profile<select name="profile"><option selected>auto</option><option>debug</option><option>rtx3060_12gb</option><option>sprite_fast</option><option>quality_local</option><option>wan22_5b_debug</option><option>wan22_5b_local</option><option>wan22_5b_quality</option><option>i2v_cloud_24gb_plus</option><option>pose_debug</option></select></label>
+            <label>Model tier<select name="tier"><option value="wan21_safe">Safe: Wan 2.1 1.3B</option><option selected value="wan22_5b">Better: Wan 2.2 TI2V 5B</option><option value="wan22_14b_cloud">Cloud only: Wan 2.2 14B</option></select></label>
+            <label>Profile<select name="profile"><option>auto</option><option>debug</option><option>rtx3060_12gb</option><option>sprite_fast</option><option>quality_local</option><option>wan22_5b_debug</option><option>wan22_5b_local</option><option selected>wan22_5b_3060_best</option><option>wan22_5b_quality</option><option>i2v_cloud_24gb_plus</option><option>pose_debug</option></select></label>
           </div>
           <div class="row">
             <label>Seed<input name="seed" placeholder="-1 for random" /></label>
@@ -499,7 +499,8 @@
               <option value="64x64">64x64</option>
             </select></label>
           </div>
-          <label>Style<input name="style" value="clean 2D game sprite, crisp silhouette, consistent outfit, locked camera" /></label>
+          <label>Style<input name="style" value="polished 2D game sprite, professional character design, crisp cel-shaded edges, consistent outfit, locked camera" /></label>
+          <label>Reference image<input name="reference_image" id="generationReferenceImage" placeholder="Optional uploaded character concept image path" /></label>
           <label>Optional full prompt override<textarea name="prompt" rows="4" placeholder="Leave empty to use automatic sprite prompt builder."></textarea></label>
           <label>Negative prompt<textarea name="negative" rows="3" placeholder="Optional. Example: camera movement, zoom, cuts, motion blur, extra limbs"></textarea></label>
           
@@ -531,6 +532,10 @@
             <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run quality check after conversion</label>
           </div>
           <div class="callout hidden" id="advisor-result"></div>
+          <div class="callout" id="modelProfileExplainer">
+            <b id="modelProfileExplainerTitle">Model/profile</b>
+            <span id="modelProfileExplainerBody">Checking selected generation profile...</span>
+          </div>
           <div class="button-row form-actions-tight">
             <button class="ghost" id="getAdvisorBtn" type="button">⚡ Get Recommendation</button>
             <select id="advisorQuality">
@@ -865,7 +870,7 @@
       <div class="grid-2">
         <form class="card form" id="packForm">
           <label>Character name<input name="name" value="hero" /></label>
-          <label>Description<textarea name="description" rows="3">single full body original game hero, clean readable silhouette, consistent outfit</textarea></label>
+          <label>Description<textarea name="description" rows="3">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea></label>
           <div class="row">
             <label>Actions<input name="actions" value="idle,walk,run,attack_light,hurt" /></label>
             <label>Directions<input name="directions" value="right" /></label>
@@ -897,14 +902,14 @@
       <div class="grid-2">
         <form class="card form" id="queueForm">
           <label>Character name<input name="name" value="hero" /></label>
-          <label>Description<textarea name="description" rows="3">single full body original game hero, clean readable silhouette, consistent outfit</textarea></label>
+          <label>Description<textarea name="description" rows="3">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea></label>
           <div class="row">
             <label>Actions<input name="actions" value="idle,walk,run,attack_light,hurt" /></label>
             <label>Directions<input name="directions" value="right" /></label>
           </div>
           <div class="row">
-            <label>Model tier<select name="tier"><option selected value="wan21_safe">Safe: Wan 2.1 1.3B</option><option value="wan22_5b">Better: Wan 2.2 TI2V 5B</option></select></label>
-            <label>Profile<select name="profile"><option selected>auto</option><option>debug</option><option>rtx3060_12gb</option><option>wan22_5b_local</option></select></label>
+            <label>Model tier<select name="tier"><option value="wan21_safe">Safe: Wan 2.1 1.3B</option><option selected value="wan22_5b">Better: Wan 2.2 TI2V 5B</option></select></label>
+            <label>Profile<select name="profile"><option>auto</option><option>debug</option><option>rtx3060_12gb</option><option>wan22_5b_local</option><option selected>wan22_5b_3060_best</option></select></label>
           </div>
           <button class="primary big" type="submit">Create Persistent Queue</button>
         </form>
@@ -1446,6 +1451,10 @@
         <button class="ghost" id="previewOpenFolder" type="button">Open folder</button>
         <a class="ghost" id="previewOpenSheet" href="#" target="_blank" rel="noreferrer">Open sheet</a>
         <a class="ghost" id="previewOpenReport" href="#" target="_blank" rel="noreferrer">Open report</a>
+        <a class="ghost hidden" id="previewOpenContactSheet" href="#" target="_blank" rel="noreferrer">Contact sheet</a>
+        <button class="ghost" id="previewStarResult" type="button">Star</button>
+        <button class="ghost" id="previewRejectResult" type="button">Reject</button>
+        <button class="ghost" id="previewRerunSimilar" type="button">Rerun similar</button>
         <button class="primary" id="previewUseForQuality" type="button">Review in Quality Lab</button>
       </div>
     </section>

@@ -159,8 +159,8 @@ class ProjectService:
     def create_project(
         *,
         name: str,
-        character: str = "single full body original game character, consistent outfit, readable silhouette",
-        style: str = "2D game sprite animation, crisp edges, readable silhouette, production sprite sheet style",
+        character: str = "single full body original game character, professional appealing character design, heroic adult proportions, distinctive outfit, readable silhouette",
+        style: str = "high quality 2D game sprite animation, polished concept-art quality, crisp cel-shaded edges, clean linework, readable silhouette",
         actions: Optional[List[str]] = None,
         directions: Optional[List[str]] = None,
     ) -> Dict[str, Any]:

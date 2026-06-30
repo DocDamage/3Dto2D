@@ -54,17 +54,20 @@
     "three_quarter"
   ],
   "styles": [
-    "clean 2D game sprite, crisp edges, readable silhouette",
-    "pixel-art inspired sprite, clean silhouette, simple palette",
-    "anime game sprite, crisp cel-shaded style",
-    "dark fantasy game sprite, readable silhouette",
-    "cartoon platformer sprite, bold shapes"
+    "polished 2D game sprite, professional character design, crisp cel-shaded edges, readable silhouette",
+    "pixel-art inspired sprite, strong shape language, clean silhouette, cohesive palette",
+    "anime game sprite, appealing proportions, crisp cel-shaded style, clean linework",
+    "dark fantasy game sprite, distinctive outfit, readable silhouette, polished concept-art quality",
+    "cartoon platformer sprite, bold shapes, appealing face, clean professional finish"
   ],
   "profiles": [
     "debug",
     "sprite_fast",
     "rtx3060_12gb",
     "quality_local",
+    "wan22_5b_local",
+    "wan22_5b_3060_best",
+    "wan22_5b_quality",
     "i2v_cloud_24gb_plus"
   ]
 }

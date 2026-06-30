@@ -73,3 +73,55 @@ class ComfyService:
             return True
         except Exception:
             return False
+
+    @staticmethod
+    def watch_websocket(job: Dict[str, Any], lock: Any) -> None:
+        """Bridge ComfyUI websocket progress into the active job when available."""
+        import json
+        import time
+        import uuid
+        prompt_id = str((job.get("metadata") or {}).get("comfy_prompt_id") or "")
+        if not prompt_id:
+            return
+        try:
+            import websocket  # type: ignore
+            from services.generation_intelligence import apply_comfy_ws_message
+        except Exception:
+            with lock:
+                job.setdefault("logs", []).append(f"[{time.strftime('%H:%M:%S')}] ComfyUI websocket bridge unavailable; install websocket-client for exact WAN progress.")
+            return
+
+        url = ComfyService.get_url()
+        parsed = urllib.parse.urlparse(url)
+        scheme = "wss" if parsed.scheme == "https" else "ws"
+        client_id = str(job.get("id") or uuid.uuid4())
+        ws_url = f"{scheme}://{parsed.netloc}/ws?clientId={urllib.parse.quote(client_id)}"
+        try:
+            ws = websocket.create_connection(ws_url, timeout=3)
+            with lock:
+                job["progress_mode"] = "comfy_ws"
+                job.setdefault("metadata", {})["comfy_ws_bridge"] = "connected"
+            while True:
+                with lock:
+                    if job.get("phase") != "running":
+                        break
+                raw = ws.recv()
+                try:
+                    message = json.loads(raw)
+                except Exception:
+                    continue
+                with lock:
+                    apply_comfy_ws_message(job, message)
+                    done = job.get("stage") in {"complete", "failed", "cancelled"}
+                if done:
+                    break
+        except Exception as exc:
+            with lock:
+                job.setdefault("metadata", {})["comfy_ws_bridge"] = "error"
+                job.setdefault("logs", []).append(f"[{time.strftime('%H:%M:%S')}] ComfyUI websocket bridge stopped: {exc}")
+        finally:
+            try:
+                ws.close()  # type: ignore[name-defined]
+            except Exception:
+                pass
+

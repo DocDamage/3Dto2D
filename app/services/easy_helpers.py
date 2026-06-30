@@ -83,3 +83,48 @@ def nvidia_summary() -> str:
 
 def pycmd(*args: str) -> List[str]:
     return [str(PYTHON), *map(str, args)]
+
+
+def load_thumbnail(folder: Path, cache: Dict[str, Any]) -> Optional[Any]:
+    try:
+        if str(folder) in cache:
+            return cache[str(folder)]
+        
+        from PIL import Image, ImageTk
+        json_path = folder / "sheet.json"
+        img_name = "sheet.png"
+        w, h = 512, 512
+        if json_path.exists():
+            try:
+                meta = json.loads(json_path.read_text(encoding="utf-8"))
+                img_name = meta.get("image", "sheet.png")
+                cell = meta.get("cell_size")
+                if cell and len(cell) == 2:
+                    w, h = int(cell[0]), int(cell[1])
+            except Exception:
+                pass
+        
+        img_path = folder / img_name
+        if not img_path.exists():
+            img_path = folder / "sheet.png"
+        if not img_path.exists():
+            pngs = list(folder.glob("*.png"))
+            if pngs:
+                img_path = pngs[0]
+                
+        if img_path.exists():
+            with Image.open(img_path) as img:
+                if img.width >= w and img.height >= h:
+                    frame = img.crop((0, 0, w, h))
+                else:
+                    frame = img
+                frame.thumbnail((48, 48), Image.Resampling.LANCZOS)
+                bg = Image.new("RGBA", (48, 48), (0, 0, 0, 0))
+                offset = ((48 - frame.width) // 2, (48 - frame.height) // 2)
+                bg.paste(frame, offset)
+                photo = ImageTk.PhotoImage(bg)
+                cache[str(folder)] = photo
+                return photo
+    except Exception as exc:
+        print(f"Error loading thumbnail: {exc}")
+    return None

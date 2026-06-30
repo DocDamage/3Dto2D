@@ -1,0 +1,185 @@
+/* Step Map Progress Bar */
+.step-map {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(18, 22, 42, 0.9);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 24px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.step-map-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  opacity: 0.65;
+  font-weight: 800;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.step-map-item:hover {
+  opacity: 1;
+}
+
+.step-map-item.active {
+  color: var(--cyan);
+  opacity: 1;
+}
+
+.step-map-item.active .step-num {
+  background: var(--cyan);
+  color: #03050c;
+  box-shadow: 0 0 10px rgba(73, 160, 224, 0.3);
+}
+
+.step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.step-label {
+  letter-spacing: 0.5px;
+}
+
+.step-arrow {
+  color: var(--line);
+  font-weight: bold;
+  user-select: none;
+}
+
+/* Preflight Checklist */
+.preflight-checklist {
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.preflight-checklist h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.preflight-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  font-size: 12px;
+}
+
+.preflight-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.preflight-list li span {
+  font-size: 14px;
+  display: inline-block;
+  min-width: 16px;
+}
+
+.preflight-list li.ok {
+  color: #56c590;
+}
+
+.preflight-list li.bad {
+  color: #dc4d70;
+}
+
+/* Preflight Warning */
+.preflight-error-box {
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(220, 77, 112, 0.12);
+  border: 1px solid rgba(220, 77, 112, 0.3);
+  margin: 14px 0;
+  color: #ffdce4;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preflight-error-box p {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.preflight-error-box .error-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.preflight-error-box details {
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 8px;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+}
+
+.preflight-error-box summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: bold;
+  outline: none;
+}
+
+@media(max-width: 1180px) {
+  .guide-shell {
+    grid-template-columns: 1fr;
+  }
+  .guide-main {
+    min-height: 0;
+  }
+}
+
+@media(max-width: 760px) {
+  .guide-intro h2 {
+    font-size: 30px;
+  }
+  .guide-steps,
+  .choice-grid,
+  .action-pick {
+    grid-template-columns: 1fr;
+  }
+  .guide-step {
+    height: 48px;
+  }
+  .guide-actions {
+    justify-content: stretch;
+  }
+  .guide-actions button {
+    flex: 1;
+  }
+  .next-card {
+    grid-template-columns: 1fr;
+  }
+  .next-card .button-row {
+    margin-top: 6px;
+  }
+}

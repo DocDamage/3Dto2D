@@ -15,7 +15,20 @@ except Exception:
 
 from dataclasses import dataclass
 
-from spriteforge_utils import natural_key
+from spriteforge_utils import natural_key, next_power_of_two
+
+__all__ = [
+    "FrameItem",
+    "IMAGE_EXTS",
+    "VIDEO_EXTS",
+    "ensure_dir",
+    "load_image",
+    "extract_video_frames",
+    "load_frame_folder",
+    "inspect_video",
+    "inspect_frame_folder",
+    "save_png_sequence",
+]
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}
@@ -58,6 +71,7 @@ def extract_video_frames(
         return True, next_sample_t
 
     if cv2 is not None:
+        cap = None
         try:
             cap = cv2.VideoCapture(str(input_path))
             if not cap.isOpened():
@@ -100,8 +114,6 @@ def extract_video_frames(
                 if max_frames is not None and len(frames) >= max_frames:
                     break
 
-            cap.release()
-
             if frames:
                 meta = {
                     "source_path": str(input_path),
@@ -118,11 +130,13 @@ def extract_video_frames(
                 return frames, out_fps, meta
             errors.append("OpenCV opened the file but extracted 0 frames")
         except Exception as exc:
-            try:
-                cap.release()
-            except Exception:
-                pass
             errors.append(f"OpenCV failed: {exc}")
+        finally:
+            if cap is not None:
+                try:
+                    cap.release()
+                except Exception:
+                    pass
     else:
         errors.append("OpenCV is not installed")
 
@@ -199,6 +213,16 @@ def load_frame_folder(input_dir: Path, max_frames: Optional[int] = None) -> List
     return [FrameItem(load_image(p), p.stem, source_index=i) for i, p in enumerate(files)]
 
 
+def save_png_sequence(frames: Sequence[FrameItem], output_dir: Path, prefix: str = "frame") -> List[Path]:
+    ensure_dir(output_dir)
+    paths: List[Path] = []
+    for idx, frame in enumerate(frames):
+        path = output_dir / f"{prefix}_{idx:04d}.png"
+        frame.image.save(path)
+        paths.append(path)
+    return paths
+
+
 def inspect_video(path: Path) -> Dict[str, Any]:
     if cv2 is None:
         raise RuntimeError("opencv-python is required for video inspection.")
@@ -214,10 +238,6 @@ def inspect_video(path: Path) -> Dict[str, Any]:
     recommended_fps = 12 if fps >= 12 else max(1, int(round(fps)))
     recommended_cell = max(256, next_power_of_two(max(width, height)))
     recommended_cell = min(recommended_cell, 1024)
-    return recommender(path, width, height, fps, frame_count, duration, recommended_fps, recommended_cell)
-
-
-def recommender(path, width, height, fps, frame_count, duration, recommended_fps, recommended_cell):
     return {
         "type": "video",
         "path": str(path),
@@ -257,9 +277,3 @@ def inspect_frame_folder(path: Path) -> Dict[str, Any]:
             "start_command": f"python spriteforge.py pack --input \"{path}\" --output output/{path.name}_sprite --fps 12 --cell-size {recommended_cell}x{recommended_cell} --anchor bottom-center --solidify 2 --preview-gif --report",
         },
     }
-
-
-def next_power_of_two(n: int) -> int:
-    if n <= 1:
-        return 1
-    return 1 << (n - 1).bit_length()

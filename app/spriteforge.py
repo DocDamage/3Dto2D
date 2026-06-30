@@ -34,14 +34,14 @@ except Exception:
     cv2 = None
 
 from services.sprite_service import SpriteService
-from spriteforge_utils import natural_key
+from spriteforge_utils import natural_key, next_power_of_two
 
 # ── Re-exports from domain services ────────────────────
 
 from services.sprite_video_loader import (
     FrameItem, IMAGE_EXTS, VIDEO_EXTS,
     ensure_dir, load_image, extract_video_frames, load_frame_folder,
-    inspect_video, inspect_frame_folder, next_power_of_two as _next_power_of_two,
+    inspect_video, inspect_frame_folder,
     save_png_sequence,
 )
 
@@ -52,7 +52,7 @@ from services.sprite_chroma_alpha import (
 )
 
 from services.sprite_frame_norm import (
-    next_power_of_two, anchor_position, paste_fit_anchor,
+    anchor_position, paste_fit_anchor,
     normalize_frames, frame_difference, apply_frame_sequence_ops,
 )
 

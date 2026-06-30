@@ -86,17 +86,93 @@ function checkFailureRecovery(job) {
 }
 
 async function renderProjectDashboard(s) {
-  const hub = $('#projectDashboardHub'); if (!hub) return; if (!activeProjectPath) { hub.classList.add('hidden'); return; } hub.classList.remove('hidden');
-  const drl = $('#dashReferencesList'), dql = $('#dashQueuesList'), drl2 = $('#dashReleasesList');
-  try { const rd = await api('/api/references' + projectQuery()); clearNode(drl); const refs = rd.references || [];
-    if (!refs.length) appendText(drl, 'div', 'No references uploaded.', 'empty compact');
-    else refs.slice(0, 3).forEach(ref => { const it = document.createElement('div'); Object.assign(it.style, {padding:'8px', background:'rgba(255,255,255,0.02)', border:'1px solid var(--line)', borderRadius:'6px', marginBottom:'6px', fontSize:'12px'}); it.innerHTML = `<b style="display:block;">${ref.name}</b><span style="color:var(--muted);font-size:11px;">${ref.modified||''}</span>`; drl.appendChild(it); }); } catch (e) { console.error(e); }
-  try { const qd = await api('/api/queues' + projectQuery()); clearNode(dql); const qs = qd.queues || [];
-    if (!qs.length) appendText(dql, 'div', 'No persistent queues.', 'empty compact');
-    else qs.slice(0, 3).forEach(q => { const it = document.createElement('div'); Object.assign(it.style, {padding:'8px', background:'rgba(255,255,255,0.02)', border:'1px solid var(--line)', borderRadius:'6px', marginBottom:'6px', fontSize:'12px'}); const qp = q.progress || {percent:0}; it.innerHTML = `<b style="display:block;">${q.name}</b><span style="color:var(--muted);font-size:11px;">Progress: ${Math.round(qp.percent)}% (${q.total} jobs)</span>`; dql.appendChild(it); }); } catch (e) { console.error(e); }
-  try { const rld = await api('/api/releases' + projectQuery()); clearNode(drl2); const rls = rld.releases || [];
-    if (!rls.length) appendText(drl2, 'div', 'No releases built.', 'empty compact');
-    else rls.slice(0, 3).forEach(r => { const it = document.createElement('div'); Object.assign(it.style, {padding:'8px', background:'rgba(255,255,255,0.02)', border:'1px solid var(--line)', borderRadius:'6px', marginBottom:'6px', fontSize:'12px'}); it.innerHTML = `<b style="display:block;">${r.name}</b><span style="color:var(--muted);font-size:11px;">${r.sprite_count} sprites · ${r.modified||''}</span>`; drl2.appendChild(it); }); } catch (e) { console.error(e); }
+  const hub = $('#projectDashboardHub');
+  if (!hub) return;
+  if (!activeProjectPath) {
+    hub.classList.add('hidden');
+    return;
+  }
+  hub.classList.remove('hidden');
+
+  const drl = $('#dashReferencesList');
+  const dql = $('#dashQueuesList');
+  const drl2 = $('#dashReleasesList');
+
+  try {
+    const rd = await api('/api/references' + projectQuery());
+    clearNode(drl);
+    const refs = rd.references || [];
+    if (!refs.length) {
+      appendText(drl, 'div', 'No references uploaded.', 'empty compact');
+    } else {
+      refs.slice(0, 3).forEach(ref => {
+        const it = document.createElement('div');
+        Object.assign(it.style, {
+          padding: '8px',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '6px',
+          fontSize: '12px'
+        });
+        it.innerHTML = `<b style="display:block;">${escapeHtml(ref.name)}</b><span style="color:var(--muted);font-size:11px;">${escapeHtml(ref.modified || '')}</span>`;
+        drl.appendChild(it);
+      });
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  try {
+    const qd = await api('/api/queues' + projectQuery());
+    clearNode(dql);
+    const qs = qd.queues || [];
+    if (!qs.length) {
+      appendText(dql, 'div', 'No persistent queues.', 'empty compact');
+    } else {
+      qs.slice(0, 3).forEach(q => {
+        const it = document.createElement('div');
+        Object.assign(it.style, {
+          padding: '8px',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '6px',
+          fontSize: '12px'
+        });
+        const qp = q.progress || { percent: 0 };
+        it.innerHTML = `<b style="display:block;">${escapeHtml(q.name)}</b><span style="color:var(--muted);font-size:11px;">Progress: ${Math.round(qp.percent)}% (${q.total} jobs)</span>`;
+        dql.appendChild(it);
+      });
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  try {
+    const rld = await api('/api/releases' + projectQuery());
+    clearNode(drl2);
+    const rls = rld.releases || [];
+    if (!rls.length) {
+      appendText(drl2, 'div', 'No releases built.', 'empty compact');
+    } else {
+      rls.slice(0, 3).forEach(r => {
+        const it = document.createElement('div');
+        Object.assign(it.style, {
+          padding: '8px',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '6px',
+          fontSize: '12px'
+        });
+        it.innerHTML = `<b style="display:block;">${escapeHtml(r.name)}</b><span style="color:var(--muted);font-size:11px;">${r.sprite_count} sprites · ${escapeHtml(r.modified || '')}</span>`;
+        drl2.appendChild(it);
+      });
+    }
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 let scannedCleanupFiles = [];

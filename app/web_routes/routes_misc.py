@@ -18,20 +18,25 @@ from services.generation_intelligence import (
     mark_review_decision, rerun_similar_payload
 )
 from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score
+from services.api_auth_service import get_session_token
 from web_helpers import (
     ROOT, UPLOADS, OUTPUT, LOGS, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
     _project_meta_from_query, _project_workspace, _experiment_rows,
     _comfy_output_root, next_step_status, sprite_outputs,
     _ab_run_list, _ab_run_create, open_local_path, rel, _is_relative_to,
-    _resolve_sprite_output_dir
+    _resolve_sprite_output_dir, build_action_command
 )
 
 routes_misc = Blueprint("routes_misc", __name__)
 
+@routes_misc.route("/api/auth/token", methods=["GET"])
+def get_auth_token():
+    return jsonify({"ok": True, "token": get_session_token()})
+
 @routes_misc.route("/api/status", methods=["GET"])
 def get_status():
     project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
-    
+
     from services.job_service import JobService
     active_job = JobService.get_active_job()
     if active_job:
@@ -44,7 +49,12 @@ def get_status():
             job_status["running"] = False
         else:
             job_status = {"running": False, "title": "Idle", "progress": 0.0, "exit_code": None, "logs": [], "started_at": None, "finished_at": None}
-            
+
+    if job_status.get("exit_code") is not None and job_status.get("exit_code") != 0:
+        logs_text = "\n".join(job_status.get("logs", []))
+        from services.failure_explainer_service import explain_failure
+        job_status["failure_explanation"] = explain_failure(logs_text)
+
     from spriteforge_utils import PYTHON
     return jsonify({
         "version": "v12 Final Polish",
@@ -198,13 +208,18 @@ def get_seed_gallery():
 def get_marketplace_gallery():
     return jsonify({"ok": True, **marketplace_gallery(ROOT)})
 
+@routes_misc.route("/api/selftest", methods=["GET"])
+def get_self_test():
+    from services.startup_self_test_service import run_self_test
+    return jsonify(run_self_test())
+
 @routes_misc.route("/api/experiments/export", methods=["GET"])
 def get_experiments_export():
     project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
     data = ExperimentService.export_history(_experiment_rows(project_meta))
     payload = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Return response with download headers
     from flask import make_response
     response = make_response(payload)

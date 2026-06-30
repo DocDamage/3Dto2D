@@ -8,34 +8,12 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from spriteforge_utils import load_json, save_json
-
-# ── DynamicPath (mirrored for import compatibility) ──────
-class DynamicPath:
-    def __init__(self, key: str):
-        self.key = key
-    def _resolve(self) -> Path:
-        import web_helpers
-        return getattr(web_helpers, self.key)
-    def __getattr__(self, name: str):
-        return getattr(self._resolve(), name)
-    def __truediv__(self, other) -> Path:
-        return self._resolve() / other
-    def __rtruediv__(self, other) -> Path:
-        return other / self._resolve()
-    def __str__(self) -> str:
-        return str(self._resolve())
-    def __fspath__(self) -> str:
-        return str(self._resolve())
-
-ROOT = DynamicPath("ROOT")
-OUTPUT = DynamicPath("OUTPUT")
-INPUT = DynamicPath("INPUT")
-UPLOADS = DynamicPath("UPLOADS")
-ALLOWED_SUBDIRS = {"output", "input", "projects", "releases", "workflows", "examples"}
-VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
-IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
-AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".flac"}
+from spriteforge_utils import (
+    load_json, save_json, ALLOWED_SUBDIRS,
+    VIDEO_SUFFIXES, IMAGE_SUFFIXES, AUDIO_SUFFIXES,
+    safe_name
+)
+from services.web_path_proxy import ROOT, OUTPUT, INPUT, UPLOADS
 
 def _is_relative_to(path: Path, base: Path) -> bool:
     try:
@@ -50,9 +28,7 @@ def rel(path: Path) -> str:
     except Exception:
         return str(path).replace("\\", "/")
 
-def safe_name(value: str) -> str:
-    cleaned = "".join(ch for ch in value.strip() if ch.isalnum() or ch in "._- ").strip().replace(" ", "_")
-    return cleaned or "file"
+
 
 
 # ── Library CRUD ────────────────────────────────────────

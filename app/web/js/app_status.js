@@ -11,7 +11,12 @@ function updatePreflightChecklist(s) {
     if (!el) return;
     el.className = ok ? 'ok' : 'bad';
     const icon = ok ? '✔' : '✘';
-    el.innerHTML = `<span class="check-icon">${icon}</span> ${text}`;
+    el.textContent = '';
+    const span = document.createElement('span');
+    span.className = 'check-icon';
+    span.textContent = icon;
+    el.appendChild(span);
+    el.appendChild(document.createTextNode(' ' + text));
   };
 
   updateItem(comfyLi, s.comfy_running, `ComfyUI online (${s.comfy_running ? 'Connected' : 'Offline'})`);
@@ -21,7 +26,7 @@ function updatePreflightChecklist(s) {
   updateItem(jobLi, !s.job.running, s.job.running ? `Job running: ${s.job.title}` : `No job currently running`);
 }
 
-function updateHealthBar(s) {
+function updateHealthProgress(s) {
   const total = 5;
   let passed = 0;
   if (s.comfy_running) passed++;
@@ -29,7 +34,7 @@ function updateHealthBar(s) {
   if (s.gpu.ok) passed++;
   if (s.disk.ok) passed++;
   if (!s.job.running) passed++;
-  
+
   const pct = (passed / total) * 100;
   const bar = $('#dashboard-health-fill');
   if (bar) {

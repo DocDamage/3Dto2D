@@ -14,20 +14,20 @@ except Exception:
 
 from services.sprite_service import SpriteService
 
+__all__ = [
+    "guess_key_color_from_corners",
+    "apply_chroma_key",
+    "try_rembg",
+    "alpha_bbox",
+    "expand_bbox",
+    "union_bboxes",
+    "add_outline",
+    "solidify_transparent_rgb",
+]
+
 
 def guess_key_color_from_corners(img: Image.Image, sample: int = 12) -> Tuple[int, int, int]:
-    arr = np.asarray(img.convert("RGBA"), dtype=np.float32)
-    h, w = arr.shape[:2]
-    sample = max(1, min(sample, max(1, h // 2), max(1, w // 2)))
-    patches = [
-        arr[:sample, :sample, :3],
-        arr[:sample, w - sample:, :3],
-        arr[h - sample:, :sample, :3],
-        arr[h - sample:, w - sample:, :3],
-    ]
-    pixels = np.concatenate([p.reshape(-1, 3) for p in patches], axis=0)
-    rgb = np.median(pixels, axis=0)
-    return tuple(int(round(x)) for x in rgb)
+    return SpriteService.guess_key_color_from_corners(img)
 
 
 def apply_chroma_key(
@@ -98,7 +98,7 @@ def solidify_transparent_rgb(img: Image.Image, iterations: int, alpha_threshold:
     if iterations <= 0:
         return img.convert("RGBA")
     if cv2 is None:
-        return img.convert("RGBA")
+        return SpriteService.solidify_transparent_rgb(img, radius=max(1, iterations // 2))
     arr = np.asarray(img.convert("RGBA")).copy()
     rgb = arr[:, :, :3].astype(np.float32)
     alpha = arr[:, :, 3]

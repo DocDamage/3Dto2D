@@ -31,14 +31,57 @@ function formData(form){
   return data;
 }
 
-async function api(path, opts={}){
-  const r=await fetch(path, opts);
-  const txt=await r.text();
-  let data={};
-  try{data=JSON.parse(txt)}catch{data={text:txt}}
-  if(!r.ok) throw new Error(data.message||txt||r.statusText);
-  return data;
+const apiControllers = {};
+let sessionTokenPromise = null;
+
+async function getSessionToken() {
+  if (!sessionTokenPromise) {
+    sessionTokenPromise = fetch('/api/auth/token')
+      .then(r => r.json())
+      .then(data => {
+        if (!data || !data.ok || !data.token) {
+          throw new Error('Unable to initialize API session token');
+        }
+        return data.token;
+      });
+  }
+  return sessionTokenPromise;
 }
+
+async function api(path, opts={}){
+  const key = path.split('?')[0];
+  if (apiControllers[key]) {
+    try { apiControllers[key].abort(); } catch(e) {}
+  }
+  const controller = new AbortController();
+  apiControllers[key] = controller;
+  try {
+    const method = String(opts.method || 'GET').toUpperCase();
+    const headers = new Headers(opts.headers || {});
+    if (method !== 'GET' && method !== 'HEAD' && !headers.has('X-SF-Token')) {
+      headers.set('X-SF-Token', await getSessionToken());
+    }
+    if (typeof opts.body === 'string' && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    const r=await fetch(path, { ...opts, headers, signal: controller.signal });
+    const txt=await r.text();
+    let data={};
+    try{data=JSON.parse(txt)}catch{data={text:txt}}
+    if(!r.ok) throw new Error(data.message||txt||r.statusText);
+    return data;
+  } catch(err) {
+    if (err.name === 'AbortError') {
+      return new Promise(() => {});
+    }
+    throw err;
+  } finally {
+    if (apiControllers[key] === controller) {
+      delete apiControllers[key];
+    }
+  }
+}
+
 
 async function runAction(action, extra={}){
   // 1. Confirm before long jobs
@@ -81,7 +124,7 @@ async function runAction(action, extra={}){
     }
     toast(data.message||'Started');
     await refreshAll();
-    
+
     // 3. Auto-switch to logs view unless disabled
     if (['generate_sprite', 'convert_video', 'character_pack', 'atlas', 'run_queue'].includes(action)) {
       if (localStorage.getItem('prefNeverAutoSwitch') !== 'true') {
@@ -156,9 +199,9 @@ function showView(name){
   $$('.view').forEach(v=>v.classList.remove('active'));
   $('#view-'+name)?.classList.add('active');
   $$('.nav').forEach(n=>n.classList.toggle('active',n.dataset.view===name));
-  
+
   localStorage.setItem('activeView', name);
-  
+
   // Update Step Map
   $$('.step-map-item').forEach(item => {
     let active = false;
@@ -170,7 +213,7 @@ function showView(name){
     else if (step === 'export') active = ['packs', 'release'].includes(name);
     item.classList.toggle('active', active);
   });
-  
+
   if (name === 'library' && typeof refreshLibrary === 'function') refreshLibrary();
   if (name === 'qa_dashboard') {
     if (typeof loadProjectConfig === 'function') loadProjectConfig();
@@ -397,94 +440,90 @@ async function openResultPreview(spritePath){
   }
 }
 
-function makeSparkline(values, strokeColor) {
+function makeSparkline(values, strokeColor, options = {}) {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
-  const width = 240;
-  const height = 30;
+  const width = options.width || 240;
+  const height = options.height || 30;
+  const strokeWidth = options.strokeWidth || '1.5';
+  const padding = options.padding || 3;
+  const contentHeight = height - padding * 2;
+
   const coords = values.map((val, i) => {
-    const x = (i / (values.length - 1)) * width;
-    const y = height - 3 - ((val - min) / range) * (height - 6);
+    const x = values.length > 1 ? (i / (values.length - 1)) * width : 0;
+    const y = height - padding - ((val - min) / range) * contentHeight;
     return `${x},${y}`;
   }).join(' ');
+
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', 'sparkline');
+  if (options.className) svg.setAttribute('class', options.className);
+  if (options.style) {
+    Object.entries(options.style).forEach(([k, v]) => {
+      svg.style[k] = v;
+    });
+  }
   svg.setAttribute('width', String(width));
   svg.setAttribute('height', String(height));
+
   const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   line.setAttribute('fill', 'none');
   line.setAttribute('stroke', strokeColor);
-  line.setAttribute('stroke-width', '1.5');
+  line.setAttribute('stroke-width', String(strokeWidth));
   line.setAttribute('points', coords);
   svg.appendChild(line);
   return svg;
 }
 
 function makeTinySparkline(values, strokeColor) {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const width = 80;
-  const height = 18;
-  const coords = values.map((val, i) => {
-    const x = values.length > 1 ? (i / (values.length - 1)) * width : 0;
-    const y = height - 2 - ((val - min) / range) * (height - 4);
-    return `${x},${y}`;
-  }).join(' ');
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.style.verticalAlign = 'middle';
-  svg.style.marginLeft = '6px';
-  svg.setAttribute('width', String(width));
-  svg.setAttribute('height', String(height));
-  const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  line.setAttribute('fill', 'none');
-  line.setAttribute('stroke', strokeColor);
-  line.setAttribute('stroke-width', '1.2');
-  line.setAttribute('points', coords);
-  svg.appendChild(line);
-  return svg;
+  return makeSparkline(values, strokeColor, {
+    width: 80,
+    height: 18,
+    strokeWidth: '1.2',
+    padding: 2,
+    style: { verticalAlign: 'middle', marginLeft: '6px' }
+  });
 }
 
 function makeMultiLineChart(points) {
   const width = 240;
   const height = 40;
-  
+
   const drifts = points.map(p => p.drift);
   const seams = points.map(p => p.seam);
-  
+
   const maxDrift = Math.max(...drifts, 1);
   const maxSeam = Math.max(...seams, 1);
-  
+
   const driftCoords = points.map((p, i) => {
     const x = points.length > 1 ? (i / (points.length - 1)) * width : 0;
     const y = height - 3 - (p.drift / maxDrift) * (height - 6);
     return `${x},${y}`;
   }).join(' ');
-  
+
   const seamCoords = points.map((p, i) => {
     const x = points.length > 1 ? (i / (points.length - 1)) * width : 0;
     const y = height - 3 - (p.seam / maxSeam) * (height - 6);
     return `${x},${y}`;
   }).join(' ');
-  
+
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', String(width));
   svg.setAttribute('height', String(height));
-  
+
   const driftLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   driftLine.setAttribute('fill', 'none');
   driftLine.setAttribute('stroke', '#ffd166');
   driftLine.setAttribute('stroke-width', '1.5');
   driftLine.setAttribute('points', driftCoords);
   svg.appendChild(driftLine);
-  
+
   const seamLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   seamLine.setAttribute('fill', 'none');
   seamLine.setAttribute('stroke', '#3498db');
   seamLine.setAttribute('stroke-width', '1.5');
   seamLine.setAttribute('points', seamCoords);
   svg.appendChild(seamLine);
-  
+
   return svg;
 }

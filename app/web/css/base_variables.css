@@ -13,6 +13,26 @@
   --danger: #dc4d70;
   --shadow: 0 12px 42px rgba(0, 0, 0, .5);
   --radius: 12px;
+
+  --color-success: var(--green);
+  --color-warning: var(--yellow);
+  --color-error: var(--danger);
+}
+
+body.theme-light {
+  --bg: #f8fafc;
+  --panel: rgba(255, 255, 255, .96);
+  --panel2: rgba(241, 245, 249, .96);
+  --line: rgba(15, 23, 42, .08);
+  --text: #0f172a;
+  --muted: #64748b;
+  --cyan: #0284c7;
+  --violet: #6d28d9;
+  --pink: #db2777;
+  --green: #15803d;
+  --yellow: #a16207;
+  --danger: #be123c;
+  --shadow: 0 12px 42px rgba(15, 23, 42, .08);
 }
 
 * {
@@ -26,7 +46,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: #0c0e18;
+  background: var(--bg);
   color: var(--text);
   font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
   overflow-x: hidden;

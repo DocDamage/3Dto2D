@@ -35,8 +35,8 @@ async function createProject(){
 async function uploadFile(file){
   const fd=new FormData(); fd.append('file', file); fd.append('active_project', activeProjectPath || '');
   toast('Uploading '+file.name+'…');
-  const r=await fetch('/api/upload',{method:'POST',body:fd});
-  const data=await r.json(); if(!r.ok||!data.ok) throw new Error(data.message||'Upload failed');
+  const data=await api('/api/upload',{method:'POST',body:fd});
+  if(!data.ok) throw new Error(data.message||'Upload failed');
   $('#videoPath').value=data.path; toast('Uploaded: '+data.relative);
   if (typeof loadReferences === 'function') await loadReferences();
 }

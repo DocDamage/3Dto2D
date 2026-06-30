@@ -2,9 +2,8 @@ async function uploadDroppedFile(file) {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('active_project', activeProjectPath || '');
-  const response = await fetch('/api/upload', { method: 'POST', body: fd });
-  const data = await response.json();
-  if (!response.ok || !data.ok) throw new Error(data.message || 'Upload failed');
+  const data = await api('/api/upload', { method: 'POST', body: fd });
+  if (!data.ok) throw new Error(data.message || 'Upload failed');
   return data;
 }
 

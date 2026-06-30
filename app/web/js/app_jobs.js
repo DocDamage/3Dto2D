@@ -6,10 +6,14 @@ function connectSSE() {
   if (eventSource) {
     eventSource.close();
   }
-  
+
   eventSource = new EventSource('/api/status/stream');
-  
+
   eventSource.onmessage = function(event) {
+    if (window._sseActive !== true) {
+      window._sseActive = true;
+      if (typeof updatePollingInterval === 'function') updatePollingInterval();
+    }
     try {
       const data = JSON.parse(event.data);
       if (data.job) {
@@ -18,7 +22,7 @@ function connectSSE() {
         if (data.gpu) {
           setChip('#chip-gpu', data.gpu.ok ? 'ok' : 'warn', data.gpu.ok ? `${data.gpu.label} · ${data.gpu.memory_total || ''}` : 'GPU: check driver');
         }
-        
+
         // Trigger output/dashboard refresh when a running job finishes
         if (window.previousJobRunning && !data.job.running) {
           if (typeof refreshAll === 'function') refreshAll();
@@ -30,13 +34,15 @@ function connectSSE() {
       console.error("SSE error:", err);
     }
   };
-  
+
   eventSource.onerror = function(err) {
     console.warn("SSE disconnected. Falling back to default HTTP polling.");
     if (eventSource) {
       eventSource.close();
       eventSource = null;
     }
+    window._sseActive = false;
+    if (typeof updatePollingInterval === 'function') updatePollingInterval();
   };
 }
 
@@ -61,14 +67,14 @@ function setProgressFill(el, pct, status) {
 function renderJob(job) {
   const running = !!job.running;
   const progress = inferredJobProgress(job, running);
-  
+
   const jTitle = $('#job-title');
   const lTitle = $('#log-title');
   const jState = $('#job-state');
   const mLog = $('#mini-log');
   const fLog = $('#full-log');
   const progFill = $('#progress-fill');
-  
+
   if (jTitle) jTitle.textContent = job.title || 'Idle';
   if (lTitle) lTitle.textContent = job.title || 'Idle';
   if (jState) {
@@ -79,12 +85,12 @@ function renderJob(job) {
     setProgressFill(progFill, progress, running ? 'busy' : job.exit_code === 0 ? 'done' : job.exit_code ? 'failed' : '');
   }
   renderGlobalProgress(job);
-  
+
   const logs = (job.logs || []).join('\n');
   window.lastLogText = logs;
   if (mLog) mLog.textContent = (job.logs || []).slice(-80).join('\n');
   if (fLog) fLog.textContent = logs || 'No command has been run yet.';
-  
+
   if (mLog) mLog.scrollTop = mLog.scrollHeight;
   if (fLog) fLog.scrollTop = fLog.scrollHeight;
 
@@ -136,7 +142,7 @@ function renderJob(job) {
       const remaining = job.remaining_seconds !== null && job.remaining_seconds !== undefined ? ` · Remaining: ${formatDuration(job.remaining_seconds)}` : '';
       const progressMode = job.progress_mode === 'comfy_ws' ? 'Exact ComfyUI websocket progress' : 'Estimated progress';
       const detail = job.stage_detail || currentStep;
-      timeStateEl.innerHTML = `${elapsed}ETA: ${eta}${remaining}<br>${progressMode}: ${detail}`;
+      timeStateEl.innerHTML = `${escapeHtml(elapsed)}ETA: ${escapeHtml(eta)}${escapeHtml(remaining)}<br>${escapeHtml(progressMode)}: ${escapeHtml(detail)}`;
     } else {
       timeStateEl.style.display = 'none';
       timeStateEl.innerHTML = '';

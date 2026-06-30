@@ -12,10 +12,16 @@ from services.sprite_video_loader import FrameItem, ensure_dir
 from services.sprite_chroma_alpha import alpha_bbox, expand_bbox, union_bboxes
 
 
-def next_power_of_two(n: int) -> int:
-    if n <= 1:
-        return 1
-    return 1 << (n - 1).bit_length()
+from spriteforge_utils import next_power_of_two
+
+__all__ = [
+    "next_power_of_two",
+    "anchor_position",
+    "paste_fit_anchor",
+    "normalize_frames",
+    "frame_difference",
+    "apply_frame_sequence_ops",
+]
 
 
 def anchor_position(
@@ -137,8 +143,7 @@ def apply_frame_sequence_ops(
 ) -> List[FrameItem]:
     out = list(frames)
     if palette:
-        for item in out:
-            item.image = SpriteService.apply_palette_lock(item.image, palette)
+        out = [FrameItem(SpriteService.apply_palette_lock(item.image, palette), item.name, item.source_index) for item in out]
     if drop_last and len(out) > 1:
         out = out[:-1]
     if drop_loop_duplicate and len(out) > 2:

@@ -299,3 +299,36 @@ def test_state_machine_api_exports_manifest(client, tmp_path, monkeypatch):
     data = json.loads(response.data.decode("utf-8"))
     assert data["manifest"]["initial_state"] == "idle"
     assert (tmp_path / "output" / "state_machines" / "hero_controller" / "state_machine.json").exists()
+
+
+def test_prompt_lint_api(client):
+    """POST /api/prompt/lint lint and scoring functionality."""
+    # Test valid request
+    response = client.post(
+        "/api/prompt/lint",
+        data=json.dumps({"prompt": "A beautiful warrior hero 8-bit pixel art", "negative": "blurry", "action": "idle"}),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert "score" in data
+    assert "checks" in data
+
+    # Test bad request (no prompt)
+    response_err = client.post(
+        "/api/prompt/lint",
+        data=json.dumps({"prompt": ""}),
+        content_type="application/json"
+    )
+    assert response_err.status_code == 400
+
+
+def test_archetypes_api(client):
+    """GET /api/archetypes lists and filters archetypes."""
+    response = client.get("/api/archetypes")
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert "archetypes" in data
+    assert "total" in data

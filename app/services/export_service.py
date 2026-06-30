@@ -1,5 +1,3 @@
-import re
-import json
 import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -7,9 +5,8 @@ from typing import Dict, Any, Optional
 class ExportService:
     @staticmethod
     def safe_name(name: str) -> str:
-        name = re.sub(r"[^A-Za-z0-9_]+", "_", name.strip())
-        name = re.sub(r"_+", "_", name).strip("_")
-        return name or "spriteforge_sprite"
+        from spriteforge_utils import safe_name as _safe_name
+        return _safe_name(name)
 
     @staticmethod
     def godot_sprite2d_script(fps: float, frame_count: int, cols: int, rows: int) -> str:
@@ -76,7 +73,7 @@ func _ready() -> void:
     def export_godot(sprite_dir: Path, dest: Path, meta: Dict[str, Any], project_root: Optional[Path], res_path: Optional[str], mode: str) -> Path:
         dest.mkdir(parents=True, exist_ok=True)
         sprite_name = ExportService.safe_name(meta.get("animation") or sprite_dir.name)
-        
+
         # Copy base files
         shutil.copy2(sprite_dir / meta.get("image", "sheet.png"), dest / "sheet.png")
         shutil.copy2(sprite_dir / "sheet.json", dest / "sheet.json")
@@ -104,8 +101,8 @@ func _ready() -> void:
         frame_count = int(meta.get("frame_count", 1))
         cols = int(meta.get("columns", 1))
         rows = int(meta.get("rows", 1))
-        fw = int(meta.get("frame_width", fw if "fw" in locals() else 512))
-        fh = int(meta.get("frame_height", fh if "fh" in locals() else 512))
+        fw = int(meta.get("frame_width", 512))
+        fh = int(meta.get("frame_height", 512))
 
         folder_path = tex_path.rsplit("/", 1)[0]
         script_res_path = f"{folder_path}/{script_name}"

@@ -65,51 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore active view (Continue where I left off) & load state
   const savedView = localStorage.getItem('activeView') || 'guide';
   showView(savedView);
-  
+
   initAccessibilityPreferences();
   const savedMode = localStorage.getItem('uiMode') || 'simple';
   setUiMode(savedMode);
-});
-
-// Keyboard / Accessibility Event Listener
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeResultPreview();
-    const drawer = $('#notificationDrawer');
-    if (drawer) drawer.classList.remove('show');
-  }
-  if (e.altKey && e.key >= '1' && e.key <= '9') {
-    e.preventDefault();
-    const tabViews = ['guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality', 'packs', 'setup'];
-    const idx = parseInt(e.key) - 1;
-    if (idx < tabViews.length) {
-      showView(tabViews[idx]);
-      toast(`Switched to ${tabViews[idx].toUpperCase()}`);
-    }
-  }
-  if (e.key === ' ' && $('#view-quality').classList.contains('active')) {
-    const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-    if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
-      e.preventDefault();
-      if (typeof togglePlayback === 'function') togglePlayback();
-    }
-  }
-  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && $('#view-quality').classList.contains('active')) {
-    const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-    if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
-      e.preventDefault();
-      const scrub = $('#frameScrubber');
-      const meta = window._currentMeta;
-      if (scrub && meta && meta.frame_count) {
-        let val = parseInt(scrub.value);
-        if (e.key === 'ArrowLeft') {
-          val = (val - 1 + meta.frame_count) % meta.frame_count;
-        } else {
-          val = (val + 1) % meta.frame_count;
-        }
-        scrub.value = val;
-        if (typeof renderInspectorFrame === 'function') renderInspectorFrame(val);
-      }
-    }
-  }
 });

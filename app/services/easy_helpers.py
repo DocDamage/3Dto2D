@@ -69,16 +69,28 @@ def find_recent_sprite_outputs(limit: int = 25) -> List[Path]:
     return candidates[:limit]
 
 
+_nvidia_summary_cache = {"time": 0.0, "value": ""}
+
+
 def nvidia_summary() -> str:
+    now = time.time()
+    if now - _nvidia_summary_cache["time"] < 15.0:
+        return _nvidia_summary_cache["value"]
+
     exe = shutil.which("nvidia-smi")
     if not exe:
-        return "nvidia-smi not found"
-    try:
-        out = subprocess.check_output([exe, "--query-gpu=name,memory.total", "--format=csv,noheader"],
-                                       text=True, timeout=3, errors="replace")
-        return out.strip().replace("\n", "; ") or "not detected"
-    except Exception as exc:
-        return f"could not read ({exc})"
+        val = "nvidia-smi not found"
+    else:
+        try:
+            out = subprocess.check_output([exe, "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                                           text=True, timeout=3, errors="replace")
+            val = out.strip().replace("\n", "; ") or "not detected"
+        except Exception as exc:
+            val = f"could not read ({exc})"
+
+    _nvidia_summary_cache["time"] = now
+    _nvidia_summary_cache["value"] = val
+    return val
 
 
 def pycmd(*args: str) -> List[str]:
@@ -89,7 +101,7 @@ def load_thumbnail(folder: Path, cache: Dict[str, Any]) -> Optional[Any]:
     try:
         if str(folder) in cache:
             return cache[str(folder)]
-        
+
         from PIL import Image, ImageTk
         json_path = folder / "sheet.json"
         img_name = "sheet.png"
@@ -103,7 +115,7 @@ def load_thumbnail(folder: Path, cache: Dict[str, Any]) -> Optional[Any]:
                     w, h = int(cell[0]), int(cell[1])
             except Exception:
                 pass
-        
+
         img_path = folder / img_name
         if not img_path.exists():
             img_path = folder / "sheet.png"
@@ -111,7 +123,7 @@ def load_thumbnail(folder: Path, cache: Dict[str, Any]) -> Optional[Any]:
             pngs = list(folder.glob("*.png"))
             if pngs:
                 img_path = pngs[0]
-                
+
         if img_path.exists():
             with Image.open(img_path) as img:
                 if img.width >= w and img.height >= h:

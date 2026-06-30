@@ -9,6 +9,8 @@ try:
 except Exception:  # pragma: no cover - optional acceleration
     cv2 = None
 
+__all__ = ["SpriteService"]
+
 class SpriteService:
     @staticmethod
     def guess_key_color_from_corners(img: Image.Image) -> Tuple[int, int, int]:
@@ -198,25 +200,26 @@ class SpriteService:
     def blend_loop_seam(frames: List[Any], blend_frames: int) -> List[Any]:
         if blend_frames <= 0 or len(frames) <= blend_frames * 2:
             return frames
+        import copy
         out = list(frames)
         n = len(frames)
         # Verify if frames are objects with an image attribute
         has_image_attr = hasattr(frames[0], "image")
-        
+
         for i in range(blend_frames):
             idx_start = i
             idx_end = n - blend_frames + i
             alpha = (i + 0.5) / blend_frames
-            
+
             img_start = frames[idx_start].image if has_image_attr else frames[idx_start]
             img_end = frames[idx_end].image if has_image_attr else frames[idx_end]
-            
+
             blended = Image.blend(img_end, img_start, alpha)
-            
+
             if has_image_attr:
-                # Reconstruct the dataclass/FrameRecord object
-                record_class = frames[idx_end].__class__
-                out[idx_end] = record_class(frames[idx_end].index, blended, frames[idx_end].name)
+                copied_item = copy.copy(frames[idx_end])
+                copied_item.image = blended
+                out[idx_end] = copied_item
             else:
                 out[idx_end] = blended
         return out

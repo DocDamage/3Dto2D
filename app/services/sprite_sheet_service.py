@@ -12,6 +12,18 @@ from PIL import Image, ImageDraw
 from services.sprite_video_loader import FrameItem, ensure_dir
 from services.sprite_frame_norm import next_power_of_two, paste_fit_anchor
 
+__all__ = [
+    "pack_sheet",
+    "write_metadata",
+    "write_aseprite_json",
+    "make_preview_gif",
+    "make_contact_sheet",
+    "write_godot_notes",
+    "write_report",
+    "export_apng",
+    "export_webp_anim",
+]
+
 
 def pack_sheet(
     frames: Sequence[FrameItem],
@@ -113,12 +125,14 @@ def write_aseprite_json(
             "sourceSize": {"w": cell_w, "h": cell_h},
             "duration": duration_ms,
         }
+    sheet_w = max((r["x"] + r["w"]) for r in rects) if rects else 0
+    sheet_h = max((r["y"] + r["h"]) for r in rects) if rects else 0
     data = {
         "frames": ase_frames,
         "meta": {
             "app": "SpriteForge", "version": "2.0",
             "image": image_name, "format": "RGBA8888",
-            "size": {"w": 0, "h": 0}, "scale": "1",
+            "size": {"w": sheet_w, "h": sheet_h}, "scale": "1",
             "frameTags": [{"name": animation_name, "from": 0, "to": max(0, len(frames) - 1), "direction": "forward"}],
         },
     }

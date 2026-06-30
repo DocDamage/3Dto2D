@@ -65,8 +65,28 @@ function togglePreviewPlayback() {
 }
 
 function handleShortcut(event) {
-  if (shortcutTargetAllowsTyping(event.target)) return;
   const key = String(event.key || '').toLowerCase();
+
+  if (key === 'escape') {
+    if (typeof closeResultPreview === 'function') closeResultPreview();
+    const drawer = $('#notificationDrawer');
+    if (drawer) drawer.classList.remove('show');
+    if (typeof CommandPalette !== 'undefined' && typeof CommandPalette.close === 'function') {
+      CommandPalette.close();
+    }
+  }
+  if (event.altKey && key >= '1' && key <= '9') {
+    event.preventDefault();
+    const tabViews = ['guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality', 'packs', 'setup'];
+    const idx = parseInt(key) - 1;
+    if (idx < tabViews.length) {
+      if (typeof showView === 'function') showView(tabViews[idx]);
+      if (typeof toast === 'function') toast(`Switched to ${tabViews[idx].toUpperCase()}`);
+    }
+    return;
+  }
+
+  if (shortcutTargetAllowsTyping(event.target)) return;
   if ((event.ctrlKey || event.metaKey) && key === 'g') {
     event.preventDefault();
     runGenerateShortcut();

@@ -87,16 +87,6 @@ class EasyApp(EasyUiMixin, EasyUiTabsMixin, EasyActionsMixin, tk.Tk):
         self.vars[name] = var
         return var
 
-    def save_easy_settings(self) -> None:
-        data = load_json(EASY_CONFIG_PATH, {})
-        for k, var in self.vars.items():
-            try:
-                data[k] = var.get()
-            except Exception:
-                pass
-        save_json(EASY_CONFIG_PATH, data)
-        self.easy = data
-
 
 
 def main() -> int:

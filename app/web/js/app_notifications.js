@@ -39,6 +39,9 @@ function addNotification(title, message, type = 'info', action = null) {
     action: safeAction
   };
   notifications.unshift(newNotif);
+  if (notifications.length > 100) {
+    notifications = notifications.slice(0, 100);
+  }
   saveNotifications();
   renderNotifications();
   toast(title);

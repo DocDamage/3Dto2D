@@ -12,7 +12,6 @@ Web helper assets — thin re-export over split modules.
 └──────────────────────────────────────────────────┘
 """
 from services.web_helpers_library import (
-    DynamicPath,
     ROOT, OUTPUT, INPUT, UPLOADS, ALLOWED_SUBDIRS,
     VIDEO_SUFFIXES, IMAGE_SUFFIXES, AUDIO_SUFFIXES,
     _is_relative_to, rel, safe_name,

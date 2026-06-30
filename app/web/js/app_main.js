@@ -28,7 +28,8 @@ async function refreshAll() {
     if (typeof renderOutputs === 'function') renderOutputs(s.outputs);
     renderJob(s.job);
     updatePreflightChecklist(s);
-    updateHealthBar(s);
+    if (typeof updateHealthBar === 'function') updateHealthBar(s);
+    if (typeof updateHealthProgress === 'function') updateHealthProgress(s);
     renderTaskCenter(s);
 
     const currentView = localStorage.getItem('activeView') || 'guide';
@@ -63,6 +64,15 @@ async function refreshAll() {
   } catch (e) { console.error(e); }
 }
 
+let pollIntervalId = null;
+function updatePollingInterval() {
+  if (pollIntervalId) {
+    clearInterval(pollIntervalId);
+  }
+  const interval = window._sseActive ? 15000 : 3000;
+  pollIntervalId = setInterval(refreshAll, interval);
+}
+
 // Init all bindings on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
   loadProjects();
@@ -70,5 +80,5 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof initListingsBindings === 'function') initListingsBindings();
   if (typeof initDashboardBindings === 'function') initDashboardBindings();
   refreshAll();
-  setInterval(refreshAll, 3000);
+  updatePollingInterval();
 });

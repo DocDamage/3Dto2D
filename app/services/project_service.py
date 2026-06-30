@@ -61,6 +61,13 @@ class ProjectService:
             return None
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
+            from services.schema_validation_service import validate_project
+            ok, err = validate_project({
+                "project_name": str(data.get("name") or path.parent.name),
+                "project_root": str(path.parent.relative_to(ROOT)).replace("\\", "/")
+            })
+            if not ok:
+                logger.warning(f"Project metadata schema validation warning: {err}", extra={"path": str(path)})
         except Exception as e:
             logger.warning("Error loading project metadata", extra={"path": str(path)}, exc_info=e)
             data = {}

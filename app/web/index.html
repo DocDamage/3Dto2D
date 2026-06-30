@@ -292,10 +292,10 @@
             <strong id="previewFootDriftVal" style="font-size: 16px; color: #fff;">—</strong>
           </div>
         </div>
-        
+
         <!-- QA Warnings / Issues List -->
         <div id="previewQaIssues" style="font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; color: #ffaa00;"></div>
-        
+
         <!-- One-Click Repair Actions -->
         <div class="repair-toolbar" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
           <h4 style="margin: 0 0 8px 0; font-size: 12px; color: var(--muted); font-weight: 500;">ONE-CLICK SPRITE REPAIR</h4>
@@ -310,7 +310,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Suggested Next Action Banner -->
       <div id="previewSuggestedBanner" class="callout" style="margin-top: 16px; border: 1px solid rgba(0, 173, 181, 0.3); background: rgba(0, 173, 181, 0.05); display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 12px; border-radius: 8px;">
         <div>
@@ -329,6 +329,21 @@
         <button class="ghost" id="previewRejectResult" type="button">Reject</button>
         <button class="ghost" id="previewRerunSimilar" type="button">Rerun similar</button>
         <button class="primary" id="previewUseForQuality" type="button">Review in Quality Lab</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Global Command Palette Modal -->
+  <div id="commandPaletteModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="commandPaletteTitle">
+    <div class="result-modal-backdrop" id="commandPaletteBackdrop"></div>
+    <section class="result-dialog" style="max-width: 600px; width: 90%; background: #0f1322; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+        <h3 id="commandPaletteTitle" style="margin: 0; color: #fff; display: flex; align-items: center; gap: 8px;">⌨ Command Palette <kbd style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: normal; border: 1px solid rgba(255,255,255,0.15); color: var(--accent);">Ctrl+K</kbd></h3>
+        <button class="mini" type="button" id="closeCommandPaletteBtn">Close</button>
+      </div>
+      <input type="text" id="commandPaletteInput" placeholder="Type a command to search... (e.g. 'QA', 'Retry', 'Sample')" style="width: 100%; padding: 10px 12px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 14px; box-sizing: border-box; outline: none; margin-bottom: 12px;" autocomplete="off" />
+      <div id="commandPaletteResults" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+        <!-- Dynamic list of commands -->
       </div>
     </section>
   </div>
@@ -377,9 +392,10 @@
         '/web/js/app_forms.js',
         '/web/js/app_listings.js',
         '/web/js/app_dashboard.js',
+        '/web/js/command_palette.js',
         '/web/js/app_main.js'
       ];
-      
+
       function loadNext(idx) {
         if (idx >= scripts.length) return;
         const s = document.createElement('script');
@@ -387,7 +403,7 @@
         s.onload = () => loadNext(idx + 1);
         document.body.appendChild(s);
       }
-      
+
       loadNext(0);
     });
   </script>

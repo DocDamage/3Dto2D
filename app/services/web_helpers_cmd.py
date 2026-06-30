@@ -6,33 +6,11 @@ from typing import Any, Dict, List, Optional, Tuple, Sequence
 
 from services.project_service import ProjectService
 from services.config_service import ConfigService
-from spriteforge_utils import PYTHON
-
-class DynamicPath:
-    def __init__(self, key: str):
-        self.key = key
-    def _resolve(self) -> Path:
-        import web_helpers
-        return getattr(web_helpers, self.key)
-    def __getattr__(self, name: str):
-        return getattr(self._resolve(), name)
-    def __truediv__(self, other) -> Path:
-        return self._resolve() / other
-    def __rtruediv__(self, other) -> Path:
-        return other / self._resolve()
-    def __str__(self) -> str:
-        return str(self._resolve())
-    def __fspath__(self) -> str:
-        return str(self._resolve())
-
-ROOT = DynamicPath("ROOT")
-OUTPUT = DynamicPath("OUTPUT")
-INPUT = DynamicPath("INPUT")
-UPLOADS = DynamicPath("UPLOADS")
-ALLOWED_SUBDIRS = {"output", "input", "projects", "releases", "workflows", "examples"}
-VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
-IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
-AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".flac"}
+from spriteforge_utils import (
+    PYTHON, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES, AUDIO_SUFFIXES,
+    safe_name
+)
+from services.web_path_proxy import ROOT, OUTPUT, INPUT, UPLOADS
 
 def _is_relative_to(path: Path, base: Path) -> bool:
     try:
@@ -47,9 +25,7 @@ def rel(path: Path) -> str:
     except Exception:
         return str(path).replace("\\", "/")
 
-def safe_name(value: str) -> str:
-    cleaned = "".join(ch for ch in value.strip() if ch.isalnum() or ch in "._- ").strip().replace(" ", "_")
-    return cleaned or "file"
+
 
 def _comfy_output_root() -> Path:
     cfg = ConfigService.get_config()
@@ -124,15 +100,15 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             value = str(payload.get(key) or "").strip()
             if value:
                 cmd += [arg, value]
-        
+
         # Support preview flag
         if payload.get("preview", False):
             cmd.append("--preview")
-            
+
         # Support style reference image (IP-Adapter)
         if payload.get("style_image"):
             cmd += ["--style-image", str(payload.get("style_image"))]
-            
+
         # Forward custom preset builder parameters
         for key, arg in [
             ("fps", "--fps"),
@@ -188,13 +164,13 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             return "Analyze sprite quality", cmd
         if action == "autofix":
             cmd = [PYTHON, "spriteforge_unified.py", "autofix-sprite", "--input", sprite_dir]
-            
+
             def get_bool(key, default):
                 val = payload.get(key)
                 if val is None:
                     return default
                 return bool(val)
-                
+
             if get_bool("stabilize_anchor", True):
                 cmd.append("--stabilize-anchor")
             if get_bool("drop_loop_duplicate", True):
@@ -203,21 +179,21 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
                 cmd.append("--deflicker")
             if get_bool("sharpen", False):
                 cmd.append("--sharpen")
-                
+
             solidify = payload.get("solidify")
             if solidify is None:
                 solidify = 2
             cmd += ["--solidify", str(solidify)]
-            
+
             blend = payload.get("blend_loop_frames")
             if blend is None:
                 blend = 3
             cmd += ["--blend-loop-frames", str(blend)]
-            
+
             if project_meta:
                 cmd += ["--output", str(_project_artifact_path(project_meta, "sprites", f"{Path(sprite_dir).name}_fixed"))]
             return "Auto-fix sprite output", cmd
-        
+
         # Determine engine
         if action == "export_godot":
             engine = "godot"
@@ -225,7 +201,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             engine = "unity"
         else:
             engine = "unreal"
-            
+
         cmd = [PYTHON, "spriteforge_unified.py", "export-engine", "--engine", engine, "--sprite-dir", sprite_dir]
         if project_meta:
             cmd += ["--output", str(_project_artifact_path(project_meta, "exports", f"{Path(sprite_dir).name}_{engine}"))]

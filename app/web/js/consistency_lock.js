@@ -50,13 +50,12 @@
     };
     if (status) status.textContent = 'Saving consistency lock...';
     try {
-      const res = await fetch('/api/consistency_lock/save', {
+      const data = await api('/api/consistency_lock/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.message || 'Unable to save consistency lock.');
+      if (!data.ok) throw new Error(data.message || 'Unable to save consistency lock.');
       if (referenceInput) referenceInput.value = data.reference_image || data.lock.reference_image;
       if (status) status.textContent = 'Locked: reference image will be reused across generated actions.';
     } catch (err) {

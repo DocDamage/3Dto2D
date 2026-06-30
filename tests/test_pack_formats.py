@@ -71,3 +71,41 @@ def test_unified_export_atlas_accepts_aseprite():
     args = build_unified_parser().parse_args(["export-atlas", "--sprite-dir", "output/demo", "--format", "aseprite"])
 
     assert args.format == "aseprite"
+
+
+def test_export_apng(tmp_path):
+    from PIL import Image
+    from services.sprite_sheet_service import export_apng
+    from services.sprite_video_loader import FrameItem
+    img1 = Image.new("RGBA", (32, 32), (255, 0, 0, 255))
+    img2 = Image.new("RGBA", (32, 32), (0, 255, 0, 255))
+    frames = [
+        FrameItem(image=img1, name="f1", source_index=0),
+        FrameItem(image=img2, name="f2", source_index=1)
+    ]
+    out_file = tmp_path / "anim.png"
+    export_apng(frames, out_file, fps=12)
+    assert out_file.exists()
+
+    with Image.open(out_file) as img:
+        assert img.format == "PNG"
+        assert img.size == (32, 32)
+
+
+def test_export_webp_anim(tmp_path):
+    from PIL import Image
+    from services.sprite_sheet_service import export_webp_anim
+    from services.sprite_video_loader import FrameItem
+    img1 = Image.new("RGBA", (32, 32), (255, 0, 0, 255))
+    img2 = Image.new("RGBA", (32, 32), (0, 255, 0, 255))
+    frames = [
+        FrameItem(image=img1, name="f1", source_index=0),
+        FrameItem(image=img2, name="f2", source_index=1)
+    ]
+    out_file = tmp_path / "anim.webp"
+    export_webp_anim(frames, out_file, fps=12)
+    assert out_file.exists()
+
+    with Image.open(out_file) as img:
+        assert img.format == "WEBP"
+        assert img.size == (32, 32)

@@ -35,7 +35,7 @@ from services.generation_intelligence import (
     safer_retry_payload,
     summarize_qa_gates,
 )
-from spriteforge_utils import load_json, save_json, app_python, PYTHON
+from spriteforge_utils import load_json, save_json, app_python, PYTHON, safe_name
 
 # Re-exports from split helper services
 from services.web_helpers_ab import (
@@ -174,9 +174,7 @@ def rel(path: Path) -> str:
     except Exception:
         return str(path).replace("\\", "/")
 
-def safe_name(value: str) -> str:
-    cleaned = "".join(ch for ch in value.strip() if ch.isalnum() or ch in "._- ").strip().replace(" ", "_")
-    return cleaned or "file"
+
 
 def _ab_run_create(payload: Dict[str, Any]) -> Dict[str, Any]:
     return _ab_run_create_raw(payload, build_action_command)
@@ -200,15 +198,15 @@ def _sprite_edit_frames(sprite_dir_str: str, actions: List[Dict[str, Any]], new_
     frames_dir = sprite_dir / "frames_processed"
     if not frames_dir.exists():
         raise FileNotFoundError("Processed frames directory not found. Lite Editor requires frames_processed directory.")
-        
+
     frame_files = sorted(list(frames_dir.glob("*.png")))
     temp_dir = sprite_dir / "temp_edit_frames"
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
     temp_dir.mkdir(parents=True)
-    
+
     current_frames = list(frame_files)
-    
+
     for act in actions:
         atype = act.get("type")
         if atype == "delete":
@@ -228,29 +226,29 @@ def _sprite_edit_frames(sprite_dir_str: str, actions: List[Dict[str, Any]], new_
             start = int(act.get("start", 0))
             end = int(act.get("end", len(current_frames)))
             current_frames = current_frames[start:end]
-            
+
     for idx, f in enumerate(current_frames):
         shutil.copy2(f, temp_dir / f"frame_{idx:04d}.png")
-        
+
     shutil.rmtree(frames_dir)
     shutil.copytree(temp_dir, frames_dir)
     shutil.rmtree(temp_dir)
-    
+
     meta_file = sprite_dir / "sheet.json"
     meta = load_json(meta_file, {})
     if new_fps:
         meta["fps"] = float(new_fps)
-        
+
     new_count = len(current_frames)
     meta["frame_count"] = new_count
-    
+
     cols = int(meta.get("columns", 4))
     rows = int(math.ceil(new_count / cols))
     meta["columns"] = cols
     meta["rows"] = rows
-    
+
     save_json(meta_file, meta)
-    
+
     cmd = [
         sys.executable, "spriteforge.py", "pack",
         "--input", str(frames_dir),
@@ -263,7 +261,7 @@ def _sprite_edit_frames(sprite_dir_str: str, actions: List[Dict[str, Any]], new_
         "--preview-gif",
         "--report"
     ]
-    
+
     ok, job_id_or_err = JobService.start_job(f"Repack edited frames: {sprite_dir.name}", cmd)
     return {"ok": ok, "job_id": job_id_or_err if ok else None, "message": "Repack job started." if ok else job_id_or_err}
 

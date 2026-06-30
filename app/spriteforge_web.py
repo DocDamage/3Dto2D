@@ -14,15 +14,32 @@ import webbrowser
 from pathlib import Path
 from typing import Optional, Sequence
 
-from flask import Flask
+from flask import Flask, request, jsonify
 
 from services.config_service import ConfigService
 from services.job_service import JobService
 from services.logging_service import configure_logging
+from services.api_auth_service import validate_token
 from web_helpers import ROOT, WEB, LOGS, OUTPUT, INPUT
-from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static
+from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static, routes_onboarding
 
 app = Flask(__name__)
+
+@app.before_request
+def verify_api_token():
+    # Only protect POST requests (allow GET and OPTIONS for simplicity)
+    if request.method == "POST":
+        # Skip validation during tests unless specifically requested
+        if app.config.get("TESTING") and not request.headers.get("X-Force-Token-Check"):
+            return
+        token = request.headers.get("X-SF-Token")
+        if not token and request.is_json:
+            try:
+                token = request.json.get("session_token")
+            except Exception:
+                pass
+        if not validate_token(token):
+            return jsonify({"ok": False, "message": "Unauthorized: Invalid or missing session token."}), 401
 
 # Register Blueprints
 app.register_blueprint(routes_jobs)
@@ -30,6 +47,7 @@ app.register_blueprint(routes_projects)
 app.register_blueprint(routes_sprites)
 app.register_blueprint(routes_misc)
 app.register_blueprint(routes_static)
+app.register_blueprint(routes_onboarding)
 
 def find_free_port(preferred: int) -> int:
     for port in [preferred, 8766, 8767, 8877, 8899, 0]:

@@ -36,7 +36,13 @@ def save_json(path: Path, data: Any) -> None:
 class ConfigService:
     @staticmethod
     def get_config() -> Dict[str, Any]:
-        return load_json(CONFIG_PATH, {})
+        cfg = load_json(CONFIG_PATH, {})
+        from services.schema_validation_service import validate_config
+        ok, err = validate_config(cfg)
+        if not ok:
+            import sys
+            print(f"[WARN] Config validation warning: {err}", file=sys.stderr)
+        return cfg
 
     @staticmethod
     def save_config(data: Dict[str, Any]) -> None:

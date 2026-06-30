@@ -251,6 +251,20 @@ def mark_review_decision(run_id: str, decision: str) -> Dict[str, Any]:
     raise KeyError(f"Experiment run {run_id} not found")
 
 
+def restore_review_decision(run_id: str) -> Dict[str, Any]:
+    from services.experiment_service import ExperimentService
+
+    with ExperimentService._lock:
+        records = ExperimentService._load()
+        for rec in records:
+            if rec.get("id") == run_id:
+                rec["review_status"] = "reviewed"
+                rec.pop("reviewed_at", None)
+                ExperimentService._save(records)
+                return rec
+    raise KeyError(f"Experiment run {run_id} not found")
+
+
 def rerun_similar_payload(run: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "action": "generate_sprite",

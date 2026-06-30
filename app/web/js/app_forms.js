@@ -1,8 +1,6 @@
 // app_forms.js — Form submit wiring, runAction triggers, and recommended action
 // Extracted from app_main.js
 
-let recommendedAction = '';
-
 function runRecommended(){
   if(!recommendedAction){ toast('No recommendation available yet.'); return; }
   if(recommendedAction==='launch_comfy'){ api('/api/launch_comfy',{method:'POST'}).then(()=>toast('ComfyUI launch requested')).then(refreshAll); return; }

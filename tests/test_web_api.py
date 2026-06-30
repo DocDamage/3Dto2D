@@ -332,3 +332,30 @@ def test_archetypes_api(client):
     assert data["ok"] is True
     assert "archetypes" in data
     assert "total" in data
+
+
+def test_experiment_restore_api_clears_rejection(client, tmp_path, monkeypatch):
+    from services import experiment_service as es_mod
+    from services.experiment_service import ExperimentService
+
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "history.json")
+    run_id = ExperimentService.append_run(prompt="hero idle")
+
+    reject_response = client.post(
+        "/api/experiments/review",
+        data=json.dumps({"id": run_id, "decision": "reject"}),
+        content_type="application/json",
+    )
+    assert reject_response.status_code == 200
+    assert ExperimentService.get_run(run_id)["review_status"] == "rejected"
+
+    restore_response = client.post(
+        "/api/experiments/restore",
+        data=json.dumps({"id": run_id}),
+        content_type="application/json",
+    )
+    assert restore_response.status_code == 200
+    data = json.loads(restore_response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert data["experiment"]["review_status"] == "reviewed"
+    assert "reviewed_at" not in ExperimentService.get_run(run_id)

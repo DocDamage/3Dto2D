@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/web/marketplace_gallery.css" />
   <link rel="stylesheet" href="/web/scene_compositor.css" />
   <link rel="stylesheet" href="/web/consistency_lock.css" />
+  <link rel="stylesheet" href="/web/css/ux_enhancements.css" />
   <script>
     window.viewComponentsLoaded = (async () => {
       const views = [
@@ -94,7 +95,10 @@
     <header class="topbar">
       <div>
         <p class="eyebrow">Final Polish Edition</p>
-        <h1>Build game-ready sprite animations.</h1>
+        <div style="display: flex; align-items: center;">
+          <button class="view-back-btn" id="viewBackBtn" type="button" title="Go back" disabled>&larr;</button>
+          <h1>Build game-ready sprite animations.</h1>
+        </div>
       </div>
       <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
         <div class="status-row" style="display: flex; align-items: center; gap: 8px;">
@@ -122,6 +126,15 @@
         <div class="project-summary" id="projectSummary">Global workspace</div>
       </div>
     </header>
+
+    <!-- Breadcrumb Trail (Improvement 1) -->
+    <div class="breadcrumb-bar" id="breadcrumbBar"></div>
+
+    <!-- Persistent Action Banners (Improvement 5) -->
+    <div class="action-banner-container" id="bannerContainer"></div>
+
+    <!-- View Summary Line (Improvement 18) -->
+    <div class="view-summary-line" id="viewSummaryLine"></div>
 
     <!-- ============================================================
          Inline Health Bar
@@ -190,6 +203,10 @@
       </div>
       <div class="task-progressbar" aria-label="Current task progress"><i id="globalProgressFill"></i></div>
       <span id="globalProgressPct">0%</span>
+      <div class="progress-time-info" id="progressTimeInfo" style="display: none;">
+        <span class="pti-elapsed"></span>
+        <span class="pti-remaining"></span>
+      </div>
     </section>
 
     <section class="view active" id="view-guide"></section>
@@ -362,6 +379,15 @@
     </div>
   </aside>
 
+  <!-- Contextual Help Panel (Improvement 17) -->
+  <div class="view-help-panel" id="viewHelpPanel"></div>
+  <button class="help-panel-toggle" id="helpPanelToggle" type="button" title="Toggle help panel">?</button>
+
+  <!-- Quick-Actions Footer (Improvement 16) -->
+  <div class="quick-actions-footer" id="quickActionsFooter">
+    <span class="qa-label">Quick Actions</span>
+  </div>
+
   <div id="toast" class="toast"></div>
   <script>
     window.viewComponentsLoaded.then(() => {
@@ -387,12 +413,16 @@
         '/web/js/consistency_lock.js',
         '/web/js/experiments.js',
         '/web/js/qa.js',
+        '/web/js/app_views.js',
+        '/web/js/app_notifications.js',
+        '/web/js/app_presets.js',
         '/web/js/app_status.js',
         '/web/js/app_jobs.js',
         '/web/js/app_forms.js',
         '/web/js/app_listings.js',
         '/web/js/app_dashboard.js',
         '/web/js/command_palette.js',
+        '/web/js/ux_enhancements.js',
         '/web/js/app_main.js'
       ];
 

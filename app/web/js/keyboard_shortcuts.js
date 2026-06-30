@@ -74,6 +74,23 @@ function handleShortcut(event) {
     if (typeof CommandPalette !== 'undefined' && typeof CommandPalette.close === 'function') {
       CommandPalette.close();
     }
+    // Close help panel on Escape too
+    const helpPanel = document.getElementById('viewHelpPanel');
+    if (helpPanel && helpPanel.classList.contains('visible')) {
+      if (typeof UxEnhancements !== 'undefined') UxEnhancements.toggleHelpPanel();
+    }
+  }
+  // F1 toggles contextual help panel (Improvement 17)
+  if (key === 'f1') {
+    event.preventDefault();
+    if (typeof UxEnhancements !== 'undefined') UxEnhancements.toggleHelpPanel();
+    return;
+  }
+  // Alt+ArrowLeft for back navigation (Improvement 4)
+  if (event.altKey && key === 'arrowleft') {
+    event.preventDefault();
+    if (typeof UxEnhancements !== 'undefined') UxEnhancements.goBack();
+    return;
   }
   if (event.altKey && key >= '1' && key <= '9') {
     event.preventDefault();

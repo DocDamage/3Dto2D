@@ -202,17 +202,21 @@ function showView(name){
 
   localStorage.setItem('activeView', name);
 
-  // Update Step Map
-  $$('.step-map-item').forEach(item => {
-    let active = false;
-    const step = item.dataset.step;
-    if (step === 'setup') active = ['setup', 'launchpad'].includes(name);
-    else if (step === 'describe') active = ['guide', 'generate', 'convert'].includes(name);
-    else if (step === 'generate') active = ['queue', 'queues', 'logs'].includes(name);
-    else if (step === 'review') active = ['quality'].includes(name);
-    else if (step === 'export') active = ['packs', 'release'].includes(name);
-    item.classList.toggle('active', active);
-  });
+  // Update Step Map (delegated to UX enhancements if present)
+  if (typeof updateStepMapProgress === 'function') {
+    updateStepMapProgress(window._latestStatus);
+  } else {
+    $$('.step-map-item').forEach(item => {
+      let active = false;
+      const step = item.dataset.step;
+      if (step === 'setup') active = ['setup', 'launchpad'].includes(name);
+      else if (step === 'describe') active = ['guide', 'generate', 'convert'].includes(name);
+      else if (step === 'generate') active = ['queue', 'queues', 'logs'].includes(name);
+      else if (step === 'review') active = ['quality'].includes(name);
+      else if (step === 'export') active = ['packs', 'release'].includes(name);
+      item.classList.toggle('active', active);
+    });
+  }
 
   if (name === 'library' && typeof refreshLibrary === 'function') refreshLibrary();
   if (name === 'qa_dashboard') {

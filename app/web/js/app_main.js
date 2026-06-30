@@ -61,6 +61,9 @@ async function refreshAll() {
     if ($('#view-dashboard') && $('#view-dashboard').classList.contains('active')) {
       renderProjectDashboard(s);
     }
+    if (window.UxEnhancements && typeof window.UxEnhancements.refreshFromStatus === 'function') {
+      window.UxEnhancements.refreshFromStatus(s);
+    }
   } catch (e) { console.error(e); }
 }
 

@@ -15,7 +15,7 @@ from services.project_service import ProjectService
 from services.advisor_service import advise as advisor_advise
 from services.generation_intelligence import (
     cleanup_suggestions, explain_model_profile, preflight_generation,
-    mark_review_decision, rerun_similar_payload
+    mark_review_decision, restore_review_decision, rerun_similar_payload
 )
 from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score
 from services.api_auth_service import get_session_token
@@ -283,6 +283,20 @@ def review_experiment():
         return jsonify({"ok": False, "message": "id and decision are required"}), 400
     rec = mark_review_decision(run_id, decision)
     return jsonify({"ok": True, "experiment": rec})
+
+
+@routes_misc.route("/api/experiments/restore", methods=["POST"])
+def restore_experiment_review():
+    body = request.json or {}
+    run_id = str(body.get("id") or "").strip()
+    if not run_id:
+        return jsonify({"ok": False, "message": "id is required"}), 400
+    try:
+        rec = restore_review_decision(run_id)
+    except KeyError:
+        return jsonify({"ok": False, "message": "Experiment not found"}), 404
+    return jsonify({"ok": True, "experiment": rec})
+
 
 @routes_misc.route("/api/experiments/note", methods=["POST"])
 def note_experiment():

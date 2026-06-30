@@ -438,7 +438,7 @@ def test_advisor_service():
 
 def test_queue_listing_helper(tmp_path, monkeypatch):
     """_list_queues() correctly parses a synthetic queue file."""
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path)
 
     jobs_dir = tmp_path / "jobs"
@@ -464,7 +464,7 @@ def test_queue_listing_helper(tmp_path, monkeypatch):
 
 
 def test_queue_listing_project_filter(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path)
 
     jobs_dir = tmp_path / "jobs"

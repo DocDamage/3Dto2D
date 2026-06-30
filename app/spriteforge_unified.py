@@ -697,19 +697,62 @@ def stage_file_to_comfy_input(cfg: Config, file_path: str, subfolder: str = "Spr
     return f"{subfolder}/{src.name}".replace("\\", "/")
 
 
-def patch_load_image_nodes(workflow: Dict[str, Any], image_name: str) -> int:
-    count = 0
-    for node in workflow.values():
+def find_nodes_feeding_into(workflow: Dict[str, Any], target_classes: set) -> set:
+    feeding_ids = set()
+    for node_id, node in workflow.items():
         if not isinstance(node, dict):
             continue
-        cls = str(node.get("class_type", ""))
-        inputs = node.setdefault("inputs", {})
-        if cls in {"LoadImage", "LoadImageMask", "LoadImageUpload"} or ("image" in inputs and isinstance(inputs.get("image"), str)):
-            inputs["image"] = image_name
-            if "upload" in inputs:
-                inputs["upload"] = "image"
-            count += 1
-    return count
+        cls = node.get("class_type", "")
+        if cls in target_classes:
+            for val in node.get("inputs", {}).values():
+                if isinstance(val, list) and len(val) == 2:
+                    source_id = str(val[0])
+                    feeding_ids.add(source_id)
+    return feeding_ids
+
+
+def patch_workflow_images(workflow: Dict[str, Any], reference_image_name: Optional[str], style_image_name: Optional[str]) -> Tuple[int, int]:
+    ip_clip_classes = {
+        "IPAdapterApply", "IPAdapterApplyAdvanced", "IPAdapter", "IPAdapterAdvanced",
+        "IPAdapterEncoder", "CLIPVisionEncode", "PrepImageForClipVision", "IPAdapterFaceID"
+    }
+    style_source_ids = find_nodes_feeding_into(workflow, ip_clip_classes)
+    if style_source_ids:
+        style_source_ids = style_source_ids.union(find_nodes_feeding_into(workflow, {
+            workflow[sid].get("class_type") for sid in style_source_ids if sid in workflow
+        }))
+        
+    style_count = 0
+    ref_count = 0
+    
+    for node_id, node in workflow.items():
+        if not isinstance(node, dict):
+            continue
+        cls = node.get("class_type", "")
+        if cls in {"LoadImage", "LoadImageMask", "LoadImageUpload"}:
+            inputs = node.setdefault("inputs", {})
+            if style_image_name and node_id in style_source_ids:
+                inputs["image"] = style_image_name
+                if "upload" in inputs:
+                    inputs["upload"] = "image"
+                style_count += 1
+            elif reference_image_name:
+                inputs["image"] = reference_image_name
+                if "upload" in inputs:
+                    inputs["upload"] = "image"
+                ref_count += 1
+                
+    if style_image_name and style_count == 0:
+        for node in workflow.values():
+            if not isinstance(node, dict):
+                continue
+            if node.get("class_type") in {"LoadImage", "LoadImageMask", "LoadImageUpload"}:
+                inputs = node.setdefault("inputs", {})
+                inputs["image"] = style_image_name
+                style_count += 1
+                break
+                
+    return ref_count, style_count
 
 
 def patch_clip_vision_nodes(workflow: Dict[str, Any], clip_vision: Optional[str]) -> int:
@@ -810,17 +853,23 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: argparse.Namespace, cfg: Co
         _, latent = node_inputs_by_id_or_class(out, "50", ["Wan22ImageToVideoLatent", "WanImageToVideo", "WanVaceToVideo", "WanReferenceToVideo"])
     set_input(latent, ["width"], int(args.width or wd.get("width", 832)))
     set_input(latent, ["height"], int(args.height or wd.get("height", 480)))
-    set_input(latent, ["length", "frames", "num_frames", "video_length"], int(args.frames or wd.get("frames", 33)))
+    if getattr(args, "preview", False):
+        set_input(latent, ["length", "frames", "num_frames", "video_length"], 1)
+    else:
+        set_input(latent, ["length", "frames", "num_frames", "video_length"], int(args.frames or wd.get("frames", 33)))
     set_input(latent, ["batch_size"], 1)
 
-    # Reference image mode: patch common LoadImage nodes. This is required for the included I2V workflow.
+    # Reference image and style reference image mode
     staged_reference = None
+    staged_style = None
     if getattr(args, "reference_image", None):
         staged_reference = stage_file_to_comfy_input(cfg, args.reference_image)
-        patched_images = patch_load_image_nodes(out, staged_reference)
-        print(f"Patched reference image nodes: {patched_images} -> {staged_reference}")
-        if patched_images == 0:
-            print("[WARN] This workflow has no LoadImage/image input nodes, so the reference image will not affect generation. Use an I2V/custom reference workflow for image-guided character preservation.")
+    if getattr(args, "style_image", None):
+        staged_style = stage_file_to_comfy_input(cfg, args.style_image)
+        
+    if staged_reference or staged_style:
+        ref_patched, style_patched = patch_workflow_images(out, staged_reference, staged_style)
+        print(f"Workflow image patching results: main reference patched = {ref_patched}, style reference patched = {style_patched}")
 
     clip_vision_name = getattr(args, "clip_vision", None) or wd.get("clip_vision")
     patched_clip_vision = patch_clip_vision_nodes(out, clip_vision_name)
@@ -838,7 +887,10 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: argparse.Namespace, cfg: Co
         seed = random.randint(1, 2**48 - 1)
     _, sampler = node_inputs_by_id_or_class(out, "3", ["KSampler", "KSamplerAdvanced"])
     set_input(sampler, ["seed", "noise_seed"], seed)
-    set_input(sampler, ["steps"], int(args.steps or wd.get("steps", 30)))
+    steps = int(args.steps or wd.get("steps", 30))
+    if getattr(args, "preview", False):
+        steps = min(steps, 10)
+    set_input(sampler, ["steps"], steps)
     set_input(sampler, ["cfg", "guidance_scale"], float(args.cfg or wd.get("cfg", 6)))
     set_input(sampler, ["sampler_name", "sampler"], args.sampler or wd.get("sampler", "uni_pc"))
     set_input(sampler, ["scheduler"], args.scheduler or wd.get("scheduler", "simple"))
@@ -1114,6 +1166,18 @@ def cmd_generate_sprite(args: argparse.Namespace) -> None:
         write_run_manifest(prompt_id, patched, response if isinstance(response, dict) else {}, outputs, None, None)
         raise RuntimeError("No completed ComfyUI video was found. Check ComfyUI queue/history and run doctor.")
 
+    if getattr(args, "preview", False):
+        name = chosen.stem + "_preview"
+        out_dir = cfg.sprite_output / name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        dest_preview = out_dir / "preview_image.png"
+        shutil.copy2(chosen, dest_preview)
+        write_run_manifest(prompt_id, patched, response if isinstance(response, dict) else {}, outputs, chosen, out_dir)
+        print(f"Generated preview image: {dest_preview}")
+        if comfy_proc and args.stop_comfy:
+            comfy_proc.terminate()
+        return
+
     name = chosen.stem + "_sprite"
     out_dir = cfg.sprite_output / name
     extra = []
@@ -1123,6 +1187,8 @@ def cmd_generate_sprite(args: argparse.Namespace) -> None:
         extra += ["--cell-size", str(args.cell_size)]
     if getattr(args, "key_color", None):
         extra += ["--key-color", str(args.key_color)]
+    if getattr(args, "resolutions", None):
+        extra += ["--resolutions", str(args.resolutions)]
     run(build_sprite_args(chosen, out_dir, cfg, extra=extra))
     if getattr(args, "quality_check", False):
         qc_extra = []
@@ -1449,6 +1515,9 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument("--scheduler", default=None)
         s.add_argument("--seed", type=int, default=-1)
         s.add_argument("--output-prefix", default=None)
+        s.add_argument("--resolutions", default=None)
+        s.add_argument("--preview", action="store_true")
+        s.add_argument("--style-image", default=None)
 
     s = sub.add_parser("submit-wan", help="Submit the included native Wan 2.1 T2V API workflow to a running ComfyUI server")
     add_wan_args(s)
@@ -1555,7 +1624,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("export-engine", help="Create Godot or Unity helper files from a SpriteForge output folder")
     s.add_argument("--sprite-dir", required=True)
-    s.add_argument("--engine", required=True, choices=["godot", "unity"])
+    s.add_argument("--engine", required=True, choices=["godot", "unity", "unreal"])
     s.add_argument("--output", default=None)
     s.add_argument("--project", default=None)
     s.add_argument("--name", default=None)

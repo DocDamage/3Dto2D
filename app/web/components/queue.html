@@ -1,0 +1,27 @@
+<section class="view" id="view-queue">
+      <div class="section-title"><p class="eyebrow">Batch production</p><h2>Queue Builder</h2></div>
+      <div class="grid-2">
+        <form class="card form" id="queueForm">
+          <label>Character name<input name="name" value="hero" /></label>
+          <label>Description<textarea name="description" rows="3">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea></label>
+          <div class="row">
+            <label>Actions<input name="actions" value="idle,walk,run,attack_light,hurt" /></label>
+            <label>Directions<input name="directions" value="right" /></label>
+          </div>
+          <div class="row">
+            <label>Model tier<select name="tier"><option value="wan21_safe">Safe: Wan 2.1 1.3B</option><option selected value="wan22_5b">Better: Wan 2.2 TI2V 5B</option></select></label>
+            <label>Profile<select name="profile"><option>auto</option><option>debug</option><option>rtx3060_12gb</option><option>wan22_5b_local</option><option selected>wan22_5b_3060_best</option></select></label>
+          </div>
+          <button class="primary big" type="submit">Create Persistent Queue</button>
+        </form>
+        <section class="card">
+          <h3>Why use the queue?</h3>
+          <div class="metric-list">
+            <div><b>Resume</b><span>Continues after interruption</span></div>
+            <div><b>Track</b><span>Per-action logs and status</span></div>
+            <div><b>Batch</b><span>Idle/walk/run/attack sequences</span></div>
+            <div><b>Safer</b><span>One job at a time on 12GB VRAM</span></div>
+          </div>
+        </section>
+      </div>
+    </section>

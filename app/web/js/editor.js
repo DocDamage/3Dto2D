@@ -98,6 +98,7 @@ function togglePlayback() {
 function nudgeFrame(dx, dy) {
   const meta = window._currentMeta;
   if (!meta || !meta.frames) return;
+  saveUndoState();
   const idx = parseInt($('#frameScrubber').value);
   const frame = meta.frames[idx];
   if (frame) {
@@ -123,6 +124,7 @@ if ($('#inspectMarkBadBtn')) {
   $('#inspectMarkBadBtn').addEventListener('click', () => {
     const meta = window._currentMeta;
     if (!meta || !meta.frames) return;
+    saveUndoState();
     const idx = parseInt($('#frameScrubber').value);
     const frame = meta.frames[idx];
     if (frame) {
@@ -137,6 +139,7 @@ if ($('#inspectDuplicateBtn')) {
   $('#inspectDuplicateBtn').addEventListener('click', () => {
     const meta = window._currentMeta;
     if (!meta || !meta.frames) return;
+    saveUndoState();
     const idx = parseInt($('#frameScrubber').value);
     const frame = meta.frames[idx];
     if (frame) {
@@ -162,6 +165,7 @@ if ($('#inspectRemoveBtn')) {
       toast('Cannot remove the last frame.');
       return;
     }
+    saveUndoState();
     const idx = parseInt($('#frameScrubber').value);
     meta.frames.splice(idx, 1);
     meta.frame_count = meta.frames.length;
@@ -182,6 +186,7 @@ if ($('#inspectTrimBtn')) {
     const meta = window._currentMeta;
     const path = window._currentPath;
     if (!meta || !path) return;
+    saveUndoState();
     const idx = parseInt($('#frameScrubber').value);
     const frame = meta.frames[idx];
     if (!frame) return;
@@ -236,6 +241,7 @@ if ($('#nudgeLeftBtn')) $('#nudgeLeftBtn').addEventListener('click', () => nudge
 if ($('#nudgeRightBtn')) $('#nudgeRightBtn').addEventListener('click', () => nudgeFrame(1, 0));
 
 if ($('#pivotXInput')) {
+  $('#pivotXInput').addEventListener('focus', () => saveUndoState());
   $('#pivotXInput').addEventListener('input', e => {
     const meta = window._currentMeta;
     if (!meta || !meta.frames) return;
@@ -247,6 +253,7 @@ if ($('#pivotXInput')) {
   });
 }
 if ($('#pivotYInput')) {
+  $('#pivotYInput').addEventListener('focus', () => saveUndoState());
   $('#pivotYInput').addEventListener('input', e => {
     const meta = window._currentMeta;
     if (!meta || !meta.frames) return;
@@ -261,6 +268,7 @@ if ($('#applyPivotAllBtn')) {
   $('#applyPivotAllBtn').addEventListener('click', () => {
     const meta = window._currentMeta;
     if (!meta || !meta.frames) return;
+    saveUndoState();
     const px = parseFloat($('#pivotXInput').value) || 0;
     const py = parseFloat($('#pivotYInput').value) || 0;
     meta.frames.forEach(f => {
@@ -446,3 +454,71 @@ if ($('#inspectSavePackBtn')) {
     }
   });
 }
+
+// Undo/Redo Stack Implementation
+let undoStack = [];
+let redoStack = [];
+
+function saveUndoState() {
+  if (window._currentMeta) {
+    undoStack.push(JSON.stringify(window._currentMeta));
+    redoStack = []; // Clear redo on new action
+    updateUndoRedoButtons();
+  }
+}
+
+function undo() {
+  if (undoStack.length > 0) {
+    redoStack.push(JSON.stringify(window._currentMeta));
+    const state = JSON.parse(undoStack.pop());
+    window._currentMeta = state;
+    restoreEditorState();
+    updateUndoRedoButtons();
+    toast("Undo performed");
+  }
+}
+
+function redo() {
+  if (redoStack.length > 0) {
+    undoStack.push(JSON.stringify(window._currentMeta));
+    const state = JSON.parse(redoStack.pop());
+    window._currentMeta = state;
+    restoreEditorState();
+    updateUndoRedoButtons();
+    toast("Redo performed");
+  }
+}
+
+function restoreEditorState() {
+  const meta = window._currentMeta;
+  const scrub = $('#frameScrubber');
+  if (scrub && meta) {
+    scrub.max = meta.frame_count - 1;
+    const val = Math.min(parseInt(scrub.value) || 0, meta.frame_count - 1);
+    scrub.value = val;
+    if (typeof renderInspectorFrame === 'function') renderInspectorFrame(val);
+  }
+}
+
+function updateUndoRedoButtons() {
+  const undoBtn = $('#inspectUndoBtn');
+  const redoBtn = $('#inspectRedoBtn');
+  if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+  if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+}
+
+// Wire up Undo/Redo Buttons
+if ($('#inspectUndoBtn')) $('#inspectUndoBtn').addEventListener('click', undo);
+if ($('#inspectRedoBtn')) $('#inspectRedoBtn').addEventListener('click', redo);
+
+// Add Ctrl+Z and Ctrl+Y keydown listeners
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    undo();
+  }
+  if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    redo();
+  }
+});

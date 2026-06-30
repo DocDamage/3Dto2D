@@ -34,6 +34,7 @@ except Exception:
     cv2 = None
 
 from services.sprite_service import SpriteService
+from spriteforge_utils import natural_key
 
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
@@ -57,10 +58,6 @@ class ProcessResult:
     fps: float
     sheet_path: Path
     metadata_path: Path
-
-
-def natural_key(path: Path) -> list:
-    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path.name)]
 
 
 def parse_size(value: Optional[str]) -> Optional[Tuple[int, int]]:
@@ -525,8 +522,13 @@ def apply_frame_sequence_ops(
     reverse: bool,
     flip_x: bool,
     flip_y: bool,
+    palette: Optional[List[Tuple[int, int, int]]] = None,
 ) -> List[FrameItem]:
     out = list(frames)
+
+    if palette:
+        for item in out:
+            item.image = SpriteService.apply_palette_lock(item.image, palette)
 
     if drop_last and len(out) > 1:
         out = out[:-1]
@@ -830,6 +832,8 @@ def process_common(
     flip_y: bool,
     report: bool,
     source_meta: Optional[Dict[str, Any]] = None,
+    resolutions: Optional[str] = None,
+    palette: Optional[List[Tuple[int, int, int]]] = None,
 ) -> ProcessResult:
     ensure_dir(output)
 
@@ -841,6 +845,7 @@ def process_common(
         reverse=reverse,
         flip_x=flip_x,
         flip_y=flip_y,
+        palette=palette,
     )
 
     processed: List[FrameItem] = []
@@ -932,6 +937,84 @@ def process_common(
     if report:
         write_report(output / "report.html", result, extra)
 
+    # Multi-resolution output scaling
+    if resolutions:
+        targets = [t.strip() for t in resolutions.split(",") if t.strip()]
+        for target in targets:
+            try:
+                # Determine scale factor f
+                if target.endswith("x"):
+                    scale_factor = float(target[:-1])
+                    suffix = target
+                else:
+                    target_size = int(target)
+                    scale_factor = target_size / final_cell[0]
+                    suffix = f"{target_size}"
+                
+                # Resize sheet image
+                new_w = int(round(sheet.width * scale_factor))
+                new_h = int(round(sheet.height * scale_factor))
+                try:
+                    from PIL import Image
+                    resample_filter = Image.Resampling.LANCZOS
+                except AttributeError:
+                    resample_filter = Image.LANCZOS
+                
+                scaled_sheet = sheet.resize((new_w, new_h), resample_filter)
+                scaled_sheet_name = f"sheet_{suffix}.png"
+                scaled_sheet_path = output / scaled_sheet_name
+                scaled_sheet.save(scaled_sheet_path)
+                
+                # Scale metadata rects & cell sizes
+                scaled_rects = []
+                for rx, ry, rw, rh in rects:
+                    scaled_rects.append((
+                        int(round(rx * scale_factor)),
+                        int(round(ry * scale_factor)),
+                        int(round(rw * scale_factor)),
+                        int(round(rh * scale_factor))
+                    ))
+                
+                scaled_cell = (
+                    int(round(final_cell[0] * scale_factor)),
+                    int(round(final_cell[1] * scale_factor))
+                )
+                
+                scaled_spacing = int(round(spacing * scale_factor))
+                scaled_margin = int(round(margin * scale_factor))
+                
+                scaled_extra = json.loads(json.dumps(extra)) if extra else {}
+                
+                scaled_metadata_path = output / f"sheet_{suffix}.json"
+                write_metadata(
+                    scaled_metadata_path,
+                    image_name=scaled_sheet_name,
+                    frames=normalized,
+                    rects=scaled_rects,
+                    cell_size=scaled_cell,
+                    columns=cols,
+                    rows=rows,
+                    fps=fps,
+                    animation_name=animation_name,
+                    spacing=scaled_spacing,
+                    margin=scaled_margin,
+                    extra=scaled_extra,
+                )
+                
+                write_aseprite_json(
+                    output / f"sheet_{suffix}.aseprite.json",
+                    image_name=scaled_sheet_name,
+                    frames=normalized,
+                    rects=scaled_rects,
+                    cell_size=scaled_cell,
+                    fps=fps,
+                    animation_name=animation_name,
+                )
+                
+                print(f"Exported scaled resolution target '{target}': {scaled_sheet_path}")
+            except Exception as e:
+                print(f"[WARN] Failed to export resolution '{target}': {e}")
+
     print("Done.")
     print(f"Frames: {len(normalized)}")
     print(f"Cell: {final_cell[0]}x{final_cell[1]}")
@@ -1014,6 +1097,8 @@ def process_common_from_args(
         flip_y=args.flip_y,
         report=args.report,
         source_meta=source_meta,
+        resolutions=getattr(args, "resolutions", None),
+        palette=SpriteService.parse_palette(getattr(args, "palette", None)),
     )
 
 
@@ -1182,6 +1267,7 @@ def cmd_watch(args: argparse.Namespace) -> None:
 
 def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--output", required=True, help="Output folder")
+    p.add_argument("--resolutions", default=None, help="Multi-resolution targets, comma separated. Example: 0.5x,1x,2x or 32,64,128")
     p.add_argument("--fps", type=float, default=12.0, help="Output animation FPS")
     p.add_argument("--cell-size", default=None, help="Final cell size, for example 512x512. Auto if omitted.")
     p.add_argument("--columns", type=int, default=None, help="Number of spritesheet columns. Auto if omitted.")
@@ -1206,6 +1292,7 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--solidify", type=int, default=2, help="Fill transparent RGB edge pixels to reduce filtering fringes. 0 disables.")
     p.add_argument("--outline-width", type=int, default=0, help="Optional outline width in pixels")
     p.add_argument("--outline-color", default="0,0,0,255", help="Outline color as R,G,B,A")
+    p.add_argument("--palette", default=None, help="Snaps colors to a retro palette (e.g. pico8, nes, gameboy, or custom comma-separated hex list)")
 
     p.add_argument("--loop-mode", choices=["normal", "pingpong"], default="normal", help="Loop construction mode")
     p.add_argument("--drop-last", action="store_true", help="Drop the last frame manually")

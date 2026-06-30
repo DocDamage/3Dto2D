@@ -1,10 +1,27 @@
 import json
 import os
 import sys
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 ROOT = Path(__file__).resolve().parent
+
+def natural_key(path: Path) -> list:
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path.name)]
+
+def safe_name(name: str) -> str:
+    name = re.sub(r"[^A-Za-z0-9_\-]+", "_", name.strip())
+    name = re.sub(r"_+", "_", name).strip("_")
+    return name or "spriteforge_asset"
+
+def load_meta(sprite_dir: Path) -> Dict[str, Any]:
+    path = sprite_dir / "sheet.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["_sprite_dir"] = str(sprite_dir)
+    return data
 
 def app_python() -> str:
     if os.name == "nt":

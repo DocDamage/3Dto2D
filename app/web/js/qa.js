@@ -27,17 +27,36 @@ async function refreshQaDashboard() {
       const tdSeam = document.createElement('td');
       tdSeam.textContent = s.loop_quality ? s.loop_quality.toFixed(1) : '—';
       tdSeam.style.color = s.gate_details?.loop_quality?.ok ? '#2ecc71' : '#e74c3c';
+      if (s.history && s.history.length > 1) {
+        const seamHistory = s.history.map(h => h.loop_seam_rmse).filter(x => x !== null && x !== undefined && !isNaN(x));
+        if (seamHistory.length > 1) {
+          tdSeam.appendChild(makeTinySparkline(seamHistory, '#3498db'));
+        }
+      }
       tr.appendChild(tdSeam);
       
       const tdDrift = document.createElement('td');
       tdDrift.textContent = s.foot_drift ? s.foot_drift.toFixed(2) + 'px' : '—';
       tdDrift.style.color = s.gate_details?.foot_drift?.ok ? '#2ecc71' : '#e74c3c';
+      if (s.history && s.history.length > 1) {
+        const driftHistory = s.history.map(h => h.foot_y_stdev_px).filter(x => x !== null && x !== undefined && !isNaN(x));
+        if (driftHistory.length > 1) {
+          tdDrift.appendChild(makeTinySparkline(driftHistory, '#ffd166'));
+        }
+      }
       tr.appendChild(tdDrift);
       
       const tdFlicker = document.createElement('td');
       tdFlicker.textContent = s.flicker ? s.flicker.toFixed(2) : '—';
       tdFlicker.style.color = s.gate_details?.flicker?.ok ? '#2ecc71' : '#e74c3c';
+      if (s.history && s.history.length > 1) {
+        const flickerHistory = s.history.map(h => h.brightness_stdev).filter(x => x !== null && x !== undefined && !isNaN(x));
+        if (flickerHistory.length > 1) {
+          tdFlicker.appendChild(makeTinySparkline(flickerHistory, '#e74c3c'));
+        }
+      }
       tr.appendChild(tdFlicker);
+
       
       const tdCoverage = document.createElement('td');
       tdCoverage.textContent = s.alpha_coverage ? (s.alpha_coverage * 100).toFixed(1) + '%' : '—';

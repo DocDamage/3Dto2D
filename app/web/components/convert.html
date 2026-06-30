@@ -1,0 +1,32 @@
+<section class="view" id="view-convert">
+      <div class="section-title"><p class="eyebrow">Existing video</p><h2>Convert Video</h2></div>
+      <div class="grid-2">
+        <form class="card form" id="convertForm">
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="videoFile" accept="video/*" />
+            <div class="drop-icon">⬡</div>
+            <b>Drop a ComfyUI/WAN video here</b>
+            <span>or click to upload into the active project references</span>
+          </div>
+          <label>Video path<input name="input" id="videoPath" placeholder="C:\ComfyUI\output\example.mp4 or uploaded path" /></label>
+          <label>Output folder<input name="output" placeholder="Optional. Example: output\hero_walk_sprite" /></label>
+          <div class="row">
+            <label>FPS<input name="fps" value="12" /></label>
+            <label>Cell size<input name="cell_size" value="512x512" /></label>
+          </div>
+          <label>Key color<input name="key_color" value="auto" /></label>
+          <div class="switches">
+            <label class="switch"><input type="checkbox" name="drop_loop_duplicate" checked /><span></span>Drop loop duplicate</label>
+            <label class="switch"><input type="checkbox" name="preview_gif" checked /><span></span>Preview GIF</label>
+            <label class="switch"><input type="checkbox" name="report" checked /><span></span>HTML report</label>
+          </div>
+          <button class="primary big" id="btnSubmitConvert" type="submit">Generate sprite</button>
+        </form>
+        <section class="card">
+          <div class="card-head"><h3>Recent references</h3><button class="mini" id="refreshReferences" type="button">Refresh</button></div>
+          <div id="referenceList" class="release-list">
+            <div class="empty compact">No references uploaded yet.</div>
+          </div>
+        </section>
+      </div>
+    </section>

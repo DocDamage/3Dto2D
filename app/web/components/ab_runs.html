@@ -1,0 +1,78 @@
+<section class="view" id="view-ab_runs">
+      <div class="section-title"><p class="eyebrow">A/B Testing</p><h2>A/B Prompt Runs</h2></div>
+      <div class="split ab-layout">
+        <!-- Left: A/B Form -->
+        <section class="card ab-form-card">
+          <div class="card-head"><h3>New A/B Run</h3></div>
+          <form id="abRunForm" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+            <div>
+              <label>Run Name: <input type="text" id="abRunName" placeholder="A/B Run name..." required style="width:100%;" /></label>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- Variant A -->
+              <div class="variant-box" style="border: 1px solid rgba(255,255,255,0.06); padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 6px;">
+                <h4 style="color:#00e5ff; margin-bottom:4px;">Variant A Settings</h4>
+                <label>Action: <input type="text" name="a_action" value="generate_sprite" required style="width:100%;" /></label>
+                <label>Prompt Idea: <textarea name="a_character" rows="3" style="width:100%;" required>single full body platformer hero, side view</textarea></label>
+                <label>Style prompt: <textarea name="a_style" rows="2" style="width:100%;">pixel-art game sprite, simple palette</textarea></label>
+                <label>Negative Prompt: <input type="text" name="a_negative" value="camera movement, zoom" style="width:100%;" /></label>
+                <label>Seed: <input type="number" name="a_seed" value="-1" style="width:100%;" /></label>
+              </div>
+              
+              <!-- Variant B -->
+              <div class="variant-box" style="border: 1px solid rgba(255,255,255,0.06); padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 6px;">
+                <h4 style="color:#ff00e5; margin-bottom:4px;">Variant B Settings</h4>
+                <label>Action: <input type="text" name="b_action" value="generate_sprite" required style="width:100%;" /></label>
+                <label>Prompt Idea: <textarea name="b_character" rows="3" style="width:100%;" required>single full body platformer hero, side view</textarea></label>
+                <label>Style prompt: <textarea name="b_style" rows="2" style="width:100%;">classic 16-bit pixel-art style, rich colors</textarea></label>
+                <label>Negative Prompt: <input type="text" name="b_negative" value="camera movement, zoom" style="width:100%;" /></label>
+                <label>Seed: <input type="number" name="b_seed" value="-1" style="width:100%;" /></label>
+              </div>
+            </div>
+            
+            <button class="primary" type="submit" style="margin-top:12px;">Start A/B Run</button>
+          </form>
+        </section>
+        
+        <!-- Right: comparison / history list -->
+        <section class="card ab-results-card">
+          <div class="card-head"><h3>A/B History &amp; Compare</h3></div>
+          <div style="padding:12px; display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <label>Select A/B Run: <select id="abRunSelect" style="width:100%;"><option value="">Choose a past run...</option></select></label>
+            </div>
+            
+            <div id="abCompareDisplay" class="hidden" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+              <!-- Variant A Display -->
+              <div class="variant-display" style="border: 1px solid rgba(0,229,255,0.3); padding: 12px; border-radius: 8px; background: rgba(0,229,255,0.02);">
+                <h3 style="color:#00e5ff;">Variant A</h3>
+                <div class="ab-preview-container checkerboard" style="aspect-ratio:1; display:flex; justify-content:center; align-items:center; border: 1px solid rgba(255,255,255,0.1); border-radius:4px; margin: 8px 0; overflow:hidden; position:relative; background:#000;">
+                  <img id="abPreviewImgA" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;" />
+                </div>
+                <table class="data-table compact" style="width:100%; margin-top:8px;">
+                  <tr><td>QA Score:</td><td id="abScoreA" style="font-weight:bold;">-</td></tr>
+                  <tr><td>File Size:</td><td id="abSizeA">-</td></tr>
+                  <tr><td>Foot Drift:</td><td id="abDriftA">-</td></tr>
+                  <tr><td>Flicker:</td><td id="abFlickerA">-</td></tr>
+                </table>
+              </div>
+              
+              <!-- Variant B Display -->
+              <div class="variant-display" style="border: 1px solid rgba(255,0,229,0.3); padding: 12px; border-radius: 8px; background: rgba(255,0,229,0.02);">
+                <h3 style="color:#ff00e5;">Variant B</h3>
+                <div class="ab-preview-container checkerboard" style="aspect-ratio:1; display:flex; justify-content:center; align-items:center; border: 1px solid rgba(255,255,255,0.1); border-radius:4px; margin: 8px 0; overflow:hidden; position:relative; background:#000;">
+                  <img id="abPreviewImgB" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;" />
+                </div>
+                <table class="data-table compact" style="width:100%; margin-top:8px;">
+                  <tr><td>QA Score:</td><td id="abScoreB" style="font-weight:bold;">-</td></tr>
+                  <tr><td>File Size:</td><td id="abSizeB">-</td></tr>
+                  <tr><td>Foot Drift:</td><td id="abDriftB">-</td></tr>
+                  <tr><td>Flicker:</td><td id="abFlickerB">-</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>

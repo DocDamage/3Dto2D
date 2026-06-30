@@ -20,6 +20,51 @@ class JobService:
     _active_job: Optional[Dict[str, Any]] = None
 
     @staticmethod
+    def adjust_cmd_for_vram_fallback(cmd: List[str]) -> List[str]:
+        new_cmd = list(cmd)
+        
+        # 1. Downgrade tier from wan22_5b to wan21_safe
+        for idx, arg in enumerate(new_cmd):
+            if arg == "--tier" and idx + 1 < len(new_cmd):
+                if new_cmd[idx + 1] == "wan22_5b":
+                    new_cmd[idx + 1] = "wan21_safe"
+                    break
+                    
+        # 2. Downgrade profile to sprite_fast
+        for idx, arg in enumerate(new_cmd):
+            if arg == "--profile" and idx + 1 < len(new_cmd):
+                if new_cmd[idx + 1] in {"quality_local", "wan22_5b_3060_best", "wan22_5b_local"}:
+                    new_cmd[idx + 1] = "sprite_fast"
+                    break
+                    
+        # 3. Scale down resolutions/cell-size
+        for idx, arg in enumerate(new_cmd):
+            if arg == "--cell-size" and idx + 1 < len(new_cmd):
+                size_str = new_cmd[idx + 1]
+                try:
+                    w, h = map(int, size_str.lower().split("x"))
+                    new_w = max(128, w // 2)
+                    new_h = max(128, h // 2)
+                    new_cmd[idx + 1] = f"{new_w}x{new_h}"
+                except Exception:
+                    pass
+                    
+        for idx, arg in enumerate(new_cmd):
+            if arg == "--resolutions" and idx + 1 < len(new_cmd):
+                res_str = new_cmd[idx + 1]
+                try:
+                    res_parts = res_str.split(",")
+                    new_res_parts = []
+                    for p in res_parts:
+                        w, h = map(int, p.lower().split("x"))
+                        new_res_parts.append(f"{max(128, w // 2)}x{max(128, h // 2)}")
+                    new_cmd[idx + 1] = ",".join(new_res_parts)
+                except Exception:
+                    pass
+                    
+        return new_cmd
+
+    @staticmethod
     def _watch_comfy_websocket(job: Dict[str, Any]) -> None:
         """Bridge ComfyUI websocket progress into the active job when available."""
         prompt_id = str((job.get("metadata") or {}).get("comfy_prompt_id") or "")
@@ -74,8 +119,9 @@ class JobService:
         if HISTORY_PATH.exists():
             try:
                 return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                import sys
+                print(f"Error loading job history: {e}", file=sys.stderr)
         return []
 
     @staticmethod
@@ -83,8 +129,9 @@ class JobService:
         HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
         try:
             HISTORY_PATH.write_text(json.dumps(history[:MAX_JOB_HISTORY], indent=2), encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as e:
+            import sys
+            print(f"Error saving job history: {e}", file=sys.stderr)
 
     @staticmethod
     def get_history() -> List[Dict[str, Any]]:
@@ -187,6 +234,7 @@ class JobService:
             JobService._save_history(history)
 
         def worker():
+            nonlocal cmd
             LOGS_DIR.mkdir(parents=True, exist_ok=True)
             log_path = LOGS_DIR / f"web_job_{job_id}.log"
             
@@ -288,6 +336,7 @@ class JobService:
                                 break
                         JobService._save_history(hist)
 
+                    oom_detected = False
                     assert proc.stdout is not None
                     for line in proc.stdout:
                         line = line.rstrip("\n")
@@ -295,6 +344,9 @@ class JobService:
                         fp.flush()
                         append_log(line)
                         infer_stage_from_line(line)
+                        
+                        if "cuda out of memory" in line.lower() or "outofmemoryerror" in line.lower():
+                            oom_detected = True
                         
                         # Progress parsing
                         m3 = progress_pat3.search(line)
@@ -329,6 +381,34 @@ class JobService:
                     JobService._current_proc = None
                     # If cancelled, don't overwrite cancelled status
                     if job["phase"] == "running":
+                        if exit_code != 0 and oom_detected and job.setdefault("metadata", {}).setdefault("vram_retry_count", 0) < 2:
+                            retry_count = job["metadata"]["vram_retry_count"] + 1
+                            job["metadata"]["vram_retry_count"] = retry_count
+                            
+                            new_cmd = JobService.adjust_cmd_for_vram_fallback(cmd)
+                            cmd = new_cmd
+                            job["command"] = new_cmd
+                            
+                            append_log(f"⚠️ CUDA Out of Memory detected. Retrying with lower VRAM profile (Attempt {retry_count}/2)...")
+                            append_log(f"New Command: {' '.join(new_cmd)}")
+                            
+                            job["stage"] = "queued"
+                            job["stage_label"] = "Retrying (VRAM Fallback)"
+                            job["stage_detail"] = f"Retrying with lower VRAM profile (Attempt {retry_count})."
+                            job["progress"] = 0.0
+                            
+                            # Update in history
+                            history = JobService._load_history()
+                            for idx, j in enumerate(history):
+                                if j.get("id") == job_id:
+                                    history[idx] = job
+                                    break
+                            JobService._save_history(history)
+                            
+                            # Restart worker thread
+                            threading.Thread(target=worker, daemon=True).start()
+                            return
+
                         job["phase"] = "completed" if exit_code == 0 else "failed"
                         job["stage"] = "complete" if exit_code == 0 else "failed"
                         job["stage_label"] = "Passed" if exit_code == 0 else "Failed"

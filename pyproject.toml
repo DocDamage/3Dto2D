@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spriteforge"
+version = "1.2.0"
+description = "SpriteForge Studio: pixel-art spritesheets tool from text/reference"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+dependencies = [
+    "flask>=3.0.0",
+    "pillow>=9.0.0",
+    "numpy>=1.20.0",
+    "pytest>=7.0.0",
+    "opencv-python>=4.5.0",
+    "requests>=2.25.0",
+]
+
+[project.scripts]
+spriteforge = "spriteforge_cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "app"}
+py-modules = [
+    "spriteforge",
+    "spriteforge_cli",
+    "spriteforge_web",
+    "spriteforge_unified",
+    "spriteforge_engine_export",
+    "spriteforge_compare",
+    "spriteforge_utils",
+    "spriteforge_prompts",
+    "spriteforge_maintenance"
+]

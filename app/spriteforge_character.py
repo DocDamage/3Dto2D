@@ -18,15 +18,11 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from PIL import Image, ImageDraw
 
+from spriteforge_utils import safe_name
+
 ROOT = Path(__file__).resolve().parent
 DEFAULT_ACTIONS = ["idle", "walk", "run", "attack_light", "attack_heavy", "hurt", "death"]
 DEFAULT_DIRECTIONS = ["right"]
-
-
-def safe_name(name: str) -> str:
-    name = re.sub(r"[^A-Za-z0-9_\-]+", "_", name.strip())
-    name = re.sub(r"_+", "_", name).strip("_")
-    return name or "character"
 
 
 def split_csv(value: Optional[str], default: List[str]) -> List[str]:

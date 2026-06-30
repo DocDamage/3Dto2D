@@ -1,72 +1,7 @@
 let previousJobId = null;
 let previousJobRunning = false;
 
-function renderJob(job){
-  const running=!!job.running;
-  const progress = inferredJobProgress(job, running);
-  $('#job-title').textContent=job.title||'Idle'; $('#log-title').textContent=job.title||'Idle';
-  $('#job-state').textContent=running?(job.stage_label || 'running'):(job.exit_code===0?'passed':(job.exit_code?'failed':'ready'));
-  $('#job-state').className='badge '+(running?'busy':'');
-  setProgressFill($('#progress-fill'), progress, running ? 'busy' : job.exit_code === 0 ? 'done' : job.exit_code ? 'failed' : '');
-  renderGlobalProgress(job);
-  const logs=(job.logs||[]).join('\n'); lastLogText=logs;
-  $('#mini-log').textContent=(job.logs||[]).slice(-80).join('\n');
-  $('#full-log').textContent=logs || 'No command has been run yet.';
-  $('#mini-log').scrollTop=$('#mini-log').scrollHeight; $('#full-log').scrollTop=$('#full-log').scrollHeight;
-
-  // Expected Time and State
-  const timeStateEl = $('#job-time-state');
-  if (timeStateEl) {
-    if (running) {
-      const logsLower = logs.toLowerCase();
-      let estTime = '1-3 minutes';
-      let currentStep = 'processing';
-      const title = job.title || '';
-
-      if (title.includes('WAN') || title.includes('generate') || title.includes('Sprite')) {
-        estTime = '4-8 minutes';
-        if (logsLower.includes('converting video') || logsLower.includes('ffmpeg')) {
-          currentStep = 'converting video';
-        } else if (logsLower.includes('sampling') || logsLower.includes('denoise') || logsLower.includes('diffusion')) {
-          currentStep = 'generating WAN frames';
-        } else if (logsLower.includes('loading') || logsLower.includes('weights') || logsLower.includes('model')) {
-          currentStep = 'loading model weights';
-        } else if (logsLower.includes('keying') || logsLower.includes('chroma') || logsLower.includes('alpha') || logsLower.includes('extracting')) {
-          currentStep = 'extracting transparent frames';
-        } else if (logsLower.includes('stabilizing') || logsLower.includes('align') || logsLower.includes('anchor')) {
-          currentStep = 'stabilizing / aligning frame coordinates';
-        } else if (logsLower.includes('compiling') || logsLower.includes('atlas') || logsLower.includes('sheet')) {
-          currentStep = 'compiling spritesheet';
-        } else {
-          const lines = job.logs ? job.logs.map(l => l.trim()).filter(l => l.length > 0) : [];
-          if (lines.length > 0) {
-            const lastLine = lines[lines.length - 1];
-            currentStep = lastLine.length > 60 ? lastLine.substring(0, 60) + '...' : lastLine;
-          } else {
-            currentStep = 'converting video';
-          }
-        }
-      } else if (title.includes('demo') || title.includes('Demo')) {
-        estTime = '10-20 seconds';
-        currentStep = 'building demo spritesheet';
-      } else if (title.includes('pack') || title.includes('Queue') || title.includes('queue')) {
-        estTime = 'Several minutes';
-        currentStep = 'processing queue job';
-      } else if (title.includes('doctor') || title.includes('Doctor')) {
-        estTime = '5-15 seconds';
-        currentStep = 'diagnosing system';
-      }
-
-      timeStateEl.style.display = 'block';
-      const eta = job.metadata?.eta?.label || estTime;
-      const progressMode = job.progress_mode === 'comfy_ws' ? 'Exact ComfyUI websocket progress' : 'Estimated progress';
-      timeStateEl.innerHTML = `Estimated time: ${eta}<br>${progressMode}: ${currentStep}`;
-    } else {
-      timeStateEl.style.display = 'none';
-      timeStateEl.innerHTML = '';
-    }
-  }
-}
+// renderJob has been modularized and moved to app_jobs.js
 
 async function refreshAll(){
   try{
@@ -138,26 +73,7 @@ async function refreshAll(){
   }catch(e){ console.error(e); }
 }
 
-function updatePreflightChecklist(s) {
-  const comfyLi = $('#check-comfy');
-  const modelsLi = $('#check-models');
-  const diskLi = $('#check-disk');
-  const outputLi = $('#check-output');
-  const jobLi = $('#check-job');
-
-  const updateItem = (el, ok, text) => {
-    if (!el) return;
-    el.className = ok ? 'ok' : 'bad';
-    const icon = ok ? '✔' : '✘';
-    el.innerHTML = `<span class="check-icon">${icon}</span> ${text}`;
-  };
-
-  updateItem(comfyLi, s.comfy_running, `ComfyUI online (${s.comfy_running ? 'Connected' : 'Offline'})`);
-  updateItem(modelsLi, s.models.ok, `Model files found (${s.models.present}/${s.models.total} present)`);
-  updateItem(diskLi, s.disk.ok, `Enough disk space (${s.disk.free_gb} GB free)`);
-  updateItem(outputLi, true, `Output folder ready`);
-  updateItem(jobLi, !s.job.running, s.job.running ? `Job running: ${s.job.title}` : `No job currently running`);
-}
+// updatePreflightChecklist has been modularized and moved to app_status.js
 
 const GUIDE_TEMPLATES = {
   platformer: {
@@ -334,6 +250,13 @@ if ($('#copyLog')) $('#copyLog').addEventListener('click',()=>navigator.clipboar
 if ($('#launchComfy')) $('#launchComfy').addEventListener('click',async()=>{ try{await api('/api/launch_comfy',{method:'POST'}); toast('ComfyUI launch requested'); setTimeout(refreshAll,1800);}catch(e){toast(e.message)} });
 
 if ($('#generateForm')) $('#generateForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('generate_sprite', formData(e.currentTarget)); showView('logs'); });
+if ($('#btnPreviewGenerate')) {
+  $('#btnPreviewGenerate').addEventListener('click', () => {
+    const data = formData($('#generateForm'));
+    runAction('generate_sprite', { ...data, preview: true });
+    showView('logs');
+  });
+}
 if ($('#convertForm')) $('#convertForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('convert_video', formData(e.currentTarget)); showView('logs'); });
 
 $$('[data-quality]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -341,7 +264,7 @@ $$('[data-quality]').forEach(btn=>btn.addEventListener('click',()=>{
   if(mode==='validate'){
     runAction('validate_export', {...data, engine: null}); showView('logs'); return;
   }
-  const action = mode==='qa'?'qa_report':mode==='fix'?'autofix':mode==='godot'?'export_godot':'export_unity';
+  const action = mode==='qa'?'qa_report':mode==='fix'?'autofix':mode==='godot'?'export_godot':mode==='unity'?'export_unity':'export_unreal';
   runAction(action, data); showView('logs');
 }));
 if ($('#packForm')) $('#packForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('character_pack', formData(e.currentTarget)); showView('logs'); });

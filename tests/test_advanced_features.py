@@ -10,7 +10,7 @@ APP = ROOT / "app"
 sys.path.insert(0, str(APP))
 
 from services.project_service import ProjectService
-from spriteforge_web import (
+from web_helpers import (
     _sprite_version_save, _sprite_version_list, _sprite_version_rollback,
     _ab_run_create, _ab_run_list, _library_save, _library_list, _library_delete,
     _qa_batch_summary
@@ -18,9 +18,10 @@ from spriteforge_web import (
 
 def test_project_quality_gates(tmp_path, monkeypatch):
     # Setup mock workspace paths
-    monkeypatch.setattr("spriteforge_web.PROJECTS", tmp_path / "projects")
+    monkeypatch.setattr("web_helpers.PROJECTS", tmp_path / "projects")
     monkeypatch.setattr("services.project_service.PROJECTS_DIR", tmp_path / "projects")
     monkeypatch.setattr("services.project_service.ROOT", tmp_path)
+
     
     # Create project
     proj = ProjectService.create_project(name="TestProj")
@@ -51,7 +52,7 @@ def test_project_quality_gates(tmp_path, monkeypatch):
 
 
 def test_library_crud(tmp_path, monkeypatch):
-    monkeypatch.setattr("spriteforge_web.PROJECTS", tmp_path / "projects")
+    monkeypatch.setattr("web_helpers.PROJECTS", tmp_path / "projects")
     monkeypatch.setattr("services.project_service.PROJECTS_DIR", tmp_path / "projects")
     
     # Save pose asset
@@ -89,8 +90,8 @@ def test_sprite_versioning(tmp_path, monkeypatch):
     (frames_dir / "frame_0000.png").write_text("f0", encoding="utf-8")
     (frames_dir / "frame_0001.png").write_text("f1", encoding="utf-8")
     
-    monkeypatch.setattr("spriteforge_web.OUTPUT", tmp_path / "output")
-    monkeypatch.setattr("spriteforge_web.ROOT", tmp_path)
+    monkeypatch.setattr("web_helpers.OUTPUT", tmp_path / "output")
+    monkeypatch.setattr("web_helpers.ROOT", tmp_path)
     
     # Save version
     res = _sprite_version_save("output/my_hero", "first snapshot")

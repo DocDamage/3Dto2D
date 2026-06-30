@@ -1,0 +1,11 @@
+<section class="view" id="view-launchpad">
+      <div class="section-title"><p class="eyebrow">Guided workflow</p><h2>Launchpad</h2></div>
+      <div class="launch-grid">
+        <article class="card launch-step"><span>01</span><h3>Prove the app works</h3><p>Run the no-GPU demo first. If this fails, fix SpriteForge before touching WAN.</p><button class="primary" data-run="demo">Run Demo</button></article>
+        <article class="card launch-step"><span>02</span><h3>Finish setup</h3><p>Install ComfyUI, nodes, Manager, and the safe Wan 2.1 model set. Then launch ComfyUI.</p><div class="button-row"><button class="primary" data-run="install_all">Install Safe Setup</button><button class="ghost" id="launchComfy2">Start ComfyUI</button></div></article>
+        <article class="card launch-step"><span>03</span><h3>Generate the first sprite</h3><p>Use debug first. Once that works, switch to the RTX 3060 / Wan 2.1 or Wan 2.2 5B tier.</p><button class="primary" data-jump="generate">Generate sprite</button></article>
+        <article class="card launch-step"><span>04</span><h3>QA and repair</h3><p>Click a recent sprite, run QA, auto-fix jitter/loop issues, then preview the result.</p><button class="primary" data-jump="quality">Run quality check</button></article>
+        <article class="card launch-step"><span>05</span><h3>Build a release</h3><p>Package finished sprites, metadata, preview GIFs, engine notes, and a preflight report into a release ZIP.</p><button class="primary" data-jump="release">Build release ZIP</button></article>
+        <article class="card launch-step"><span>06</span><h3>Batch a character</h3><p>Create a persistent production queue for idle, walk, run, attacks, hurt, and directions.</p><button class="primary" data-jump="queue">Open Queue Builder</button></article>
+      </div>
+    </section>

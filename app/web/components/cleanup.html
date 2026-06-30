@@ -1,0 +1,57 @@
+<section class="view" id="view-cleanup">
+      <div class="section-title">
+        <p class="eyebrow">Storage Polish</p>
+        <h2>Asset Cleanup Manager</h2>
+      </div>
+      
+      <div class="bento" style="margin-bottom: 24px;">
+        <div class="card stat-card glow">
+          <span>Reclaimable Space</span>
+          <b id="cleanup-total-space">0.0 MB</b>
+          <small>Estimated old/temp files</small>
+        </div>
+        <div class="card stat-card">
+          <span>Temporary Renders</span>
+          <b id="cleanup-renders-space">0.0 MB</b>
+          <small id="cleanup-renders-count">0 files</small>
+        </div>
+        <div class="card stat-card">
+          <span>Failed Outputs</span>
+          <b id="cleanup-failed-space">0.0 MB</b>
+          <small id="cleanup-failed-count">0 folders</small>
+        </div>
+        <div class="card stat-card">
+          <span>Old Logs</span>
+          <b id="cleanup-logs-space">0.0 MB</b>
+          <small id="cleanup-logs-count">0 files</small>
+        </div>
+      </div>
+      
+      <div class="card" style="padding: 20px;">
+        <div class="card-head" style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+          <h3 style="margin: 0;">Scanned Workspace Files</h3>
+          <div class="button-row">
+            <button class="mini" id="scanCleanupBtn" type="button">Scan Workspace</button>
+            <button class="mini danger" id="purgeCleanupSelectedBtn" type="button" disabled>Delete Selected</button>
+            <button class="mini primary" id="autoCleanBtn" type="button">Safe Auto-Clean</button>
+          </div>
+        </div>
+        
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"><input type="checkbox" id="cleanupSelectAll" /></th>
+                <th>Category</th>
+                <th>File / Folder Path</th>
+                <th>Size</th>
+                <th>Age</th>
+              </tr>
+            </thead>
+            <tbody id="cleanupTableBody">
+              <tr><td colspan="5" class="empty-cell">Click Scan Workspace to search for cleanup targets.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>

@@ -1,0 +1,138 @@
+<section class="view" id="view-generate">
+      <div class="section-title"><p class="eyebrow">WAN generation</p><h2>Make Sprite</h2></div>
+      <div class="grid-2">
+        <form class="card form" id="generateForm">
+          <div class="preset-builder-card" style="padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px;">
+            <p class="eyebrow" style="margin-bottom: 8px;">Preset Manager &amp; Goal Defaults</p>
+            <div class="row preset-row" style="gap: 12px; align-items: flex-end;">
+              <label style="flex: 2;">Preset
+                <select id="presetSelect" name="preset_select">
+                  <option value="">-- Select Preset --</option>
+                </select>
+              </label>
+              <label style="flex: 2;">Preset name
+                <input type="text" id="presetName" placeholder="My custom style" />
+              </label>
+              <div class="button-row" style="margin-bottom: 4px;">
+                <button class="mini primary" id="savePresetBtn" type="button">Save Preset</button>
+                <button class="mini danger" id="deletePresetBtn" type="button">Delete</button>
+              </div>
+            </div>
+            <div class="quick-goals-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <span style="font-size: 11px; color: var(--muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Smarter Defaults:</span>
+              <button class="mini" type="button" id="btnGoalPixelArt">Pixel Art</button>
+              <button class="mini" type="button" id="btnGoalSmooth2D">Smooth 2D</button>
+              <button class="mini" type="button" id="btnGoalSideScroller">Side-Scroller</button>
+              <button class="mini" type="button" id="btnGoalTopDown">Top-Down RPG</button>
+              <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1); margin: 0 4px;"></span>
+              <span style="font-size: 11px; color: var(--muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Hardware:</span>
+              <button class="mini" type="button" id="btnGoalLocalFast">Local Fast</button>
+              <button class="mini" type="button" id="btnGoalLocalQuality">Local Quality</button>
+            </div>
+          </div>
+          <label>Character description<textarea name="character" rows="3">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette</textarea></label>
+          <div class="row">
+            <label>Action<select name="sprite_action"><option>idle</option><option selected>walk</option><option>run</option><option>attack_light</option><option>attack_heavy</option><option>cast</option><option>jump</option><option>hurt</option><option>death</option></select></label>
+            <label>Direction<select name="direction"><option>front</option><option selected>right</option><option>left</option><option>back</option><option>three_quarter</option></select></label>
+          </div>
+          <div class="row">
+            <label>Model tier<select name="tier"><option value="wan21_safe">Safe: Wan 2.1 1.3B</option><option selected value="wan22_5b">Better: Wan 2.2 TI2V 5B</option><option value="wan22_14b_cloud">Cloud only: Wan 2.2 14B</option></select></label>
+            <label>Profile<select name="profile"><option>auto</option><option>debug</option><option>rtx3060_12gb</option><option>sprite_fast</option><option>quality_local</option><option>wan22_5b_debug</option><option>wan22_5b_local</option><option selected>wan22_5b_3060_best</option><option>wan22_5b_quality</option><option>i2v_cloud_24gb_plus</option><option>pose_debug</option></select></label>
+          </div>
+          <div class="row">
+            <label>Seed<input name="seed" placeholder="-1 for random" /></label>
+            <label>FPS<input name="fps" value="12" placeholder="12" /></label>
+            <label>Cell size<select name="cell_size">
+              <option value="512x512" selected>512x512</option>
+              <option value="256x256">256x256</option>
+              <option value="128x128">128x128</option>
+              <option value="64x64">64x64</option>
+            </select></label>
+          </div>
+          <label>Style<input name="style" value="polished 2D game sprite, professional character design, crisp cel-shaded edges, consistent outfit, locked camera" /></label>
+          <label>Reference image<input name="reference_image" id="generationReferenceImage" placeholder="Optional uploaded character concept image path" /></label>
+          <label>Resolutions hierarchy (e.g. 0.5x,1x,2x)<input name="resolutions" placeholder="Optional. Example: 0.5x,1x,2x" /></label>
+          <label>Style Reference Image (IP-Adapter)<input name="style_image" id="generationStyleImage" placeholder="Optional uploaded style reference image path" /></label>
+          <label>Optional full prompt override<textarea name="prompt" rows="4" placeholder="Leave empty to use automatic sprite prompt builder."></textarea></label>
+          <label>Negative prompt<textarea name="negative" rows="3" placeholder="Optional. Example: camera movement, zoom, cuts, motion blur, extra limbs"></textarea></label>
+          
+          <details class="collapsible-section" style="margin-top: 12px; margin-bottom: 12px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);">
+            <summary style="cursor: pointer; font-weight: bold;">Advanced QA &amp; Defaults</summary>
+            <div class="row" style="margin-top:10px;">
+              <label>Loop RMSE Threshold
+                <input name="qa_threshold_loop_rmse" placeholder="15.0" />
+              </label>
+              <label>Foot Drift Threshold
+                <input name="qa_threshold_foot_drift" placeholder="2.0" />
+              </label>
+              <label>Center Drift Threshold
+                <input name="qa_threshold_center_drift" placeholder="5.0" />
+              </label>
+            </div>
+            <div class="row">
+              <label>Default Actions
+                <input name="default_actions" placeholder="idle,walk,run,jump,hurt" />
+              </label>
+              <label>Default Directions
+                <input name="default_directions" placeholder="left,right" />
+              </label>
+            </div>
+          </details>
+
+          <div class="switches">
+            <label class="switch"><input type="checkbox" name="start_comfy" checked /><span></span>Start ComfyUI if needed</label>
+            <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run quality check after conversion</label>
+          </div>
+          <div class="callout hidden" id="advisor-result"></div>
+          <div class="callout" id="modelProfileExplainer">
+            <b id="modelProfileExplainerTitle">Model/profile</b>
+            <span id="modelProfileExplainerBody">Checking selected generation profile...</span>
+          </div>
+          <div class="button-row form-actions-tight">
+            <button class="ghost" id="getAdvisorBtn" type="button">⚡ Get Recommendation</button>
+            <select id="advisorQuality">
+              <option value="fast">Draft (fast)</option>
+              <option value="balanced" selected>Balanced</option>
+              <option value="quality">High Quality</option>
+            </select>
+          </div>
+
+          <!-- Preflight Checklist (Feature 5) -->
+          <div class="preflight-checklist" id="generatePreflightContainer">
+            <h4>Preflight Checklist</h4>
+            <ul class="preflight-list">
+              <li id="check-comfy"><span class="check-icon">❓</span> ComfyUI online</li>
+              <li id="check-models"><span class="check-icon">❓</span> Model files found</li>
+              <li id="check-disk"><span class="check-icon">❓</span> Enough disk space</li>
+              <li id="check-output"><span class="check-icon">❓</span> Output folder ready</li>
+              <li id="check-job"><span class="check-icon">❓</span> No job currently running</li>
+            </ul>
+          </div>
+          <!-- Preflight Detailed Error Box -->
+          <div class="preflight-error-box hidden" id="generateErrorBox">
+            <p id="generateErrorMsg"></p>
+            <div class="error-actions" id="generateErrorActions"></div>
+            <details id="generateErrorDetails">
+              <summary>Show details</summary>
+              <pre id="generateErrorDebug"></pre>
+            </details>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button class="primary big" id="btnSubmitGenerate" type="submit" style="flex: 1;">Generate sprite</button>
+            <button class="ghost big" id="btnPreviewGenerate" type="button" style="flex: 1;">Preview Style (Fast)</button>
+          </div>
+        </form>
+        <div class="card preview-panel">
+          <h3>Sprite recipe</h3>
+          <div class="recipe">
+            <div><span>01</span><b>Prompt lock</b><small>single character, full body, locked camera</small></div>
+            <div><span>02</span><b>WAN render</b><small>short controlled video from ComfyUI</small></div>
+            <div><span>03</span><b>Extract</b><small>transparent/keyed frames</small></div>
+            <div><span>04</span><b>Stabilize</b><small>bottom-center anchor + loop cleanup</small></div>
+            <div><span>05</span><b>Export</b><small>sheet.png, sheet.json, GIF, report</small></div>
+          </div>
+          <div class="callout">Start with <b>Safe / Wan 2.1 + auto profile</b>. Add <b>Wan 2.2 5B</b> after the health check passes.</div>
+        </div>
+      </div>
+    </section>

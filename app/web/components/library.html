@@ -1,0 +1,45 @@
+<section class="view" id="view-library">
+      <div class="section-title"><p class="eyebrow">Reusable references</p><h2>Pose &amp; Reference Library</h2></div>
+      <div class="split library-layout">
+        <!-- Left: library form -->
+        <section class="card library-form-card">
+          <div class="card-head"><h3>Save Asset</h3></div>
+          <form id="libraryAssetForm" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+            <input type="hidden" id="libraryAssetId" />
+            <div>
+              <label>Title: <input type="text" id="libraryAssetTitle" required placeholder="Name this pose or character..." style="width:100%;" /></label>
+            </div>
+            <div>
+              <label>Category: 
+                <select id="libraryAssetCategory" style="width:100%;">
+                  <option value="pose">Reusable Pose / Silhouette</option>
+                  <option value="description">Character Description</option>
+                  <option value="palette">Color Palette Notes</option>
+                  <option value="recipe">Style Recipe</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <label>Content Text / Prompt Snippet: 
+                <textarea id="libraryAssetContent" rows="4" placeholder="Enter reference text, prompt snippet or styling instructions..." style="width:100%;" required></textarea>
+              </label>
+            </div>
+            <div>
+              <label>Upload Reference Video/Image: 
+                <input type="file" id="libraryAssetFile" style="width:100%;" />
+              </label>
+              <div id="libraryAssetFileStatus" style="font-size:11px; margin-top:4px; color:#00e5ff;"></div>
+            </div>
+            <button class="primary" type="submit">Save to Library</button>
+          </form>
+        </section>
+        
+        <!-- Right: library list -->
+        <section class="card library-list-card">
+          <div class="card-head"><h3>Project Reference Assets</h3><button class="mini" id="refreshLibrary" type="button">Refresh</button></div>
+          <div id="libraryGrid" class="library-grid">
+            <div class="empty">No assets saved in reference library yet.</div>
+          </div>
+        </section>
+      </div>
+    </section>

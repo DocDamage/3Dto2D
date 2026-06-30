@@ -1,0 +1,27 @@
+<section class="view" id="view-release">
+      <div class="section-title"><p class="eyebrow">Ship it</p><h2>Release Builder</h2></div>
+      <div class="grid-2">
+        <form class="card form" id="releaseForm">
+          <label>Release name<input name="name" value="hero_sprite_pack" /></label>
+          <label>Sprite folders<textarea name="sprites" id="releaseSprites" rows="10" placeholder="output\hero_idle_sprite&#10;output\hero_walk_sprite&#10;output\hero_attack_sprite"></textarea></label>
+          <div id="releasePrecheckWarnings" class="release-warnings hidden" style="margin-bottom: 12px; max-height: 200px; overflow-y: auto; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 13px;"></div>
+          <div class="switches" style="margin-bottom: 12px;">
+            <label class="switch"><input type="checkbox" id="releaseStrictCheckbox" name="strict" /><span></span>Block release on QA errors (Strict mode)</label>
+          </div>
+          <button class="primary big" type="submit">Build Release ZIP</button>
+        </form>
+        <section class="card">
+          <div class="card-head"><h3>Recent releases</h3><button class="mini" id="refreshReleases" type="button">Refresh</button></div>
+          <div id="releaseList" class="release-list">
+            <div class="empty compact">No releases found yet.</div>
+          </div>
+        </section>
+        <section class="card release-includes-card">
+          <h3>Release package includes</h3>
+          <div class="quality-grid">
+            <div>Spritesheets</div><div>sheet.json metadata</div><div>Preview GIFs</div><div>QA/preflight report</div><div>Godot/Unity notes</div><div>Manifest + README</div>
+          </div>
+          <div class="button-row"><button class="ghost" data-run="asset_dashboard">Build Asset Dashboard</button><button class="ghost" data-run="final_preflight">Build Preflight</button></div>
+        </section>
+      </div>
+    </section>

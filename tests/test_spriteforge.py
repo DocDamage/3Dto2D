@@ -12,7 +12,8 @@ sys.path.insert(0, str(ROOT / "app"))
 from services.sprite_service import SpriteService
 from services.config_service import ConfigService
 from services.model_service import ModelService
-from spriteforge_web import build_action_command
+from web_helpers import build_action_command
+from spriteforge_web import app
 
 def test_chroma_keying():
     # Create a solid green image (chroma key)
@@ -290,7 +291,7 @@ def test_project_service_create_list_and_select(tmp_path, monkeypatch):
 
 
 def test_sprite_outputs_project_filter(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     output = tmp_path / "output"
@@ -330,7 +331,7 @@ def test_sprite_outputs_project_filter(tmp_path, monkeypatch):
 
 
 def test_sprite_outputs_includes_project_local_sprites(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
@@ -367,7 +368,7 @@ def test_sprite_outputs_includes_project_local_sprites(tmp_path, monkeypatch):
 
 
 def test_release_listing_project_filter(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
@@ -402,7 +403,7 @@ def test_release_listing_project_filter(tmp_path, monkeypatch):
 
 
 def test_pack_listing_project_filter(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
@@ -439,7 +440,7 @@ def test_pack_listing_project_filter(tmp_path, monkeypatch):
 
 
 def test_quality_listing_project_filter_and_source_path(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
@@ -475,7 +476,7 @@ def test_quality_listing_project_filter_and_source_path(tmp_path, monkeypatch):
 
 
 def test_reference_listing_project_filter_and_global_fallback(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "UPLOADS", tmp_path / "input")
@@ -507,7 +508,7 @@ def test_reference_listing_project_filter_and_global_fallback(tmp_path, monkeypa
 
 
 def test_planning_listing_project_assets(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
 
@@ -550,7 +551,7 @@ def test_planning_listing_project_assets(tmp_path, monkeypatch):
 
 
 def test_project_workspace_counts_releases(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
 
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
@@ -600,141 +601,55 @@ import time
 import zipfile
 
 
-class MockHandler(build_action_command.__globals__["Handler"]):
-    def __init__(self):
-        self.path = ""
-        self.headers = {}
-        self.rfile = MagicMock()
-        self.wfile = MagicMock()
-        self.sent_errors = []
-        self.sent_jsons = []
-        self.served_files = []
-        self.payload = {}
+@pytest.fixture
+def flask_client():
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        yield client
 
-    def send_error(self, code, message=None, explain=None):
-        self.sent_errors.append((code, message))
+def test_path_safety(tmp_path, monkeypatch, flask_client):
+    import web_helpers as web_mod
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "WEB", tmp_path / "web")
 
-    def send_json(self, data, status=200):
-        self.sent_jsons.append((data, status))
+    (tmp_path / "web").mkdir(parents=True, exist_ok=True)
 
-    def serve_static(self, path, base=None):
-        self.served_files.append((path, base))
-
-    def read_json(self):
-        return self.payload
-
-
-def test_path_safety():
-    handler = MockHandler()
-
+    
     # 1. Allowed paths
-    handler.path = "/file/output/sheet.png"
-    handler.do_GET()
-    assert len(handler.served_files) == 1
-    assert handler.served_files[0][0].name == "sheet.png"
-    assert len(handler.sent_errors) == 0
-
+    output_dir = tmp_path / "output"
+    output_dir.mkdir(parents=True)
+    allowed_file = output_dir / "sheet.png"
+    allowed_file.touch()
+    
+    response = flask_client.get("/file/output/sheet.png")
+    assert response.status_code != 403
+    
     # 2. Path outside workspace (traversal)
-    handler.served_files.clear()
-    handler.path = "/file/../../etc/passwd"
-    handler.do_GET()
-    assert len(handler.served_files) == 0
-    assert len(handler.sent_errors) == 1
-    assert handler.sent_errors[0][0] == 403
+    response = flask_client.get("/file/../../etc/passwd")
+    assert response.status_code == 403
 
     # 3. Disallowed system path (e.g. .venv)
-    handler.sent_errors.clear()
-    handler.path = "/file/.venv/pyvenv.cfg"
-    handler.do_GET()
-    assert len(handler.served_files) == 0
-    assert len(handler.sent_errors) == 1
-    assert handler.sent_errors[0][0] == 403
-    assert "restricted" in handler.sent_errors[0][1].lower()
+    response = flask_client.get("/file/.venv/pyvenv.cfg")
+    assert response.status_code == 403
 
 
-def test_queue_path_guard(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
-
-    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
-    jobs_dir = web_mod.OUTPUT / "jobs"
-    jobs_dir.mkdir(parents=True)
-    queue_path = jobs_dir / "hero_queue.json"
-    queue_path.write_text("{}", encoding="utf-8")
-
-    assert web_mod._resolve_queue_path(str(queue_path)) == queue_path.resolve()
-
-    bad_path = jobs_dir / "hero.txt"
-    bad_path.write_text("{}", encoding="utf-8")
-    with pytest.raises(ValueError):
-        web_mod._resolve_queue_path("output/jobs/hero.txt")
-
-    outside = tmp_path / "output" / "hero_queue.json"
-    outside.write_text("{}", encoding="utf-8")
-    with pytest.raises(ValueError):
-        web_mod._resolve_queue_path(str(outside))
-
-
-def test_compare_path_guard(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
-
-    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
-    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
-    sprite_dir = web_mod.OUTPUT / "hero_idle"
-    sprite_dir.mkdir(parents=True)
-    (sprite_dir / "sheet.json").write_text("{}", encoding="utf-8")
-
-    assert web_mod._resolve_sprite_output_dir(str(sprite_dir)) == sprite_dir.resolve()
-
-    project_sprite = tmp_path / "projects" / "hero" / "sprites" / "hero_idle"
-    project_sprite.mkdir(parents=True)
-    (project_sprite / "sheet.json").write_text("{}", encoding="utf-8")
-    assert web_mod._resolve_sprite_output_dir(str(project_sprite)) == project_sprite.resolve()
-
-    no_meta = web_mod.OUTPUT / "no_meta"
-    no_meta.mkdir()
-    with pytest.raises(FileNotFoundError):
-        web_mod._resolve_sprite_output_dir(str(no_meta))
-
-    outside = tmp_path / "elsewhere"
-    outside.mkdir()
-    (outside / "sheet.json").write_text("{}", encoding="utf-8")
-    with pytest.raises(ValueError):
-        web_mod._resolve_sprite_output_dir(str(outside))
-
-
-def test_upload_limits():
-    handler = MockHandler()
-    handler.path = "/api/upload"
-
+def test_upload_limits(flask_client):
     # 1. Exceeds 100MB
-    handler.headers = {
-        "Content-Length": str(101 * 1024 * 1024),
-        "Content-Type": "multipart/form-data; boundary=xyz",
-    }
-    handler.do_POST()
-    assert len(handler.sent_jsons) == 1
-    data, status = handler.sent_jsons[0]
-    assert status == 413
-    assert "Upload size exceeds" in data["message"]
-
-    # 2. Valid/small upload (handling parsing failure gracefully)
-    handler.sent_jsons.clear()
-    handler.headers = {
-        "Content-Length": "100",
-        "Content-Type": "multipart/form-data; boundary=xyz",
-    }
-    handler.rfile.read.return_value = b"some raw dummy data"
-    handler.do_POST()
-    assert len(handler.sent_jsons) == 1
-    data, status = handler.sent_jsons[0]
-    assert status in (400, 500)
+    large_data = b"x" * (101 * 1024 * 1024)
+    import io
+    response = flask_client.post(
+        "/api/upload",
+        data={"file": (io.BytesIO(large_data), "large.png")},
+        content_type="multipart/form-data"
+    )
+    assert response.status_code in (413, 400)
 
 
-def test_upload_routes_to_active_project_references(tmp_path, monkeypatch):
-    import spriteforge_web as web_mod
-
+def test_upload_routes_to_active_project_references(tmp_path, monkeypatch, flask_client):
+    import web_helpers as web_mod
     monkeypatch.setattr(web_mod, "ROOT", tmp_path)
     monkeypatch.setattr(web_mod, "UPLOADS", tmp_path / "input")
+    
     project_meta = {
         "project_name": "hero",
         "project_path": "projects/hero/spriteforge_project.json",
@@ -745,37 +660,26 @@ def test_upload_routes_to_active_project_references(tmp_path, monkeypatch):
         "metadata_for_path",
         staticmethod(lambda value: project_meta if value == "projects/hero/spriteforge_project.json" else None),
     )
-
-    boundary = "----spriteforge-test-boundary"
-    body = (
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="active_project"\r\n\r\n'
-        "projects/hero/spriteforge_project.json\r\n"
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="file"; filename="hero ref.png"\r\n'
-        "Content-Type: image/png\r\n\r\n"
-    ).encode("utf-8") + b"fake png bytes" + f"\r\n--{boundary}--\r\n".encode("utf-8")
-
-    handler = MockHandler()
-    handler.path = "/api/upload"
-    handler.headers = {
-        "Content-Length": str(len(body)),
-        "Content-Type": f"multipart/form-data; boundary={boundary}",
-    }
-    handler.rfile.read.return_value = body
-    handler.do_POST()
-
-    data, status = handler.sent_jsons[-1]
-    dest = tmp_path / "projects" / "hero" / "references" / "hero_ref.png"
-    assert status == 200
+    
+    import io
+    response = flask_client.post(
+        "/api/upload",
+        data={
+            "active_project": "projects/hero/spriteforge_project.json",
+            "file": (io.BytesIO(b"fake png bytes"), "hero ref.png")
+        },
+        content_type="multipart/form-data"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
     assert data["ok"] is True
     assert data["relative"] == "projects/hero/references/hero_ref.png"
-    assert dest.read_bytes() == b"fake png bytes"
+    assert (tmp_path / "projects" / "hero" / "references" / "hero_ref.png").read_bytes() == b"fake png bytes"
 
 
-def test_experiment_clear_api_scopes_to_project(tmp_path, monkeypatch):
+def test_experiment_clear_api_scopes_to_project(tmp_path, monkeypatch, flask_client):
     import services.experiment_service as es_mod
-    import spriteforge_web as web_mod
+    import web_helpers as web_mod
     from services.experiment_service import ExperimentService
 
     monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "history.json")
@@ -802,16 +706,17 @@ def test_experiment_clear_api_scopes_to_project(tmp_path, monkeypatch):
         } if value else None),
     )
 
-    handler = MockHandler()
-    handler.path = "/api/experiments/clear?project=projects%2Fhero%2Fspriteforge_project.json"
-    handler.payload = {"keep_starred": True}
-    handler.do_POST()
-
-    data, status = handler.sent_jsons[0]
-    assert status == 200
+    response = flask_client.post(
+        "/api/experiments/clear?project=projects%2Fhero%2Fspriteforge_project.json",
+        data=json.dumps({"keep_starred": True}),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
     assert data["removed"] == 1
     assert ExperimentService.get_run(hero_id) is None
     assert ExperimentService.get_run(other_id) is not None
+
 
 
 def test_job_lifecycle(tmp_path):

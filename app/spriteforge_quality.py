@@ -26,12 +26,9 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from spriteforge_utils import natural_key
+
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
-
-
-def natural_key(path: Path) -> list:
-    import re
-    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path.name)]
 
 
 @dataclass
@@ -337,6 +334,13 @@ def quality_report(sprite_dir: Path, output: Optional[Path], fail_under: Optiona
     out.mkdir(parents=True, exist_ok=True)
     metrics = measure_frames(frames)
     summary = summarize(metrics, frames, meta)
+    
+    try:
+        from services.plugin_manager import PluginManager
+        PluginManager.trigger_hook("on_qa_check", sprite_dir=sprite_dir, report=summary)
+    except Exception:
+        pass
+
     (out / "quality_report.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     write_metrics_csv(out / "metrics.csv", metrics)
     make_contact_sheet(out / "quality_contact_sheet.png", frames, metrics)

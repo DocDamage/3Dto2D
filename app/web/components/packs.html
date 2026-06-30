@@ -1,0 +1,31 @@
+<section class="view" id="view-packs">
+      <div class="section-title"><p class="eyebrow">Production</p><h2>Packs & Atlas</h2></div>
+      <div class="grid-2">
+        <form class="card form" id="packForm">
+          <label>Character name<input name="name" value="hero" /></label>
+          <label>Description<textarea name="description" rows="3">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea></label>
+          <div class="row">
+            <label>Actions<input name="actions" value="idle,walk,run,attack_light,hurt" /></label>
+            <label>Directions<input name="directions" value="right" /></label>
+          </div>
+          <button class="primary big" type="submit">Create Character Pack</button>
+        </form>
+        <form class="card form" id="atlasForm">
+          <label>Atlas name<input name="name" value="hero" /></label>
+          <label>Sprite folders<textarea name="sprites" rows="8" placeholder="output\hero_idle_sprite&#10;output\hero_walk_sprite&#10;output\hero_attack_sprite"></textarea></label>
+          <button class="primary big" type="submit">Build Atlas</button>
+        </form>
+        <section class="card">
+          <div class="card-head"><h3>Recent packs</h3><button class="mini" id="refreshPacks" type="button">Refresh</button></div>
+          <div id="packList" class="release-list">
+            <div class="empty compact">No packs found yet.</div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head"><h3>Project planning</h3><button class="mini" id="refreshPlanning" type="button">Refresh</button></div>
+          <div id="planningList" class="release-list">
+            <div class="empty compact">No project prompts or posepacks found yet.</div>
+          </div>
+        </section>
+      </div>
+    </section>

@@ -70,6 +70,28 @@ class SpriteService:
             dark_border = SpriteService._border_connected_dark_mask(arr[:, :, :3])
             alpha_factor[dark_border] = 0.0
 
+        # Spill suppression on the color channels
+        r_k, g_k, b_k = rgb
+        spill_weight = np.clip(1.0 - alpha_factor, 0.0, 1.0)
+        if g_k > r_k and g_k > b_k:
+            r_chan = arr[:, :, 0]
+            g_chan = arr[:, :, 1]
+            b_chan = arr[:, :, 2]
+            spill = np.maximum(0.0, g_chan - np.maximum(r_chan, b_chan))
+            arr[:, :, 1] = g_chan - spill * spill_weight
+        elif b_k > r_k and b_k > g_k:
+            r_chan = arr[:, :, 0]
+            g_chan = arr[:, :, 1]
+            b_chan = arr[:, :, 2]
+            spill = np.maximum(0.0, b_chan - np.maximum(r_chan, g_chan))
+            arr[:, :, 2] = b_chan - spill * spill_weight
+        elif r_k > g_k and r_k > b_k:
+            r_chan = arr[:, :, 0]
+            g_chan = arr[:, :, 1]
+            b_chan = arr[:, :, 2]
+            spill = np.maximum(0.0, r_chan - np.maximum(g_chan, b_chan))
+            arr[:, :, 0] = r_chan - spill * spill_weight
+
         arr[:, :, 3] = arr[:, :, 3] * alpha_factor
         return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), mode="RGBA")
 
@@ -227,3 +249,65 @@ class SpriteService:
         out = Image.new("RGBA", img.size, (0, 0, 0, 0))
         out.alpha_composite(img, (dx, dy))
         return out
+
+    PICO8 = [
+        (0, 0, 0), (29, 43, 83), (126, 37, 83), (0, 135, 81),
+        (171, 82, 54), (95, 87, 79), (194, 195, 199), (255, 241, 232),
+        (255, 0, 77), (255, 163, 0), (255, 236, 39), (0, 228, 54),
+        (41, 173, 255), (131, 118, 156), (255, 119, 168), (255, 204, 170)
+    ]
+    GAMEBOY = [
+        (15, 56, 15), (48, 98, 48), (139, 172, 15), (155, 188, 15)
+    ]
+    NES_HEX = [
+        "7C7C7C", "0000FC", "0000BC", "4428BC", "940084", "A80020", "A81000", "881400",
+        "503000", "007800", "006800", "005800", "004058", "000000", "000000", "000000",
+        "BCBCBC", "0078F8", "0058F8", "6844FC", "D800CC", "E40058", "F83800", "E45C10",
+        "AC7C00", "00B800", "00A800", "00A844", "008888", "000000", "000000", "000000",
+        "F8F8F8", "3CBCFC", "6888FC", "9878FC", "F878F8", "F85898", "F87858", "FCA044",
+        "FCA800", "BCBC00", "B8F818", "58D854", "58F898", "00E8D8", "787878", "000000",
+        "FCFCFC", "A4E4FC", "B8B8F8", "D8B8F8", "F8B8F8", "F8A4C0", "F0D0B0", "FCE0A8",
+        "FCD8A8", "D8F8A8", "C8F8B8", "B8F8D8", "00FCFC", "F8D8F8", "000000", "000000"
+    ]
+    NES = [tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) for h in NES_HEX]
+
+    @staticmethod
+    def parse_palette(name_or_list: str) -> Optional[List[Tuple[int, int, int]]]:
+        if not name_or_list:
+            return None
+        cleaned = name_or_list.lower().strip()
+        if cleaned == "pico8":
+            return SpriteService.PICO8
+        if cleaned == "gameboy":
+            return SpriteService.GAMEBOY
+        if cleaned == "nes":
+            return SpriteService.NES
+        try:
+            colors = []
+            for item in cleaned.split(","):
+                item = item.strip().lstrip("#")
+                if len(item) == 6:
+                    colors.append((int(item[0:2], 16), int(item[2:4], 16), int(item[4:6], 16)))
+            if colors:
+                return colors
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def apply_palette_lock(img: Image.Image, palette: List[Tuple[int, int, int]]) -> Image.Image:
+        img = img.convert("RGBA")
+        arr = np.asarray(img).copy()
+        alpha = arr[:, :, 3]
+        visible = alpha > 0
+        if not np.any(visible):
+            return img
+        pixels = arr[visible, :3].astype(np.float32)
+        pal_arr = np.array(palette, dtype=np.float32)
+        pixels_sq = np.sum(pixels**2, axis=1, keepdims=True)
+        pal_sq = np.sum(pal_arr**2, axis=1, keepdims=True).T
+        dot = np.dot(pixels, pal_arr.T)
+        dists = pixels_sq - 2.0 * dot + pal_sq
+        nearest_indices = np.argmin(dists, axis=1)
+        arr[visible, :3] = pal_arr[nearest_indices].astype(np.uint8)
+        return Image.fromarray(arr, mode="RGBA")

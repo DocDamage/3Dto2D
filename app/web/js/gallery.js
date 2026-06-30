@@ -90,6 +90,75 @@ function makeSparkline(values, strokeColor) {
   return svg;
 }
 
+function makeTinySparkline(values, strokeColor) {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const width = 80;
+  const height = 18;
+  const coords = values.map((val, i) => {
+    const x = values.length > 1 ? (i / (values.length - 1)) * width : 0;
+    const y = height - 2 - ((val - min) / range) * (height - 4);
+    return `${x},${y}`;
+  }).join(' ');
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.style.verticalAlign = 'middle';
+  svg.style.marginLeft = '6px';
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', strokeColor);
+  line.setAttribute('stroke-width', '1.2');
+  line.setAttribute('points', coords);
+  svg.appendChild(line);
+  return svg;
+}
+
+function makeMultiLineChart(points) {
+  const width = 240;
+  const height = 40;
+  
+  const drifts = points.map(p => p.drift);
+  const seams = points.map(p => p.seam);
+  
+  const maxDrift = Math.max(...drifts, 1);
+  const maxSeam = Math.max(...seams, 1);
+  
+  const driftCoords = points.map((p, i) => {
+    const x = points.length > 1 ? (i / (points.length - 1)) * width : 0;
+    const y = height - 3 - (p.drift / maxDrift) * (height - 6);
+    return `${x},${y}`;
+  }).join(' ');
+  
+  const seamCoords = points.map((p, i) => {
+    const x = points.length > 1 ? (i / (points.length - 1)) * width : 0;
+    const y = height - 3 - (p.seam / maxSeam) * (height - 6);
+    return `${x},${y}`;
+  }).join(' ');
+  
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  
+  const driftLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  driftLine.setAttribute('fill', 'none');
+  driftLine.setAttribute('stroke', '#ffd166');
+  driftLine.setAttribute('stroke-width', '1.5');
+  driftLine.setAttribute('points', driftCoords);
+  svg.appendChild(driftLine);
+  
+  const seamLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  seamLine.setAttribute('fill', 'none');
+  seamLine.setAttribute('stroke', '#3498db');
+  seamLine.setAttribute('stroke-width', '1.5');
+  seamLine.setAttribute('points', seamCoords);
+  svg.appendChild(seamLine);
+  
+  return svg;
+}
+
+
 async function loadSpriteDetails(path) {
   if (!path) return;
   try {
@@ -153,6 +222,34 @@ async function loadSpriteDetails(path) {
         coverageContainer.textContent = 'No trend data';
       }
       
+      // Draw Version Quality Trend Chart
+      const trendContainer = $('#versionTrendChartContainer');
+      if (trendContainer) {
+        clearNode(trendContainer);
+        api(`/api/sprite/version/list?path=${encodeURIComponent(path)}`).then(vres => {
+          const versions = vres.versions || [];
+          if (versions.length > 0) {
+            const points = versions.map(v => {
+              const m = v.metrics || {};
+              return {
+                label: v.label || v.id,
+                drift: m.foot_y_stdev_px !== undefined ? m.foot_y_stdev_px : 0,
+                seam: m.loop_seam_rmse !== undefined ? m.loop_seam_rmse : 0
+              };
+            });
+            if (points.length > 1) {
+              trendContainer.appendChild(makeMultiLineChart(points));
+            } else {
+              setTextState(trendContainer, 'Snapshot history will show trend lines.', 'hint-text');
+            }
+          } else {
+            setTextState(trendContainer, 'No snapshots yet.', 'hint-text');
+          }
+        }).catch(err => {
+          setTextState(trendContainer, 'No snapshot history found.', 'hint-text');
+        });
+      }
+      
       // Populate dynamic alerts
       clearNode(issuesContainer);
       if (qa.issues && qa.issues.length > 0) {
@@ -172,8 +269,10 @@ async function loadSpriteDetails(path) {
       reportLink.textContent = '—';
       setTextState(driftContainer, 'No QA data', 'hint-text');
       setTextState(coverageContainer, 'No QA data', 'hint-text');
+      if ($('#versionTrendChartContainer')) setTextState($('#versionTrendChartContainer'), 'No QA data', 'hint-text');
       setTextState(issuesContainer, 'Run QA Report to analyze', 'hint-text');
     }
+
     
     // Check for sibling fixed/original folder for side-by-side comparison
     let siblingPath = '';

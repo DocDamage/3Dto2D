@@ -1,0 +1,49 @@
+<section class="view" id="view-queues">
+      <div class="section-title"><p class="eyebrow">Batch production</p><h2>Queue Monitor</h2></div>
+      <div class="split queue-layout">
+        <!-- Left: queue list -->
+        <section class="card queue-list-card">
+          <div class="card-head"><h3>Queues</h3><button class="mini" id="refreshQueues">Refresh</button></div>
+          <div id="queueList" class="queue-list">
+            <div class="empty compact">No queues found. Create one in Queue Builder.</div>
+          </div>
+        </section>
+        <!-- Right: selected queue detail -->
+        <section class="card queue-detail-card">
+          <div class="card-head">
+            <h3 id="queueDetailName">Select a queue</h3>
+            <div class="button-row">
+              <button class="ghost mini" id="queueRunBtn" disabled>▶ Resume failed queue</button>
+              <button class="ghost mini" id="queueRetryBtn" disabled>↺ Retry only failed items</button>
+              <button class="ghost mini danger" id="queueResetBtn" disabled>Cancel current job</button>
+            </div>
+          </div>
+          
+          <div class="queue-operations-bar button-row compact-actions" style="margin: 8px 12px; display: flex; align-items: center; justify-content: space-between;">
+            <button class="mini primary" id="queueRunSelectedBtn" disabled>▶ Run Selected</button>
+            <div id="queueEstimates" style="font-size: 12px; color: #aab8d3;"></div>
+          </div>
+
+          <div class="table-scroll">
+            <table id="queueDetailTable" class="data-table queue-table">
+              <thead>
+                <tr>
+                  <th style="width: 30px;"><input type="checkbox" id="queueSelectAllJobs" /></th>
+                  <th>ID</th>
+                  <th>Action</th>
+                  <th>Dir</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Exit</th>
+                  <th>Reason</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="queueDetailBody">
+                <tr><td colspan="9" class="empty-cell">No queue selected.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>

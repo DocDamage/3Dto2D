@@ -27,12 +27,10 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
+from spriteforge_utils import natural_key
+
 ROOT = Path(__file__).resolve().parent
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
-
-
-def natural_key(path: Path) -> list:
-    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path.name)]
 
 
 def ensure_dir(path: Path) -> None:

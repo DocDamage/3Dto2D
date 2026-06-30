@@ -1,0 +1,258 @@
+<section class="view" id="view-quality">
+      <div class="section-title"><p class="eyebrow">QA and repair</p><h2>Quality Lab</h2></div>
+      <div class="grid-2">
+        <form class="card form" id="qualityForm">
+          <label>Sprite output folder<input name="sprite_dir" id="qualitySpriteDir" placeholder="output\hero_walk_sprite" /></label>
+          <div class="row">
+            <label>Loop blend frames<input class="short-number" name="blend_loop_frames" type="number" min="0" max="24" value="3" /></label>
+          </div>
+          
+          <details class="collapsible-section" style="margin-top:12px; margin-bottom:12px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);">
+            <summary style="cursor: pointer; font-weight: bold;">Engine Export Profile Settings</summary>
+            <div class="row" style="margin-top:10px;">
+              <label>Naming Convention
+                <select name="export_naming">
+                  <option value="default" selected>Default (sprite_name)</option>
+                  <option value="prefix">Prefix (sheet_name)</option>
+                  <option value="suffix">Suffix (name_sheet)</option>
+                </select>
+              </label>
+              <label>Pivot Mode
+                <select name="export_pivot">
+                  <option value="bottom-center" selected>Bottom Center</option>
+                  <option value="center">Center</option>
+                  <option value="custom">Custom (defined in frames)</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Pixels Per Unit (Unity)
+                <input name="export_ppu" value="100" placeholder="100" />
+              </label>
+              <label>Texture Filtering
+                <select name="export_filter">
+                  <option value="nearest" selected>Nearest / Point</option>
+                  <option value="linear">Linear / Bilinear</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Loop Flag
+                <select name="export_loop_flag">
+                  <option value="true" selected>True (Looping)</option>
+                  <option value="false">False (One-Shot)</option>
+                </select>
+              </label>
+              <label>Animation Clip Name
+                <input name="export_clip_name" placeholder="Leave empty for auto" />
+              </label>
+            </div>
+            <label>Custom Import Subpath
+              <input name="export_import_path" placeholder="e.g. Assets/Sprites" />
+            </label>
+          </details>
+
+          <div class="button-row">
+            <button class="primary" data-quality="qa" type="button">Run quality check</button>
+            <button class="ghost" data-quality="fix" type="button">Auto-Fix</button>
+            <button class="ghost" data-quality="godot" type="button">Export to Godot</button>
+            <button class="ghost" data-quality="unity" type="button">Export to Unity</button>
+            <button class="ghost" data-quality="unreal" type="button">Export to Unreal</button>
+            <button class="ghost" data-quality="validate" type="button">Validate Export</button>
+            <button class="ghost" id="compareBtn" type="button">Compare…</button>
+          </div>
+          <div id="compare-section" class="compare-section hidden">
+            <label>Compare A (current)<input id="compareA" readonly /></label>
+            <label>Compare B<input id="compareB" placeholder="output\hero_idle_right_v2" /></label>
+            <button class="ghost" id="runCompareBtn" type="button">Run Compare &amp; Open Report</button>
+          </div>
+        </form>
+        <section class="card">
+          <h3>What QA catches</h3>
+          <div class="quality-grid">
+            <div>Foot jitter</div><div>Loop seam pops</div><div>Duplicate frames</div><div>Blank frames</div><div>Alpha halos</div><div>Center drift</div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head"><h3>Recent QA</h3><button class="mini" id="refreshQuality" type="button">Refresh</button></div>
+          <div id="qualityList" class="release-list">
+            <div class="empty compact">No QA reports found yet.</div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card glow inspector-card" id="inspector-card">
+        <h3>Visual Sprite Inspector</h3>
+        <p class="description">Select a sprite, then scrub frames, inspect pivots, and check transparency overlays.</p>
+        <div class="inspector-layout">
+          <!-- Left side: canvas display -->
+          <div class="inspector-stage">
+            <div id="inspector-canvas-container" class="inspector-canvas-container checkerboard" style="position: relative;">
+              <img id="inspector-img" class="inspector-img" />
+              <img id="inspector-img-compare" class="inspector-img comparison-overlay hidden" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 11; pointer-events: none; opacity: 0.5;" />
+              <!-- overlays -->
+              <div id="overlay-y" class="inspector-overlay overlay-y"></div>
+              <div id="overlay-x" class="inspector-overlay overlay-x"></div>
+            </div>
+            <div class="frame-control">
+              <span>Frame:</span>
+              <input type="range" id="frameScrubber" min="0" max="0" value="0" />
+              <span id="frameScrubberLabel">0 / 0</span>
+            </div>
+          </div>
+          <!-- Right side: controls -->
+          <div class="inspector-controls">
+            <div>
+              <label class="switch"><input type="checkbox" id="toggleCheckerboard" checked /><span></span>Alpha Checkerboard</label>
+            </div>
+            <div>
+              <label class="switch"><input type="checkbox" id="toggleAnchorOverlay" /><span></span>Show Anchor Overlay</label>
+            </div>
+            <div>
+              <label class="switch"><input type="checkbox" id="toggleBBoxOverlay" /><span></span>Show Bounding Box</label>
+            </div>
+            <div>
+              <label class="switch"><input type="checkbox" id="toggleCompareSibling" /><span></span>Compare Before/After</label>
+            </div>
+            
+            <!-- On-Canvas Comparison & Versioning -->
+            <div class="inspector-versioning-box" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1); margin-top: 12px; margin-bottom: 12px;">
+              <p class="eyebrow" style="margin-bottom: 8px;">Version Control &amp; Comparison</p>
+              <div style="margin-bottom: 8px;">
+                <label style="font-size:11px; display:block; margin-bottom:4px;">Active Version:</label>
+                <select id="inspectActiveVersion" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:4px; border-radius:4px;">
+                  <option value="current">Current Working Copy</option>
+                </select>
+              </div>
+              <div class="button-row compact-actions" style="margin-bottom: 8px; display:flex; gap:4px;">
+                <button class="mini" id="inspectSaveSnapshotBtn" type="button">📸 Snapshot</button>
+                <button class="mini danger" id="inspectRollbackBtn" type="button" disabled>↺ Rollback</button>
+              </div>
+              <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; margin-top: 6px;">
+                <label style="display:inline-flex; align-items:center; gap:4px; font-size:11px; margin-bottom:4px; cursor:pointer;">
+                  <input type="checkbox" id="inspectCompareEnable" /> Compare with snapshot:
+                </label>
+                <select id="inspectCompareVersion" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:4px; border-radius:4px; margin-bottom:6px;" disabled>
+                  <option value="">Choose snapshot...</option>
+                </select>
+                <div id="inspectCompareBlendControls" class="hidden">
+                  <label style="font-size:11px; display:block; margin-bottom:4px;">Blend Mode:
+                    <select id="inspectCompareMode" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:4px; border-radius:4px;">
+                      <option value="overlay">Alpha Blend Overlay</option>
+                      <option value="sidebyside">Side-by-Side (Split)</option>
+                    </select>
+                  </label>
+                  <label style="font-size:11px; display:block; margin-top:4px;">Overlay Opacity:
+                    <input type="range" id="inspectCompareOpacity" min="0" max="1" step="0.05" value="0.5" style="width:100%;" />
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <div class="inspector-edit-toolbox" style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1); margin-top: 12px; margin-bottom: 12px;">
+              <p class="eyebrow" style="margin-bottom: 8px;">Frame Playback &amp; Edit Tools</p>
+              <div class="button-row compact-actions" style="margin-bottom: 8px;">
+                <button class="mini primary" id="inspectPlayBtn" type="button">▶ Play</button>
+                <label style="display:inline-flex; align-items:center; gap:4px; font-size:12px;">FPS: 
+                  <input type="number" id="inspectPlayFps" value="12" style="width:45px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:2px;" min="1" max="60" />
+                </label>
+              </div>
+              <div class="button-row compact-actions" style="margin-bottom: 8px; display:flex; flex-wrap:wrap; gap:4px;">
+                <button class="mini danger" id="inspectDeleteFrameBtn" type="button" title="Delete current frame">❌ Delete</button>
+                <button class="mini" id="inspectHoldFrameBtn" type="button" title="Hold Frame (Duplicate)">⏱️ Hold</button>
+                <button class="mini" id="inspectTrimStartBtn" type="button" title="Trim all frames before current">✂️ Trim Start</button>
+                <button class="mini" id="inspectTrimEndBtn" type="button" title="Trim all frames after current">✂️ Trim End</button>
+                <button class="mini" id="inspectReorderFrameBtn" type="button" title="Move frame position">⇅ Reorder</button>
+              </div>
+              <div class="button-row compact-actions" style="margin-bottom: 8px;">
+                <button class="mini primary" id="inspectSavePackBtn" type="button" style="width: 100%;">⚙️ Apply Edits &amp; Repack Sheet</button>
+              </div>
+              <div class="inspector-quick-repairs" style="margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+                <span style="font-size:11px; color:#a9b7d0; display:block; margin-bottom:4px;">One-Click Quick Repairs:</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                  <button type="button" class="mini" id="labRepairCleanBtn" title="Solidify alpha boundaries">🧽 Clean BG</button>
+                  <button type="button" class="mini" id="labRepairStabilizeBtn" title="Anchor character baseline">👣 Stabilize Feet</button>
+                  <button type="button" class="mini" id="labRepairSeamBtn" title="Blend loop boundaries">🔄 Fix Seam</button>
+                  <button type="button" class="mini" id="labRepairFlickerBtn" title="Reduce global luminance flicker">💡 Reduce Flicker</button>
+                  <button type="button" class="mini" id="labRepairSharpenBtn" title="Sharpen character borders">✨ Sharpen</button>
+                  <button type="button" class="mini" id="labRepairPreviewBtn" title="Recompile preview and sheet">🖼 Rebuild GIF</button>
+                </div>
+              </div>
+              <div class="alignment-nudge-section" style="margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+                <span style="font-size:11px; color:#a9b7d0; display:block; margin-bottom:4px;">Nudge Frame Offset:</span>
+                <div class="nudge-grid" style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                  <button type="button" class="mini" id="nudgeUpBtn" style="padding:2px 8px;">▲</button>
+                  <div class="nudge-mid-row" style="display:flex; gap:6px;">
+                    <button type="button" class="mini" id="nudgeLeftBtn" style="padding:2px 8px;">◀</button>
+                    <button type="button" class="mini" id="nudgeRightBtn" style="padding:2px 8px;">▶</button>
+                  </div>
+                  <button type="button" class="mini" id="nudgeDownBtn" style="padding:2px 8px;">▼</button>
+                </div>
+              </div>
+              <div class="undo-redo-section" style="margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; display: flex; gap: 4px; justify-content: center;">
+                <button type="button" class="mini" id="inspectUndoBtn" title="Undo frame edit (Ctrl+Z)" disabled>↩ Undo</button>
+                <button type="button" class="mini" id="inspectRedoBtn" title="Redo frame edit (Ctrl+Y)" disabled>↪ Redo</button>
+              </div>
+              <div class="pivot-edit-section" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+                <span style="font-size:11px; color:#a9b7d0; display:block; margin-bottom:4px;">Custom Frame Pivot:</span>
+                <div class="row compact-fields" style="gap:4px; margin-bottom:4px;">
+                  <label style="font-size:11px;">X: <input type="number" id="pivotXInput" class="short-number" style="width:50px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:2px;" /></label>
+                  <label style="font-size:11px;">Y: <input type="number" id="pivotYInput" class="short-number" style="width:50px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:2px;" /></label>
+                </div>
+                <button type="button" class="mini" id="applyPivotAllBtn" style="width:100%;">Apply to All Frames</button>
+              </div>
+              <button class="primary" id="saveSpriteMetadataBtn" style="margin-top:10px; width:100%;" type="button">💾 Save Adjusted Metadata</button>
+            </div>
+
+            <!-- Result Review with Objective Metrics (Requirement 11) -->
+            <div class="objective-metrics-grid">
+              <div class="objective-metric-card">
+                <span>Frames</span>
+                <b id="obj-metric-frames">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Framerate</span>
+                <b id="obj-metric-fps">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Loop Score</span>
+                <b id="obj-metric-loop">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Foot Drift</span>
+                <b id="obj-metric-drift">—</b>
+              </div>
+              <div class="objective-metric-card">
+                <span>Export</span>
+                <b id="obj-metric-export">—</b>
+              </div>
+            </div>
+
+            <div class="metric-list compact-metrics">
+              <div><b>Selected Folder</b><span id="inspect-folder-name" class="breakable">None</span></div>
+              <div><b>Width x Height</b><span id="inspect-dimensions">—</span></div>
+              <div><b>Frame Count</b><span id="inspect-frames-count">—</span></div>
+              <div><b>Loop Seam RMSE</b><span id="inspect-loop-rmse">—</span></div>
+              <div><b>Foot Drift Stdev</b><span id="inspect-foot-stdev">—</span></div>
+              <div><b>QA Report</b><span id="inspect-report-link">—</span></div>
+            </div>
+            <div class="mini-chart">
+              <h4>Foot Anchor Drift Trend</h4>
+              <div id="driftChartContainer" class="mini-chart-body"></div>
+            </div>
+            <div class="mini-chart">
+              <h4>Alpha Coverage Trend</h4>
+              <div id="coverageChartContainer" class="mini-chart-body"></div>
+            </div>
+            <div class="mini-chart">
+              <h4>Version Quality Trend (Seam:Blue, Drift:Yellow)</h4>
+              <div id="versionTrendChartContainer" class="mini-chart-body"></div>
+            </div>
+            <div class="mini-chart">
+              <h4>QA Alerts</h4>
+              <div id="inspect-issues" class="issue-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>

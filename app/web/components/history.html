@@ -1,0 +1,54 @@
+<section class="view" id="view-history">
+      <div class="section-title"><p class="eyebrow">What worked?</p><h2>Experiment History</h2></div>
+      <div class="card table-card">
+        <div class="card-head table-card-head">
+          <h3>Generation runs</h3>
+          <div class="button-row compact-actions">
+            <button class="mini" id="refreshHistory" type="button">Refresh</button>
+            <button class="mini" id="exportHistory" type="button">Export JSON</button>
+            <button class="mini danger" id="clearHistory" type="button">Clear Unstarred</button>
+          </div>
+        </div>
+        
+        <div class="filter-row" style="display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; align-items: center;">
+          <label>Action: <input id="historyFilterAction" placeholder="e.g. walk" style="width: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px 4px; border-radius: 4px;" /></label>
+          <label>Direction: <input id="historyFilterDirection" placeholder="e.g. right" style="width: 80px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px 4px; border-radius: 4px;" /></label>
+          <label>Tier: <select id="historyFilterTier" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px; border-radius: 4px;">
+            <option value="">All Tiers</option>
+            <option value="wan21_safe">Wan 2.1</option>
+            <option value="wan22_5b">Wan 2.2</option>
+          </select></label>
+          <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" id="historyFilterStarred" /> Starred only</label>
+          <label>Sort by: <select id="historySortBy" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 2px; border-radius: 4px;">
+            <option value="time_desc">Time (Newest)</option>
+            <option value="time_asc">Time (Oldest)</option>
+            <option value="qa_desc">QA Score (High)</option>
+            <option value="qa_asc">QA Score (Low)</option>
+          </select></label>
+          <button class="mini primary" id="historyCompareBtn" type="button" disabled style="margin-left: auto;">Compare Selected (0)</button>
+        </div>
+
+        <div class="table-scroll">
+          <table id="historyTable" class="data-table history-table">
+            <thead>
+              <tr>
+                <th>Compare</th>
+                <th>Keep</th>
+                <th>Time</th>
+                <th>Project</th>
+                <th>Action</th>
+                <th>Dir</th>
+                <th>Tier</th>
+                <th>Profile</th>
+                <th>QA</th>
+                <th>Output</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="11" class="empty-cell">No generation history yet. Run a sprite job to see it here.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>

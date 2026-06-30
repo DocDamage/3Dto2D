@@ -15,21 +15,13 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from spriteforge_utils import natural_key, load_meta
+
 IMAGE_EXTS = {'.png','.jpg','.jpeg','.webp','.bmp'}
 
 # ---------------------------------------------------------------------------
 # Helpers shared with other modules
 # ---------------------------------------------------------------------------
-
-def natural_key(path: Path) -> list:
-    return [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', path.name)]
-
-
-def load_meta(sprite_dir: Path) -> Dict[str, Any]:
-    p = sprite_dir / 'sheet.json'
-    if not p.exists():
-        raise FileNotFoundError(p)
-    return json.loads(p.read_text(encoding='utf-8'))
 
 
 def load_frames(sprite_dir: Path) -> List[Image.Image]:

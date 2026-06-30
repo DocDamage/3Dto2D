@@ -474,6 +474,142 @@ cell = {meta.get('frame_width')}x{meta.get('frame_height')}
     return dest
 
 
+def export_unreal(
+    sprite_dir: Path,
+    output: Optional[Path] = None,
+    project: Optional[Path] = None,
+    name: Optional[str] = None,
+    naming_convention: str = "default",
+    pivot_mode: str = "bottom-center",
+    ppu: int = 100,
+    filter_mode: str = "nearest",
+    loop_flag: bool = True,
+    clip_name: Optional[str] = None,
+) -> Path:
+    meta_path = sprite_dir / "sheet.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    sprite_name = name or safe_name(sprite_dir.name)
+    
+    if output:
+        dest = output
+    elif project:
+        dest = project / "Content" / "SpriteForge" / sprite_name
+    else:
+        dest = sprite_dir / "unreal_export"
+        
+    dest.mkdir(parents=True, exist_ok=True)
+    
+    sheet_png = sprite_dir / meta.get("image", "sheet.png")
+    if not sheet_png.exists():
+        sheet_png = sprite_dir / "sheet.png"
+    shutil.copy2(sheet_png, dest / "sheet.png")
+    shutil.copy2(meta_path, dest / "sheet.json")
+    
+    py_code = f'''# Unreal Engine 4/5 Editor Python script to import and slice SpriteForge spritesheet
+import os
+import json
+import unreal
+
+def import_and_slice():
+    texture_path = os.path.join(os.path.dirname(__file__), "sheet.png")
+    json_path = os.path.join(os.path.dirname(__file__), "sheet.json")
+    
+    if not os.path.exists(texture_path) or not os.path.exists(json_path):
+        unreal.log_error("Could not find sheet.png or sheet.json in the script directory.")
+        return
+        
+    with open(json_path, 'r', encoding='utf-8') as f:
+        meta = json.load(f)
+        
+    sprite_name = "{sprite_name}"
+    fps = meta.get("fps", 12.0)
+    
+    destination_path = "/Game/SpriteForge/" + sprite_name
+    
+    # 1. Import Texture
+    asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
+    import_tasks = []
+    
+    task = unreal.AssetImportTask()
+    task.filename = os.path.abspath(texture_path)
+    task.destination_path = destination_path
+    task.destination_name = "T_" + sprite_name
+    task.replace_existing = True
+    task.automated = True
+    task.save = True
+    
+    import_tasks.append(task)
+    asset_tools.import_asset_tasks(import_tasks)
+    
+    texture = unreal.EditorAssetLibrary.load_asset(destination_path + "/T_" + sprite_name)
+    if not texture:
+        unreal.log_error("Failed to load imported texture!")
+        return
+        
+    texture.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_EDITOR_ICON)
+    texture.set_editor_property("filter", unreal.TextureFilter.TF_NEAREST)
+    texture.set_editor_property("mip_gen_settings", unreal.TextureMipGenSettings.TMGS_NO_MIPMAPS)
+    unreal.EditorAssetLibrary.save_loaded_asset(texture)
+    
+    # 2. Slice Sprites using PaperSpriteFactory
+    factory = unreal.PaperSpriteFactory()
+    sprites = []
+    
+    frames = sorted(meta.get("frames", []), key=lambda f: f.get("index", 0))
+    for i, frame in enumerate(frames):
+        sprite_asset_name = f"S_{{sprite_name}}_{{i:03d}}"
+        
+        sprite = asset_tools.create_asset(sprite_asset_name, destination_path, unreal.PaperSprite, factory)
+        if sprite:
+            sprite.set_source_texture(texture)
+            sprite.set_source_rect_coordinates(frame["x"], frame["y"], frame["w"], frame["h"])
+            unreal.EditorAssetLibrary.save_loaded_asset(sprite)
+            sprites.append(sprite)
+            
+    # 3. Create Flipbook using PaperFlipbookFactory
+    if sprites:
+        flipbook_factory = unreal.PaperFlipbookFactory()
+        flipbook_name = f"FB_{{sprite_name}}"
+        flipbook = asset_tools.create_asset(flipbook_name, destination_path, unreal.PaperFlipbook, flipbook_factory)
+        if flipbook:
+            flipbook.set_editor_property("frames_per_second", fps)
+            for sprite in sprites:
+                keyframe = unreal.PaperFlipbookKeyFrame()
+                keyframe.set_editor_property("sprite", sprite)
+                keyframe.set_editor_property("frame_run", 1)
+                flipbook.add_key_frame(keyframe)
+            unreal.EditorAssetLibrary.save_loaded_asset(flipbook)
+            unreal.log(f"Successfully created Paper2D Flipbook: {{flipbook_name}}")
+
+if __name__ == "__main__":
+    import_and_slice()
+'''
+    (dest / "unreal_import_helper.py").write_text(py_code, encoding="utf-8")
+    
+    helper_path_str = str(dest / "unreal_import_helper.py").replace("\\", "/")
+    notes = f'''# Unreal Engine Import Notes
+
+Generated files:
+- `sheet.png`
+- `sheet.json`
+- `unreal_import_helper.py`
+
+Steps inside Unreal Engine:
+
+1. Enable the **Python Editor Script Plugin** and the **Paper2D Plugin** in Unreal Engine (`Edit > Plugins`).
+2. Copy this folder into your Unreal Engine project's root folder or content directories.
+3. Open Unreal Engine's Python Developer Console or the **Output Log** panel.
+4. Run the helper Python script using Unreal's script execution mechanism:
+   ```text
+   py "{helper_path_str}"
+   ```
+5. The script will automatically import `sheet.png` into `/Game/SpriteForge/{sprite_name}/`, configure it with Pixel/Nearest point filtering, slice the texture into individual PaperSprite assets based on `sheet.json`, and compile them into a Paper2D Flipbook named `FB_{sprite_name}` ready to use in your Paper2D game!
+'''
+
+    (dest / "UNREAL_IMPORT_NOTES.md").write_text(notes, encoding="utf-8")
+    return dest
+
+
 def cmd_export(args: argparse.Namespace) -> None:
     sprite_dir = Path(args.sprite_dir).resolve()
     output = Path(args.output).resolve() if args.output else None
@@ -490,7 +626,7 @@ def cmd_export(args: argparse.Namespace) -> None:
             loop_flag=loop_bool,
             clip_name=getattr(args, "clip_name", None)
         )
-    else:
+    elif args.engine == "unity":
         dest = export_unity(
             sprite_dir, output, project, args.name,
             naming_convention=getattr(args, "naming_convention", "default"),
@@ -500,7 +636,23 @@ def cmd_export(args: argparse.Namespace) -> None:
             loop_flag=loop_bool,
             clip_name=getattr(args, "clip_name", None)
         )
+    else:
+        dest = export_unreal(
+            sprite_dir, output, project, args.name,
+            naming_convention=getattr(args, "naming_convention", "default"),
+            pivot_mode=getattr(args, "pivot_mode", "bottom-center"),
+            ppu=getattr(args, "ppu", 100),
+            filter_mode=getattr(args, "filter_mode", "nearest"),
+            loop_flag=loop_bool,
+            clip_name=getattr(args, "clip_name", None)
+        )
     print(f"Exported {args.engine} helper files: {dest}")
+    
+    try:
+        from services.plugin_manager import PluginManager
+        PluginManager.trigger_hook("on_export_engine", sprite_dir=sprite_dir, engine=args.engine, dest=dest)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -686,6 +838,39 @@ def validate_export(
             if not has_pivot:
                 all_ok = False
 
+    elif engine == "unreal":
+        py_files = list(sprite_dir.glob("*.py")) + list(sprite_dir.glob("unreal_export/*.py"))
+        py_helper_present = any("unreal_import_helper.py" in f.name for f in py_files)
+        r = _check("Unreal Python helper present", py_helper_present,
+                   f"found: {[f.name for f in py_files]}" if py_files else "no .py file found")
+        results.append(r)
+        if not r["ok"]:
+            all_ok = False
+
+        notes_files = list(sprite_dir.glob("*.md")) + list(sprite_dir.glob("unreal_export/*.md"))
+        notes_present = any("UNREAL_IMPORT_NOTES.md" in f.name for f in notes_files)
+        r = _check("Unreal import notes present", notes_present,
+                   f"found: {[f.name for f in notes_files]}" if notes_files else "no .md notes found")
+        results.append(r)
+        if not r["ok"]:
+            all_ok = False
+
+        if py_helper_present:
+            helper_file = next(f for f in py_files if "unreal_import_helper.py" in f.name)
+            py_text = helper_file.read_text(encoding="utf-8", errors="replace")
+            
+            has_import = "import_and_slice" in py_text
+            r = _check("Unreal helper contains import logic", has_import)
+            results.append(r)
+            if not has_import:
+                all_ok = False
+                
+            has_paper = "PaperSpriteFactory" in py_text or "PaperFlipbookFactory" in py_text
+            r = _check("Unreal helper contains Paper2D factory references", has_paper)
+            results.append(r)
+            if not has_paper:
+                all_ok = False
+
     # --- 6. Release zip checks ---
     if release_zip and Path(release_zip).exists():
         import zipfile as _zf
@@ -734,7 +919,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = p.add_subparsers(dest="command", required=True)
     e = s.add_parser("export")
     e.add_argument("--sprite-dir", required=True, help="Folder containing sheet.png and sheet.json")
-    e.add_argument("--engine", required=True, choices=["godot", "unity"])
+    e.add_argument("--engine", required=True, choices=["godot", "unity", "unreal"])
     e.add_argument("--output", default=None, help="Output folder. Defaults inside the project or sprite_dir.")
     e.add_argument("--project", default=None, help="Godot or Unity project root")
     e.add_argument("--name", default=None)
@@ -750,7 +935,7 @@ def build_parser() -> argparse.ArgumentParser:
     e.set_defaults(func=cmd_export)
     v = s.add_parser("validate", help="Validate export files for correctness")
     v.add_argument("--sprite-dir", required=True, help="Sprite output folder")
-    v.add_argument("--engine", default=None, choices=["godot", "unity"], help="Engine to check engine-specific files")
+    v.add_argument("--engine", default=None, choices=["godot", "unity", "unreal"], help="Engine to check engine-specific files")
     v.add_argument("--release-zip", default=None, help="Release zip to check for completeness")
     v.set_defaults(func=cmd_validate)
     return p

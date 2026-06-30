@@ -1,0 +1,91 @@
+<section class="view" id="view-tasks">
+      <div class="section-title">
+        <p class="eyebrow">Task Dashboard</p>
+        <h2>Task Center</h2>
+      </div>
+      
+      <!-- Active Job Card -->
+      <div class="card glow" id="activeTaskCard" style="margin-bottom: 24px; padding: 20px;">
+        <div class="card-head" style="margin-bottom: 16px;">
+          <h3 style="margin: 0; font-size: 18px;">Active Process</h3>
+          <span class="badge" id="activeTaskState">idle</span>
+        </div>
+        <div id="activeTaskRunningArea" class="hidden">
+          <h4 id="activeTaskTitle" style="margin: 0 0 8px 0; font-size: 16px; color: var(--accent);">No task running</h4>
+          <div class="progressbar" style="height: 12px; margin-bottom: 12px;"><i id="activeTaskProgressFill" style="width: 0%;"></i></div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+            <span id="activeTaskProgressPct">0%</span>
+            <span id="activeTaskTimeState">⏱ Checking...</span>
+          </div>
+          
+          <!-- Failure Recovery Advisor inside Active Area -->
+          <div id="activeRecoveryAdvisor" class="callout hidden" style="margin-bottom: 16px; border: 1px solid rgba(255,85,85,0.3); background: rgba(255,85,85,0.05);">
+            <h4 style="margin: 0 0 6px 0; color: #ff5555;">⚡ Failure Recovery Advisor</h4>
+            <p id="activeRecoveryMessage" style="margin: 0 0 10px 0; font-size: 13px;"></p>
+            <div id="activeRecoveryActions" class="button-row"></div>
+          </div>
+          
+          <pre class="terminal" id="activeTaskTerminal" style="height: 180px; font-size: 11px; margin-bottom: 12px; padding: 12px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;"></pre>
+          <div class="button-row">
+            <button class="mini danger" id="activeTaskCancelBtn" type="button">Cancel Task</button>
+            <button class="mini" id="activeTaskCopyLogsBtn" type="button">Copy Logs</button>
+            <button class="mini primary hidden" id="activeTaskInspectBtn" type="button">Inspect Output</button>
+          </div>
+        </div>
+        <div id="activeTaskIdleArea" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+          <span style="font-size: 32px; display: block; margin-bottom: 12px;">💤</span>
+          <b>Pipeline is currently idle.</b>
+          <p style="margin: 6px 0 0 0; font-size: 13px;">Generate a sprite or run a queue to start background work.</p>
+        </div>
+      </div>
+      
+      <!-- Queued Jobs Card -->
+      <div class="card" id="queuedTasksCard" style="margin-bottom: 24px; padding: 20px;">
+        <div class="card-head" style="margin-bottom: 16px;">
+          <h3 style="margin: 0;">Queued Queue Items</h3>
+          <span id="queuedTasksCount" class="badge">0 pending</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Action</th>
+                <th>Direction</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="queuedTasksBody">
+              <tr><td colspan="6" class="empty-cell">No active queue processing.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Completed & Failed Jobs list -->
+      <div class="card table-card" style="padding: 20px;">
+        <div class="card-head table-card-head" style="margin-bottom: 16px;">
+          <h3 style="margin: 0;">Execution History</h3>
+          <button class="mini" id="refreshTasksHistoryBtn" type="button">Refresh</button>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Job Title / Action</th>
+                <th>Time Started</th>
+                <th>Duration</th>
+                <th>Exit</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tasksHistoryBody">
+              <tr><td colspan="6" class="empty-cell">No execution history found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>

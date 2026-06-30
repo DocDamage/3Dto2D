@@ -1,0 +1,54 @@
+<section class="view" id="view-qa_dashboard">
+      <div class="section-title"><p class="eyebrow">Project Quality Gates &amp; Matrices</p><h2>Batch QA Dashboard</h2></div>
+      
+      <!-- Project Quality Gates setup panel -->
+      <section class="card config-card" style="margin-bottom: 16px;">
+        <div class="card-head"><h3>Quality Gates Configuration</h3></div>
+        <form id="projectConfigForm" style="display:flex; flex-direction:column; gap:12px; padding:12px;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:12px;">
+            <div>
+              <label>Max Foot Drift (stdev px): <input type="number" step="0.1" name="max_foot_drift" value="2.0" required /></label>
+            </div>
+            <div>
+              <label>Max Flicker (brightness): <input type="number" step="0.1" name="max_flicker" value="1.0" required /></label>
+            </div>
+            <div>
+              <label>Loop Seam RMSE threshold: <input type="number" step="0.5" name="loop_seam_threshold" value="15.0" required /></label>
+            </div>
+            <div>
+              <label>Required Frame Count: <input type="number" name="required_frame_count" placeholder="Any" /></label>
+            </div>
+            <div>
+              <label>Max Alpha Noise ratio: <input type="number" step="0.01" name="alpha_cleanliness" value="0.05" required /></label>
+            </div>
+          </div>
+          <button class="mini primary" type="submit" style="align-self: flex-start;">Save Gate Rules</button>
+        </form>
+      </section>
+      
+      <!-- Batch QA dashboard Matrix -->
+      <section class="card dashboard-card">
+        <div class="card-head"><h3>Sprite Release Readiness Matrix</h3><button class="mini" id="refreshQaDashboard" type="button">Refresh Dashboard</button></div>
+        <div class="table-scroll">
+          <table class="data-table qa-dashboard-table" style="width: 100%;">
+            <thead>
+              <tr>
+                <th>Sprite Name</th>
+                <th>QA State</th>
+                <th>Loop Seam</th>
+                <th>Foot Drift</th>
+                <th>Flicker</th>
+                <th>Alpha Coverage</th>
+                <th>Alpha Noise</th>
+                <th>Missing Frames?</th>
+                <th>Exports?</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="qaDashboardBody">
+              <tr><td colspan="10" class="empty-cell">No sprites found in current project.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>

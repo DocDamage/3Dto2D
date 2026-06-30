@@ -1,0 +1,53 @@
+<section class="view" id="view-setup">
+      <div class="section-title"><p class="eyebrow">Installer and recovery</p><h2>Setup</h2></div>
+      
+      <div class="card wizard-card glow" style="margin-bottom: 24px;">
+        <h3>First Run Check Wizard</h3>
+        <p class="description">Run an all-in-one onboarding diagnostic scan of your hardware, dependencies, model weights, ComfyUI connection, and demo assets.</p>
+        <button class="primary" id="runWizardBtn" type="button" style="margin-top: 10px; margin-bottom: 10px;">✨ Start First Run Diagnostic</button>
+        <div id="wizardResults" class="wizard-results hidden" style="margin-top: 16px;">
+          <div class="wizard-steps-status" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="wizard-step-item" id="wiz-step-disk" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">1</span> Disk Check: pending</div>
+            <div class="wizard-step-item" id="wiz-step-gpu" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">2</span> GPU Check: pending</div>
+            <div class="wizard-step-item" id="wiz-step-comfy" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">3</span> ComfyUI Connection: pending</div>
+            <div class="wizard-step-item" id="wiz-step-models" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">4</span> WAN Models: pending</div>
+            <div class="wizard-step-item" id="wiz-step-demo" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">5</span> Demo Check: pending</div>
+          </div>
+          <div class="wizard-summary-box callout" id="wizardSummary" style="margin-top: 16px; padding: 12px; border-radius: 8px; background: rgba(0, 173, 181, 0.1); border: 1px solid rgba(0, 173, 181, 0.3);"></div>
+        </div>
+      </div>
+
+      <!-- Preferences Panel (Requirement 10) -->
+      <div class="card preferences-card" style="margin-bottom: 24px;">
+        <h3>User Accessibility Preferences</h3>
+        <p class="description">Customize interface density, motion styles, contrast levels, and automation behavior.</p>
+        <div class="switches" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px;">
+          <label class="switch"><input type="checkbox" id="prefReduceMotion" /><span></span>Reduce motion</label>
+          <label class="switch"><input type="checkbox" id="prefHighContrast" /><span></span>High contrast mode</label>
+          <label class="switch"><input type="checkbox" id="prefCompact" /><span></span>Compact layout</label>
+          <label class="switch"><input type="checkbox" id="prefLargeText" /><span></span>Large text size</label>
+          <label class="switch"><input type="checkbox" id="prefAlwaysShowLogs" /><span></span>Always show logs pane</label>
+          <label class="switch"><input type="checkbox" id="prefNeverAutoSwitch" /><span></span>Never auto-switch tabs on start</label>
+          <label class="switch"><input type="checkbox" id="prefConfirmLongJobs" /><span></span>Confirm before running long jobs</label>
+        </div>
+      </div>
+
+      <div class="setup-grid">
+        <button class="setup-card primary-install" data-run="install_all"><span>01</span><b>Install Everything: Safe Wan 2.1</b><small>Recommended first install: ComfyUI, WAN nodes, Manager, and Wan 2.1 1.3B files.</small></button>
+        <button class="setup-card primary-install" data-run="install_advanced"><span>02</span><b>Add Better Mode: Wan 2.2 5B</b><small>Advanced local add-on for better quality/motion after the safe setup works.</small></button>
+        <button class="setup-card" id="launchComfy"><span>03</span><b>Start ComfyUI</b><small>Starts ComfyUI in its own window.</small></button>
+        <button class="setup-card" data-run="doctor"><span>04</span><b>Run Doctor</b><small>Checks hardware, models, nodes, workflows.</small></button>
+        <button class="setup-card" data-run="validate_workflow"><span>05</span><b>Validate workflow</b><small>Checks the selected API workflow.</small></button>
+        <button class="setup-card" data-run="download_models"><span>06</span><b>Repair Safe Model Download</b><small>Re-checks/finishes the Wan 2.1 model files if interrupted.</small></button>
+        <button class="setup-card" data-run="download_wan22"><span>07</span><b>Repair Wan 2.2 5B Download</b><small>Re-checks/finishes the advanced local Wan 2.2 5B files.</small></button>
+        <button class="setup-card" data-run="model_tiers"><span>08</span><b>Show Model Tiers</b><small>Explains Safe, Better, and Cloud model modes.</small></button>
+        <button class="setup-card" data-run="install_deps"><span>09</span><b>Repair SpriteForge deps</b><small>Repair the local Python environment.</small></button>
+        <button class="setup-card" data-run="install_comfy"><span>10</span><b>Repair ComfyUI + WAN</b><small>Reinstall/update ComfyUI, nodes, Manager, and missing safe files.</small></button>
+        <button class="setup-card" data-run="hardware"><span>11</span><b>Hardware advisor</b><small>Recommendations for your GPU.</small></button>
+        <button class="setup-card" data-run="snapshot"><span>12</span><b>Create snapshot</b><small>Rollback point before updates.</small></button>
+        <button class="setup-card" data-run="safe_update"><span>13</span><b>Safe update</b><small>Snapshot first, then update ComfyUI.</small></button>
+        <button class="setup-card" data-run="support_bundle"><span>14</span><b>Support bundle</b><small>Collect logs and diagnostics.</small></button>
+        <button class="setup-card" data-run="final_preflight"><span>15</span><b>Final preflight</b><small>One all-in-one report before generating or shipping.</small></button>
+        <button class="setup-card" data-run="asset_dashboard"><span>16</span><b>Asset dashboard</b><small>Build a standalone visual gallery of finished sprites.</small></button>
+      </div>
+    </section>

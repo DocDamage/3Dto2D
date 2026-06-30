@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from PIL import Image
+from spriteforge_utils import safe_name, load_meta
 
 ROOT = Path(__file__).resolve().parent
 
@@ -33,12 +34,6 @@ except Exception:
     DEFAULT_BACKGROUND = "plain bright green chroma key background"
     build_prompt = None
     make_posepack = None
-
-
-def safe_name(name: str) -> str:
-    name = re.sub(r"[^A-Za-z0-9_\-]+", "_", name.strip())
-    name = re.sub(r"_+", "_", name).strip("_")
-    return name or "spriteforge_pack"
 
 
 def parse_csv(value: str, allowed: Optional[Iterable[str]] = None) -> List[str]:
@@ -58,15 +53,6 @@ def ensure_dir(path: Path) -> None:
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-
-
-def load_meta(sprite_dir: Path) -> Dict[str, Any]:
-    path = sprite_dir / "sheet.json"
-    if not path.exists():
-        raise FileNotFoundError(f"Missing {path}")
-    data = json.loads(path.read_text(encoding="utf-8"))
-    data["_sprite_dir"] = str(sprite_dir)
-    return data
 
 
 def find_sprite_dirs(root: Path) -> List[Path]:

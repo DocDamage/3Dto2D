@@ -269,8 +269,9 @@ def purge_cleanup_files():
                     shutil.rmtree(path_target)
                     reclaimed_bytes += sz
                     count += 1
-            except Exception:
-                pass
+            except Exception as exc:
+                import logging
+                logging.getLogger("routes_misc").warning("Cleanup failed to remove path: %s. Error: %s", path_target, exc, exc_info=True)
     reclaimed_mb = round(reclaimed_bytes / (1024 * 1024), 2)
     return jsonify({"ok": True, "count": count, "reclaimed_mb": reclaimed_mb})
 
@@ -348,7 +349,9 @@ def ab_run_create():
     try:
         total, used, free = shutil.disk_usage(ROOT)
         free_gb = free / (1024**3)
-    except Exception:
+    except Exception as exc:
+        import logging
+        logging.getLogger("routes_misc").debug("Disk usage check failed in ab_run_create: %s", exc, exc_info=True)
         free_gb = 100.0
     if not force and (free_gb - estimated_gb < 5.0):
         return jsonify({

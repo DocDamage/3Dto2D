@@ -6,11 +6,37 @@ SpriteForge Studio v12 exposes a local REST API via Flask on `http://127.0.0.1:8
 
 ## Authentication
 
-Currently, the API is designed for local-only use (`127.0.0.1`). No authentication is required for local access. For network-exposed usage (`--listen 0.0.0.0`), configure an API key in `spriteforge_config.json` under `web_server.api_key`.
+The web server is designed for local-only use on `127.0.0.1`. All `POST` requests require the current in-memory session token.
+
+Browser clients fetch the token from:
+
+```text
+GET /api/auth/token
+```
+
+Then send it on unsafe requests as:
+
+```text
+X-SF-Token: <token>
+```
+
+JSON clients may also include `"session_token": "<token>"` in the request body. Missing or invalid tokens return HTTP `401`.
 
 ---
 
 ## Status & Health
+
+### `GET /api/auth/token`
+
+Returns the current local session token for the running server process.
+
+**Response:**
+```json
+{
+  "ok": true,
+  "token": "..."
+}
+```
 
 ### `GET /api/status`
 
@@ -391,6 +417,7 @@ All errors follow this format:
 ```
 
 HTTP status codes:
+- `401` - Unauthorized (missing or invalid session token on POST)
 - `400` - Bad request (missing parameters)
 - `403` - Forbidden (path outside workspace)
 - `404` - Not found (sprite/job not found)

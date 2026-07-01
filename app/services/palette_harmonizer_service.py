@@ -49,11 +49,12 @@ def _sample_colors(path: Path, max_side: int = 256) -> Counter[RGB]:
     if max(img.size) > max_side:
         img.thumbnail((max_side, max_side), Image.Resampling.NEAREST)
     colors: Counter[RGB] = Counter()
-    for r, g, b, a in img.getdata():
+    pixel_list = img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
+    for r, g, b, a in pixel_list:
         if a > 64:
             colors[(r, g, b)] += 1
     if not colors:
-        for r, g, b, _a in img.getdata():
+        for r, g, b, _a in pixel_list:
             colors[(r, g, b)] += 1
     return colors
 

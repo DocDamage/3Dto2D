@@ -36,11 +36,12 @@ def palette_from_image(path: Path, colors: int = 8) -> List[str]:
     # Ignore transparent pixels, downsize for speed.
     img.thumbnail((192, 192), Image.Resampling.LANCZOS)
     pixels = []
-    for r, g, b, a in img.getdata():
+    pixel_list = img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
+    for r, g, b, a in pixel_list:
         if a > 64:
             pixels.append((r, g, b))
     if not pixels:
-        pixels = [(r, g, b) for r, g, b, a in img.getdata()]
+        pixels = [(r, g, b) for r, g, b, a in pixel_list]
     work = Image.new("RGB", (len(pixels), 1))
     work.putdata(pixels)
     q = work.quantize(colors=min(colors, max(1, len(set(pixels)))), method=Image.Quantize.MEDIANCUT)

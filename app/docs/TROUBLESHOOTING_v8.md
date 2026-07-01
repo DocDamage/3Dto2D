@@ -1,4 +1,6 @@
-# SpriteForge v8 Troubleshooting
+# SpriteForge Studio v12 Troubleshooting
+
+This guide keeps its historical filename for compatibility, but the steps below reflect the v12 browser dashboard and current CLI tools.
 
 ## Start with the no-GPU demo
 
@@ -36,7 +38,7 @@ Run the download again. The Hugging Face downloader is resumable in normal cases
 app\START_SPRITEFORGE.bat --wizard
 ```
 
-Then click **Download WAN 2.1 1.3B Models**.
+Then open **Setup** and run **Install Everything: Safe Wan 2.1**. The downloader is resumable in normal cases.
 
 ## ComfyUI starts but SpriteForge says it cannot connect
 
@@ -81,7 +83,7 @@ key tolerance = 45 to 65
 
 ## Sprite jitters or feet slide
 
-Run **Auto-Fix Sprite** in Easy Mode, or use:
+Use the one-click repair actions in **Quality Lab**, or use:
 
 ```bat
 python spriteforge_unified.py autofix-sprite --input output\YOUR_SPRITE --output output\YOUR_SPRITE_fixed --stabilize-anchor --drop-loop-duplicate --deflicker
@@ -102,3 +104,18 @@ app/output/support_bundles/
 ```
 
 That bundle includes logs, diagnostics, model reports, and hardware info. It does not include model weights or large videos.
+
+## Release ZIP is unexpectedly huge
+
+Do not ship workspace-local archives that were created before cleanup. A clean release package should exclude:
+
+```text
+app/vendor/
+app/input/uploaded_videos/
+app/output/
+app/releases/
+app/logs/
+*.safetensors
+```
+
+Delete the stale archive and rebuild from the **Release** tab after confirming the workspace is clean.

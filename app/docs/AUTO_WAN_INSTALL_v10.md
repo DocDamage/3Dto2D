@@ -1,6 +1,6 @@
-# Auto WAN Install v11
+# SpriteForge Studio v12 - Safe WAN Install
 
-The full installer now downloads the required local WAN files automatically.
+This guide keeps its historical filename for compatibility. The v12 setup dashboard can download and validate the required local WAN files automatically.
 
 ## Model set
 
@@ -41,3 +41,5 @@ python spriteforge_unified.py model-report --json
 ## Notes
 
 The installer skips model files already present unless `--force-models` is used with `install-all`, or `--force` is used with `download-wan-native`.
+
+Model checkpoints are local payloads. They are intentionally excluded from source releases, project bundles, and release ZIPs.

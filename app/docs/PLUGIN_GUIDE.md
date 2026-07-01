@@ -8,10 +8,9 @@ your plugin needs.
 
 1. Create a file such as `app/plugins/my_quality_plugin.py`.
 2. Add one or more hook functions from the list below.
-3. Run a QA check or engine export from the UI or CLI.
+3. Open **Setup** to review plugin discovery/status, or run a QA check or engine export from the UI/CLI.
 
-SpriteForge discovers plugin files automatically the first time a hook is
-triggered in the current process.
+SpriteForge discovers plugin files automatically and exposes plugin status in the Setup UI. Disabled or invalid plugins are skipped by the manager.
 
 ## Hook: `on_qa_check`
 

@@ -5,44 +5,43 @@
       </div>
       
       <!-- Active Job Card -->
-      <div class="card glow" id="activeTaskCard" style="margin-bottom: 24px; padding: 20px;">
-        <div class="card-head" style="margin-bottom: 16px;">
-          <h3 style="margin: 0; font-size: 18px;">Active Process</h3>
+      <div class="card glow mb-24 p-20" id="activeTaskCard">
+        <div class="card-head mb-16">
+          <h3 class="m-0 fs-18">Active Process</h3>
           <span class="badge" id="activeTaskState">idle</span>
         </div>
         <div id="activeTaskRunningArea" class="hidden">
-          <h4 id="activeTaskTitle" style="margin: 0 0 8px 0; font-size: 16px; color: var(--accent);">No task running</h4>
-          <div class="progressbar" style="height: 12px; margin-bottom: 12px;"><i id="activeTaskProgressFill" style="width: 0%;"></i></div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+          <h4 id="activeTaskTitle" class="m-0-0-8-0 fs-16 accent-text-color">No task running</h4>
+          <div class="progressbar h-12 mb-12"><i id="activeTaskProgressFill" style="width: 0%;"></i></div>
+          <div class="flex-justify-between-fs-12-muted mb-12">
             <span id="activeTaskProgressPct">0%</span>
-            <span id="activeTaskTimeState">⏱ Checking...</span>
+            <span id="activeTaskTimeState">Checking...</span>
           </div>
           
           <!-- Failure Recovery Advisor inside Active Area -->
-          <div id="activeRecoveryAdvisor" class="callout hidden" style="margin-bottom: 16px; border: 1px solid rgba(255,85,85,0.3); background: rgba(255,85,85,0.05);">
-            <h4 style="margin: 0 0 6px 0; color: #ff5555;">⚡ Failure Recovery Advisor</h4>
-            <p id="activeRecoveryMessage" style="margin: 0 0 10px 0; font-size: 13px;"></p>
+          <div id="activeRecoveryAdvisor" class="callout recovery-callout mb-16 hidden">
+            <h4 class="m-0-0-6-0 danger-text-color">Failure Recovery Advisor</h4>
+            <p id="activeRecoveryMessage" class="m-0-0-10-0 fs-13"></p>
             <div id="activeRecoveryActions" class="button-row"></div>
           </div>
           
-          <pre class="terminal" id="activeTaskTerminal" style="height: 180px; font-size: 11px; margin-bottom: 12px; padding: 12px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;"></pre>
+          <pre class="terminal h-180 fs-11 mb-12 p-12 overflow-y-auto white-space-pre-wrap font-monospace" id="activeTaskTerminal"></pre>
           <div class="button-row">
             <button class="mini danger" id="activeTaskCancelBtn" type="button">Cancel Task</button>
             <button class="mini" id="activeTaskCopyLogsBtn" type="button">Copy Logs</button>
             <button class="mini primary hidden" id="activeTaskInspectBtn" type="button">Inspect Output</button>
           </div>
         </div>
-        <div id="activeTaskIdleArea" style="text-align: center; padding: 40px 20px; color: var(--muted);">
-          <span style="font-size: 32px; display: block; margin-bottom: 12px;">💤</span>
+        <div id="activeTaskIdleArea" class="task-idle-area">
           <b>Pipeline is currently idle.</b>
-          <p style="margin: 6px 0 0 0; font-size: 13px;">Generate a sprite or run a queue to start background work.</p>
+          <p class="m-6-0-0-0 fs-13">Generate a sprite or run a queue to start background work.</p>
         </div>
       </div>
       
       <!-- Queued Jobs Card -->
-      <div class="card" id="queuedTasksCard" style="margin-bottom: 24px; padding: 20px;">
-        <div class="card-head" style="margin-bottom: 16px;">
-          <h3 style="margin: 0;">Queued Queue Items</h3>
+      <div class="card mb-24 p-20" id="queuedTasksCard">
+        <div class="card-head mb-16">
+          <h3 class="m-0">Queued Queue Items</h3>
           <span id="queuedTasksCount" class="badge">0 pending</span>
         </div>
         <div class="table-scroll">
@@ -65,9 +64,9 @@
       </div>
       
       <!-- Completed & Failed Jobs list -->
-      <div class="card table-card" style="padding: 20px;">
-        <div class="card-head table-card-head" style="margin-bottom: 16px;">
-          <h3 style="margin: 0;">Execution History</h3>
+      <div class="card table-card p-20">
+        <div class="card-head table-card-head mb-16">
+          <h3 class="m-0">Execution History</h3>
           <button class="mini" id="refreshTasksHistoryBtn" type="button">Refresh</button>
         </div>
         <div class="table-scroll">

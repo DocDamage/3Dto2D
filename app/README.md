@@ -1,28 +1,35 @@
-# SpriteForge Studio v7 - End User Edition
+# SpriteForge Studio v12 - End User Edition
 
-Normal users should launch from the main folder:
+Normal users should launch from the package root:
 
 ```text
 START_HERE.bat
 ```
 
-The v7 package adds a simplified wizard GUI over the v6 production pipeline. It still includes all advanced tools, but the common path is now button-driven:
+The v12 package centers the local browser dashboard and keeps advanced CLI/batch tools available for power users. The common path is:
 
-1. Set Up Everything
-2. Run Health Check
-3. Make Sprite
-4. Open Outputs
-5. Run QA / Auto-Fix / Export if needed
+1. Open **Launchpad**.
+2. Run the **No-GPU Demo**.
+3. Use **Setup** to install the safe WAN model path and launch ComfyUI.
+4. Use **Generate Sprite** for a first debug sprite.
+5. Review and repair in **Quality Lab**.
+6. Build a clean package in **Release**.
 
-Advanced documentation from the v6 base package is saved here:
-
-```text
-docs/README_ADVANCED_v6_BASE.md
-```
-
-Beginner guides:
+Current documentation:
 
 ```text
 docs/END_USER_GUIDE.md
-docs/ONE_PAGE_CHEAT_SHEET.md
+docs/FIRST_RUN_CHECKLIST_v8.md
+docs/TROUBLESHOOTING_v8.md
+docs/WAN_MODEL_TIERS_v11.md
+docs/api.md
+docs/PLUGIN_GUIDE.md
+```
+
+Distribution and licensing notes are stored at the package root:
+
+```text
+LICENSE
+THIRD_PARTY_NOTICES.md
+requirements-lock.txt
 ```

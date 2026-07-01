@@ -13,7 +13,10 @@ START_HERE.bat
 Click:
 
 ```text
-Set Up Everything
+Launchpad -> Run No-GPU Demo
+Setup -> Start First Run Diagnostic
+Setup -> Install Everything: Safe Wan 2.1
+Setup -> Launch ComfyUI
 ```
 
 ## First safe test
@@ -56,6 +59,11 @@ plain bright green background, locked camera, centered, no zoom
 Use:
 
 ```text
-QA / Export → Run QA
-QA / Export → Auto-Fix
+Quality Lab -> Run QA
+Quality Lab -> Auto-Fix / one-click repair
+Release -> Build package when QA passes
 ```
+
+## Before sharing a build
+
+Use a freshly built Release ZIP. Do not share local uploads, logs, `app/vendor/`, model weights, or old workspace archives.

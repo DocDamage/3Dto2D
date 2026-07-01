@@ -1,15 +1,17 @@
-# First Run Checklist
+# SpriteForge Studio v12 First Run Checklist
+
+This guide keeps its historical filename for compatibility, but the workflow below reflects the v12 browser dashboard.
 
 1. Extract the ZIP. Do not run it from inside the compressed ZIP window.
 2. Double-click `START_HERE.bat`.
-3. In the wizard, click **Run Preflight Check**.
-4. Click **Make No-GPU Demo Sprite**.
-5. If the demo works, click **Install ComfyUI + WAN Nodes**.
-6. Click **Download WAN 2.1 1.3B Models**.
-7. Click **Validate / Doctor**.
-8. Click **Open Easy Mode**.
-9. In Easy Mode, use profile `debug` for the first WAN test.
-10. After that works, use `rtx3060_12gb`.
+3. Open **Launchpad**.
+4. Run **No-GPU Demo**.
+5. Open **Setup** and run **Start First Run Diagnostic**.
+6. Run **Install Everything: Safe Wan 2.1**.
+7. Click **Launch ComfyUI**.
+8. Open **Generate Sprite**.
+9. Use profile `debug` for the first WAN test.
+10. After that works, use the recommended local profile such as `rtx3060_12gb`.
 
 Safe first prompt:
 
@@ -22,3 +24,5 @@ Avoid these until the pipeline works:
 ```text
 cinematic camera, camera movement, zoom, close-up, complex background, dramatic lighting, motion blur
 ```
+
+When you are ready to share outputs, build a fresh package from the **Release** tab. Release and project bundles should not contain `app/vendor/`, model weights, logs, uploaded videos, or generated release folders.

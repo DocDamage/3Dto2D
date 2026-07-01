@@ -1,13 +1,15 @@
-# SpriteForge Studio v7 End User Guide
+# SpriteForge Studio v12 End User Guide
 
 ## Normal workflow
 
 1. Double-click `START_HERE.bat` in the main folder.
-2. Click **Set Up Everything**.
-3. Click **Run Health Check**.
-4. Go to **Make Sprite**.
-5. Describe the character, choose an action, then click **Generate Sprite**.
-6. Click **Open Outputs**.
+2. Open **Launchpad** and run the **No-GPU Demo**.
+3. Open **Setup**, run the first-run diagnostic, install the safe WAN setup, and launch ComfyUI.
+4. Open **Generate Sprite**.
+5. Describe the character, choose an action/direction, and use the `debug` or recommended profile first.
+6. Watch progress in **Task Center** or **Queue Monitor**.
+7. Review the finished result in **Quality Lab**.
+8. Build a shareable/exportable package in **Release**.
 
 Each finished sprite folder usually contains:
 
@@ -58,14 +60,20 @@ For easiest background removal, make the generated video use a solid green or bl
 
 ## Fixing bad outputs
 
-Use **QA / Export**:
+Use **Quality Lab**:
 
 - **Run QA** finds jitter, loop seams, duplicates, flicker, and edge problems.
 - **Auto-Fix** attempts anchor stabilization, loop duplicate removal, and edge cleanup.
-- **Export Godot**, **Export Unity**, and **Export Unreal** create engine helper files.
+- Engine export actions create Godot, Unity, Unreal, Aseprite, APNG, WebP, and release helper files where supported.
 
 ## Updating safely
 
-Use **Safe Update** inside Easy Mode. It creates a snapshot before updating ComfyUI/custom nodes.
+Use the safe update and diagnostic actions in **Setup**. Snapshot before updating ComfyUI/custom nodes.
 
-If something breaks, use **Snapshot / Rollback** from the advanced tools or the maintenance tab.
+If something breaks, collect a support bundle with `COLLECT_SUPPORT_BUNDLE.bat` and use the maintenance/recovery actions in Setup.
+
+## Release and project bundles
+
+Use **Release** for clean release ZIPs and **Projects** for portable `.spriteforge` bundles. Bundles intentionally exclude local uploads, logs, generated release folders, vendor payloads, and model weights.
+
+Do not ship workspace-local archives such as an old `dist_release.zip` unless it was rebuilt after cleanup.

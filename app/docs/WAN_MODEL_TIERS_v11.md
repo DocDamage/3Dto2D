@@ -1,6 +1,6 @@
-# SpriteForge Studio v11 — WAN Model Tiers
+# SpriteForge Studio v12 - WAN Model Tiers
 
-v11 adds a model-tier system instead of forcing one WAN model for everyone.
+This guide keeps its historical filename for compatibility. The model-tier system remains current in v12 and lets users choose between safe local setup, advanced local setup, and remote/cloud generation.
 
 ## Tiers
 
@@ -55,3 +55,7 @@ python spriteforge_unified.py generate-sprite --start-comfy --tier wan22_5b --pr
 ## Cloud tier
 
 The cloud tier is intentionally not auto-downloaded. Use it with a remote ComfyUI server and exported API workflows.
+
+## Distribution note
+
+Model checkpoints are not bundled with SpriteForge source or release ZIPs. Setup downloads or validates them locally under the configured ComfyUI model folders.

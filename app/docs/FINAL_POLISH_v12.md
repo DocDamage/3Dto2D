@@ -1,4 +1,4 @@
-# SpriteForge Studio v12 — Final Polish Edition
+# SpriteForge Studio v12 - Final Polish Edition
 
 v12 is the production/pass-off version. Earlier versions proved the WAN → sprite pipeline; v12 focuses on making the app feel complete for a real end user.
 
@@ -48,6 +48,21 @@ releases/<name>_<timestamp>/
     preflight.json
     preflight.html
 ```
+
+## Source distribution contents
+
+Source releases include SpriteForge code, examples, docs, launch scripts, and configuration templates. They do not include local runtime payloads or user-generated artifacts:
+
+```text
+app/vendor/
+app/input/uploaded_videos/
+app/output/
+app/releases/
+app/logs/
+*.safetensors
+```
+
+Use `LICENSE` for the SpriteForge MIT license, `THIRD_PARTY_NOTICES.md` for external payload notes, and `requirements-lock.txt` when you need to reproduce the currently tested Python dependency set.
 
 ## Model recommendation remains unchanged
 

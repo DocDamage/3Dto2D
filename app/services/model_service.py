@@ -62,8 +62,20 @@ class ModelService:
                 }
         return rows
 
+    _summary_cache = None
+    _summary_cache_time = 0.0
+    _disk_cache = None
+    _disk_cache_time = 0.0
+
     @staticmethod
     def get_summary() -> Dict[str, Any]:
+        import sys
+        import time
+        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
+        now = time.time()
+        if not is_testing and ModelService._summary_cache is not None and now - ModelService._summary_cache_time < 10.0:
+            return ModelService._summary_cache
+
         cfg = ConfigService.get_config()
         tiers = ModelService.get_tiers_status()
         safe_key = str(cfg.get("default_model_tier") or "wan21_safe")
@@ -76,7 +88,7 @@ class ModelService:
         advanced_present = sum(int(row.get("present", 0)) for row in advanced_rows)
         advanced_total = sum(int(row.get("total", 0)) for row in advanced_rows)
 
-        return {
+        res = {
             "ok": bool(safe.get("ok")),
             "present": int(safe.get("present", 0)),
             "total": int(safe.get("total", 0)),
@@ -87,14 +99,27 @@ class ModelService:
             "advanced_ok": advanced_total > 0 and advanced_present == advanced_total,
             "tiers": tiers,
         }
+        ModelService._summary_cache = res
+        ModelService._summary_cache_time = now
+        return res
 
     @staticmethod
     def get_disk_summary() -> Dict[str, Any]:
+        import sys
+        import time
+        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
+        now = time.time()
+        if not is_testing and ModelService._disk_cache is not None and now - ModelService._disk_cache_time < 15.0:
+            return ModelService._disk_cache
+
         total, used, free = shutil.disk_usage(ROOT)
         free_gb = round(free / (1024**3), 1)
-        return {
+        res = {
             "ok": free_gb >= 25.0,
             "free_gb": free_gb,
             "total_gb": round(total / (1024**3), 1),
             "used_gb": round(used / (1024**3), 1),
         }
+        ModelService._disk_cache = res
+        ModelService._disk_cache_time = now
+        return res

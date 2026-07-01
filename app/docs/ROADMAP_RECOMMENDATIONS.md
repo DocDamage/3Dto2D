@@ -1,5 +1,7 @@
 # SpriteForge Studio Roadmap & Extended Recommendations
 
+Current status note: this document is retained as a planning archive. Many items have since shipped in v12, including API session-token protection, prompt linting, palette workflows, onboarding, command palette, notifications, startup diagnostics, schema validation, queue retry, plugin manager UI, and frontend polish. Use `FINAL_POLISH_v12.md` and `END_USER_GUIDE.md` for the current product state.
+
 This document combines the two recommendation notes provided for SpriteForge Studio:
 
 - **SpriteForge Studio - 10 Additions & 20 Improvements**

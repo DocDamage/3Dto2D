@@ -133,7 +133,9 @@ def status_stream():
                     time.sleep(0.5)
                 except GeneratorExit:
                     break
-                except Exception:
+                except Exception as exc:
+                    import logging
+                    logging.getLogger("routes_jobs").debug("Status SSE stream loop encountered exception: %s", exc, exc_info=True)
                     time.sleep(1)
         except GeneratorExit:
             pass

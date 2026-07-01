@@ -43,9 +43,15 @@ def zip_dir(src: Path, out_zip: Path) -> Path:
     out_zip.parent.mkdir(parents=True, exist_ok=True)
     if out_zip.exists():
         out_zip.unlink()
+    from spriteforge_utils import is_release_excluded, audit_dir_exclusions
+    violations = audit_dir_exclusions(src)
+    if violations:
+        print(f"AUDIT WARNING: Excluding {len(violations)} restricted/heavy files from cloud job zip: {violations}", file=sys.stderr)
     with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as z:
         for p in src.rglob("*"):
-            z.write(p, p.relative_to(src.parent))
+            if p.is_file():
+                if not is_release_excluded(p, src):
+                    z.write(p, p.relative_to(src.parent))
     return out_zip
 
 

@@ -1,4 +1,6 @@
-# SpriteForge Studio v9 — Visual Edition
+# SpriteForge Studio v9 - Visual Edition Archive
+
+Historical note: this document describes the v9 visual-dashboard milestone. For current v12 setup and release instructions, use `END_USER_GUIDE.md`, `FIRST_RUN_CHECKLIST_v8.md`, and `FINAL_POLISH_v12.md`.
 
 This edition keeps the v8 fail-safe backend and adds a polished local browser UI.
 
@@ -29,7 +31,7 @@ A browser window opens to the SpriteForge Studio dashboard. Keep the console win
 4. Run **Download WAN models**.
 5. Click **Launch ComfyUI**.
 6. Run **Doctor**.
-7. Use **Make Sprite** with profile `debug` first.
+7. In current v12 builds, use **Generate Sprite** with profile `debug` first.
 8. After that works, switch to `rtx3060_12gb`.
 
 ## Fallbacks

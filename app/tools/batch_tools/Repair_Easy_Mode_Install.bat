@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
-title SpriteForge Studio v7 - Repair Easy Mode
+title SpriteForge Studio v12 - Repair Easy Mode
 
 echo This will rebuild the local SpriteForge Python environment.
 echo It will NOT delete ComfyUI, models, outputs, or projects.

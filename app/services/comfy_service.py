@@ -27,15 +27,31 @@ class ComfyService:
         except Exception:
             return False
 
+    _gpu_info_cache = None
+    _gpu_info_cache_time = 0.0
+
     @staticmethod
     def get_gpu_info() -> Dict[str, Any]:
+        import sys
+        import time
+        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
+        now = time.time()
+        if not is_testing and ComfyService._gpu_info_cache is not None and now - ComfyService._gpu_info_cache_time < 60.0:
+            return ComfyService._gpu_info_cache
+
         exe = shutil.which("nvidia-smi")
         if not exe:
-            return {"ok": False, "label": "GPU unknown", "detail": "nvidia-smi not found", "vram_gb": None}
+            res = {"ok": False, "label": "GPU unknown", "detail": "nvidia-smi not found", "vram_gb": None}
+            ComfyService._gpu_info_cache = res
+            ComfyService._gpu_info_cache_time = now
+            return res
         try:
             p = subprocess.run([exe, "--query-gpu=name,memory.total,memory.free,driver_version", "--format=csv,noheader"], capture_output=True, text=True, timeout=10)
             if p.returncode != 0:
-                return {"ok": False, "label": "GPU check failed", "detail": p.stderr.strip(), "vram_gb": None}
+                res = {"ok": False, "label": "GPU check failed", "detail": p.stderr.strip(), "vram_gb": None}
+                ComfyService._gpu_info_cache = res
+                ComfyService._gpu_info_cache_time = now
+                return res
             line = p.stdout.strip().splitlines()[0] if p.stdout.strip() else ""
             parts = [p.strip() for p in line.split(",")]
             total_mb = None
@@ -43,7 +59,7 @@ class ComfyService:
                 digits = "".join(ch for ch in parts[1] if ch.isdigit())
                 if digits:
                     total_mb = int(digits)
-            return {
+            res = {
                 "ok": True,
                 "label": parts[0] if parts else "NVIDIA GPU",
                 "memory_total": parts[1] if len(parts) > 1 else "",
@@ -52,8 +68,14 @@ class ComfyService:
                 "vram_gb": round(total_mb / 1024, 1) if total_mb else None,
                 "detail": line,
             }
+            ComfyService._gpu_info_cache = res
+            ComfyService._gpu_info_cache_time = now
+            return res
         except Exception as exc:
-            return {"ok": False, "label": "GPU check failed", "detail": str(exc), "vram_gb": None}
+            res = {"ok": False, "label": "GPU check failed", "detail": str(exc), "vram_gb": None}
+            ComfyService._gpu_info_cache = res
+            ComfyService._gpu_info_cache_time = now
+            return res
 
     @staticmethod
     def launch() -> bool:

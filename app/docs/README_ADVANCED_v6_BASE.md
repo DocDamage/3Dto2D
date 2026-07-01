@@ -1,4 +1,6 @@
-# SpriteForge Studio v6
+# SpriteForge Studio v6 Advanced Base Archive
+
+Historical note: this document is retained for advanced CLI background and compatibility with older references. For the current v12 dashboard workflow, model-tier setup, API behavior, and release packaging rules, use `END_USER_GUIDE.md`, `WAN_MODEL_TIERS_v11.md`, `api.md`, and `FINAL_POLISH_v12.md`.
 
 Unified Windows-oriented tool for:
 

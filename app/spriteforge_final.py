@@ -129,9 +129,15 @@ def cmd_release(args: argparse.Namespace) -> None:
         zip_path = outroot.with_suffix(".zip")
         if zip_path.exists():
             zip_path.unlink()
+        from spriteforge_utils import is_release_excluded, audit_dir_exclusions
+        violations = audit_dir_exclusions(outroot)
+        if violations:
+            print(f"AUDIT WARNING: Excluding {len(violations)} restricted/heavy files from release zip: {violations}", file=sys.stderr)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for p in outroot.rglob("*"):
-                zf.write(p, p.relative_to(outroot.parent))
+                if p.is_file():
+                    if not is_release_excluded(p, outroot):
+                        zf.write(p, p.relative_to(outroot.parent))
         print(f"Release folder: {outroot}")
         print(f"Release zip: {zip_path}")
     else:

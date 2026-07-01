@@ -1,27 +1,27 @@
 <section class="view" id="view-setup">
       <div class="section-title"><p class="eyebrow">Installer and recovery</p><h2>Setup</h2></div>
       
-      <div class="card wizard-card glow" style="margin-bottom: 24px;">
+      <div class="card wizard-card glow mb-24">
         <h3>First Run Check Wizard</h3>
         <p class="description">Run an all-in-one onboarding diagnostic scan of your hardware, dependencies, model weights, ComfyUI connection, and demo assets.</p>
-        <button class="primary" id="runWizardBtn" type="button" style="margin-top: 10px; margin-bottom: 10px;">✨ Start First Run Diagnostic</button>
-        <div id="wizardResults" class="wizard-results hidden" style="margin-top: 16px;">
-          <div class="wizard-steps-status" style="display: flex; flex-direction: column; gap: 8px;">
-            <div class="wizard-step-item" id="wiz-step-disk" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">1</span> Disk Check: pending</div>
-            <div class="wizard-step-item" id="wiz-step-gpu" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">2</span> GPU Check: pending</div>
-            <div class="wizard-step-item" id="wiz-step-comfy" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">3</span> ComfyUI Connection: pending</div>
-            <div class="wizard-step-item" id="wiz-step-models" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">4</span> WAN Models: pending</div>
-            <div class="wizard-step-item" id="wiz-step-demo" style="display: flex; align-items: center; gap: 8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:#888; color:#fff; text-align:center; font-size:12px; line-height:20px;">5</span> Demo Check: pending</div>
+        <button class="primary mt-10 mb-10" id="runWizardBtn" type="button">Start First Run Diagnostic</button>
+        <div id="wizardResults" class="wizard-results hidden mt-16">
+          <div class="wizard-steps-status flex-col-gap-8">
+            <div class="wizard-step-item flex-align-center-gap-8" id="wiz-step-disk"><span class="wiz-step-span">1</span> Disk Check: pending</div>
+            <div class="wizard-step-item flex-align-center-gap-8" id="wiz-step-gpu"><span class="wiz-step-span">2</span> GPU Check: pending</div>
+            <div class="wizard-step-item flex-align-center-gap-8" id="wiz-step-comfy"><span class="wiz-step-span">3</span> ComfyUI Connection: pending</div>
+            <div class="wizard-step-item flex-align-center-gap-8" id="wiz-step-models"><span class="wiz-step-span">4</span> WAN Models: pending</div>
+            <div class="wizard-step-item flex-align-center-gap-8" id="wiz-step-demo"><span class="wiz-step-span">5</span> Demo Check: pending</div>
           </div>
-          <div class="wizard-summary-box callout" id="wizardSummary" style="margin-top: 16px; padding: 12px; border-radius: 8px; background: rgba(0, 173, 181, 0.1); border: 1px solid rgba(0, 173, 181, 0.3);"></div>
+          <div class="wizard-summary-box callout mt-16" id="wizardSummary"></div>
         </div>
       </div>
 
       <!-- Preferences Panel (Requirement 10) -->
-      <div class="card preferences-card" style="margin-bottom: 24px;">
+      <div class="card preferences-card mb-24">
         <h3>User Accessibility Preferences</h3>
         <p class="description">Customize interface density, motion styles, contrast levels, and automation behavior.</p>
-        <div class="switches" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px;">
+        <div class="switches grid-columns-responsive">
           <label class="switch"><input type="checkbox" id="prefReduceMotion" /><span></span>Reduce motion</label>
           <label class="switch"><input type="checkbox" id="prefHighContrast" /><span></span>High contrast mode</label>
           <label class="switch"><input type="checkbox" id="prefCompact" /><span></span>Compact layout</label>

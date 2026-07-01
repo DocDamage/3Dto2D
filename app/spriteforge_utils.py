@@ -32,6 +32,65 @@ def safe_name(name: str) -> str:
     cleaned = re.sub(r"_+", "_", cleaned).strip("_-")
     return cleaned or "file"
 
+def is_release_excluded(path: Path, root_dir: Path) -> bool:
+    """
+    Check if a file should be excluded from a release zip or project bundle.
+    Returns True if the path contains folders/files matching excluded patterns:
+    - uploads/uploaded_videos (unless it is a small reference image < 10MB)
+    - outputs (e.g., outputs/ or releases/)
+    - local projects (other projects than the one being zipped)
+    - logs (e.g., logs/ or *.log)
+    - vendor payloads (comfyui/, venv/, node_modules/, models/)
+    """
+    try:
+        rel_path = path.relative_to(root_dir)
+    except ValueError:
+        rel_path = path
+    parts = [p.lower() for p in rel_path.parts]
+    name = path.name.lower()
+
+    # 1. Vendor payloads & environments
+    if any(p in parts for p in ("comfyui", "venv", ".venv", "node_modules", "vendor", "models")):
+        return True
+
+    # 2. Logs
+    if "logs" in parts or name.endswith(".log") or name == "app.log":
+        return True
+
+    # 3. Git / IDE metadata
+    if any(p.startswith(".") for p in parts) and not any(p in (".spriteforge", ".github") for p in parts):
+        return True
+
+    # 4. Uploads / heavy files
+    if "uploaded_videos" in parts or "uploads" in parts:
+        try:
+            if path.is_file() and path.stat().st_size > 10_000_000:  # > 10MB
+                return True
+        except Exception:
+            return True
+
+    # 5. Heavy outputs/releases
+    if "output" in parts or "releases" in parts:
+        return True
+
+    # 6. Overall size limit safety (e.g., any file over 50MB is suspicious for a release/project config)
+    try:
+        if path.is_file() and path.stat().st_size > 50_000_000:
+            return True
+    except Exception:
+        pass
+
+    return False
+
+def audit_dir_exclusions(root_dir: Path) -> list[str]:
+    """Scan root_dir for any files violating release/project exclusion rules."""
+    violations = []
+    for p in Path(root_dir).rglob("*"):
+        if p.is_file() and is_release_excluded(p, root_dir):
+            violations.append(str(p.relative_to(root_dir)))
+    return violations
+
+
 def load_meta(sprite_dir: Path) -> Dict[str, Any]:
     path = sprite_dir / "sheet.json"
     if not path.exists():

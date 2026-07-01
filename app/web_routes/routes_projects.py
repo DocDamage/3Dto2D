@@ -274,11 +274,17 @@ def export_project_bundle():
         bundle_path = releases_dir / f"{p_dir.name}.spriteforge"
         
         import zipfile
+        from spriteforge_utils import is_release_excluded, audit_dir_exclusions
+        violations = audit_dir_exclusions(p_dir)
+        if violations:
+            logger.warning(f"Auditor: Excluding {len(violations)} restricted/heavy files from project export: {violations}")
+
         with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for file_path in p_dir.rglob("*"):
                 if file_path.is_file():
-                    zf.write(file_path, file_path.relative_to(p_dir))
-                    
+                    if not is_release_excluded(file_path, p_dir):
+                        zf.write(file_path, file_path.relative_to(p_dir))
+
         from flask import send_from_directory
         return send_from_directory(releases_dir, f"{p_dir.name}.spriteforge", as_attachment=True)
     except Exception as exc:

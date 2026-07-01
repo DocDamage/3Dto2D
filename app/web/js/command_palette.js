@@ -52,18 +52,8 @@
       item.className = 'command-item';
       item.dataset.index = idx;
 
-      // Styling
-      item.style.padding = '10px 12px';
-      item.style.borderRadius = '6px';
-      item.style.cursor = 'pointer';
-      item.style.transition = 'background 0.2s';
-      item.style.display = 'flex';
-      item.style.justifyContent = 'space-between';
-      item.style.alignItems = 'center';
-
       if (!cmd.enabled) {
-        item.style.opacity = '0.5';
-        item.style.cursor = 'not-allowed';
+        item.classList.add('disabled');
       }
 
       // Left column: label and description
@@ -80,23 +70,14 @@
 
       if (cmd.view) {
         const tag = document.createElement('span');
-        tag.style.background = 'rgba(0, 173, 181, 0.15)';
-        tag.style.color = 'var(--accent)';
-        tag.style.padding = '2px 6px';
-        tag.style.borderRadius = '4px';
-        tag.style.fontSize = '10px';
-        tag.style.textTransform = 'uppercase';
+        tag.className = 'cmd-meta-tag';
         tag.textContent = cmd.view;
         meta.appendChild(tag);
       }
 
       if (cmd.requires_confirmation) {
         const confirmTag = document.createElement('span');
-        confirmTag.style.background = 'rgba(255, 170, 0, 0.15)';
-        confirmTag.style.color = '#ffaa00';
-        confirmTag.style.padding = '2px 6px';
-        confirmTag.style.borderRadius = '4px';
-        confirmTag.style.fontSize = '10px';
+        confirmTag.className = 'cmd-confirm-tag';
         confirmTag.textContent = 'Confirm';
         meta.appendChild(confirmTag);
       }
@@ -122,10 +103,10 @@
     const items = resultsContainer.querySelectorAll('.command-item');
     items.forEach((item, idx) => {
       if (idx === selectedIndex) {
-        item.style.background = 'rgba(255, 255, 255, 0.08)';
+        item.classList.add('selected');
         item.scrollIntoView({ block: 'nearest' });
       } else {
-        item.style.background = 'transparent';
+        item.classList.remove('selected');
       }
     });
   }

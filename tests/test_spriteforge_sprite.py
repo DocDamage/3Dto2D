@@ -45,6 +45,40 @@ def test_auto_chroma_key_ignores_letterbox_bars():
     assert arr[30, 10, 3] == 0
     assert arr[45, 60, 3] == 255
 
+def test_auto_chroma_key_prefers_green_screen_over_yellow_floor():
+    img = Image.new("RGBA", (160, 100), (25, 220, 25, 255))
+    pixels = np.asarray(img).copy()
+    pixels[72:100, :] = [222, 205, 104, 255]
+    pixels[34:76, 58:102] = [35, 50, 150, 255]
+    pixels[76:96, 54:76] = [145, 25, 18, 255]
+    pixels[76:96, 84:106] = [145, 25, 18, 255]
+    img = Image.fromarray(pixels, mode="RGBA")
+
+    assert SpriteService.guess_key_color_from_corners(img)[1] > 180
+    keyed = SpriteService.apply_chroma_key(img, "auto", tolerance=45, feather=0)
+    arr = np.asarray(keyed)
+
+    assert arr[10, 10, 3] == 0
+    assert arr[88, 64, 3] == 255
+    assert arr[88, 94, 3] == 255
+
+def test_auto_chroma_key_removes_detached_floor_dashes():
+    img = Image.new("RGBA", (180, 120), (25, 220, 25, 255))
+    pixels = np.asarray(img).copy()
+    pixels[42:88, 70:110] = [35, 50, 150, 255]
+    pixels[88:112, 66:84] = [145, 25, 18, 255]
+    pixels[88:112, 96:114] = [145, 25, 18, 255]
+    for x in range(8, 168, 24):
+        pixels[96:99, x : x + 10] = [146, 212, 72, 255]
+    img = Image.fromarray(pixels, mode="RGBA")
+
+    keyed = SpriteService.apply_chroma_key(img, "auto", tolerance=45, feather=0)
+    arr = np.asarray(keyed)
+
+    assert arr[97, 12, 3] == 0
+    assert arr[100, 74, 3] == 255
+    assert arr[100, 104, 3] == 255
+
 def test_alpha_bbox():
     # Transparent image
     img = Image.new("RGBA", (100, 100), (0, 0, 0, 0))

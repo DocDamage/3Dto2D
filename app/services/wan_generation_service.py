@@ -114,12 +114,14 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
     positive = args.prompt or (prompt_pack or {}).get("positive") or (
         "single full body original game character walking cycle, professional appealing character design, heroic adult proportions, "
         "clear readable face, distinctive outfit, strong shape language, cohesive color palette, side view, locked orthographic camera, "
-        "centered, full body visible, plain bright green background, high quality 2D game sprite animation, crisp cel-shaded edges, clean silhouette"
+        "centered, head-to-toe full body visible, feet and boots visible, flat solid bright green chroma key background, no floor plane, "
+        "no horizon line, no ground shadow, high quality 2D game sprite animation, crisp cel-shaded edges, clean silhouette"
     )
     negative = args.negative or (prompt_pack or {}).get("negative") or (
         "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, "
         "watermark, deformed body, extra limbs, missing limbs, bad anatomy, childlike drawing, amateur doodle, crude sketch, scribbles, "
-        "messy linework, ugly face, melted face, lumpy body, shapeless outfit, muddy colors, low quality"
+        "messy linework, ugly face, melted face, lumpy body, shapeless outfit, muddy colors, low quality, cropped body, feet cut off, "
+        "missing legs, floor, ground plane, horizon line, floor shadow, scenery"
     )
 
     pos_inputs, neg_inputs = wf_svc.clip_text_nodes(out)

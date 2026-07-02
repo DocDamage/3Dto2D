@@ -30,8 +30,23 @@ class SpriteService:
         rgb_float = border.astype(np.float32)
         saturation = rgb_float.max(axis=1) - rgb_float.min(axis=1)
         brightness = rgb_float.max(axis=1)
+        red = rgb_float[:, 0]
+        green = rgb_float[:, 1]
+        blue = rgb_float[:, 2]
+        chroma_screen = (
+            (brightness >= 70)
+            & (saturation >= 45)
+            & (
+                ((green >= red + 35) & (green >= blue + 35))
+                | ((blue >= red + 35) & (blue >= green + 35))
+                | ((red >= green + 45) & (blue >= green + 45))
+            )
+        )
         saturated = border[(saturation >= 35) & (brightness >= 50)]
-        pixels = saturated if len(saturated) >= max(16, len(border) // 20) else border
+        if int(chroma_screen.sum()) >= max(16, len(border) // 25):
+            pixels = border[chroma_screen]
+        else:
+            pixels = saturated if len(saturated) >= max(16, len(border) // 20) else border
 
         quantized = (pixels // 16).astype(np.int16)
         bins, counts = np.unique(quantized, axis=0, return_counts=True)
@@ -61,16 +76,20 @@ class SpriteService:
             chroma_dist = np.linalg.norm((arr[:, :, :3] / rgb_sum) - (color / key_sum), axis=2) * 255.0
             dist = np.minimum(dist, chroma_dist * 1.8)
 
-        if feather <= 0:
-            alpha_factor = (dist > tol).astype(np.float32)
-        else:
-            alpha_factor = np.clip((dist - tol) / feather, 0.0, 1.0)
-
         if auto_key:
-            background = SpriteService._border_connected_background_mask(arr[:, :, :3])
+            alpha_factor = np.ones(dist.shape, dtype=np.float32)
+            strong_chroma = dist <= max(45.0, tol)
+            alpha_factor[strong_chroma] = 0.0
+            background = SpriteService._border_connected_background_mask(arr[:, :, :3], tolerance=max(70.0, tol * 1.75))
             alpha_factor[background] = 0.0
             dark_border = SpriteService._border_connected_dark_mask(arr[:, :, :3])
             alpha_factor[dark_border] = 0.0
+            remnants = SpriteService._small_auto_key_remnant_mask(arr[:, :, :3], alpha_factor > 0.5)
+            alpha_factor[remnants] = 0.0
+        elif feather <= 0:
+            alpha_factor = (dist > tol).astype(np.float32)
+        else:
+            alpha_factor = np.clip((dist - tol) / feather, 0.0, 1.0)
 
         # Spill suppression on the color channels
         r_k, g_k, b_k = rgb
@@ -98,45 +117,139 @@ class SpriteService:
         return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), mode="RGBA")
 
     @staticmethod
-    def _border_connected_background_mask(rgb: np.ndarray, tolerance: int = 24) -> np.ndarray:
+    def _small_auto_key_remnant_mask(rgb: np.ndarray, visible: np.ndarray) -> np.ndarray:
+        data = np.clip(rgb, 0, 255).astype(np.uint8)
+        h, w = visible.shape
+        max_area = max(48, int(h * w * 0.00035))
+        max_height = max(4, int(h * 0.015))
+        remove = np.zeros((h, w), dtype=bool)
+
+        def should_remove(component: np.ndarray, area: int, comp_w: int, comp_h: int) -> bool:
+            if area > max_area:
+                return False
+            if comp_h > max_height and comp_w < comp_h * 3:
+                return False
+            pixels = data[component].astype(np.float32)
+            if pixels.size == 0:
+                return False
+            mean = pixels.mean(axis=0)
+            red, green, blue = float(mean[0]), float(mean[1]), float(mean[2])
+            saturation = max(red, green, blue) - min(red, green, blue)
+            green_remnant = green >= red + 30 and green >= blue + 35 and saturation >= 45
+            yellow_floor = red >= 110 and green >= 110 and blue <= max(red, green) - 45 and abs(red - green) <= 75
+            blue_remnant = blue >= red + 35 and blue >= green + 35 and saturation >= 45
+            magenta_remnant = red >= green + 45 and blue >= green + 45 and saturation >= 45
+            return bool(green_remnant or yellow_floor or blue_remnant or magenta_remnant)
+
+        mask = visible.astype(np.uint8)
+        if cv2 is not None:
+            labels_count, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+            for label in range(1, labels_count):
+                x, y, comp_w, comp_h, area = (int(v) for v in stats[label])
+                component = labels == label
+                if should_remove(component, area, comp_w, comp_h):
+                    remove[component] = True
+            return remove
+
+        seen = np.zeros((h, w), dtype=bool)
+        for start_y in range(h):
+            for start_x in range(w):
+                if seen[start_y, start_x] or not visible[start_y, start_x]:
+                    continue
+                stack = [(start_y, start_x)]
+                coords = []
+                seen[start_y, start_x] = True
+                min_x = max_x = start_x
+                min_y = max_y = start_y
+                while stack:
+                    y, x = stack.pop()
+                    coords.append((y, x))
+                    min_x = min(min_x, x)
+                    max_x = max(max_x, x)
+                    min_y = min(min_y, y)
+                    max_y = max(max_y, y)
+                    for yy in (y - 1, y, y + 1):
+                        for xx in (x - 1, x, x + 1):
+                            if yy == y and xx == x:
+                                continue
+                            if yy < 0 or yy >= h or xx < 0 or xx >= w:
+                                continue
+                            if seen[yy, xx] or not visible[yy, xx]:
+                                continue
+                            seen[yy, xx] = True
+                            stack.append((yy, xx))
+                component = np.zeros((h, w), dtype=bool)
+                ys, xs = zip(*coords)
+                component[list(ys), list(xs)] = True
+                if should_remove(component, len(coords), max_x - min_x + 1, max_y - min_y + 1):
+                    remove[component] = True
+        return remove
+
+    @staticmethod
+    def _border_connected_background_mask(rgb: np.ndarray, tolerance: float = 48.0) -> np.ndarray:
         data = np.clip(rgb, 0, 255).astype(np.uint8)
         h, w = data.shape[:2]
+        border = np.concatenate(
+            [
+                data[:1, :, :3].reshape(-1, 3),
+                data[h - 1 :, :, :3].reshape(-1, 3),
+                data[:, :1, :3].reshape(-1, 3),
+                data[:, w - 1 :, :3].reshape(-1, 3),
+            ],
+            axis=0,
+        )
+        quantized = (border // 16).astype(np.int16)
+        bins, counts = np.unique(quantized, axis=0, return_counts=True)
+        order = np.argsort(counts)[::-1]
+        min_count = max(8, int(len(border) * 0.025))
+        colors = []
+        for idx in order[:8]:
+            if counts[idx] < min_count and colors:
+                continue
+            pixels = border[np.all(quantized == bins[idx], axis=1)]
+            colors.append(np.median(pixels, axis=0))
+            if len(colors) >= 5:
+                break
+        if not colors:
+            colors = [np.median(border, axis=0)]
+
+        color_arr = np.array(colors, dtype=np.float32).reshape(-1, 1, 1, 3)
+        dist = np.linalg.norm(data.astype(np.float32)[None, :, :, :] - color_arr, axis=3)
+        candidate = dist.min(axis=0) <= float(tolerance)
+
         if cv2 is not None:
-            work = data.copy()
-            mask = np.zeros((h + 2, w + 2), dtype=np.uint8)
-            flags = 4 | (255 << 8)
-            diff = (tolerance, tolerance, tolerance)
-            for x in range(w):
-                if mask[1, x + 1] == 0:
-                    cv2.floodFill(work, mask, (x, 0), (255, 0, 255), diff, diff, flags)
-                if mask[h, x + 1] == 0:
-                    cv2.floodFill(work, mask, (x, h - 1), (255, 0, 255), diff, diff, flags)
-            for y in range(h):
-                if mask[y + 1, 1] == 0:
-                    cv2.floodFill(work, mask, (0, y), (255, 0, 255), diff, diff, flags)
-                if mask[y + 1, w] == 0:
-                    cv2.floodFill(work, mask, (w - 1, y), (255, 0, 255), diff, diff, flags)
-            return mask[1:-1, 1:-1] != 0
+            labels_count, labels = cv2.connectedComponents(candidate.astype(np.uint8), connectivity=4)
+            border_labels = set(labels[0, :].tolist())
+            border_labels.update(labels[h - 1, :].tolist())
+            border_labels.update(labels[:, 0].tolist())
+            border_labels.update(labels[:, w - 1].tolist())
+            border_labels.discard(0)
+            if not border_labels:
+                return np.zeros((h, w), dtype=bool)
+            return np.isin(labels, list(border_labels))
 
         seen = np.zeros((h, w), dtype=bool)
         stack = []
         for x in range(w):
-            stack.append((0, x))
-            stack.append((h - 1, x))
+            if candidate[0, x]:
+                stack.append((0, x))
+            if candidate[h - 1, x]:
+                stack.append((h - 1, x))
         for y in range(h):
-            stack.append((y, 0))
-            stack.append((y, w - 1))
+            if candidate[y, 0]:
+                stack.append((y, 0))
+            if candidate[y, w - 1]:
+                stack.append((y, w - 1))
 
         while stack:
             y, x = stack.pop()
-            if seen[y, x]:
+            if seen[y, x] or not candidate[y, x]:
                 continue
             seen[y, x] = True
-            color = data[y, x].astype(np.int16)
             for yy, xx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
                 if yy < 0 or yy >= h or xx < 0 or xx >= w or seen[yy, xx]:
                     continue
-                if np.linalg.norm(data[yy, xx].astype(np.int16) - color) <= tolerance:
+                if candidate[yy, xx]:
                     stack.append((yy, xx))
         return seen
 

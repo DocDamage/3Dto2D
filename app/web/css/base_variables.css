@@ -57,6 +57,26 @@ body:before {
   display: none !important;
 }
 
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background-color: #12162a;
+  color: #f1f4f9;
+}
+
+body.theme-light select {
+  color-scheme: light;
+}
+
+body.theme-light select option,
+body.theme-light select optgroup {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
 .aurora {
   display: none !important;
 }

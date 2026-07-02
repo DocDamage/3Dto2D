@@ -1,17 +1,13 @@
 // ================================================================
-// UX Enhancements Module — 20 Improvements
-// Covers: Breadcrumbs, Back Button, Grouped Nav, Persistent Banners,
-// Time Estimates, Structured Errors, Operation Locking, Field Hints,
-// Smart Defaults, Validation, Help Panel, View Summaries, Undo,
-// Saved Layouts, Quick Actions Footer, Step Map Progress
+// UX Enhancements Module — Streamlined
+// Covers: Grouped Nav, Persistent Banners, Time Estimates,
+// Structured Errors, Operation Locking, Field Hints, Smart Defaults,
+// Validation, Undo, Saved Layouts
 // ================================================================
 
 (function () {
   'use strict';
 
-  // ------------------------------------------------------------------
-  // 1. Breadcrumb Trail
-  // ------------------------------------------------------------------
   const VIEW_LABELS = {
     guide: 'Guide', dashboard: 'Dashboard', tasks: 'Task Center',
     launchpad: 'Launchpad', generate: 'Generate Sprite', convert: 'Convert Video',
@@ -21,59 +17,34 @@
     cleanup: 'Cleanup Manager', setup: 'Setup', logs: 'Logs'
   };
 
-  const VIEW_GROUPS = {
-    guide: 'Create', generate: 'Create', convert: 'Create', queue: 'Create',
-    quality: 'Review', ab_runs: 'Review', qa_dashboard: 'Review', library: 'Review',
-    dashboard: 'Manage', tasks: 'Manage', launchpad: 'Manage', packs: 'Manage',
-    queues: 'Manage', history: 'Manage', release: 'Manage', cleanup: 'Manage',
-    setup: 'System', logs: 'System'
+  // ------------------------------------------------------------------
+  // 1. Grouped Navigation
+  // ------------------------------------------------------------------
+  const NAV_ICONS = {
+    guide: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
+    generate: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="m19 2 4 4L7 22H3v-4z"/><path d="M14 7l4 4"/></svg>`,
+    convert: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M23 7a2 2 0 0 0-2.45-1.45L16 7V5a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2l4.55 1.45A2 2 0 0 0 23 17z"/></svg>`,
+    queue: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+    quality: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+    ab_runs: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22V2"/><path d="m21 3-7.5 7.5"/><path d="m3 3 7.5 7.5"/></svg>`,
+    qa_dashboard: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    library: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+    dashboard: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>`,
+    tasks: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+    launchpad: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 3.42-2 3.42s2.16-.5 3.42-2c1.24-1.46 1.77-3.9 1.77-3.9s-2.44.53-3.9 1.77z"/><path d="M12 12c-2-2-5.5-2.5-5.5-2.5s.5 3.5 2.5 5.5c2 2 5.5 2.5 5.5 2.5s-.5-3.5-2.5-5.5z"/><path d="M19 5c-3 0-8.5 4.5-8.5 4.5s4 4 8.5 8.5c0 0 4.5-5.5 4.5-8.5 0-3-1.5-4.5-4.5-4.5z"/></svg>`,
+    packs: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"/><polygon points="12 12 21 6.92 21 17.08 12 22.08"/><polygon points="12 2 21 6.92 12 11.85 3 6.92 12 2"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+    queues: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+    history: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    release: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 13 7 8"/><line x1="12" y1="13" x2="12" y2="3"/></svg>`,
+    cleanup: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+    setup: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2v.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    logs: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`
   };
 
-  function updateBreadcrumb(viewName) {
-    const bar = document.getElementById('breadcrumbBar');
-    if (!bar) return;
-    while (bar.firstChild) bar.removeChild(bar.firstChild);
-
-    const group = VIEW_GROUPS[viewName] || 'App';
-    const label = VIEW_LABELS[viewName] || viewName;
-
-    // Home segment
-    const home = document.createElement('button');
-    home.className = 'bc-segment';
-    home.textContent = 'SpriteForge';
-    home.addEventListener('click', () => { if (typeof showView === 'function') showView('guide'); });
-    bar.appendChild(home);
-
-    const sep1 = document.createElement('span');
-    sep1.className = 'bc-sep';
-    sep1.textContent = '/';
-    bar.appendChild(sep1);
-
-    // Group segment
-    const groupBtn = document.createElement('button');
-    groupBtn.className = 'bc-segment';
-    groupBtn.textContent = group;
-    bar.appendChild(groupBtn);
-
-    const sep2 = document.createElement('span');
-    sep2.className = 'bc-sep';
-    sep2.textContent = '/';
-    bar.appendChild(sep2);
-
-    // Current view
-    const current = document.createElement('span');
-    current.className = 'bc-segment bc-current';
-    current.textContent = label;
-    bar.appendChild(current);
-  }
-
-  // ------------------------------------------------------------------
-  // 2. Grouped Navigation
-  // ------------------------------------------------------------------
   const NAV_GROUPS = [
-    { name: 'Create', views: ['guide', 'generate', 'convert', 'queue'] },
-    { name: 'Review', views: ['quality', 'ab_runs', 'qa_dashboard', 'library'] },
-    { name: 'Manage', views: ['dashboard', 'tasks', 'launchpad', 'packs', 'queues', 'history', 'release', 'cleanup'] },
+    { name: 'Create', views: ['guide', 'generate', 'convert'] },
+    { name: 'Review', views: ['quality'] },
+    { name: 'Manage', views: ['dashboard', 'tasks', 'packs', 'history', 'release', 'cleanup'] },
     { name: 'System', views: ['setup', 'logs'] }
   ];
 
@@ -81,95 +52,62 @@
     const railNav = document.querySelector('.rail nav');
     if (!railNav) return;
 
-    // Gather existing nav buttons by data-view
     const existingBtns = {};
     railNav.querySelectorAll('.nav[data-view]').forEach(btn => {
       existingBtns[btn.dataset.view] = btn;
     });
 
-    // Clear nav
     while (railNav.firstChild) railNav.removeChild(railNav.firstChild);
+
+    // Prepend prominent Create New Sprite button
+    const createBtn = document.createElement('button');
+    createBtn.className = 'nav-create-sprite-btn';
+    createBtn.type = 'button';
+    createBtn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> <span class="nav-label">New Sprite</span>`;
+    createBtn.addEventListener('click', () => {
+      if (typeof openWizard === 'function') openWizard();
+    });
+    railNav.appendChild(createBtn);
 
     NAV_GROUPS.forEach(group => {
       const wrapper = document.createElement('div');
       wrapper.className = 'nav-group';
       wrapper.dataset.navGroup = group.name;
 
-      const heading = document.createElement('button');
+      const heading = document.createElement('div');
       heading.className = 'nav-group-heading';
-      heading.type = 'button';
-      heading.innerHTML = `<span class="ng-arrow">&#9660;</span> ${group.name}`;
-      heading.addEventListener('click', () => {
-        wrapper.classList.toggle('collapsed');
-        // Save collapse state
-        const collapsed = JSON.parse(localStorage.getItem('navGroupCollapsed') || '{}');
-        collapsed[group.name] = wrapper.classList.contains('collapsed');
-        localStorage.setItem('navGroupCollapsed', JSON.stringify(collapsed));
-      });
+      heading.textContent = group.name;
       wrapper.appendChild(heading);
 
       const items = document.createElement('div');
       items.className = 'nav-group-items';
       group.views.forEach(viewName => {
         const btn = existingBtns[viewName];
-        if (btn) items.appendChild(btn);
+        if (btn) {
+          if (!btn.querySelector('.nav-label')) {
+            const label = btn.textContent;
+            btn.innerHTML = `${NAV_ICONS[viewName] || ''} <span class="nav-label">${label}</span>`;
+            btn.title = label;
+          }
+          items.appendChild(btn);
+        }
       });
       wrapper.appendChild(items);
-
       railNav.appendChild(wrapper);
-    });
-
-    // Restore collapse states
-    const collapsed = JSON.parse(localStorage.getItem('navGroupCollapsed') || '{}');
-    Object.entries(collapsed).forEach(([name, isCollapsed]) => {
-      if (isCollapsed) {
-        const el = railNav.querySelector(`[data-nav-group="${name}"]`);
-        if (el) el.classList.add('collapsed');
-      }
     });
   }
 
   function updateNavGroupActiveState(viewName) {
+    const parentName = (window.SUBVIEW_PARENTS && window.SUBVIEW_PARENTS[viewName]) || viewName;
+    const activeNavView = (window.NAV_VIEW_MAP && window.NAV_VIEW_MAP[parentName]) || parentName;
     document.querySelectorAll('.nav-group').forEach(g => {
-      const hasActive = g.querySelector(`.nav[data-view="${viewName}"]`);
+      const hasActive = g.querySelector(`.nav[data-view="${activeNavView}"]`);
       g.classList.toggle('has-active', !!hasActive);
     });
   }
 
   // ------------------------------------------------------------------
-  // 4. Back Button — View History Stack
-  // ------------------------------------------------------------------
-  const viewHistory = [];
-  const MAX_HISTORY = 15;
-
-  function pushViewHistory(viewName) {
-    if (viewHistory.length === 0 || viewHistory[viewHistory.length - 1] !== viewName) {
-      viewHistory.push(viewName);
-      if (viewHistory.length > MAX_HISTORY) viewHistory.shift();
-    }
-    updateBackButton();
-  }
-
-  function goBack() {
-    if (viewHistory.length < 2) return;
-    viewHistory.pop(); // remove current
-    const prev = viewHistory[viewHistory.length - 1];
-    if (typeof showView === 'function') {
-      _skipHistoryPush = true;
-      showView(prev);
-      _skipHistoryPush = false;
-    }
-  }
-
-  let _skipHistoryPush = false;
-
-  function updateBackButton() {
-    const btn = document.getElementById('viewBackBtn');
-    if (btn) btn.disabled = viewHistory.length < 2;
-  }
-
-  // ------------------------------------------------------------------
-  // 5. Persistent Action Banners
+  // 2. Persistent Action Banners
   // ------------------------------------------------------------------
   let bannerIdCounter = 0;
 
@@ -190,7 +128,6 @@
     banner.appendChild(msg);
 
     if (options.undoFn) {
-      // Undo banner (improvement 19)
       banner.classList.add('undo-banner');
       const countdown = document.createElement('span');
       countdown.className = 'undo-countdown';
@@ -228,7 +165,6 @@
       dismiss.addEventListener('click', () => banner.remove());
       banner.appendChild(dismiss);
 
-      // Auto-dismiss after duration if specified
       if (options.autoDismiss) {
         setTimeout(() => { if (banner.parentNode) banner.remove(); }, options.autoDismiss);
       }
@@ -238,11 +174,10 @@
     return id;
   }
 
-  // Expose globally
   window.showBanner = showBanner;
 
   // ------------------------------------------------------------------
-  // 6. Time Estimates on Progress
+  // 3. Time Estimates on Progress
   // ------------------------------------------------------------------
   let jobStartTimestamp = null;
 
@@ -256,7 +191,6 @@
       return;
     }
 
-    // Track start time
     if (!jobStartTimestamp) {
       jobStartTimestamp = job.started_at ? new Date(job.started_at).getTime() : Date.now();
     }
@@ -290,7 +224,7 @@
   }
 
   // ------------------------------------------------------------------
-  // 7. Structured Error Display
+  // 4. Structured Error Display
   // ------------------------------------------------------------------
   function showStructuredError(what, why, steps) {
     const container = document.getElementById('bannerContainer');
@@ -336,7 +270,7 @@
   window.showStructuredError = showStructuredError;
 
   // ------------------------------------------------------------------
-  // 8. Operation State Locking
+  // 5. Operation State Locking
   // ------------------------------------------------------------------
   const LOCKABLE_SELECTORS = [
     '#generateForm button[type="submit"]', '.primary.big',
@@ -368,7 +302,7 @@
   window.unlockOperationButtons = unlockOperationButtons;
 
   // ------------------------------------------------------------------
-  // 9. Inline Field Descriptions
+  // 6. Inline Field Descriptions
   // ------------------------------------------------------------------
   const FIELD_HINTS = {
     'character': 'Describe one character in full detail. Include body type, outfit, and pose references.',
@@ -394,7 +328,6 @@
     Object.entries(FIELD_HINTS).forEach(([name, hint]) => {
       const fields = document.querySelectorAll(`[name="${name}"]`);
       fields.forEach(field => {
-        // Don't add twice
         if (field.parentElement && field.parentElement.querySelector('.field-hint')) return;
         const span = document.createElement('span');
         span.className = 'field-hint';
@@ -405,7 +338,7 @@
   }
 
   // ------------------------------------------------------------------
-  // 10. Smart Default "Why?" Explanations
+  // 7. Smart Default "Why?" Explanations
   // ------------------------------------------------------------------
   function addSmartDefaultHints(statusData) {
     if (!statusData) return;
@@ -442,7 +375,6 @@
     });
     document.addEventListener('click', () => tooltip.classList.remove('visible'));
 
-    // Insert after the field label text, before the input
     const labelText = label.childNodes[0];
     if (labelText && labelText.nodeType === 3) {
       label.insertBefore(btn, labelText.nextSibling);
@@ -453,7 +385,7 @@
   }
 
   // ------------------------------------------------------------------
-  // 11. Real-Time Form Validation
+  // 8. Real-Time Form Validation
   // ------------------------------------------------------------------
   const VALIDATION_RULES = {
     'character': { required: true, minLength: 5, message: 'Character description needs at least 5 characters.' },
@@ -470,7 +402,6 @@
       fields.forEach(field => {
         const validate = () => {
           const val = field.value.trim();
-          // Remove previous error
           const existing = field.parentElement.querySelector('.field-error-msg');
           if (existing) existing.remove();
           field.classList.remove('field-invalid', 'field-valid');
@@ -505,7 +436,6 @@
 
         field.addEventListener('blur', validate);
         field.addEventListener('input', () => {
-          // Debounced validation on input
           clearTimeout(field._valTimer);
           field._valTimer = setTimeout(validate, 400);
         });
@@ -514,7 +444,7 @@
   }
 
   // ------------------------------------------------------------------
-  // 12. Keyboard-First Form Navigation
+  // 9. Keyboard-First Form Navigation
   // ------------------------------------------------------------------
   function setFormTabOrder() {
     const form = document.getElementById('generateForm');
@@ -526,7 +456,7 @@
   }
 
   // ------------------------------------------------------------------
-  // 14. Simplified Health Bar
+  // 10. Simplified Health Bar
   // ------------------------------------------------------------------
   function simplifyHealthBar(statusData) {
     if (!statusData) return;
@@ -534,348 +464,31 @@
     const indicators = {
       'health-dot-comfy': statusData.comfy_running ? 'good' : 'broken',
       'health-dot-models': statusData.models?.ok ? 'good' : 'degraded',
-      'health-dot-vram': 'good', // default
+      'health-dot-vram': 'good',
       'health-dot-disk': 'good',
       'health-dot-queue': 'good'
     };
 
-    // VRAM check
     if (statusData.gpu && !statusData.gpu.ok) indicators['health-dot-vram'] = 'broken';
-
-    // Disk check
     if (statusData.disk) {
       const freeGb = parseFloat(statusData.disk.free_gb);
       if (freeGb < 5) indicators['health-dot-disk'] = 'broken';
       else if (freeGb < 20) indicators['health-dot-disk'] = 'degraded';
     }
-
-    // Queue check
     if (statusData.job && statusData.job.running) indicators['health-dot-queue'] = 'degraded';
 
     Object.entries(indicators).forEach(([id, state]) => {
       const dot = document.getElementById(id);
       if (dot) {
-        // Clear any inline styles set by updateHealthBar so CSS classes win
         dot.style.background = '';
         dot.style.backgroundColor = '';
         dot.className = 'status-indicator health-' + state;
       }
     });
-
-    // Remove pulsing animation from error item
-    const errorItem = document.getElementById('health-item-error');
-    if (errorItem) errorItem.style.animation = 'none';
   }
 
   // ------------------------------------------------------------------
-  // 3. Step Map — Functional Progress Tracking
-  // ------------------------------------------------------------------
-  function updateStepMapProgress(statusData) {
-    if (!statusData) return;
-
-    const hasSetup = statusData.comfy_running && statusData.models?.ok;
-    const hasGenerated = statusData.outputs && statusData.outputs.length > 0;
-    const hasJob = statusData.job && (statusData.job.running || statusData.job.exit_code !== undefined);
-    const currentView = localStorage.getItem('activeView') || 'guide';
-
-    const steps = {
-      setup: hasSetup ? 'completed' : 'current',
-      describe: hasSetup ? (hasGenerated ? 'completed' : 'current') : 'future',
-      generate: hasGenerated ? 'completed' : (hasJob ? 'current' : 'future'),
-      review: hasGenerated ? 'current' : 'future',
-      export: 'future'
-    };
-
-    // Override: mark current view's step as current
-    const viewStepMap = {
-      setup: 'setup', launchpad: 'setup',
-      guide: 'describe', generate: 'describe', convert: 'describe',
-      queue: 'generate', queues: 'generate', logs: 'generate',
-      quality: 'review', ab_runs: 'review', qa_dashboard: 'review',
-      packs: 'export', release: 'export'
-    };
-    const activeStep = viewStepMap[currentView];
-    if (activeStep) steps[activeStep] = 'current';
-
-    // Mark everything before current as completed
-    const order = ['setup', 'describe', 'generate', 'review', 'export'];
-    let foundCurrent = false;
-    for (let i = order.length - 1; i >= 0; i--) {
-      if (steps[order[i]] === 'current') { foundCurrent = true; continue; }
-      if (foundCurrent) steps[order[i]] = 'completed';
-    }
-    // Mark everything after current as future
-    foundCurrent = false;
-    for (let i = 0; i < order.length; i++) {
-      if (steps[order[i]] === 'current') { foundCurrent = true; continue; }
-      if (foundCurrent) steps[order[i]] = 'future';
-    }
-
-    document.querySelectorAll('.step-map-item').forEach(item => {
-      const step = item.dataset.step;
-      if (!step || !steps[step]) return;
-      item.classList.remove('step-completed', 'step-current', 'step-future', 'active');
-      item.classList.add('step-' + steps[step]);
-    });
-  }
-
-  // ------------------------------------------------------------------
-  // 16. Quick-Actions Footer
-  // ------------------------------------------------------------------
-  const QUICK_ACTIONS = {
-    guide: [
-      { label: 'Start Generating', action: () => showView('generate'), primary: true }
-    ],
-    generate: [
-      { label: 'Run Generation', action: () => { const f = document.getElementById('generateForm'); if (f && f.requestSubmit) f.requestSubmit(); }, primary: true },
-      { label: 'Load Preset', action: () => { const s = document.getElementById('presetSelect'); if (s) s.focus(); } }
-    ],
-    quality: [
-      { label: 'Run QA Audit', action: () => { const btn = document.querySelector('[data-quality="qa"]'); if (btn) btn.click(); }, primary: true },
-      { label: 'View Dashboard', action: () => showView('qa_dashboard') }
-    ],
-    release: [
-      { label: 'Export Pack', action: () => { const btn = document.querySelector('#releaseExportBtn'); if (btn) btn.click(); }, primary: true }
-    ],
-    setup: [
-      { label: 'Check Status', action: () => { if (typeof refreshAll === 'function') refreshAll(); }, primary: true }
-    ],
-    queues: [
-      { label: 'View Logs', action: () => showView('logs') }
-    ],
-    dashboard: [
-      { label: 'New Sprite', action: () => showView('generate'), primary: true }
-    ]
-  };
-
-  function updateQuickActionsFooter(viewName) {
-    const footer = document.getElementById('quickActionsFooter');
-    if (!footer) return;
-
-    const actions = QUICK_ACTIONS[viewName];
-    // Clear existing buttons (keep the label)
-    const existingBtns = footer.querySelectorAll('.mini, .primary');
-    existingBtns.forEach(b => b.remove());
-
-    if (!actions || actions.length === 0) {
-      footer.style.display = 'none';
-      return;
-    }
-
-    footer.style.display = 'flex';
-    actions.forEach(a => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = a.primary ? 'primary' : 'mini';
-      btn.textContent = a.label;
-      btn.addEventListener('click', a.action);
-      footer.appendChild(btn);
-    });
-  }
-
-  // ------------------------------------------------------------------
-  // 17. Contextual Help Panel
-  // ------------------------------------------------------------------
-  const VIEW_HELP = {
-    guide: {
-      title: 'Guide — Quick Reference',
-      tips: [
-        'Choose a character template to auto-fill sprite settings.',
-        'The 4-step wizard walks through character, action, quality, and output.',
-        'Click "Run" on Step 4 to start generating your first sprite.',
-        'Templates set optimized defaults for each game genre.'
-      ],
-      next: 'After completing the guide, your sprite will appear in the Quality Lab.'
-    },
-    generate: {
-      title: 'Generate Sprite — Quick Reference',
-      tips: [
-        'Character description drives the AI generation. Be specific.',
-        'Action = the animation (idle, walk, run). Direction = camera angle.',
-        'Model tier controls quality vs speed. Higher tiers need more VRAM.',
-        'Use presets to save and reuse your favorite configurations.',
-        'Leave "prompt override" empty to use the smart prompt builder.'
-      ],
-      next: 'After generation, the result opens automatically for review.'
-    },
-    quality: {
-      title: 'Quality Lab — Quick Reference',
-      tips: [
-        'Loop RMSE: Measures frame-to-frame seamlessness. Lower is better.',
-        'Foot Drift: Measures vertical foot movement. Lower = more stable.',
-        'Use the frame scrubber (or arrow keys) to inspect individual frames.',
-        'One-click repair buttons fix common issues like background noise.',
-        'Space bar toggles animation playback.'
-      ],
-      next: 'When satisfied, export from the Release view or add to a pack.'
-    },
-    dashboard: {
-      title: 'Dashboard — Quick Reference',
-      tips: [
-        'Shows overall project health, recent outputs, and system status.',
-        'Cards summarize queue status, model availability, and disk space.',
-        'Click any output card to open it in the Quality Lab.'
-      ],
-      next: 'Use the Guide or Generate view to create new sprites.'
-    },
-    setup: {
-      title: 'Setup — Quick Reference',
-      tips: [
-        'Verify ComfyUI is running and models are downloaded.',
-        'Green indicators = ready. Amber = needs attention. Red = broken.',
-        'The preflight check runs automatically before each generation.',
-        'Configure output paths and quality thresholds here.'
-      ],
-      next: 'Once everything is green, head to Generate to create sprites.'
-    },
-    release: {
-      title: 'Release — Quick Reference',
-      tips: [
-        'Package approved sprites into engine-ready sprite sheets.',
-        'Export includes metadata JSON and resolution variants.',
-        'Only sprites that pass QA gates are included by default.'
-      ],
-      next: 'Exported packs are saved to your project output directory.'
-    },
-    tasks: {
-      title: 'Task Center — Quick Reference',
-      tips: [
-        'Shows all running and completed tasks in one place.',
-        'Failed tasks include error details and recovery suggestions.',
-        'Click any task to view its full log output.'
-      ],
-      next: 'Review task outputs in the Quality Lab.'
-    },
-    logs: {
-      title: 'Logs — Quick Reference',
-      tips: [
-        'Live output from the current running process.',
-        'Scroll to bottom for the latest output.',
-        'Errors are highlighted in red.'
-      ],
-      next: 'When the task completes, review results in Quality Lab.'
-    }
-  };
-
-  function updateHelpPanel(viewName) {
-    const panel = document.getElementById('viewHelpPanel');
-    if (!panel) return;
-
-    const help = VIEW_HELP[viewName];
-    while (panel.firstChild) panel.removeChild(panel.firstChild);
-
-    if (!help) {
-      const h4 = document.createElement('h4');
-      h4.textContent = (VIEW_LABELS[viewName] || viewName) + ' — Quick Reference';
-      panel.appendChild(h4);
-      const p = document.createElement('p');
-      p.style.color = 'var(--muted)';
-      p.style.fontSize = '12px';
-      p.textContent = 'No specific help available for this view.';
-      panel.appendChild(p);
-      return;
-    }
-
-    const h4 = document.createElement('h4');
-    h4.textContent = help.title;
-    panel.appendChild(h4);
-
-    const ul = document.createElement('ul');
-    help.tips.forEach(tip => {
-      const li = document.createElement('li');
-      li.textContent = tip;
-      ul.appendChild(li);
-    });
-    panel.appendChild(ul);
-
-    if (help.next) {
-      const nextDiv = document.createElement('div');
-      nextDiv.className = 'help-next';
-      nextDiv.innerHTML = '<strong>Next step:</strong> ' + escapeHtml(help.next);
-      panel.appendChild(nextDiv);
-    }
-  }
-
-  function toggleHelpPanel() {
-    const panel = document.getElementById('viewHelpPanel');
-    const toggle = document.getElementById('helpPanelToggle');
-    if (!panel) return;
-    const isOpen = panel.classList.toggle('visible');
-    document.body.classList.toggle('help-panel-open', isOpen);
-    if (toggle) toggle.classList.toggle('active', isOpen);
-
-    // Remember state
-    const currentView = localStorage.getItem('activeView') || 'guide';
-    const states = JSON.parse(localStorage.getItem('helpPanelStates') || '{}');
-    states[currentView] = isOpen;
-    localStorage.setItem('helpPanelStates', JSON.stringify(states));
-  }
-
-  function restoreHelpPanelState(viewName) {
-    const states = JSON.parse(localStorage.getItem('helpPanelStates') || '{}');
-    const panel = document.getElementById('viewHelpPanel');
-    const toggle = document.getElementById('helpPanelToggle');
-    const isOpen = !!states[viewName];
-    if (panel) panel.classList.toggle('visible', isOpen);
-    if (toggle) toggle.classList.toggle('active', isOpen);
-    document.body.classList.toggle('help-panel-open', isOpen);
-  }
-
-  // ------------------------------------------------------------------
-  // 18. View Summary Line
-  // ------------------------------------------------------------------
-  const VIEW_SUMMARIES = {
-    guide: () => 'Step-by-step wizard to create your first sprite.',
-    dashboard: (s) => s && s.outputs ? `${s.outputs.length} sprite outputs in workspace.` : 'Loading project overview...',
-    generate: () => 'Configure and launch a new sprite generation.',
-    quality: () => {
-      const scrub = document.getElementById('frameScrubber');
-      if (scrub && scrub.max > 0) return `Inspecting sprite — ${Number(scrub.max) + 1} frames loaded.`;
-      return 'No sprite selected. Choose one from Dashboard or History.';
-    },
-    setup: (s) => {
-      if (!s) return 'Checking system status...';
-      const issues = [];
-      if (!s.comfy_running) issues.push('ComfyUI offline');
-      if (!s.models?.ok) issues.push('models incomplete');
-      if (issues.length) return 'Needs attention: ' + issues.join(', ') + '.';
-      return 'All systems ready.';
-    },
-    logs: (s) => s?.job?.running ? `Running: ${s.job.title || 'task'}` : 'No task currently running.',
-    tasks: (s) => s?.job ? `Last task: ${s.job.title || 'unknown'} — ${s.job.running ? 'running' : (s.job.exit_code === 0 ? 'passed' : 'failed')}.` : 'No tasks recorded.',
-    release: () => 'Package and export approved sprites for your game engine.',
-    queues: (s) => s?.job?.running ? 'Queue is processing.' : 'Queue is idle.',
-    history: () => 'Browse all past generation results.',
-    cleanup: () => 'Remove unused outputs to free disk space.',
-    convert: () => 'Convert video files into sprite animations.',
-    launchpad: () => 'Quick-start hub for common sprite generation tasks.',
-    packs: () => 'Build sprite packs, atlases, and export bundles.',
-    queue: () => 'Create batched sprite generation jobs.',
-    ab_runs: () => 'Compare A/B generation runs side by side.',
-    qa_dashboard: () => 'Overview of QA metrics across all sprites.',
-    library: () => 'Browse and manage pose and reference images.'
-  };
-
-  function updateViewSummary(viewName, statusData) {
-    const el = document.getElementById('viewSummaryLine');
-    if (!el) return;
-    const fn = VIEW_SUMMARIES[viewName];
-    el.textContent = fn ? fn(statusData) : '';
-  }
-
-  // ------------------------------------------------------------------
-  // 19. Undo System
-  // ------------------------------------------------------------------
-  window.undoableAction = function(message, doFn, undoFn, timeout) {
-    showBanner(message, 'info', {
-      undoFn: undoFn,
-      undoTimeout: timeout || 10
-    });
-    if (typeof doFn === 'function') doFn();
-  };
-
-  // ------------------------------------------------------------------
-  // 11b. Form-Ready State Detection
+  // 11. Form-Ready State Detection
   // ------------------------------------------------------------------
   function updateFormReadyState() {
     const form = document.getElementById('generateForm');
@@ -887,11 +500,9 @@
     form.classList.toggle('form-ready', allValid);
   }
 
-  // Hook validation to also update form-ready state
   const _realInitFormValidation = initFormValidation;
   initFormValidation = function () {
     _realInitFormValidation();
-    // Also observe overall form validity
     const form = document.getElementById('generateForm');
     if (form) {
       const checkForm = () => {
@@ -899,65 +510,46 @@
       };
       form.addEventListener('input', checkForm);
       form.addEventListener('change', checkForm);
-      // Initial check
       setTimeout(updateFormReadyState, 200);
     }
   };
 
   // ------------------------------------------------------------------
-  // 20. Saved View Layouts Per Mode
+  // 12. Undo System
   // ------------------------------------------------------------------
-  function saveLayoutState(viewName, mode) {
-    const key = `layout_${mode}_${viewName}`;
-    const scrollPos = document.querySelector('.shell')?.scrollTop || window.scrollY;
-    localStorage.setItem(key, JSON.stringify({ scroll: scrollPos }));
-  }
-
-  function restoreLayoutState(viewName) {
-    const mode = localStorage.getItem('uiMode') || 'simple';
-    const key = `layout_${mode}_${viewName}`;
-    const saved = JSON.parse(localStorage.getItem(key) || 'null');
-    if (saved && saved.scroll) {
-      requestAnimationFrame(() => {
-        const shell = document.querySelector('.shell');
-        if (shell) shell.scrollTop = saved.scroll;
-        else window.scrollTo(0, saved.scroll);
-      });
-    }
-  }
+  window.undoableAction = function(message, doFn, undoFn, timeout) {
+    showBanner(message, 'info', {
+      undoFn: undoFn,
+      undoTimeout: timeout || 10
+    });
+    if (typeof doFn === 'function') doFn();
+  };
 
   // ------------------------------------------------------------------
-  // Hook into showView
+  // Hook into showView — lightweight
   // ------------------------------------------------------------------
   const _origShowView = window.showView;
   window.showView = function (name) {
-    // Save current layout before switching
-    const prevView = localStorage.getItem('activeView') || 'guide';
-    const mode = localStorage.getItem('uiMode') || 'simple';
-    saveLayoutState(prevView, mode);
-
-    // Call original
     _origShowView(name);
 
-    // UX enhancements
-    if (!_skipHistoryPush) pushViewHistory(name);
-    updateBreadcrumb(name);
+    // Track recent views for command palette ranking
+    try {
+      let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
+      recent = recent.filter(v => v !== name);
+      recent.unshift(name);
+      recent = recent.slice(0, 5);
+      localStorage.setItem('recentViews', JSON.stringify(recent));
+    } catch (e) {
+      console.error('Error updating recent views:', e);
+    }
+
     updateNavGroupActiveState(name);
-    updateQuickActionsFooter(name);
-    updateHelpPanel(name);
-    restoreHelpPanelState(name);
-    updateViewSummary(name, window._latestStatus);
-    updateStepMapProgress(window._latestStatus);
-    restoreLayoutState(name);
   };
 
   // ------------------------------------------------------------------
   // Hook into refreshAll results
   // ------------------------------------------------------------------
   function refreshUxFromStatus(statusData) {
-    const currentView = localStorage.getItem('activeView') || 'guide';
-    updateViewSummary(currentView, statusData);
-    updateStepMapProgress(statusData);
     simplifyHealthBar(statusData);
     addSmartDefaultHints(statusData);
     addFieldHints();
@@ -970,7 +562,6 @@
     if (typeof _origRenderGlobalProgress === 'function') _origRenderGlobalProgress(job);
     updateTimeEstimates(job);
 
-    // Operation locking (improvement 8)
     if (job && job.running) {
       lockOperationButtons(job.title ? job.title.substring(0, 20) + '...' : 'Running...');
     } else {
@@ -979,7 +570,7 @@
   };
 
   // ------------------------------------------------------------------
-  // Deferred Form Enhancer — runs after async view components load
+  // Deferred Form Enhancer
   // ------------------------------------------------------------------
   let _formEnhancementsRun = false;
   function runFormEnhancements() {
@@ -989,7 +580,6 @@
     initFormValidation();
     setFormTabOrder();
 
-    // Observe for future DOM changes (e.g., views loading later)
     const observer = new MutationObserver(() => {
       addFieldHints();
       setFormTabOrder();
@@ -1002,105 +592,38 @@
   }
 
   // ------------------------------------------------------------------
-  // Init on DOMContentLoaded
+  // Init
   // ------------------------------------------------------------------
-  // ------------------------------------------------------------------
-  // 14b. Health Bar Detail Panel Click Handler
-  // ------------------------------------------------------------------
-  function initHealthDetailPanels() {
-    const healthBar = document.getElementById('healthBar');
-    const detailPanel = document.getElementById('healthDetailPanel');
-    if (!healthBar) return;
-
-    // Create detail panel if it doesn't exist
-    let panel = detailPanel;
-    if (!panel) {
-      panel = document.createElement('div');
-      panel.id = 'healthDetailPanel';
-      panel.className = 'health-detail-panel';
-      healthBar.parentElement.insertBefore(panel, healthBar.nextSibling);
-    }
-
-    // Click any health item to toggle detail
-    healthBar.querySelectorAll('.health-item').forEach(item => {
-      if (item.dataset.healthDetailWired) return;
-      item.dataset.healthDetailWired = '1';
-      item.style.cursor = 'pointer';
-      item.addEventListener('click', () => {
-        const isOpen = panel.classList.contains('visible');
-        // Populate detail
-        const statusData = window._latestStatus;
-        if (!isOpen && statusData) {
-          let detailText = '';
-          if (item.querySelector('#health-dot-comfy')) {
-            detailText = statusData.comfy_running
-              ? 'ComfyUI is online and accepting requests. No action needed.'
-              : 'ComfyUI is offline. Click "Start ComfyUI" button or run it manually. SpriteForge cannot generate sprites without ComfyUI.';
-          } else if (item.querySelector('#health-dot-models')) {
-            const present = statusData.models?.present || 0;
-            const total = statusData.models?.total || 0;
-            detailText = `${present}/${total} model files found. Models are required for WAN generation. Missing models can be downloaded via Setup > Repair.`;
-          } else if (item.querySelector('#health-dot-vram')) {
-            const gpu = statusData.gpu || {};
-            detailText = `GPU: ${gpu.label || 'Unknown'}, ${gpu.memory_total || '?'} total. SpriteForge auto-selects the best profile based on your hardware.`;
-          } else if (item.querySelector('#health-dot-disk')) {
-            const freeGb = statusData.disk?.free_gb || 0;
-            detailText = `${freeGb} GB free. At least 5 GB is recommended for smooth operation. Use Cleanup Manager to reclaim space.`;
-          } else if (item.querySelector('#health-dot-queue')) {
-            const job = statusData.job;
-            detailText = job?.running
-              ? `Job running: ${job.title || 'task'}. Started ${job.started_at || 'unknown'}. Check logs for progress.`
-              : 'No jobs running. Queue is idle.';
-          } else if (item.querySelector('#health-dot-error') || item.querySelector('#health-val-error')) {
-            const job = statusData.job;
-            detailText = job?.exit_code
-              ? `Last job "${job.title}" failed with exit code ${job.exit_code}. Click to view in Task Center for recovery options.`
-              : 'No recent errors.';
-          }
-          panel.textContent = detailText || 'No details available.';
-        }
-        panel.classList.toggle('visible');
-      });
-    });
-  }
-
   function initUxEnhancements() {
     buildGroupedNav();
 
-    // Run form enhancements after async view components are loaded
+    // Sidebar collapse/expand with localStorage persistence
+    const rail = document.querySelector('.rail');
+    const collapseToggle = document.getElementById('railCollapseToggle');
+    if (rail && collapseToggle) {
+      const isCollapsed = localStorage.getItem('railCollapsed') === 'true';
+      if (isCollapsed) {
+        rail.classList.add('collapsed');
+        document.body.classList.add('rail-collapsed');
+      }
+      collapseToggle.addEventListener('click', () => {
+        const collapsedNow = rail.classList.toggle('collapsed');
+        document.body.classList.toggle('rail-collapsed', collapsedNow);
+        localStorage.setItem('railCollapsed', collapsedNow);
+      });
+    }
+
     if (window.viewComponentsLoaded) {
       window.viewComponentsLoaded.then(runFormEnhancements);
     } else {
-      // Fallback: run after a delay
       setTimeout(runFormEnhancements, 200);
     }
 
-    // Health bar detail panels
-    initHealthDetailPanels();
-
-    // Back button
-    const backBtn = document.getElementById('viewBackBtn');
-    if (backBtn) backBtn.addEventListener('click', goBack);
-
-    // Help panel toggle
-    const helpToggle = document.getElementById('helpPanelToggle');
-    if (helpToggle) helpToggle.addEventListener('click', toggleHelpPanel);
-
-    // Initialize current view state
-    const currentView = localStorage.getItem('activeView') || 'guide';
-    pushViewHistory(currentView);
-    updateBreadcrumb(currentView);
+    const currentView = location.hash.replace('#', '') || 'guide';
     updateNavGroupActiveState(currentView);
-    updateQuickActionsFooter(currentView);
-    updateHelpPanel(currentView);
-    restoreHelpPanelState(currentView);
-    updateViewSummary(currentView, window._latestStatus);
 
-    // Add smart default hints when status is available (may be delayed)
     if (window._latestStatus) addSmartDefaultHints(window._latestStatus);
 
-    // Re-run hints after each refresh when refreshAll already exists. app_main.js
-    // also calls UxEnhancements.refreshFromStatus because it loads after this file.
     const _origRefreshAll = window.refreshAll;
     if (typeof _origRefreshAll === 'function') {
       window.refreshAll = async function () {
@@ -1124,18 +647,14 @@
     if (!rejectBtn || rejectBtn.dataset.undoHooked) return;
     rejectBtn.dataset.undoHooked = '1';
 
-    const origHandler = rejectBtn.onclick;
     rejectBtn.addEventListener('click', function (e) {
       const spritePath = rejectBtn.dataset.spriteFolder || selectedSpriteDir;
       if (!spritePath || typeof undoableAction !== 'function') return;
       const expt = rejectBtn.dataset.experimentId;
       window.undoableAction(
-        'Sprite result rejected — recoverable for 10s.',
+        'Sprite result rejected \u2014 recoverable for 10s.',
+        async () => {},
         async () => {
-          // The doFn is empty because the reject already happened via the original handler
-        },
-        async () => {
-          // Undo: restore by clearing the rejection
           try {
             if (expt && typeof api === 'function') {
               await api('/api/experiments/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: expt }) });
@@ -1150,14 +669,11 @@
     }, { once: false });
   }
 
-  // Hook structured errors into showPreflightErrorBox (the real error display path)
   const _origShowPreflightErrorBox = window.showPreflightErrorBox;
   if (typeof _origShowPreflightErrorBox === 'function') {
     window.showPreflightErrorBox = function (msg, type) {
-      // Call original first
       _origShowPreflightErrorBox(msg, type);
 
-      // Also show structured error card
       let what = 'The operation could not be completed.';
       let why = msg || '';
       let steps = ['Check the logs view for more details.', 'Try the action again from the appropriate view.', 'If the issue persists, check disk space and ComfyUI status.'];
@@ -1180,15 +696,12 @@
     };
   }
 
-  // Also hook runAction catch for non-preflight errors (toast-displayed errors)
   const _origRunAction = window.runAction;
   if (typeof _origRunAction === 'function') {
     window.runAction = async function (action, extra) {
       try {
         return await _origRunAction(action, extra);
       } catch (e) {
-        // showPreflightErrorBox already handles preflight-type errors inside runAction;
-        // this catch fires for truly unhandled errors
         const msg = e.message || '';
         if (typeof showStructuredError === 'function') {
           showStructuredError(
@@ -1202,7 +715,6 @@
     };
   }
 
-  // Hook undo prompt for reject button whenever preview opens
   const _origOpenResultPreview = window.openResultPreview;
   if (typeof _origOpenResultPreview === 'function') {
     window.openResultPreview = async function (spritePath) {
@@ -1212,18 +724,16 @@
     };
   }
 
-  // Expose for cross-module use
-  window.updateStepMapProgress = updateStepMapProgress;
+  // Expose for cross-module use — stub removed functions for backward compatibility
+  window.updateStepMapProgress = function() {};
   window.simplifyHealthBar = simplifyHealthBar;
-  window.updateViewSummary = updateViewSummary;
+  window.updateViewSummary = function() {};
   window.showBanner = showBanner;
   window.showStructuredError = showStructuredError;
   window.lockOperationButtons = lockOperationButtons;
   window.unlockOperationButtons = unlockOperationButtons;
-  window.undoableAction = window.undoableAction; // preserve
+  window.undoableAction = window.undoableAction;
   window.UxEnhancements = {
-    toggleHelpPanel: toggleHelpPanel,
-    goBack: goBack,
     refreshFromStatus: refreshUxFromStatus
   };
 

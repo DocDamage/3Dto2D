@@ -4,6 +4,14 @@
 let previousJobId = null;
 let previousJobRunning = false;
 
+function finishedRecently(timestamp) {
+  if (!timestamp) return true;
+  const normalized = String(timestamp).replace(' ', 'T');
+  const finishedAt = Date.parse(normalized);
+  if (!Number.isFinite(finishedAt)) return true;
+  return Date.now() - finishedAt < 10 * 60 * 1000;
+}
+
 async function refreshAll() {
   try {
     const s = await api('/api/status' + projectQuery());
@@ -13,11 +21,11 @@ async function refreshAll() {
     const adv = s.models.advanced_total ? ` · 2.2 ${s.models.advanced_present}/${s.models.advanced_total}` : '';
     setChip('#chip-models', modelState, `WAN safe: ${s.models.present}/${s.models.total}${adv}`);
     setChip('#chip-gpu', s.gpu.ok ? 'ok' : 'warn', s.gpu.ok ? `${s.gpu.label} · ${s.gpu.memory_total||''}` : 'GPU: check driver');
-    $('#stat-comfy').textContent = s.comfy_running ? 'Online' : 'Offline';
-    $('#stat-comfy-detail').textContent = s.comfy_url;
-    $('#stat-models').textContent = `Safe ${s.models.present}/${s.models.total}`;
-    $('#stat-models-detail').textContent = `Wan 2.2 5B: ${s.models.advanced_present}/${s.models.advanced_total}`;
-    $('#stat-disk').textContent = `${s.disk.free_gb} GB`;
+    if ($('#stat-comfy')) $('#stat-comfy').textContent = s.comfy_running ? 'Online' : 'Offline';
+    if ($('#stat-comfy-detail')) $('#stat-comfy-detail').textContent = s.comfy_url;
+    if ($('#stat-models')) $('#stat-models').textContent = `Safe ${s.models.present}/${s.models.total}`;
+    if ($('#stat-models-detail')) $('#stat-models-detail').textContent = `Wan 2.2 5B: ${s.models.advanced_present}/${s.models.advanced_total}`;
+    if ($('#stat-disk')) $('#stat-disk').textContent = `${s.disk.free_gb} GB`;
     recommendedAction = s.next_step?.action || '';
     if ($('#next-step-title')) $('#next-step-title').textContent = s.next_step?.step || 'Ready';
     if ($('#next-step-reason')) $('#next-step-reason').textContent = s.next_step?.reason || 'No recommendation available.';
@@ -40,19 +48,26 @@ async function refreshAll() {
     const activeJob = s.job;
     const activeJobId = activeJob ? activeJob.id : null;
     const activeJobRunning = activeJob ? !!activeJob.running : false;
-    if (previousJobId && previousJobId === activeJobId && previousJobRunning && !activeJobRunning) {
-      const exitCode = activeJob.exit_code;
-      const spriteFolder = activeJob.metadata ? activeJob.metadata.sprite_folder : null;
+    const jobTransitionedToDone = previousJobId && previousJobId === activeJobId && previousJobRunning && !activeJobRunning;
+    const exitCode = activeJob ? activeJob.exit_code : null;
+    const spriteFolder = activeJob && activeJob.metadata ? activeJob.metadata.sprite_folder : null;
+    if (jobTransitionedToDone) {
       if (exitCode === 0) {
         const duration = formatDuration(activeJob.started_at, activeJob.finished_at);
         const message = `${activeJob.title || 'Task'} passed in ${duration}. ${activeJob.stage_detail || ''}`.trim();
         addNotification('Task Passed', message, 'success', spriteFolder ? { label: 'Inspect Output', spriteFolder } : null);
-        if (spriteFolder) openResultPreview(spriteFolder);
       } else {
         const logs = (activeJob.logs || []).slice(-8).join(' ');
         const detail = activeJob.stage_detail || `Exit code ${exitCode}.`;
         const hint = logs.match(/ERROR:?\s*([^[]+)/i);
         addNotification('Task Failed', `${activeJob.title || 'Task'} failed. ${detail}${hint ? ' ' + hint[1].trim() : ''}`, 'error', { label: 'View in Task Center', view: 'tasks' });
+      }
+    }
+    if (activeJobId && !activeJobRunning && exitCode === 0 && spriteFolder && finishedRecently(activeJob.finished_at)) {
+      const previewKey = `spriteforge-preview-opened:${activeJobId}`;
+      if (!sessionStorage.getItem(previewKey)) {
+        sessionStorage.setItem(previewKey, '1');
+        openResultPreview(spriteFolder);
       }
     }
     previousJobId = activeJobId;
@@ -76,7 +91,10 @@ function updatePollingInterval() {
   pollIntervalId = setInterval(refreshAll, interval);
 }
 
-function initSpriteForgeApp() {
+async function initSpriteForgeApp() {
+  if (window.viewComponentsLoaded) {
+    await window.viewComponentsLoaded;
+  }
   loadProjects();
   if (typeof initFormBindings === 'function') initFormBindings();
   if (typeof initListingsBindings === 'function') initListingsBindings();

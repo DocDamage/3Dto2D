@@ -1,3 +1,24 @@
+/* ================================================================
+   Sidebar Rail — Clean Tab Navigation
+   ================================================================ */
+
+/* SVG Icon base styles */
+.icon-svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .rail {
   position: fixed;
   z-index: 10;
@@ -13,65 +34,179 @@
   backdrop-filter: blur(22px);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+.rail::-webkit-scrollbar {
+  width: 4px;
+}
+.rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rail::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
 }
 
 .brand {
   display: flex;
   gap: 10px;
   align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .brand img {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
 }
 
 .brand strong {
   display: block;
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: .2px;
 }
 
 .brand span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
-  margin-top: 2px;
+  font-size: 10px;
+  margin-top: 1px;
 }
 
 .rail nav {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-height: 0;
 }
 
-.nav {
-  height: 40px;
+/* --- Create New Sprite CTA --- */
+.nav-create-sprite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 38px;
+  margin-bottom: 10px;
   border: 0;
   border-radius: 10px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  color: #03050c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+.nav-create-sprite-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* --- Nav Group --- */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nav-group-heading {
+  padding: 10px 12px 4px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  user-select: none;
+}
+
+.nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* --- Nav Button --- */
+.nav {
+  position: relative;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
   color: var(--muted);
   text-align: left;
-  padding: 0 12px;
-  font-weight: 700;
-  letter-spacing: .2px;
+  padding: 0 10px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: .1px;
   cursor: pointer;
-  transition: .18s;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.nav:hover,
-.nav.active {
-  background: rgba(85, 241, 255, .1);
+.nav:hover {
+  background: rgba(255, 255, 255, .05);
   color: var(--text);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
 }
 
+.nav.active {
+  background: rgba(73, 160, 224, .1);
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Active tab left accent bar */
+.nav.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--cyan);
+  transition: opacity 0.2s;
+}
+
+.nav-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  opacity: 0.6;
+}
+
+.nav.active .nav-icon {
+  opacity: 1;
+}
+
+.nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Rail Footer --- */
 .rail-card {
   margin-top: auto;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, .03);
+  flex-shrink: 0;
 }
 
 .rail-card small {
@@ -84,8 +219,8 @@
 
 .rail-card b {
   display: block;
-  margin: 6px 0;
-  font-size: 13px;
+  margin: 4px 0;
+  font-size: 12px;
 }
 
 .rail-card span {
@@ -94,6 +229,125 @@
   line-height: 1.4;
 }
 
+.rail-footer {
+  flex-shrink: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+/* --- Mode Toggle --- */
+.mode-toggle-container {
+  margin-bottom: 4px;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.mode-btn {
+  flex: 1;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.mode-btn:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+}
+
+.mode-btn.active {
+  background: rgba(73, 160, 224, .12);
+  color: var(--cyan);
+  border-color: rgba(73, 160, 224, .25);
+}
+
+/* --- Collapsed Rail --- */
+.rail.collapsed {
+  width: 64px !important;
+  padding: 14px 10px !important;
+  align-items: center;
+}
+
+.rail.collapsed .brand div,
+.rail.collapsed .rail-card,
+.rail.collapsed .nav-group-heading,
+.rail.collapsed .nav-label {
+  display: none !important;
+}
+
+.rail.collapsed .brand {
+  justify-content: center;
+  width: 100%;
+}
+
+.rail.collapsed .brand img {
+  margin: 0 !important;
+}
+
+.rail.collapsed #railCollapseToggle svg {
+  transform: rotate(180deg);
+}
+
+.rail.collapsed nav {
+  align-items: center;
+  width: 100%;
+}
+
+.rail.collapsed .nav-group {
+  width: 100%;
+  align-items: center;
+}
+
+.rail.collapsed .nav-group-items {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 2px;
+}
+
+.rail.collapsed .nav {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.rail.collapsed .nav.active::before {
+  display: none;
+}
+
+.rail.collapsed .nav-create-sprite-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  justify-content: center;
+  margin-bottom: 8px !important;
+}
+
+.rail.collapsed .nav-create-sprite-btn .nav-label {
+  display: none;
+}
+
+.rail.collapsed .rail-footer {
+  display: none !important;
+}
+
+body.rail-collapsed .shell {
+  margin-left: 94px !important;
+}
+
+/* --- Shell / Main Content --- */
 .shell {
   position: relative;
   z-index: 1;
@@ -102,12 +356,13 @@
   max-width: 1500px;
 }
 
+/* --- Topbar --- */
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .eyebrow {
@@ -125,20 +380,28 @@
   letter-spacing: -.03em;
 }
 
+.topbar-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .status-row {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
 }
 
 .chip {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, .04);
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -158,11 +421,6 @@
   color: #2f0612;
   background: linear-gradient(90deg, var(--danger), #ffbdd0);
   border-color: transparent;
-}
-
-.topbar {
-  display: grid;
-  grid-template-columns: 1fr auto;
 }
 
 .project-strip {
@@ -214,6 +472,7 @@
   font-weight: 800;
 }
 
+/* --- Responsive --- */
 @media(max-width: 1080px) {
   .rail {
     position: relative;
@@ -230,28 +489,23 @@
   }
   .topbar {
     grid-template-columns: 1fr;
-    display: grid;
-  }
-  .rail nav {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media(max-width: 620px) {
   .rail {
     padding: 10px;
-    gap: 10px;
+    gap: 6px;
   }
   .rail nav {
     display: flex;
-    grid-template-columns: none;
-    gap: 6px;
+    gap: 4px;
     overflow-x: auto;
     padding-bottom: 2px;
   }
   .nav {
-    min-width: 128px;
-    height: 36px;
+    min-width: 120px;
+    height: 34px;
     padding: 0 10px;
   }
   .rail-card {

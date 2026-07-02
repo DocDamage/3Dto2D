@@ -50,6 +50,12 @@ const GOAL_DEFAULTS = {
     cell_size: '512x512',
     negative: 'side-view, platformer view, perspective, rotation, camera zoom'
   },
+  'isometric': {
+    style: 'polished 2D isometric game sprite, professional character design, crisp silhouette, consistent outfit, isometric angle projection',
+    fps: 12,
+    cell_size: '512x512',
+    negative: 'camera movement, zoom, cuts, rotation, perspective tilt, 3D orthographic view, black borders, childlike drawing, amateur doodle, crude sketch, bad anatomy, muddy colors'
+  },
   'local_fast': {
     tier: 'wan21_safe',
     profile: 'sprite_fast',
@@ -75,11 +81,125 @@ function applyGoalDefaults(goalName) {
   if (g.negative !== undefined && form.querySelector('[name="negative"]')) form.querySelector('[name="negative"]').value = g.negative;
   if (g.tier !== undefined && form.querySelector('[name="tier"]')) form.querySelector('[name="tier"]').value = g.tier;
   if (g.profile !== undefined && form.querySelector('[name="profile"]')) form.querySelector('[name="profile"]').value = g.profile;
+  if (goalName === 'isometric') {
+    if (form.querySelector('[name="default_actions"]')) form.querySelector('[name="default_actions"]').value = 'idle,walk,attack_light,hurt,death';
+    if (form.querySelector('[name="default_directions"]')) form.querySelector('[name="default_directions"]').value = 'iso_front_left,iso_front_right,iso_back_left,iso_back_right';
+  }
   toast(`Applied defaults for: ${goalName.replace('_', ' ').toUpperCase()}`);
 }
 
+let activeArchetypeTag = '';
+let currentArchetypes = [];
+
+async function loadArchetypes(search = '', tag = '') {
+  try {
+    const res = await api(`/api/archetypes?search=${encodeURIComponent(search)}&tag=${encodeURIComponent(tag)}`);
+    if (!res.ok) return;
+    currentArchetypes = res.archetypes || [];
+    
+    const grid = $('#archetypesGrid');
+    if (!grid) return;
+    clearNode(grid);
+    
+    if (currentArchetypes.length === 0) {
+      appendText(grid, 'div', 'No matching archetypes found.', 'result-empty');
+      return;
+    }
+    
+    currentArchetypes.forEach(arc => {
+      const card = document.createElement('article');
+      card.className = 'archetype-card';
+      
+      const head = document.createElement('div');
+      head.className = 'archetype-card-head';
+      const name = document.createElement('h4');
+      name.textContent = arc.name;
+      head.appendChild(name);
+      card.appendChild(head);
+      
+      const desc = document.createElement('p');
+      desc.textContent = arc.description;
+      card.appendChild(desc);
+      
+      if (arc.tags && arc.tags.length) {
+        const tagsWrapper = document.createElement('div');
+        tagsWrapper.className = 'archetype-card-tags';
+        arc.tags.forEach(t => {
+          const tSpan = document.createElement('span');
+          tSpan.textContent = t;
+          tagsWrapper.appendChild(tSpan);
+        });
+        card.appendChild(tagsWrapper);
+      }
+      
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'archetype-card-actions';
+      actionsRow.innerHTML = `Actions: <code>${(arc.recommended_actions || []).length}</code>`;
+      card.appendChild(actionsRow);
+      
+      card.addEventListener('click', () => {
+        applyArchetype(arc);
+      });
+      
+      grid.appendChild(card);
+    });
+  } catch (e) {
+    console.error('Failed to load archetypes:', e);
+  }
+}
+
+function applyArchetype(arc) {
+  const form = $('#generateForm');
+  if (!form) return;
+  
+  if (arc.character !== undefined && form.querySelector('[name="character"]')) {
+    form.querySelector('[name="character"]').value = arc.character;
+  }
+  if (arc.style !== undefined && form.querySelector('[name="style"]')) {
+    form.querySelector('[name="style"]').value = arc.style;
+  }
+  if (arc.negative !== undefined && form.querySelector('[name="negative"]')) {
+    form.querySelector('[name="negative"]').value = arc.negative;
+  }
+  if (arc.recommended_actions && form.querySelector('[name="default_actions"]')) {
+    form.querySelector('[name="default_actions"]').value = arc.recommended_actions.join(',');
+  }
+  if (arc.recommended_directions && form.querySelector('[name="default_directions"]')) {
+    form.querySelector('[name="default_directions"]').value = arc.recommended_directions.join(',');
+  }
+  
+  const modal = $('#recipesModal');
+  if (modal) modal.classList.add('hidden');
+  
+  toast(`Applied archetype: ${arc.name}`);
+}
+
+function renderArchetypeTags() {
+  const tagsContainer = $('#recipeTagsContainer');
+  if (!tagsContainer) return;
+  clearNode(tagsContainer);
+  
+  const commonTags = ['all', 'human', 'monster', 'magic', 'melee', 'ranged', 'cyberpunk', 'sci-fi', 'animal'];
+  commonTags.forEach(tag => {
+    const pill = document.createElement('div');
+    pill.className = 'recipe-tag-pill' + (activeArchetypeTag === tag || (tag === 'all' && !activeArchetypeTag) ? ' active' : '');
+    pill.textContent = tag.toUpperCase();
+    pill.addEventListener('click', () => {
+      activeArchetypeTag = tag === 'all' ? '' : tag;
+      document.querySelectorAll('.recipe-tag-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const search = $('#recipeSearchInput')?.value || '';
+      loadArchetypes(search, activeArchetypeTag);
+    });
+    tagsContainer.appendChild(pill);
+  });
+}
+
 function initPresetBindings() {
+  // Populate the preset selector on load
   if ($('#presetSelect')) {
+    loadPresets();
+    
     $('#presetSelect').addEventListener('change', e => {
       const name = e.target.value;
       if (!name || !currentPresets[name]) return;
@@ -189,10 +309,116 @@ function initPresetBindings() {
     });
   }
 
+  // Bind character archetypes modal open / close
+  const openBtn = $('#openArchetypesBtn');
+  const modal = $('#recipesModal');
+  const closeBtn = $('#closeRecipesBtn');
+  const backdrop = $('#recipesModalBackdrop');
+  
+  if (openBtn && modal) {
+    openBtn.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      renderArchetypeTags();
+      const search = $('#recipeSearchInput')?.value || '';
+      loadArchetypes(search, activeArchetypeTag);
+    });
+  }
+  
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  }
+  if (backdrop && modal) {
+    backdrop.addEventListener('click', () => modal.classList.add('hidden'));
+  }
+  
+  // Bind search input filter
+  const searchInput = $('#recipeSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchInput._searchTimer);
+      searchInput._searchTimer = setTimeout(() => {
+        loadArchetypes(searchInput.value, activeArchetypeTag);
+      }, 300);
+    });
+  }
+
+  // Auto-filling and autocomplete presets when typing
+  let allArchetypesCache = [];
+  async function fetchAllArchetypes() {
+    try {
+      const res = await api('/api/archetypes');
+      if (res.ok) allArchetypesCache = res.archetypes || [];
+    } catch (e) {
+      console.error('Failed to pre-cache archetypes:', e);
+    }
+  }
+  fetchAllArchetypes();
+
+  const characterTextarea = document.querySelector('#generateForm textarea[name="character"]');
+  const suggestionsBox = $('#recipeSuggestions');
+  
+  if (characterTextarea && suggestionsBox) {
+    characterTextarea.addEventListener('input', () => {
+      const text = characterTextarea.value.trim().toLowerCase();
+      if (text.length < 2) {
+        suggestionsBox.classList.add('hidden');
+        clearNode(suggestionsBox);
+        return;
+      }
+
+      // Find matches in cache (match by name or tag)
+      const matches = allArchetypesCache.filter(arc => {
+        const name = String(arc.name || '').toLowerCase();
+        const description = String(arc.description || '').toLowerCase();
+        const tags = Array.isArray(arc.tags) ? arc.tags : [];
+        return name.includes(text) ||
+               tags.some(t => String(t || '').toLowerCase().includes(text)) ||
+               description.includes(text);
+      }).slice(0, 5); // Limit to top 5 suggestions
+
+      if (matches.length === 0) {
+        suggestionsBox.classList.add('hidden');
+        clearNode(suggestionsBox);
+        return;
+      }
+
+      clearNode(suggestionsBox);
+      matches.forEach(arc => {
+        const item = document.createElement('div');
+        item.className = 'recipe-suggestion-item';
+        const wrapper = document.createElement('div');
+        wrapper.append('Auto-fill: ');
+        const name = document.createElement('b');
+        name.textContent = arc.name || 'Untitled archetype';
+        wrapper.appendChild(name);
+        wrapper.append(' ');
+        const description = document.createElement('span');
+        description.textContent = `(${arc.description || 'No description'})`;
+        wrapper.appendChild(description);
+        item.appendChild(wrapper);
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          applyArchetype(arc);
+          suggestionsBox.classList.add('hidden');
+        });
+        suggestionsBox.appendChild(item);
+      });
+      suggestionsBox.classList.remove('hidden');
+    });
+
+    // Close suggestions box on clicking outside
+    document.addEventListener('click', (e) => {
+      if (!characterTextarea.contains(e.target) && !suggestionsBox.contains(e.target)) {
+        suggestionsBox.classList.add('hidden');
+      }
+    });
+  }
+
   if ($('#btnGoalPixelArt')) $('#btnGoalPixelArt').addEventListener('click', () => applyGoalDefaults('pixel_art'));
   if ($('#btnGoalSmooth2D')) $('#btnGoalSmooth2D').addEventListener('click', () => applyGoalDefaults('smooth_2d'));
   if ($('#btnGoalSideScroller')) $('#btnGoalSideScroller').addEventListener('click', () => applyGoalDefaults('side_scroller'));
   if ($('#btnGoalTopDown')) $('#btnGoalTopDown').addEventListener('click', () => applyGoalDefaults('top_down'));
+  if ($('#btnGoalIsometric')) $('#btnGoalIsometric').addEventListener('click', () => applyGoalDefaults('isometric'));
   if ($('#btnGoalLocalFast')) $('#btnGoalLocalFast').addEventListener('click', () => applyGoalDefaults('local_fast'));
   if ($('#btnGoalLocalQuality')) $('#btnGoalLocalQuality').addEventListener('click', () => applyGoalDefaults('local_quality'));
 }

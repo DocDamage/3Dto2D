@@ -52,19 +52,9 @@ function initAppViews() {
     });
   });
 
-  // Step Map Navigation
-  $$('.step-map-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const view = item.dataset.view;
-      if (view) {
-        showView(view);
-      }
-    });
-  });
-
-  // Restore active view (Continue where I left off) & load state
-  const savedView = localStorage.getItem('activeView') || 'guide';
-  showView(savedView);
+  // Navigate to hash-routed view, or fall back to 'guide'
+  const hashView = location.hash.replace('#', '') || 'guide';
+  showView(hashView);
 
   initAccessibilityPreferences();
   const savedMode = localStorage.getItem('uiMode') || 'simple';

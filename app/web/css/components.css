@@ -310,14 +310,24 @@ button {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(18, 22, 42, .86);
+  transition: opacity 0.2s, padding 0.2s;
 }
 
 .global-task-progress.idle {
-  opacity: .72;
+  padding: 6px 12px;
+  opacity: .5;
+}
+
+.global-task-progress.idle:hover {
+  opacity: .85;
 }
 
 .global-task-progress.failed {
   border-color: rgba(220, 77, 112, .35);
+}
+
+.global-task-progress.done {
+  border-color: rgba(86, 197, 144, .2);
 }
 
 .global-task-copy {
@@ -401,6 +411,24 @@ button {
   resize: vertical;
 }
 
+.form select {
+  color-scheme: dark;
+}
+
+.form select option {
+  background: #12162a;
+  color: #f1f4f9;
+}
+
+body.theme-light .form select {
+  color-scheme: light;
+}
+
+body.theme-light .form select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
 .form input:focus,
 .form textarea:focus,
 .form select:focus {
@@ -462,5 +490,4 @@ button {
 .switch input:checked+span:before {
   transform: translateX(16px);
 }
-
 

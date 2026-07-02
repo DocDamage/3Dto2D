@@ -1,0 +1,138 @@
+/* ================================================================
+   Compact Topbar & Status Strip Stylesheet
+   ================================================================ */
+
+.topbar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 0 !important;
+  margin-bottom: 12px !important;
+  border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  gap: 16px !important;
+  grid-template-columns: none !important; /* Override index.html grid override */
+}
+
+.topbar-title-row h1 {
+  font-size: 20px !important;
+  letter-spacing: -0.02em;
+  margin: 0 !important;
+}
+
+.topbar-controls {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* Status Strip (Replacing chunky Health Bar) */
+.health-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.06)) !important;
+  border-radius: 8px;
+  margin-bottom: 12px !important;
+  font-size: 11px !important;
+  transition: all 0.25s ease-in-out;
+}
+
+.health-bar-container.collapsed-health {
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(86, 197, 144, 0.08) !important;
+  border-color: rgba(86, 197, 144, 0.2) !important;
+}
+
+.health-bar-container.collapsed-health .health-item:not(#health-summary-chip) {
+  display: none !important;
+}
+
+.health-bar-container.collapsed-health .health-divider {
+  display: none !important;
+}
+
+.health-bar-container #health-summary-chip {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  color: var(--green, #56c590);
+  font-weight: 700;
+}
+
+/* Project strip as topbar dropdown */
+.project-strip {
+  grid-column: auto !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-top: 0 !important;
+}
+
+.project-strip select {
+  height: 28px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.1)) !important;
+  border-radius: 6px !important;
+}
+
+.project-strip input {
+  height: 28px !important;
+  width: 120px !important;
+}
+
+.project-summary {
+  display: none !important; /* Hide summary in favor of clean title */
+}
+
+/* Hide rail footer settings/modes labels in collapsed rail */
+.rail.collapsed .mode-toggle-container {
+  display: none !important;
+}
+
+/* Rail footer styles */
+.rail-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line, rgba(255,255,255,0.06));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rail-footer .mode-buttons {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 2px;
+  border-radius: 6px;
+}
+
+.rail-footer .mode-btn {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted, #a9b7d0);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rail-footer .mode-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text, #fff);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.rail-footer .theme-toggle {
+  text-align: center;
+  font-size: 10px;
+  padding: 6px;
+  width: 100%;
+}

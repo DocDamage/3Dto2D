@@ -1,0 +1,83 @@
+{
+  "schema": "spriteforge_model_addons_v1",
+  "addons": [
+    {
+      "id": "wan22_pixel_animate",
+      "label": "Wan2.2 Pixel Animate Adapter",
+      "category": "recommended",
+      "kind": "lora",
+      "repo_id": "styly-agents/Wan2-2-pixel-animate",
+      "homepage": "https://huggingface.co/styly-agents/Wan2-2-pixel-animate",
+      "base_model": "Wan2.2-I2V-A14B",
+      "recommended_tier": "wan22_14b_cloud",
+      "dest_subdir": "loras",
+      "files": [
+        {
+          "filename": "wan2.2_animate_adapter_model.safetensors",
+          "approx_size": "~2.3 GB"
+        },
+        {
+          "filename": "wan2-2-video.json",
+          "dest_subdir": "workflows",
+          "approx_size": "workflow",
+          "optional": true
+        }
+      ],
+      "strength": 1.0,
+      "status_note": "Best current match for SpriteForge: trained specifically for pixel-art sprite animation from static images.",
+      "install_command": "huggingface-cli download styly-agents/Wan2-2-pixel-animate --local-dir vendor/ComfyUI/models/loras"
+    },
+    {
+      "id": "wan22_lightx2v_distill_i2v",
+      "label": "LightX2V Wan2.2 I2V 4-Step Distill LoRAs",
+      "category": "speed",
+      "kind": "lora",
+      "repo_id": "lightx2v/Wan2.2-Distill-Loras",
+      "homepage": "https://huggingface.co/lightx2v/Wan2.2-Distill-Loras",
+      "base_model": "Wan2.2-I2V-A14B",
+      "recommended_tier": "wan22_14b_cloud",
+      "dest_subdir": "loras",
+      "file_patterns": [
+        "wan2.2_i2v_A14b_high_noise_lora_rank64_lightx2v_4step*.safetensors",
+        "wan2.2_i2v_A14b_low_noise_lora_rank64_lightx2v_4step*.safetensors"
+      ],
+      "strength": 1.0,
+      "status_note": "Speed add-on, not a sprite style model. Requires Wan2.2 I2V A14B base model and matching high/low noise workflow wiring.",
+      "install_command": "huggingface-cli download lightx2v/Wan2.2-Distill-Loras --include \"wan2.2_i2v_A14b_*_lora_rank64_lightx2v_4step*.safetensors\" --local-dir vendor/ComfyUI/models/loras"
+    },
+    {
+      "id": "wan22_lightx2v_distill_models",
+      "label": "LightX2V Wan2.2 Distilled Models",
+      "category": "speed",
+      "kind": "model",
+      "repo_id": "lightx2v/Wan2.2-Distill-Models",
+      "homepage": "https://huggingface.co/lightx2v/Wan2.2-Distill-Models",
+      "base_model": "Wan2.2",
+      "recommended_tier": "wan22_14b_cloud",
+      "dest_subdir": "diffusion_models",
+      "file_patterns": [
+        "*scaled_fp8_e4m3_lightx2v_4step_comfyui*.safetensors"
+      ],
+      "status_note": "Optional performance profile for heavy GPUs. Useful when a ComfyUI-ready distilled workflow is selected.",
+      "install_command": "huggingface-cli download lightx2v/Wan2.2-Distill-Models --include \"*scaled_fp8_e4m3_lightx2v_4step_comfyui*.safetensors\" --local-dir vendor/ComfyUI/models/diffusion_models"
+    },
+    {
+      "id": "wan22_attack_sprite_experimental",
+      "label": "Wan Video Attack Sprite Animation",
+      "category": "experimental",
+      "kind": "lora",
+      "repo_id": "Teluv/Wan_Video_Attack_Sprite_Animation",
+      "homepage": "https://huggingface.co/Teluv/Wan_Video_Attack_Sprite_Animation",
+      "base_model": "Wan2.2 I2V/TI2V",
+      "recommended_tier": "wan22_14b_cloud",
+      "dest_subdir": "loras",
+      "file_patterns": [
+        "*Sprite*Attack*.safetensors",
+        "*Attack*Sprite*.safetensors",
+        "*.safetensors"
+      ],
+      "status_note": "Experimental side-view attack-animation LoRA. Keep it opt-in and compare against the Pixel Animate adapter.",
+      "install_command": "huggingface-cli download Teluv/Wan_Video_Attack_Sprite_Animation --local-dir vendor/ComfyUI/models/loras"
+    }
+  ]
+}

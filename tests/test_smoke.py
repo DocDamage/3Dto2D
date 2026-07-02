@@ -124,6 +124,8 @@ def test_power_of_two_web_option_forwarded():
     assert 'name="power_of_two"' in convert_html
     parsed = build_parser().parse_args(["generate-sprite", "--power-of-two"])
     assert parsed.power_of_two is True
+    assert hasattr(parsed, "output")
+    assert parsed.output is None
 
 
 

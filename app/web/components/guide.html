@@ -1,101 +1,65 @@
 <section class="view active" id="view-guide">
-      <div class="guide-shell">
-        <section class="guide-main card glow">
-          <div class="guide-intro">
-            <h2>Create a sprite without choosing every technical setting.</h2>
-            <p>Pick the result you want. SpriteForge will choose the practical defaults, then send you to review, repair, or export only when it matters.</p>
+  <div class="guide-shell">
+    
+    <!-- Welcome Screen Main Content -->
+    <section class="guide-main card glow">
+      <div class="guide-intro" style="margin-bottom: 24px; text-align: center; padding: 20px 0;">
+        <h2 style="font-size: 24px; margin-bottom: 12px; color: #fff;">Create Game-Ready Character Sprites</h2>
+        <p style="font-size: 14px; max-width: 600px; margin: 0 auto 24px auto; color: var(--muted); line-height: 1.5;">
+          Use our interactive wizard to easily set up animations, directions, cell sizes, and styles. SpriteForge automatically handles ComfyUI pipeline configurations for you.
+        </p>
+        <div>
+          <button class="primary big" onclick="if (typeof openWizard === 'function') openWizard();" style="padding: 12px 28px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer;">Launch Guided Creator Wizard</button>
+        </div>
+      </div>
+
+      <!-- Quick Start Workflows Grid -->
+      <div class="quick-start-workflows" style="margin-top: 32px; border-top: 1px solid var(--line, rgba(255,255,255,0.08)); padding-top: 24px;">
+        <h3 style="margin: 0 0 16px 0; font-size: 15px; color: #fff; text-transform: uppercase; letter-spacing: 0.05em;">Quick-Start Workflows</h3>
+        <div class="grid-columns-responsive" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          
+          <div class="card workflow-card" onclick="if (typeof openWizard === 'function') openWizard('single');" style="cursor: pointer; padding: 16px; border: 1px solid var(--line, rgba(255,255,255,0.06)); transition: all 0.2s; display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 24px;">🏃‍♂️</span>
+            <b style="color: #fff; font-size: 13px;">Single Animation Cycle</b>
+            <p style="margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4;">Generate a single 8-frame loop (e.g. idle or walk) to test your prompts.</p>
+          </div>
+          
+          <div class="card workflow-card" onclick="if (typeof openWizard === 'function') openWizard('pack');" style="cursor: pointer; padding: 16px; border: 1px solid var(--line, rgba(255,255,255,0.06)); transition: all 0.2s; display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 24px;">📦</span>
+            <b style="color: #fff; font-size: 13px;">Complete Action Set</b>
+            <p style="margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4;">Create a full set of actions (idle, walk, attack, death) for your character.</p>
+          </div>
+          
+          <div class="card workflow-card" onclick="if (typeof openWizard === 'function') openWizard('convert');" style="cursor: pointer; padding: 16px; border: 1px solid var(--line, rgba(255,255,255,0.06)); transition: all 0.2s; display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 24px;">🎥</span>
+            <b style="color: #fff; font-size: 13px;">Video to Sprite Sheet</b>
+            <p style="margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4;">Import an external reference video and convert it to transparent keyed frames.</p>
           </div>
 
-          <div class="guide-steps" aria-label="Guided sprite workflow">
-            <button class="guide-step active" type="button" data-guide-step="1"><span>1</span><b>Goal</b></button>
-            <button class="guide-step" type="button" data-guide-step="2"><span>2</span><b>Character</b></button>
-            <button class="guide-step" type="button" data-guide-step="3"><span>3</span><b>Output</b></button>
-            <button class="guide-step" type="button" data-guide-step="4"><span>4</span><b>Quality</b></button>
-          </div>
-
-          <form id="guidedForm" class="guided-form">
-            <section class="guide-panel active" data-guide-panel="1">
-              <h3>What are you trying to make?</h3>
-              <div class="choice-grid">
-                <label class="choice-card"><input type="radio" name="goal" value="single" checked /><span><b>Single sprite</b><small>One action and direction, good for a first pass.</small></span></label>
-                <label class="choice-card"><input type="radio" name="goal" value="pack" /><span><b>Character pack</b><small>Creates a queue for common actions and directions.</small></span></label>
-                <label class="choice-card"><input type="radio" name="goal" value="convert" /><span><b>Convert video</b><small>Turn an existing ComfyUI or reference video into a sheet.</small></span></label>
-                <label class="choice-card"><input type="radio" name="goal" value="release" /><span><b>Prepare release</b><small>Package finished sprites after review.</small></span></label>
-              </div>
-            </section>
-
-            <section class="guide-panel" data-guide-panel="2">
-              <h3>Describe the character once.</h3>
-              <div class="guided-fields">
-                <label>Character name<input name="name" value="hero" /></label>
-                <label>Character description<textarea name="character" rows="4">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea></label>
-                <label>Project template<select name="template">
-                  <option value="platformer">Platformer hero</option>
-                  <option value="topdown">Top-down RPG character</option>
-                  <option value="fighter">Fighting game character</option>
-                  <option value="enemy">Enemy creature</option>
-                  <option value="object">Item or object animation</option>
-                </select></label>
-              </div>
-            </section>
-
-            <section class="guide-panel" data-guide-panel="3">
-              <h3>Choose the animation set.</h3>
-              <div class="guided-fields">
-                <div class="action-pick" id="guidedActionPick">
-                  <label><input type="checkbox" value="idle" checked />Idle</label>
-                  <label><input type="checkbox" value="walk" checked />Walk</label>
-                  <label><input type="checkbox" value="run" />Run</label>
-                  <label><input type="checkbox" value="attack_light" />Attack</label>
-                  <label><input type="checkbox" value="hurt" />Hurt</label>
-                  <label><input type="checkbox" value="death" />Death</label>
-                </div>
-                <div class="row">
-                  <label>Direction<select name="direction"><option value="right" selected>Right</option><option value="front">Front</option><option value="left">Left</option><option value="back">Back</option><option value="three_quarter">Three-quarter</option></select></label>
-                  <label>Existing video path<input name="video_path" placeholder="Only needed for Convert video" /></label>
-                </div>
-              </div>
-            </section>
-
-            <section class="guide-panel" data-guide-panel="4">
-              <h3>Pick the quality level.</h3>
-              <div class="choice-grid quality-choices">
-                <label class="choice-card"><input type="radio" name="quality" value="fast" /><span><b>Fast test</b><small>Quick proof that the pipeline works.</small></span></label>
-                <label class="choice-card"><input type="radio" name="quality" value="balanced" checked /><span><b>Recommended</b><small>Best default for most local runs.</small></span></label>
-                <label class="choice-card"><input type="radio" name="quality" value="quality" /><span><b>Best local</b><small>Slower, cleaner result when setup is healthy.</small></span></label>
-              </div>
-              <div class="switches guide-switches">
-                <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run QA after generation</label>
-                <label class="switch"><input type="checkbox" name="start_comfy" checked /><span></span>Start ComfyUI if needed</label>
-              </div>
-            </section>
-
-            <div class="guide-actions">
-              <button class="ghost" id="guidedBack" type="button">Back</button>
-              <button class="ghost" id="guidedNext" type="button">Next</button>
-              <button class="primary" id="guidedRun" type="submit">Generate sprite</button>
-            </div>
-          </form>
-        </section>
-
-        <aside class="guide-side">
-          <section class="card">
-            <div class="card-head"><h3>Next click</h3><button class="mini" id="guidedRecommended" type="button">Do it</button></div>
-            <b id="guidedNextTitle">Checking setup...</b>
-            <p id="guidedNextReason" class="guide-muted">SpriteForge is reading your setup.</p>
-          </section>
-          <section class="card">
-            <div class="card-head"><h3>Recent results</h3><button class="mini" data-jump="quality" type="button">Review</button></div>
-            <div id="guidedGallery" class="guided-gallery"></div>
-          </section>
-          <section class="card guide-ship-card">
-            <h3>When it looks good</h3>
-            <div class="button-row">
-              <button class="ghost" data-jump="quality" type="button">Fix or QA</button>
-              <button class="ghost" data-jump="release" type="button">Ship ZIP</button>
-              <button class="ghost" data-jump="packs" type="button">Build atlas</button>
-            </div>
-          </section>
-        </aside>
+        </div>
       </div>
     </section>
+
+    <!-- Sidebar: Recent Results & Next Steps -->
+    <aside class="guide-side">
+      <section class="card">
+        <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="margin: 0;">Recent results</h3>
+          <button class="mini" data-jump="quality" type="button">Review</button>
+        </div>
+        <div id="guidedGallery" class="guided-gallery">
+          <!-- Filled dynamically by app_guide.js -->
+        </div>
+      </section>
+      <section class="card guide-ship-card">
+        <h3 style="margin-bottom: 10px;">When it looks good</h3>
+        <div class="button-row" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+          <button class="ghost" data-jump="quality" type="button" style="width: 100%; text-align: left;">Fix or QA</button>
+          <button class="ghost" data-jump="release" type="button" style="width: 100%; text-align: left;">Ship ZIP</button>
+          <button class="ghost" data-jump="packs" type="button" style="width: 100%; text-align: left;">Build atlas</button>
+        </div>
+      </section>
+    </aside>
+
+  </div>
+</section>

@@ -195,28 +195,71 @@ function setChip(id, state, text){
   }
 }
 
+window.SUBVIEW_PARENTS = {
+  tasks: 'tasks-parent',
+  launchpad: 'tasks-parent',
+  queue: 'tasks-parent',
+  queues: 'tasks-parent',
+  
+  quality: 'quality-parent',
+  ab_runs: 'quality-parent',
+  library: 'quality-parent',
+  qa_dashboard: 'quality-parent'
+};
+
+window.NAV_VIEW_MAP = {
+  'quality-parent': 'quality',
+  'tasks-parent': 'tasks'
+};
+
 function showView(name){
-  $$('.view').forEach(v=>v.classList.remove('active'));
-  $('#view-'+name)?.classList.add('active');
-  $$('.nav').forEach(n=>n.classList.toggle('active',n.dataset.view===name));
+  if (name === 'tasks-parent') name = 'tasks';
+  if (name === 'quality-parent') name = 'quality';
 
-  localStorage.setItem('activeView', name);
+  const parentName = window.SUBVIEW_PARENTS[name] || name;
+  
+  // Deactivate all top-level views except the active parent/view
+  $$('.shell > .view').forEach(v => {
+    const isCurrent = v.id === 'view-' + parentName;
+    v.classList.toggle('active', isCurrent);
+    if (isCurrent) {
+      v.classList.remove('view-enter');
+      void v.offsetWidth;
+      v.classList.add('view-enter');
+    }
+  });
 
-  // Update Step Map (delegated to UX enhancements if present)
-  if (typeof updateStepMapProgress === 'function') {
-    updateStepMapProgress(window._latestStatus);
-  } else {
-    $$('.step-map-item').forEach(item => {
-      let active = false;
-      const step = item.dataset.step;
-      if (step === 'setup') active = ['setup', 'launchpad'].includes(name);
-      else if (step === 'describe') active = ['guide', 'generate', 'convert'].includes(name);
-      else if (step === 'generate') active = ['queue', 'queues', 'logs'].includes(name);
-      else if (step === 'review') active = ['quality'].includes(name);
-      else if (step === 'export') active = ['packs', 'release'].includes(name);
-      item.classList.toggle('active', active);
-    });
+  // If it's a subview, activate the subview pane and tab button
+  if (window.SUBVIEW_PARENTS[name]) {
+    const parentEl = $('#view-' + parentName);
+    if (parentEl) {
+      parentEl.querySelectorAll('.view-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subview === name);
+      });
+      parentEl.querySelectorAll('.subview-pane').forEach(pane => {
+        const isCurrent = pane.id === 'view-' + name;
+        pane.classList.toggle('active', isCurrent);
+        if (isCurrent) {
+          pane.classList.remove('view-enter');
+          void pane.offsetWidth;
+          pane.classList.add('view-enter');
+        }
+      });
+    }
   }
+
+  // Highlight active navigation menu button in sidebar
+  const activeNavView = window.NAV_VIEW_MAP[parentName] || parentName;
+  $$('.nav').forEach(n=>n.classList.toggle('active',n.dataset.view===activeNavView));
+
+  // Sync hash (avoid infinite loop — only set if different)
+  const hashView = location.hash.replace('#', '') || 'guide';
+  if (hashView !== name) {
+    history.pushState(null, '', '#' + name);
+  }
+
+  // Store for API polling context
+  localStorage.setItem('activeView', name);
 
   if (name === 'library' && typeof refreshLibrary === 'function') refreshLibrary();
   if (name === 'qa_dashboard') {
@@ -225,6 +268,24 @@ function showView(name){
   }
   if (name === 'ab_runs' && typeof refreshAbRuns === 'function') refreshAbRuns();
 }
+
+// Hash routing — browser back/forward navigates between tabs
+window.addEventListener('hashchange', () => {
+  const hash = location.hash.replace('#', '') || 'guide';
+  const currentView = localStorage.getItem('activeView') || 'guide';
+  if (hash !== currentView) {
+    showView(hash);
+  }
+});
+
+// Delegated click listener for tab switches inside parents
+document.addEventListener('click', e => {
+  const tabBtn = e.target.closest('.view-tab-btn');
+  if (tabBtn) {
+    const subview = tabBtn.dataset.subview;
+    if (subview) showView(subview);
+  }
+});
 
 function relativePath(p){ return p || ''; }
 

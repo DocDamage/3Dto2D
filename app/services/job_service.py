@@ -181,6 +181,8 @@ class JobService:
             progress_pat1 = re.compile(r'(\d+)%\s*\|')
             progress_pat2 = re.compile(r'(?:[Ss]tep|[Ss]teps|[Kk]sampler|progress)?[:\s]*(\d+)\s*/\s*(\d+)', re.IGNORECASE)
             progress_pat3 = re.compile(r'(?:[Pp]rompt\s+)?progress[:\s]*(\d+)%', re.IGNORECASE)
+            source_video_pat = re.compile(r'^(?:Source|Resolved|Chosen)\s+video:\s*(.+)$', re.IGNORECASE)
+            sprite_output_pat = re.compile(r'^(?:Sprite output|Converted to sprite):\s*(.+)$', re.IGNORECASE)
 
             def set_reported_progress(inner_pct: float) -> None:
                 stage = str(job.get("stage") or "")
@@ -271,6 +273,22 @@ class JobService:
                         fp.flush()
                         append_log(line)
                         infer_stage_from_line(line)
+
+                        source_match = source_video_pat.search(line.strip())
+                        if source_match:
+                            with JobService._lock:
+                                job.setdefault("metadata", {})["output_video"] = source_match.group(1).strip()
+
+                        sprite_match = sprite_output_pat.search(line.strip())
+                        if sprite_match:
+                            raw_sprite = sprite_match.group(1).strip()
+                            try:
+                                p = Path(raw_sprite)
+                                sprite_rel = str(p.resolve().relative_to(ROOT.resolve())).replace("\\", "/") if p.is_absolute() else raw_sprite.replace("\\", "/")
+                            except Exception:
+                                sprite_rel = raw_sprite.replace("\\", "/")
+                            with JobService._lock:
+                                job.setdefault("metadata", {})["sprite_folder"] = sprite_rel
                         
                         if "cuda out of memory" in line.lower() or "outofmemoryerror" in line.lower():
                             oom_detected = True
@@ -398,6 +416,7 @@ class JobService:
                                     return default
 
                             sprite_folder = command_sprite_folder(ROOT, cmd, str(job.get("started_at") or ""))
+                            output_video = str(job.get("metadata", {}).get("output_video", ""))
 
                             seed_str = _arg("--seed")
                             _ES.append_run(
@@ -409,6 +428,7 @@ class JobService:
                                 profile=_arg("--profile"),
                                 sprite_action=_arg("--action"),
                                 direction=_arg("--direction"),
+                                output_video=output_video,
                                 sprite_folder=sprite_folder,
                                 project_name=str(job.get("metadata", {}).get("project_name", "")),
                                 project_path=str(job.get("metadata", {}).get("project_path", "")),

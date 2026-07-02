@@ -136,6 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--qa-threshold-foot-drift", type=float, default=None)
     s.add_argument("--qa-threshold-center-drift", type=float, default=None)
     s.add_argument("--power-of-two", action="store_true", help="Pad final sheet to power-of-two dimensions")
+    s.add_argument("--output", default=None, help="Sprite output directory. Defaults to output/wan_sprite_<timestamp>.")
     s.set_defaults(func=cmd_generate_sprite)
 
     s = sub.add_parser("watch-output", help="Watch ComfyUI output and convert new videos into sprites")

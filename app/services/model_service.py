@@ -123,3 +123,85 @@ class ModelService:
         ModelService._disk_cache = res
         ModelService._disk_cache_time = now
         return res
+
+    @staticmethod
+    def get_addons_status() -> Dict[str, Any]:
+        registry_path = ROOT / "config" / "model_addons.json"
+        registry = load_json(registry_path, {"schema": "spriteforge_model_addons_v1", "addons": []}) or {}
+        comfy_dir = ConfigService.get_path("paths.comfyui_dir")
+        models_root = comfy_dir / "models"
+        workflows_root = ROOT / "workflows"
+        addons = []
+
+        def check_dest(dest_subdir: str, filename: str) -> Path:
+            if dest_subdir == "workflows":
+                return workflows_root / filename
+            return models_root / dest_subdir / filename
+
+        for raw_addon in registry.get("addons", []):
+            addon = dict(raw_addon)
+            checks = []
+            found_files = []
+            required_total = 0
+            required_present = 0
+
+            for file_item in addon.get("files", []):
+                filename = str(file_item.get("filename", "")).strip()
+                if not filename:
+                    continue
+                dest_subdir = str(file_item.get("dest_subdir") or addon.get("dest_subdir") or "loras")
+                dest = check_dest(dest_subdir, filename)
+                is_optional = bool(file_item.get("optional"))
+                min_size = 1024 if dest.suffix.lower() == ".json" else 10 * 1024 * 1024
+                exists = dest.exists() and dest.is_file() and dest.stat().st_size >= min_size
+                if not is_optional:
+                    required_total += 1
+                    required_present += 1 if exists else 0
+                if exists:
+                    found_files.append(str(dest))
+                checks.append({
+                    "filename": filename,
+                    "dest_subdir": dest_subdir,
+                    "path": str(dest),
+                    "exists": exists,
+                    "optional": is_optional,
+                    "size_bytes": dest.stat().st_size if dest.exists() else 0,
+                    "expected_size": file_item.get("approx_size", "unknown"),
+                })
+
+            for pattern in addon.get("file_patterns", []):
+                dest_subdir = str(addon.get("dest_subdir") or "loras")
+                search_dir = models_root / dest_subdir
+                matches = []
+                if search_dir.exists():
+                    matches = [
+                        match for match in search_dir.glob(str(pattern))
+                        if match.is_file() and match.stat().st_size >= 10 * 1024 * 1024
+                    ]
+                exists = bool(matches)
+                required_total += 1
+                required_present += 1 if exists else 0
+                found_files.extend(str(match) for match in matches[:4])
+                checks.append({
+                    "pattern": str(pattern),
+                    "dest_subdir": dest_subdir,
+                    "path": str(search_dir / str(pattern)),
+                    "exists": exists,
+                    "optional": False,
+                    "matches": [str(match) for match in matches[:8]],
+                })
+
+            addon["present"] = required_present
+            addon["total"] = required_total
+            addon["installed"] = required_total > 0 and required_present == required_total
+            addon["partial"] = required_present > 0 and required_present < required_total
+            addon["checks"] = checks
+            addon["found_files"] = found_files
+            addons.append(addon)
+
+        return {
+            "ok": True,
+            "schema": registry.get("schema", "spriteforge_model_addons_v1"),
+            "addons": addons,
+            "comfy_models_dir": str(models_root),
+        }

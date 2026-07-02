@@ -10,7 +10,19 @@ function renderProjectSummary(workspace){
 
 function renderOutputs(outputs){
   currentOutputs = outputs || [];
-  $('#stat-outputs').textContent = currentOutputs.length;
+  if ($('#stat-outputs')) $('#stat-outputs').textContent = currentOutputs.length;
+  const onboardingCard = document.getElementById('wizOnboardingCard');
+  if (onboardingCard) {
+    if (currentOutputs.length === 0) {
+      document.getElementById('onboardingTitle').textContent = 'Ready for your first sprite?';
+      document.getElementById('onboardingText').textContent = 'Click "Create Sprite" or launch the wizard below. We will guide you through character descriptions, action loops, and set up your ComfyUI generation automatically.';
+      document.getElementById('onboardingCtaBtn').textContent = 'Launch Wizard';
+    } else {
+      document.getElementById('onboardingTitle').textContent = 'Continue Sprite Forge';
+      document.getElementById('onboardingText').textContent = `You have generated ${currentOutputs.length} sprite(s) in this project workspace. Open the Quality Lab to review them or export your sprite sheets in the Release view.`;
+      document.getElementById('onboardingCtaBtn').textContent = 'Create Another';
+    }
+  }
   const g=$('#gallery');
   clearNode(g);
   if(!currentOutputs.length){

@@ -51,7 +51,8 @@ def cmd_generate_sprite(args: argparse.Namespace) -> None:
     if video is None:
         raise RuntimeError("Could not locate a stable output video.")
 
-    sprite_dir = Path(args.output or f"output/wan_sprite_{time.strftime('%Y%m%d_%H%M%S')}")
+    print(f"Source video: {video}")
+    sprite_dir = Path(getattr(args, "output", None) or f"output/wan_sprite_{time.strftime('%Y%m%d_%H%M%S')}")
     sprite_cmd = build_sprite_args(video, sprite_dir.resolve(), cfg, getattr(args, "sprite_extra_args", None))
     run(sprite_cmd)
     write_run_manifest(prompt_id, patched, resp, outputs, video, sprite_dir)
@@ -90,6 +91,7 @@ def cmd_convert_video(args: argparse.Namespace) -> None:
     cfg = load_config()
     input_video = Path(args.input)
     output_dir = Path(args.output or f"output/convert_{time.strftime('%Y%m%d_%H%M%S')}")
+    print(f"Source video: {input_video}")
     cmd = build_sprite_args(input_video, output_dir.resolve(), cfg, getattr(args, "extra", None))
     run(cmd)
     print(f"Converted to sprite: {output_dir}")

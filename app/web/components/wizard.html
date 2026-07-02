@@ -1,0 +1,307 @@
+<div id="wizardModal" class="wizard-modal hidden" role="dialog" aria-modal="true" aria-labelledby="wizardTitle">
+  <div class="wizard-container">
+    
+    <!-- Header -->
+    <header class="wizard-header">
+      <div class="wizard-header-title">
+        <h2 id="wizardTitle">New Sprite Wizard</h2>
+        <p>Guided step-by-step sprite animation creation</p>
+      </div>
+      <button class="wizard-close-btn" id="wizardCloseBtn" type="button" aria-label="Close Wizard">✕</button>
+    </header>
+
+    <!-- Stepper progress -->
+    <div class="wizard-stepper">
+      <div class="wizard-step-indicator active" data-wiz-step="1">
+        <div class="indicator-num">1</div>
+        <span class="indicator-label">Goal</span>
+      </div>
+      <div class="wizard-step-indicator" data-wiz-step="2">
+        <div class="indicator-num">2</div>
+        <span class="indicator-label">Character</span>
+      </div>
+      <div class="wizard-step-indicator" data-wiz-step="3">
+        <div class="indicator-num">3</div>
+        <span class="indicator-label">Animations</span>
+      </div>
+      <div class="wizard-step-indicator" data-wiz-step="4">
+        <div class="indicator-num">4</div>
+        <span class="indicator-label">Review</span>
+      </div>
+    </div>
+
+    <!-- Body / Form -->
+    <form id="wizardForm" class="wizard-body">
+      
+      <!-- Step 1: Goal -->
+      <section class="wizard-step-panel active" data-wiz-panel="1">
+        <h3>What are you trying to make?</h3>
+        <p style="color: var(--muted); font-size: 13px; margin: -6px 0 16px 0;">Select your workflow type to begin</p>
+        <div class="wizard-choices-grid">
+          <label class="wizard-choice-card selected" id="wizCardGoalSingle">
+            <input type="radio" name="wiz_goal" value="single" checked />
+            <span class="choice-icon">🎨</span>
+            <b>Single Sprite</b>
+            <small>One action and direction. Ideal for a quick test run.</small>
+          </label>
+          <label class="wizard-choice-card" id="wizCardGoalPack">
+            <input type="radio" name="wiz_goal" value="pack" />
+            <span class="choice-icon">📦</span>
+            <b>Character Pack</b>
+            <small>Creates multiple animations for a complete pack.</small>
+          </label>
+          <label class="wizard-choice-card" id="wizCardGoalConvert">
+            <input type="radio" name="wiz_goal" value="convert" />
+            <span class="choice-icon">🎥</span>
+            <b>Convert Video</b>
+            <small>Extract and clean sprites from an existing video file.</small>
+          </label>
+          <label class="wizard-choice-card" id="wizCardGoalRelease">
+            <input type="radio" name="wiz_goal" value="release" />
+            <span class="choice-icon">🚀</span>
+            <b>Prepare Release</b>
+            <small>Package approved sprites for export to your engine.</small>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 2: Describe Character -->
+      <section class="wizard-step-panel" data-wiz-panel="2">
+        <div class="wizard-split-layout">
+          <div class="wizard-fields">
+            <h3>Describe your character</h3>
+            <label>Character name
+              <input name="wiz_name" value="hero" placeholder="e.g. hero, goblin, knight" required />
+            </label>
+            <label>Character description
+              <textarea name="wiz_character" rows="5" required>single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea>
+            </label>
+            <label>Project template
+              <select name="wiz_template">
+                <option value="platformer" selected>Platformer Hero (Side view)</option>
+                <option value="topdown">Top-down RPG (Isometric/Ortho)</option>
+                <option value="fighter">Fighting Game Character (Side view)</option>
+                <option value="enemy">Enemy Creature / Monster</option>
+                <option value="object">Static / Interactive Object</option>
+              </select>
+            </label>
+          </div>
+          <div class="wizard-preview-panel">
+            <h4>Generated Prompt Preview</h4>
+            <p style="font-size: 11px; color: var(--muted); margin: 0;">This prompt will be sent to the generation pipeline:</p>
+            <div class="wizard-preview-card" id="wizPromptPreview">...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 3: Choose Animations -->
+      <section class="wizard-step-panel" data-wiz-panel="3">
+        <div class="wizard-step-heading">
+          <div>
+            <h3>Build the animation set</h3>
+            <p>Select a production-sized move list, then choose the camera directions to generate.</p>
+          </div>
+          <div class="wizard-pack-meter" aria-live="polite">
+            <b id="wizAnimationCount">2</b>
+            <span>animations</span>
+          </div>
+        </div>
+
+        <div class="wizard-animation-layout">
+          <div class="wizard-animation-main">
+            <div class="wizard-toolbar" aria-label="Animation selection presets">
+              <button type="button" class="mini wiz-action-preset" data-wiz-actions="idle,walk,run">Core</button>
+              <button type="button" class="mini wiz-action-preset" data-wiz-actions="idle,walk,run,jump,fall,land,attack_light,hurt,death">Platformer</button>
+              <button type="button" class="mini wiz-action-preset" data-wiz-actions="idle,walk,run,attack_light,attack_heavy,block,dodge,hurt,death">Combat</button>
+              <button type="button" class="mini wiz-action-preset" data-wiz-actions="idle,walk,run,attack_light,attack_heavy,cast,hurt,death">RPG</button>
+              <button type="button" class="mini wiz-action-preset" data-wiz-actions="idle,walk,run,jump,fall,land,attack_light,attack_heavy,cast,block,dodge,climb,swim,slide,dash,pickup,use,interact,hurt,death,victory,emote">Full Pack</button>
+              <button type="button" class="mini ghost wiz-action-preset" data-wiz-actions="">Clear</button>
+            </div>
+
+            <div class="wizard-action-groups" id="wizActionsPicker">
+              <fieldset class="wizard-action-group">
+                <legend>Movement</legend>
+                <label class="wizard-action-checkbox selected"><input type="checkbox" value="idle" checked /> <span>Idle</span></label>
+                <label class="wizard-action-checkbox selected"><input type="checkbox" value="walk" checked /> <span>Walk</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="run" /> <span>Run</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="jump" /> <span>Jump</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="fall" /> <span>Fall</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="land" /> <span>Land</span></label>
+              </fieldset>
+              <fieldset class="wizard-action-group">
+                <legend>Combat</legend>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="attack_light" /> <span>Attack Light</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="attack_heavy" /> <span>Attack Heavy</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="cast" /> <span>Cast</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="block" /> <span>Block</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="dodge" /> <span>Dodge</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="hurt" /> <span>Hurt</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="death" /> <span>Death</span></label>
+              </fieldset>
+              <fieldset class="wizard-action-group">
+                <legend>Traversal</legend>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="climb" /> <span>Climb</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="swim" /> <span>Swim</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="slide" /> <span>Slide</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="dash" /> <span>Dash</span></label>
+              </fieldset>
+              <fieldset class="wizard-action-group">
+                <legend>Utility</legend>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="pickup" /> <span>Pickup</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="use" /> <span>Use</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="interact" /> <span>Interact</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="victory" /> <span>Victory</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="emote" /> <span>Emote</span></label>
+              </fieldset>
+            </div>
+          </div>
+
+          <aside class="wizard-animation-side">
+            <div class="wizard-direction-panel">
+              <h4>Camera Perspective</h4>
+              <select name="wiz_perspective" id="wizPerspectiveSelect" aria-label="Primary camera perspective">
+                <option value="side_view" selected>Side View</option>
+                <option value="front_view">Front View</option>
+                <option value="back_view">Back View</option>
+                <option value="three_quarter">Three Quarter</option>
+                <option value="top_down">Top Down</option>
+                <option value="isometric">Isometric</option>
+                <option value="orthographic">Orthographic</option>
+                <option value="low_angle">Low Angle</option>
+                <option value="high_angle">High Angle</option>
+                <option value="overhead">Overhead</option>
+              </select>
+              <div class="wizard-direction-grid wizard-perspective-grid" id="wizPerspectivesPicker">
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox selected"><input type="radio" name="wiz_perspective_choice" value="side_view" checked /> Side</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="front_view" /> Front</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="back_view" /> Back</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="three_quarter" /> 3/4</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="top_down" /> Top Down</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="isometric" /> Isometric</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="orthographic" /> Ortho</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="low_angle" /> Low</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="high_angle" /> High</label>
+                <label class="wizard-direction-checkbox wizard-perspective-checkbox"><input type="radio" name="wiz_perspective_choice" value="overhead" /> Overhead</label>
+              </div>
+            </div>
+            <div class="wizard-direction-panel">
+              <h4>Directions</h4>
+              <select name="wiz_direction" id="wizDirectionSelect" aria-label="Primary direction">
+                <option value="right" selected>Right</option>
+                <option value="front">Front</option>
+                <option value="left">Left</option>
+                <option value="back">Back</option>
+                <option value="iso_front_left">Iso Front Left</option>
+                <option value="iso_front_right">Iso Front Right</option>
+                <option value="iso_back_left">Iso Back Left</option>
+                <option value="iso_back_right">Iso Back Right</option>
+              </select>
+              <div class="wizard-direction-grid" id="wizDirectionsPicker">
+                <label class="wizard-direction-checkbox selected"><input type="checkbox" value="right" checked /> Right</label>
+                <label class="wizard-direction-checkbox"><input type="checkbox" value="left" /> Left</label>
+                <label class="wizard-direction-checkbox"><input type="checkbox" value="front" /> Front</label>
+                <label class="wizard-direction-checkbox"><input type="checkbox" value="back" /> Back</label>
+                <label class="wizard-direction-checkbox"><input type="checkbox" value="iso_front_left" /> Iso FL</label>
+                <label class="wizard-direction-checkbox"><input type="checkbox" value="iso_front_right" /> Iso FR</label>
+                <label class="wizard-direction-checkbox"><input type="checkbox" value="iso_back_left" /> Iso BL</label>
+                <label class="wizard-direction-checkbox"><input type="checkbox" value="iso_back_right" /> Iso BR</label>
+              </div>
+            </div>
+            <div class="wizard-sheet-stats">
+              <div><span id="wizDirectionCount">1</span><small>directions</small></div>
+              <div><span id="wizJobCount">2</span><small>jobs</small></div>
+              <div><span id="wizFrameEstimate">16</span><small>preview frames</small></div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="row" style="margin-bottom: 16px;">
+          <label id="wizVideoPathLabel" style="flex: 2; display: none; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted);">
+            Video Path (e.g. ComfyUI render output or custom mp4)
+            <input name="wiz_video_path" placeholder="Path to the video file to convert" />
+          </label>
+        </div>
+
+        <div class="wizard-cells-grid-visualizer">
+          <h4>Generated sheet preview</h4>
+          <div class="wiz-grid-container" id="wizGridVisualizer">
+            <!-- Dynamically generated visual cells -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 4: Review & Launch -->
+      <section class="wizard-step-panel" data-wiz-panel="4">
+        <h3>Review &amp; Launch</h3>
+        <p style="color: var(--muted); font-size: 13px; margin: -6px 0 16px 0;">Verify your setup and start generation</p>
+        
+        <div class="wizard-summary-section">
+          <!-- Summary card -->
+          <div class="wizard-summary-card">
+            <h4>Configuration Summary</h4>
+            <div class="wizard-summary-item">
+              <span>Goal</span>
+              <span id="wizSummaryGoal">Single Sprite</span>
+            </div>
+            <div class="wizard-summary-item">
+              <span>Character Name</span>
+              <span id="wizSummaryName">hero</span>
+            </div>
+            <div class="wizard-summary-item">
+              <span>Animations</span>
+              <span id="wizSummaryAnimations">Idle, Walk</span>
+            </div>
+            <div class="wizard-summary-item">
+              <span>Direction</span>
+              <span id="wizSummaryDirection">Right</span>
+            </div>
+            <div class="wizard-summary-item">
+              <span>Camera Perspective</span>
+              <span id="wizSummaryPerspective">Side View</span>
+            </div>
+            <div class="wizard-summary-item" style="border: none;">
+              <span>Preset Quality</span>
+              <span id="wizSummaryQuality">Balanced</span>
+            </div>
+            
+            <div class="row" style="margin-top: 10px; align-items: center; gap: 8px;">
+              <label style="flex: 1; margin: 0; font-size: 11px; font-weight: 800; color: var(--muted);">Preset Quality:
+                <select name="wiz_quality" id="wizQualitySelect" style="width: 100%; margin-top: 4px; padding: 6px;">
+                  <option value="fast">Draft (Fast)</option>
+                  <option value="balanced" selected>Balanced (Standard)</option>
+                  <option value="quality">High Quality</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <!-- Preflight list -->
+          <div class="wizard-preflight-container">
+            <h4>Preflight Checklist</h4>
+            <ul class="wizard-preflight-list" id="wizPreflightList">
+              <li id="wiz-check-comfy"><span>❓</span> ComfyUI online</li>
+              <li id="wiz-check-models"><span>❓</span> Models available</li>
+              <li id="wiz-check-disk"><span>❓</span> Free disk space</li>
+              <li id="wiz-check-job"><span>❓</span> Queue free</li>
+            </ul>
+            <div id="wizPreflightError" style="margin-top: 12px; font-size: 11px; color: var(--danger); font-weight: bold; display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+    </form>
+
+    <!-- Footer -->
+    <footer class="wizard-footer">
+      <div>
+        <a href="#" id="wizardSkipBtn" style="font-size: 12px; color: var(--muted); text-decoration: none; font-weight: 700;">I know what I'm doing → Skip to Advanced</a>
+      </div>
+      <div class="wizard-footer-right">
+        <button class="ghost" id="wizardBackBtn" type="button" disabled>Back</button>
+        <button class="primary" id="wizardNextBtn" type="button">Next</button>
+        <button class="primary ready" id="wizardLaunchBtn" type="button" style="display: none;">Generate Sprite</button>
+      </div>
+    </footer>
+
+  </div>
+</div>

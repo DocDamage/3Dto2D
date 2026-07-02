@@ -20,6 +20,8 @@
   <link rel="stylesheet" href="/web/scene_compositor.css" />
   <link rel="stylesheet" href="/web/consistency_lock.css" />
   <link rel="stylesheet" href="/web/css/ux_enhancements.css" />
+  <link rel="stylesheet" href="/web/css/topbar_compact.css" />
+  <link rel="stylesheet" href="/web/css/wizard.css" />
   <script>
     window.onSpriteForgeReady = (callback) => {
       if (document.readyState === 'loading') {
@@ -74,21 +76,18 @@
         <strong>SpriteForge</strong>
         <span>Studio v12</span>
       </div>
+      <button class="rail-collapse-toggle" id="railCollapseToggle" type="button" title="Collapse Sidebar" style="background:none; border:none; color:var(--muted); cursor:pointer; margin-left:auto; display:flex; align-items:center; padding:4px;">
+        <svg class="icon-svg" viewBox="0 0 24 24" style="width:16px; height:16px; transition: transform 0.2s;"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+      </button>
     </div>
     <nav>
       <button class="nav active" data-view="guide">Guide</button>
       <button class="nav" data-view="dashboard">Dashboard</button>
       <button class="nav" data-view="tasks">Task Center</button>
-      <button class="nav" data-view="launchpad">Launchpad</button>
-      <button class="nav" data-view="generate">Generate Sprite</button>
+      <button class="nav mode-detail" data-view="generate">Generate Sprite</button>
       <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
-      <button class="nav" data-view="ab_runs">A/B Runs</button>
-      <button class="nav" data-view="library">Pose Library</button>
-      <button class="nav" data-view="qa_dashboard">QA Dashboard</button>
       <button class="nav mode-detail" data-view="packs">Packs & Atlas</button>
-      <button class="nav mode-detail" data-view="queue">Queue Builder</button>
-      <button class="nav mode-detail" data-view="queues">Queue Monitor</button>
       <button class="nav" data-view="history">History</button>
       <button class="nav" data-view="release">Release</button>
       <button class="nav" data-view="cleanup">Cleanup Manager</button>
@@ -100,16 +99,24 @@
       <b>WAN → Sprite Sheet</b>
       <span>ComfyUI generation, exact output tracking, sprite cleanup, engine export.</span>
     </div>
+    <div class="rail-footer">
+      <div class="mode-toggle-container">
+        <span class="mode-label" style="font-size: 10px; color: var(--muted); font-weight: 800; text-transform: uppercase; margin-bottom: 4px; display: block;">Interface Mode:</span>
+        <div class="mode-buttons">
+          <button class="mode-btn active" id="modeBtnSimple" type="button" data-mode="simple">Simple</button>
+          <button class="mode-btn" id="modeBtnDetailed" type="button" data-mode="detailed">Detailed</button>
+          <button class="mode-btn" id="modeBtnExpert" type="button" data-mode="expert">Expert</button>
+        </div>
+      </div>
+      <button class="mode-btn theme-toggle" id="themeToggle" type="button" aria-pressed="false" style="margin-top: 4px;">Dark</button>
+    </div>
   </aside>
 
   <main class="shell">
     <header class="topbar">
       <div>
         <p class="eyebrow">Final Polish Edition</p>
-        <div class="topbar-title-row">
-          <button class="view-back-btn" id="viewBackBtn" type="button" title="Go back" disabled>&larr;</button>
-          <h1>Build game-ready sprite animations.</h1>
-        </div>
+        <h1>Build game-ready sprite animations.</h1>
       </div>
       <div class="topbar-controls">
         <div class="status-row">
@@ -121,15 +128,6 @@
             <span class="badge" id="notificationBadge">0</span>
           </button>
         </div>
-        <div class="mode-toggle-container">
-          <span class="mode-label">Interface:</span>
-          <div class="mode-buttons">
-            <button class="mode-btn active" id="modeBtnSimple" type="button" data-mode="simple">Simple</button>
-            <button class="mode-btn" id="modeBtnDetailed" type="button" data-mode="detailed">Detailed</button>
-            <button class="mode-btn" id="modeBtnExpert" type="button" data-mode="expert">Expert</button>
-            <button class="mode-btn theme-toggle" id="themeToggle" type="button" aria-pressed="false">Dark</button>
-          </div>
-        </div>
       </div>
       <div class="project-strip">
         <label>Project<select id="projectSelect"><option value="">No project</option></select></label>
@@ -139,75 +137,8 @@
       </div>
     </header>
 
-    <!-- Breadcrumb Trail (Improvement 1) -->
-    <div class="breadcrumb-bar" id="breadcrumbBar"></div>
-
-    <!-- Persistent Action Banners (Improvement 5) -->
+    <!-- Persistent Action Banners -->
     <div class="action-banner-container" id="bannerContainer"></div>
-
-    <!-- View Summary Line (Improvement 18) -->
-    <div class="view-summary-line" id="viewSummaryLine"></div>
-
-    <!-- ============================================================
-         Inline Health Bar
-         ============================================================ -->
-    <div class="health-bar health-bar-container" id="healthBar">
-      <div class="health-item">
-        <span class="status-indicator" id="health-dot-comfy"></span>
-        <span>ComfyUI: <strong id="health-val-comfy">checking...</strong></span>
-        <button class="mini hidden" id="healthLaunchComfyBtn">Start</button>
-      </div>
-      <div class="health-divider"></div>
-      <div class="health-item">
-        <span class="status-indicator" id="health-dot-models"></span>
-        <span>Models: <strong id="health-val-models">checking...</strong></span>
-      </div>
-      <div class="health-divider"></div>
-      <div class="health-item">
-        <span class="status-indicator" id="health-dot-vram"></span>
-        <span>VRAM: <strong id="health-val-vram">checking...</strong></span>
-      </div>
-      <div class="health-divider"></div>
-      <div class="health-item">
-        <span class="status-indicator" id="health-dot-disk"></span>
-        <span>Disk: <strong id="health-val-disk">checking...</strong></span>
-      </div>
-      <div class="health-divider"></div>
-      <div class="health-item">
-        <span class="status-indicator" id="health-dot-queue"></span>
-        <span>Queue: <strong id="health-val-queue">idle</strong></span>
-      </div>
-      <div class="health-divider hidden" id="health-divider-error"></div>
-      <div class="health-item health-item-error-style hidden" id="health-item-error">
-        <svg class="icon-svg warning" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-        <span>Last Error: <strong id="health-val-error">none</strong></span>
-      </div>
-    </div>
-
-    <!-- ============================================================
-         Exact Step Map Progress Bar
-         ============================================================ -->
-    <div class="step-map" id="stepMap">
-      <div class="step-map-item active" data-step="setup" data-view="setup">
-        <span class="step-num">1</span> <span class="step-label">1. Setup</span>
-      </div>
-      <div class="step-arrow">→</div>
-      <div class="step-map-item" data-step="describe" data-view="generate">
-        <span class="step-num">2</span> <span class="step-label">2. Describe</span>
-      </div>
-      <div class="step-arrow">→</div>
-      <div class="step-map-item" data-step="generate" data-view="queues">
-        <span class="step-num">3</span> <span class="step-label">3. Generate</span>
-      </div>
-      <div class="step-arrow">→</div>
-      <div class="step-map-item" data-step="review" data-view="quality">
-        <span class="step-num">4</span> <span class="step-label">4. Review</span>
-      </div>
-      <div class="step-arrow">→</div>
-      <div class="step-map-item" data-step="export" data-view="release">
-        <span class="step-num">5</span> <span class="step-label">5. Export</span>
-      </div>
-    </div>
 
     <section class="global-task-progress" id="globalTaskProgress">
       <div class="global-task-copy">
@@ -229,19 +160,44 @@
     <!-- ============================================================
          Unified Task Center View
          ============================================================ -->
-    <section class="view" id="view-tasks"></section>
-
-    <section class="view" id="view-launchpad"></section>
+    <section class="view" id="view-tasks-parent">
+      <div class="view-tabs">
+        <button class="view-tab-btn active" data-subview="tasks">Task Center</button>
+        <button class="view-tab-btn" data-subview="launchpad">Launchpad</button>
+        <button class="view-tab-btn mode-detail" data-subview="queue">Queue Builder</button>
+        <button class="view-tab-btn mode-detail" data-subview="queues">Queue Monitor</button>
+      </div>
+      <div class="subview-container">
+        <section class="subview-pane active" id="view-tasks"></section>
+        <section class="subview-pane" id="view-launchpad"></section>
+        <section class="subview-pane" id="view-queue"></section>
+        <section class="subview-pane" id="view-queues"></section>
+      </div>
+    </section>
 
     <section class="view" id="view-generate"></section>
 
     <section class="view" id="view-convert"></section>
 
-    <section class="view" id="view-quality"></section>
+    <!-- ============================================================
+         Unified Quality & QA View
+         ============================================================ -->
+    <section class="view" id="view-quality-parent">
+      <div class="view-tabs">
+        <button class="view-tab-btn active" data-subview="quality">Quality Lab</button>
+        <button class="view-tab-btn" data-subview="ab_runs">A/B Runs</button>
+        <button class="view-tab-btn" data-subview="library">Pose Library</button>
+        <button class="view-tab-btn" data-subview="qa_dashboard">QA Dashboard</button>
+      </div>
+      <div class="subview-container">
+        <section class="subview-pane active" id="view-quality"></section>
+        <section class="subview-pane" id="view-ab_runs"></section>
+        <section class="subview-pane" id="view-library"></section>
+        <section class="subview-pane" id="view-qa_dashboard"></section>
+      </div>
+    </section>
 
     <section class="view" id="view-packs"></section>
-
-    <section class="view" id="view-queue"></section>
 
     <section class="view" id="view-release"></section>
 
@@ -256,30 +212,14 @@
 
     <!-- ============================================================
          History view
-    ============================================================ -->
+         ============================================================ -->
     <section class="view" id="view-history"></section>
 
     <!-- ============================================================
          Queue Monitor view
-    ============================================================ -->
-    <section class="view" id="view-queues"></section>
-
-    <!-- ============================================================
-         A/B Runs view
-    ============================================================ -->
-    <section class="view" id="view-ab_runs"></section>
-
-    <!-- ============================================================
-         Pose & Reference Library view
-    ============================================================ -->
-    <section class="view" id="view-library"></section>
-
-    <!-- ============================================================
-         QA matrix dashboard view
-    ============================================================ -->
-    <section class="view" id="view-qa_dashboard"></section>
 
   </main>
+
 
   <div id="previewModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
     <div class="result-modal-backdrop" data-preview-close></div>
@@ -378,6 +318,33 @@
     </section>
   </div>
 
+  <!-- Character Archetypes / Recipes Modal -->
+  <div id="recipesModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="recipesTitle">
+    <div class="result-modal-backdrop" id="recipesModalBackdrop"></div>
+    <section class="result-dialog" style="max-width: 900px; width: 90vw;">
+      <div class="result-dialog-head">
+        <div>
+          <h2 id="recipesTitle">Character Archetypes</h2>
+          <p>Select a character type preset with optimized actions and prompts</p>
+        </div>
+        <button class="mini" type="button" id="closeRecipesBtn">Close</button>
+      </div>
+
+      <!-- Filters and Search -->
+      <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="recipeSearchInput" placeholder="Search archetypes... (e.g. 'Knight', 'Magic')" style="flex: 1; min-width: 200px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: rgba(0,0,0,0.2); color: var(--text);" />
+        <div id="recipeTagsContainer" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+          <!-- Tags will be dynamically generated -->
+        </div>
+      </div>
+
+      <!-- Archetypes Grid -->
+      <div id="archetypesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; max-height: 55vh; overflow-y: auto; padding-right: 4px;">
+        <!-- Archetype cards will be dynamically generated -->
+      </div>
+    </section>
+  </div>
+
   <!-- Sliding Notification Drawer -->
   <aside class="notification-drawer hidden" id="notificationDrawer" role="dialog" aria-label="Notification Drawer" style="position: fixed; top: 0; right: -400px; width: 380px; height: 100vh; background: #0f1322; border-left: 1px solid rgba(255,255,255,0.1); z-index: 100; box-shadow: -10px 0 30px rgba(0,0,0,0.5); transition: right 0.3s ease-in-out;">
     <div class="drawer-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.1);">
@@ -392,17 +359,24 @@
     </div>
   </aside>
 
-  <!-- Contextual Help Panel (Improvement 17) -->
-  <div class="view-help-panel" id="viewHelpPanel"></div>
-  <button class="help-panel-toggle" id="helpPanelToggle" type="button" title="Toggle help panel">?</button>
 
-  <!-- Quick-Actions Footer (Improvement 16) -->
-  <div class="quick-actions-footer" id="quickActionsFooter">
-    <span class="qa-label">Quick Actions</span>
-  </div>
 
+  <div id="wizardContainer"></div>
   <div id="toast" class="toast"></div>
   <script>
+    function openWizard() {
+      if (typeof openWizard.impl === 'function') {
+        return openWizard.impl.apply(null, arguments);
+      }
+      openWizard.pendingArgs = Array.from(arguments);
+    }
+
+    function closeWizard() {
+      if (typeof closeWizard.impl === 'function') {
+        return closeWizard.impl.apply(null, arguments);
+      }
+    }
+
     window.viewComponentsLoaded.then(() => {
       const scripts = [
         '/web/js/globals.js',
@@ -433,6 +407,7 @@
         '/web/js/app_jobs.js',
         '/web/js/app_forms.js',
         '/web/js/app_listings.js',
+        '/web/js/wizard.js?v=wizard-animations-perspectives',
         '/web/js/app_dashboard.js',
         '/web/js/command_palette.js',
         '/web/js/ux_enhancements.js',

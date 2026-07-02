@@ -27,7 +27,37 @@
     api('/api/commands/list')
       .then(data => {
         if (data && data.ok) {
-          allCommands = data.commands || [];
+          let commands = data.commands || [];
+          
+          // Prepend Wizard Command
+          const wizardCmd = {
+            id: 'open_wizard',
+            label: 'New Sprite Wizard',
+            description: 'Guided step-by-step sprite creation wizard',
+            enabled: true,
+            action_type: 'custom',
+            action: () => {
+              if (typeof openWizard === 'function') openWizard();
+            }
+          };
+
+          // Re-order frontend routes based on recentViews
+          const recentViews = JSON.parse(localStorage.getItem('recentViews') || '[]');
+          const recentCmds = [];
+          const otherCmds = [];
+
+          commands.forEach(cmd => {
+            if (cmd.action_type === 'frontend_route' && cmd.view && recentViews.includes(cmd.view)) {
+              recentCmds.push(cmd);
+            } else {
+              otherCmds.push(cmd);
+            }
+          });
+
+          // Sort recentCmds by the order they appear in recentViews
+          recentCmds.sort((a, b) => recentViews.indexOf(a.view) - recentViews.indexOf(b.view));
+
+          allCommands = [wizardCmd, ...recentCmds, ...otherCmds];
           renderCommands(allCommands);
         }
       })
@@ -114,6 +144,11 @@
   function executeCmd(cmd) {
     closePalette();
 
+    if (cmd.action_type === 'custom' && typeof cmd.action === 'function') {
+      cmd.action();
+      return;
+    }
+
     if (cmd.requires_confirmation) {
       const confirmRun = confirm(`Are you sure you want to run: "${cmd.label}"?\n\n${cmd.description}`);
       if (!confirmRun) return;
@@ -169,11 +204,32 @@
       renderCommands(allCommands);
       return;
     }
-    const filtered = allCommands.filter(c =>
-      c.label.toLowerCase().includes(q) ||
-      (c.description && c.description.toLowerCase().includes(q))
-    );
-    renderCommands(filtered);
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const scored = allCommands.map(cmd => {
+      const label = cmd.label.toLowerCase();
+      const desc = (cmd.description || '').toLowerCase();
+      let score = 0;
+      
+      // Match weighting
+      if (label === q) score += 100;
+      else if (label.startsWith(q)) score += 80;
+      else if (label.includes(q)) score += 60;
+      else if (desc.includes(q)) score += 40;
+      
+      // Token matches
+      let tokensMatched = 0;
+      tokens.forEach(tok => {
+        if (label.includes(tok)) { score += 20; tokensMatched++; }
+        else if (desc.includes(tok)) { score += 10; tokensMatched++; }
+      });
+      
+      return { cmd, score };
+    })
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.cmd);
+
+    renderCommands(scored);
   });
 
   input.addEventListener('keydown', e => {

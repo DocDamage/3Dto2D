@@ -173,6 +173,10 @@ def get_model_explanation():
     profile = request.args.get("profile", "")
     return jsonify(explain_model_profile(tier, profile))
 
+@routes_misc.route("/api/model/addons", methods=["GET"])
+def get_model_addons():
+    return jsonify(ModelService.get_addons_status())
+
 @routes_misc.route("/api/preflight/generation", methods=["GET"])
 def get_preflight_generation():
     payload = {k: v[0] for k, v in request.args.to_dict(flat=False).items() if v}

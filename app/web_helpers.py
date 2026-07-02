@@ -157,6 +157,20 @@ DEFAULT_PRESETS = {
         "qa_threshold_loop_rmse": "10.0",
         "qa_threshold_foot_drift": "999.0",
         "qa_threshold_center_drift": "999.0"
+    },
+    "Isometric RPG Character": {
+        "character": "single full body isometric RPG adventurer, professional appealing character design, heroic adult proportions, distinctive outfit, isometric 2.5D view angled at 30 degrees, crisp details",
+        "style": "polished 2D isometric game sprite, professional character design, crisp silhouette, consistent outfit, isometric angle projection",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
+        "fps": "12",
+        "cell_size": "512x512",
+        "default_actions": "idle,walk,attack_light,hurt,death",
+        "default_directions": "iso_front_left,iso_front_right,iso_back_left,iso_back_right",
+        "negative": "camera movement, zoom, cuts, rotation, perspective tilt, 3D orthographic view, black borders, childlike drawing, amateur doodle, crude sketch, bad anatomy, muddy colors",
+        "qa_threshold_loop_rmse": "18.0",
+        "qa_threshold_foot_drift": "3.0",
+        "qa_threshold_center_drift": "8.0"
     }
 }
 

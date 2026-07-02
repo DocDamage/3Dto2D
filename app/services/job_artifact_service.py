@@ -9,7 +9,7 @@ def command_sprite_folder(root: Path, cmd: List[str], started_at: str = "") -> s
     explicit = _explicit_output_folder(root, cmd)
     if explicit:
         return explicit
-    if not any(x in str(c) for x in ("generate-sprite", "generate_sprite") for c in cmd):
+    if not any(x in str(c) for x in ("generate-sprite", "generate_sprite", "convert-video", "convert_video") for c in cmd):
         return ""
     return _newest_sheet_folder(root, started_at)
 

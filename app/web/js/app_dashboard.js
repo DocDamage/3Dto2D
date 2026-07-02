@@ -214,4 +214,10 @@ function initDashboardBindings() {
   if ($('#purgeCleanupSelectedBtn')) $('#purgeCleanupSelectedBtn').addEventListener('click', purgeSelectedCleanup);
   if ($('#cleanupSelectAll')) $('#cleanupSelectAll').addEventListener('change', e => { $$('.cleanup-checkbox').forEach(chk => { chk.checked = e.target.checked; }); const c = $$('.cleanup-checkbox:checked').length, pb = $('#purgeCleanupSelectedBtn'); if (pb) { pb.disabled = c === 0; pb.textContent = `Delete Selected (${c})`; } });
   if ($('#autoCleanBtn')) $('#autoCleanBtn').addEventListener('click', async () => { const ids = scannedCleanupFiles.filter(f => f.category === 'Failed / Incomplete Outputs' || f.category === 'Old Task Logs').map(f => f.id); if (!ids.length) { toast('Nothing to clean.'); return; } if (!confirm(`Purge ${ids.length} failed outputs and old logs?`)) return; try { toast(`Auto-cleaning ${ids.length} items...`); const res = await api('/api/cleanup/purge', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ids }) }); if (res.ok) { toast(`Deleted ${res.count} items, reclaimed ${res.reclaimed_mb} MB.`); await scanCleanup(); } else toast('Clean failed: ' + res.message); } catch(e) { toast('Clean error: ' + e.message); } });
+
+  // Redesigned Dashboard Quick Actions
+  if ($('#dashActionCreate')) $('#dashActionCreate').addEventListener('click', () => { if (typeof openWizard === 'function') openWizard(); });
+  if ($('#dashActionReview')) $('#dashActionReview').addEventListener('click', () => { showView('quality'); });
+  if ($('#dashActionExport')) $('#dashActionExport').addEventListener('click', () => { showView('release'); });
+  if ($('#onboardingCtaBtn')) $('#onboardingCtaBtn').addEventListener('click', () => { if (typeof openWizard === 'function') openWizard(); });
 }

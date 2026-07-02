@@ -182,6 +182,67 @@ async function updateModelProfileExplainer() {
   }
 }
 
+async function updateModelAddonsPanel() {
+  const list = $('#modelAddonsList');
+  if (!list) return;
+  try {
+    const data = await api('/api/model/addons');
+    clearNode(list);
+    const addons = data.addons || [];
+    if (!addons.length) {
+      appendText(list, 'div', 'No add-on recommendations configured yet.', 'empty compact');
+      return;
+    }
+    addons.forEach(addon => {
+      const status = addon.installed ? 'installed' : addon.partial ? 'partial' : 'missing';
+      const card = document.createElement('article');
+      card.className = `model-addon-card ${status}`;
+
+      const title = document.createElement('div');
+      title.className = 'model-addon-title';
+      appendText(title, 'b', addon.label || addon.id || 'Model add-on');
+      const statusBadge = document.createElement('span');
+      statusBadge.className = `model-addon-status ${status}`;
+      statusBadge.textContent = addon.installed ? 'Installed' : addon.partial ? `${addon.present}/${addon.total}` : 'Missing';
+      title.appendChild(statusBadge);
+      card.appendChild(title);
+
+      const meta = [
+        addon.category,
+        addon.kind,
+        addon.base_model ? `base: ${addon.base_model}` : '',
+      ].filter(Boolean).join(' · ');
+      appendText(card, 'small', meta, 'model-addon-meta');
+      appendText(card, 'div', addon.status_note || '', 'model-addon-note');
+
+      const actions = document.createElement('div');
+      actions.className = 'model-addon-actions';
+      if (addon.homepage) {
+        const link = document.createElement('a');
+        link.className = 'mini link-button';
+        link.href = addon.homepage;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Open';
+        actions.appendChild(link);
+      }
+      if (addon.install_command) {
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'mini';
+        copy.dataset.copyAddonCommand = addon.install_command;
+        copy.textContent = 'Copy install';
+        actions.appendChild(copy);
+      }
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  } catch(e) {
+    clearNode(list);
+    appendText(list, 'div', 'Could not load model add-ons.', 'empty compact');
+  }
+}
+
 // Quality Modal & Lab Repairs
 async function runQuickRepair(type, spritePath) {
   if (!spritePath) { toast('No sprite selected for repair'); return; }
@@ -255,6 +316,21 @@ function initListingsBindings() {
     });
   }
 
+  if ($('#refreshModelAddons')) $('#refreshModelAddons').addEventListener('click', updateModelAddonsPanel);
+  if ($('#modelAddonsList')) {
+    $('#modelAddonsList').addEventListener('click', async (e) => {
+      const copyBtn = e.target.closest('[data-copy-addon-command]');
+      if (!copyBtn) return;
+      const command = copyBtn.dataset.copyAddonCommand || '';
+      try {
+        await navigator.clipboard.writeText(command);
+        toast('Install command copied');
+      } catch(err) {
+        toast(command);
+      }
+    });
+  }
+
   // Compare panel
   if ($('#compareBtn')) {
     $('#compareBtn').addEventListener('click', () => {
@@ -299,6 +375,8 @@ function initListingsBindings() {
       const el = $('#generateForm').querySelector(`[name="${name}"]`);
       if (el) el.addEventListener('change', updateModelProfileExplainer);
     });
+    updateModelProfileExplainer();
+    updateModelAddonsPanel();
   }
 
   // Review experiment buttons

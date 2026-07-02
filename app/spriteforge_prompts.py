@@ -75,6 +75,256 @@ ACTION_TEMPLATES: Dict[str, Dict[str, object]] = {
         "frames": 40,
         "pose": "death",
     },
+    "slide": {
+        "motion": "slide motion, low friction crouch slide loop, dust particles trailing, speed conservation",
+        "frames": 24,
+        "pose": "slide",
+    },
+    "climb": {
+        "motion": "climbing cycle loop, hands and feet alternating ladder grip, ascending motion, back view or side profile",
+        "frames": 32,
+        "pose": "climb",
+    },
+    "swim": {
+        "motion": "swimming cycle loop, breaststroke or crawl arm strokes, body horizontal, fluid propulsion",
+        "frames": 32,
+        "pose": "swim",
+    },
+    "shoot": {
+        "motion": "ranged shooting animation, draw bow or aim gun, fire projectile, recoil kickback, return to idle",
+        "frames": 24,
+        "pose": "shoot",
+    },
+    "block": {
+        "motion": "blocking animation, raise shield or cross weapons, braced stance, absorbing impact recoil, steady feet",
+        "frames": 20,
+        "pose": "block",
+    },
+    "dash": {
+        "motion": "quick dash forward, blur of movement, low athletic stance, high velocity push off",
+        "frames": 16,
+        "pose": "dash",
+    },
+    "slash": {
+        "motion": "slash swipe attack, quick arcing sword cut, clear trail swipe, athletic follow through",
+        "frames": 24,
+        "pose": "slash",
+    },
+    "thrust": {
+        "motion": "thrust attack, explosive forward lunge, piercing weapon strike, rapid extension and recoil",
+        "frames": 20,
+        "pose": "thrust",
+    },
+    "spin_attack": {
+        "motion": "spinning attack, 360-degree rotation strike, wide circular weapon arc, centrifugal follow-through",
+        "frames": 32,
+        "pose": "spin_attack",
+    },
+    "throw": {
+        "motion": "throwing animation, windup arm draw, release projectile, follow-through shift in weight",
+        "frames": 24,
+        "pose": "throw",
+    },
+    "cheer": {
+        "motion": "victory cheer, raise weapons or fists in triumph, jumping or shouting gesture, celebratory loop",
+        "frames": 32,
+        "pose": "cheer",
+    },
+    "dance": {
+        "motion": "playful dance loop, rhythmic hip sway, steps side-to-side, fun expressive character movement",
+        "frames": 32,
+        "pose": "dance",
+    },
+    "dodge": {
+        "motion": "evasive dodge roll or step back, quick low spin, recovery back to stance",
+        "frames": 20,
+        "pose": "dodge",
+    },
+    "crawl": {
+        "motion": "crawling cycle loop, prone position, stealthy low-to-ground forward movement",
+        "frames": 32,
+        "pose": "crawl",
+    },
+    "glide": {
+        "motion": "airborne gliding loop, arms or wings extended, stable wind resistance, horizontal body orientation",
+        "frames": 24,
+        "pose": "glide",
+    },
+    "idle_casual": {
+        "motion": "casual idle fidget loop, looking around, shifting weight, stretching arms, breathing casually",
+        "frames": 32,
+        "pose": "idle_casual",
+    },
+    "talk": {
+        "motion": "talking gesture loop, hand explanations, expressive face, head nodding, conversational pauses",
+        "frames": 32,
+        "pose": "talk",
+    },
+    "salute": {
+        "motion": "salute animation, snap hand to brow, hold respectful posture, snap back to attention",
+        "frames": 24,
+        "pose": "salute",
+    },
+    "carry": {
+        "motion": "carrying heavy object walk cycle loop, bent knees, arms holding weight in front, heavy footsteps",
+        "frames": 32,
+        "pose": "carry",
+    },
+    "kick": {
+        "motion": "unarmed kick attack, lift knee, snap leg extension, impact pause, recovery and return to stance",
+        "frames": 20,
+        "pose": "kick",
+    },
+    "combo_strike": {
+        "motion": "rapid multi-hit combo strike sequence, alternating hands/weapon, forward stepping pressure",
+        "frames": 32,
+        "pose": "combo_strike",
+    },
+    "uppercut": {
+        "motion": "uppercut strike launch animation, body rises, fist or weapon swings upwards explosively, feet leave ground",
+        "frames": 24,
+        "pose": "uppercut",
+    },
+    "ground_slam": {
+        "motion": "ground slam attack, leap up, strike downward forcefully with weapon, impact shockwave dust rising",
+        "frames": 32,
+        "pose": "ground_slam",
+    },
+    "double_slash": {
+        "motion": "double slash attack, two rapid consecutive weapon slashes crossing in front, fluid transition",
+        "frames": 24,
+        "pose": "double_slash",
+    },
+    "shield_bash": {
+        "motion": "shield bash strike, step forward and slam shield flat, forceful impact recoil, return to stance",
+        "frames": 20,
+        "pose": "shield_bash",
+    },
+    "parry": {
+        "motion": "parrying animation, quick weapon deflection swipe, counter-anticipation window, alert ready stance",
+        "frames": 20,
+        "pose": "parry",
+    },
+    "heal": {
+        "motion": "healing spell cast loop, hands clasped, warm glowing light aura rising, peaceful breathing, feet planted",
+        "frames": 32,
+        "pose": "heal",
+    },
+    "summon": {
+        "motion": "summoning spell cast, raise staff or hands, draw magical circle on floor, summoning flash, recovery",
+        "frames": 32,
+        "pose": "summon",
+    },
+    "teleport": {
+        "motion": "teleportation animation, quick vertical spin, body dissolves in particles, empty frame end",
+        "frames": 24,
+        "pose": "teleport",
+    },
+    "buff": {
+        "motion": "power up buff stance, flex muscles or raise weapon, glowing energy aura, vibrant power rise",
+        "frames": 32,
+        "pose": "buff",
+    },
+    "beam_shoot": {
+        "motion": "firing continuous energy beam, palms or weapon extended forward, recoil shake, particle sparks",
+        "frames": 32,
+        "pose": "beam_shoot",
+    },
+    "crouch": {
+        "motion": "crouch idle loop, body low to ground, look around alertly, stable crouch walk capability",
+        "frames": 24,
+        "pose": "crouch",
+    },
+    "wall_slide": {
+        "motion": "sliding down wall loop, one hand touching wall, body vertical, friction sparks trailing",
+        "frames": 24,
+        "pose": "wall_slide",
+    },
+    "wall_jump": {
+        "motion": "wall jump push-off, kick off vertical wall, explosive rotation jump, recovery in air",
+        "frames": 20,
+        "pose": "wall_jump",
+    },
+    "fall": {
+        "motion": "falling loop, descending rapidly in air, limbs flailing slightly, wind drag lines, look down",
+        "frames": 20,
+        "pose": "fall",
+    },
+    "hover": {
+        "motion": "hovering flight loop, floating stationary in mid-air, feet dangling, gentle bobbing up and down",
+        "frames": 24,
+        "pose": "hover",
+    },
+    "fly": {
+        "motion": "flying cycle loop, active wings flapping or thruster propulsion, body tilted forward, aerodynamical shape",
+        "frames": 24,
+        "pose": "fly",
+    },
+    "sleep": {
+        "motion": "sleeping loop, lying down flat on side or back, slow deep breathing chest rise, peaceful posture",
+        "frames": 32,
+        "pose": "sleep",
+    },
+    "sit": {
+        "motion": "sitting loop, sitting cross-legged or on a chair, relaxed breathing, hands on knees, resting",
+        "frames": 24,
+        "pose": "sit",
+    },
+    "read": {
+        "motion": "reading book or scroll loop, holding book in front, head nodding slightly, turning page",
+        "frames": 32,
+        "pose": "read",
+    },
+    "drink": {
+        "motion": "drinking animation, raise potion bottle or mug, tilt head back, swallow gulp, return to stance",
+        "frames": 24,
+        "pose": "drink",
+    },
+    "wave": {
+        "motion": "waving hand loop, friendly hand gesture side to side, friendly smile, chest high wave",
+        "frames": 24,
+        "pose": "wave",
+    },
+    "cough": {
+        "motion": "coughing fit animation, head bows, hand to mouth, body recoil spasms, return to stance",
+        "frames": 24,
+        "pose": "cough",
+    },
+    "shrug": {
+        "motion": "shrugging loop, raise shoulders and open hands, puzzled head tilt, confused face, return to stance",
+        "frames": 24,
+        "pose": "shrug",
+    },
+    "laugh": {
+        "motion": "laughing loop, head tilted back, chest shaking, wide open mouth, jovial body bobbing",
+        "frames": 32,
+        "pose": "laugh",
+    },
+    "cry": {
+        "motion": "crying loop, head bowed, hands covering face, shoulders shaking with sobs, weeping stance",
+        "frames": 32,
+        "pose": "cry",
+    },
+    "search": {
+        "motion": "searching search loop, crouched examining the ground, pointing hand, looking back and forth",
+        "frames": 32,
+        "pose": "search",
+    },
+    "grab": {
+        "motion": "grabbing object animation, reach arm forward, pick up item or pull level, snap back to inventory",
+        "frames": 20,
+        "pose": "grab",
+    },
+    "push": {
+        "motion": "pushing cycle loop, leaning forward, hands pressed against surface, strain in legs, heavy steps",
+        "frames": 32,
+        "pose": "push",
+    },
+    "pull": {
+        "motion": "pulling cycle loop, leaning backward, hands gripping rope/handle, strain in arms and back, heavy steps",
+        "frames": 32,
+        "pose": "pull",
+    },
 }
 
 DEFAULT_CHARACTER = (

@@ -47,7 +47,11 @@ def cmd_download_model_addon(args: argparse.Namespace) -> None:
         dest_subdir = str(item.get("dest_subdir") or addon.get("dest_subdir") or "loras")
         target = _target_dir(dest_subdir)
         target.mkdir(parents=True, exist_ok=True)
-        print(f"Downloading {filename} -> {target}")
+        existing = target / Path(filename).name
+        if existing.exists() and existing.stat().st_size >= (1024 if existing.suffix.lower() == ".json" else 10 * 1024 * 1024) and not bool(getattr(args, "force", False)):
+            print(f"[OK] {filename}", flush=True)
+            continue
+        print(f"Downloading {filename} -> {target}", flush=True)
         hf_hub_download(
             repo_id=repo_id,
             filename=filename,
@@ -55,7 +59,7 @@ def cmd_download_model_addon(args: argparse.Namespace) -> None:
             local_dir_use_symlinks=False,
             force_download=bool(getattr(args, "force", False)),
         )
-        print(f"[DONE] {filename}")
+        print(f"[DONE] {filename}", flush=True)
 
     patterns = [str(p) for p in addon.get("file_patterns", []) if str(p).strip()]
     if patterns:
@@ -69,10 +73,15 @@ def cmd_download_model_addon(args: argparse.Namespace) -> None:
                 if fnmatch.fnmatch(Path(name).name, pattern) or fnmatch.fnmatch(name, pattern)
             )
             if not matches:
-                raise FileNotFoundError(f"No files in {repo_id} matched {pattern}")
-            print(f"Pattern {pattern} matched {len(matches)} file(s).")
+                print(f"[MISS] No files in {repo_id} matched {pattern}", flush=True)
+                continue
+            print(f"Pattern {pattern} matched {len(matches)} file(s).", flush=True)
             for filename in matches:
-                print(f"Downloading {filename} -> {target}")
+                existing = target / Path(filename).name
+                if existing.exists() and existing.stat().st_size >= 10 * 1024 * 1024 and not bool(getattr(args, "force", False)):
+                    print(f"[OK] {filename}", flush=True)
+                    continue
+                print(f"Downloading {filename} -> {target}", flush=True)
                 hf_hub_download(
                     repo_id=repo_id,
                     filename=filename,
@@ -80,7 +89,7 @@ def cmd_download_model_addon(args: argparse.Namespace) -> None:
                     local_dir_use_symlinks=False,
                     force_download=bool(getattr(args, "force", False)),
                 )
-                print(f"[DONE] {filename}")
+                print(f"[DONE] {filename}", flush=True)
 
     if not files and not patterns:
         raise ValueError(f"Model add-on {addon.get('id')} does not define downloadable files")

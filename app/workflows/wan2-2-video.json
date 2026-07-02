@@ -1,0 +1,1175 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "revision": 0,
+  "last_node_id": 126,
+  "last_link_id": 56,
+  "nodes": [
+    {
+      "id": 85,
+      "type": "KSamplerAdvanced",
+      "pos": [
+        2118.828125,
+        130
+      ],
+      "size": [
+        304.748046875,
+        334
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 27
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 28
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 29
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 30
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            35
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "KSamplerAdvanced"
+      },
+      "widgets_values": [
+        "disable",
+        497554953673117,
+        "randomize",
+        4,
+        1,
+        "ddim",
+        "simple",
+        2,
+        4,
+        "disable"
+      ]
+    },
+    {
+      "id": 86,
+      "type": "KSamplerAdvanced",
+      "pos": [
+        1714.080078125,
+        130
+      ],
+      "size": [
+        304.748046875,
+        334
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 31
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 32
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 33
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 34
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            30
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "KSamplerAdvanced"
+      },
+      "widgets_values": [
+        "enable",
+        854711972510636,
+        "randomize",
+        4,
+        1,
+        "ddim",
+        "simple",
+        0,
+        2,
+        "enable"
+      ]
+    },
+    {
+      "id": 87,
+      "type": "VAEDecode",
+      "pos": [
+        2523.576171875,
+        130
+      ],
+      "size": [
+        140,
+        46
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 35
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 36
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            39
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 94,
+      "type": "CreateVideo",
+      "pos": [
+        2763.576171875,
+        130
+      ],
+      "size": [
+        270,
+        78
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 39
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            44
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        21
+      ]
+    },
+    {
+      "id": 103,
+      "type": "ModelSamplingSD3",
+      "pos": [
+        974.080078125,
+        318
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 56
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            27
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "ModelSamplingSD3"
+      },
+      "widgets_values": [
+        5.000000000000001
+      ]
+    },
+    {
+      "id": 104,
+      "type": "ModelSamplingSD3",
+      "pos": [
+        974.080078125,
+        130
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 54
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            31
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "ModelSamplingSD3"
+      },
+      "widgets_values": [
+        5.000000000000001
+      ]
+    },
+    {
+      "id": 108,
+      "type": "SaveVideo",
+      "pos": [
+        3133.576171875,
+        130
+      ],
+      "size": [
+        270,
+        278
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 44
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "StylyVID",
+        "auto",
+        "auto"
+      ]
+    },
+    {
+      "id": 120,
+      "type": "PainterI2V",
+      "pos": [
+        1344.080078125,
+        130
+      ],
+      "size": [
+        270,
+        234
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 47
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 48
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 49
+        },
+        {
+          "name": "clip_vision_output",
+          "shape": 7,
+          "type": "CLIP_VISION_OUTPUT",
+          "link": null
+        },
+        {
+          "name": "start_image",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 50
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 45
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 46
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            28,
+            32
+          ]
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "links": [
+            29,
+            33
+          ]
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "links": [
+            34
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "princepainter/ComfyUI-PainterI2V",
+        "ver": "714044a6536ad37293f0658e247c5c6be1622745",
+        "Node name for S&R": "PainterI2V"
+      },
+      "widgets_values": [
+        832,
+        480,
+        45,
+        1,
+        1.1000000000000003
+      ]
+    },
+    {
+      "id": 122,
+      "type": "GetImageSize",
+      "pos": [
+        974.080078125,
+        506
+      ],
+      "size": [
+        140,
+        124
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 52
+        }
+      ],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            45
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            46
+          ]
+        },
+        {
+          "name": "batch_size",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "GetImageSize"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 121,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        474.080078125,
+        1214
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 51
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            52
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        0.30000000000000004
+      ]
+    },
+    {
+      "id": 101,
+      "type": "LoraLoaderModelOnly",
+      "pos": [
+        491.4206848144531,
+        784.0877075195312
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 40
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            53
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "LoraLoaderModelOnly"
+      },
+      "widgets_values": [
+        "wan2.2_4_step_1030_lora.safetensors",
+        1.0000000000000002
+      ]
+    },
+    {
+      "id": 125,
+      "type": "LoraLoaderModelOnly",
+      "pos": [
+        817.9680786132812,
+        795.2994995117188
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 53
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            54
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "LoraLoaderModelOnly"
+      },
+      "widgets_values": [
+        "wan2.2_animate_adapter_model.safetensors",
+        1.0000000000000002
+      ]
+    },
+    {
+      "id": 102,
+      "type": "LoraLoaderModelOnly",
+      "pos": [
+        474.080078125,
+        1002
+      ],
+      "size": [
+        337.91082763671875,
+        92.36277770996094
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 41
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            55
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "LoraLoaderModelOnly"
+      },
+      "widgets_values": [
+        "wan2.2_low_noise_4_step.safetensors",
+        1.0000000000000002
+      ]
+    },
+    {
+      "id": 93,
+      "type": "CLIPTextEncode",
+      "pos": [
+        474.080078125,
+        460
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 38
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            47
+          ]
+        }
+      ],
+      "title": "CLIP Text Encode (Positive Prompt)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 97,
+      "type": "LoadImage",
+      "pos": [
+        100,
+        978
+      ],
+      "size": [
+        274.080078125,
+        314
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            50,
+            51
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "Screenshot 2025-12-10 at 19.38.28.png",
+        "image"
+      ]
+    },
+    {
+      "id": 89,
+      "type": "CLIPTextEncode",
+      "pos": [
+        474.080078125,
+        130
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 37
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            48
+          ]
+        }
+      ],
+      "title": "CLIP Text Encode (Negative Prompt)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "Animation Prompt: Farmer Pitchfork Slash Attack (with White Slash Effect) - SILENT VERSION\nCharacter Details (REVISED - Based on Initial Pose):\n\nRobust, bearded farmer character in brown/tan attire (brown hat, tan shirt, brown pants, boots)\nDetermined, focused expression with forward gaze\nEyes lock onto target direction with concentrated look\nHead rotates with attacking motion, slight upward angle during slash\nBoth arms engaged in powerful gripping and slashing motion\nOverall posture: starts from upright ready stance (as shown in image), transitions to powerful attacking position\nMouth in natural, relaxed resting state - closed and composed\nSilent, concentrated demeanor throughout entire animation\nQuiet, focused presence with composed facial features (no shouting expression)\nBackpack visible on back - remains stable during attack motion\n\nAnimation Motion:\n\nPrimary action: Powerful diagonal pitchfork slash with full-body rotation and extension from neutral ready stance\nArc range: Pitchfork swings in controlled 120-150 degree arcs from ready position to extended strike\nPhase 1 (0-20%): Windup/chamber - pitchfork drawn back to shoulder height from neutral waist position, torso coils, weight shifts to back leg, arms bend for tension\nPhase 2 (20-45%): Acceleration - explosive drive forward and downward, torso rotates powerfully, shoulders twist, hips drive rotation, arms extend with force\nPhase 3 (45-70%): Slash contact - pitchfork at full extension, tines slice through target arc, maximum reach achieved, body at peak power, full rotation complete\nPhase 4 (70-85%): Follow-through - arms continue motion slightly past contact point, momentum carries body forward, shoulders complete rotation, stance widens for stability\nPhase 5 (85-100%): Recovery - arms settle back, torso straightens, weight redistributes, returns to ready position matching initial pose shown in image\nEasing: Ease-out on windup (tension build), ease-out on acceleration (explosive power), linear on contact (impact), ease-in on recovery (settling)\nSecondary motion: Shoulder blade engagement, hip rotation driving power, slight knee bend for stability, head rotation following body twist, backpack slight bounce\nWeight: Powerful, dynamic motion - attack feels forceful and impactful, full-body rotation generates authentic strike power, grounded stance maintained\n\nPitchfork Prop Animation:\n\nPhase 1 (0-20%): Pitchfork held at waist/neutral ready position (as in initial image), begins movement upward and backward, gripped firmly in both hands, tines face forward\nPhase 2 (20-45%): Pitchfork accelerates backward and upward to shoulder chamber position, handle rotates, tines angle upward, preparation for forward strike\nPhase 3 (45-70%): Pitchfork drives forward and downward in powerful arc, tines lead motion, tool extends to maximum reach, handle aligned with body rotation\nPhase 4 (70-85%): Pitchfork continues arc motion, tines trail through air slightly past strike point, momentum still carries forward motion\nPhase 5 (85-100%): Pitchfork returns to ready/neutral waist position matching initial pose, reset for potential follow-up or loop continuation\nMotion: Integrated, powerful prop movement - pitchfork acts as weapon extension of farmer's body, tool moves with full body rotation and weight distribution\nFinal state: Pitchfork cycles back to starting ready position (waist height) as shown in initial image\n\nWhite Slash Effect Animation:\n\nEffect timing: WHITE SLASH EFFECT occurs during Phase 3 (45-70%) at peak contact/extension moment\nEffect position: Follows pitchfork tines through arc path, trails behind tines creating slash line\nEffect appearance: Bright white/light cyan slashing lines following tine path, 3-4 parallel lines matching pitchfork tine spacing\nEffect intensity: Maximum brightness at Phase 3 (55-60% - contact moment), fades in during Phase 2 (30-45%), fades out during Phase 4 (75-85%)\nEffect trail: Glowing white arc trail follows tines from chamber position to full extension, creating dynamic slash motion line\nEffect particles: Small white energy particles scatter and radiate at contact point (Phase 3 peak), burst outward from strike location\nEffect blur: Motion blur effect on white lines showing high velocity strike motion\nEffect duration: ~0.5-0.7 seconds total, peaks at contact moment\nColor specification: Bright white (#FFFFFF) to light cyan (#E0FFFF) gradient, high saturation and brightness for impact visibility\nEffect layers: Multiple overlapping white slash lines for depth and powerful impact feel\nEffect glow: Bright white glow bloom around slash lines for visual impact emphasis\n\nAdditional Details:\n\nLighting: Dynamic, dramatic outdoor farm lighting with shadow casting from strike motion\nColor palette: Brown/tan base (matching character clothes) with warm earth tones contrasted with bright white slash effect (high saturation contrast for visibility)\nFacial animation: Eyes intense and focused forward, determined expression maintained, occasional blink suppressed during attack, mouth stays closed and still\nMouth/lip animation: Mouth closed in relaxed neutral position throughout entire animation - completely silent and stationary\nFacial expression: Determined, focused, quiet demeanor - face remains composed and peaceful, no shouting or exertion facial expression, no lip movement\nMouth movement: Zero mouth/jaw movement - lips remain still and unified in natural resting state (no grunting sounds, no battle cries)\nBeard: Slight movement following head rotation and body dynamics, natural bristle flow with motion\nPosture: Starts upright from ready stance (as in image), transitions to powerful attacking position, returns to ready stance at end\nHat: Remains secure on head, slight rotation with head motion but stays in place\nBackpack: Slight bounce/sway synchronized with torso rotation, remains on back throughout animation\nImpact moment: Phase 3 (55-60%) shows maximum extension and power, white effect peaks at this moment with maximum brightness\nSound cues (optional audio markers): Whoosh sound at Phase 2-3 transition, impact/slash sound at Phase 3 peak, settle sound at Phase 5 recovery\nDuration: 0.7-1.0 seconds for complete attack animation cycle\n\nTechnical Requirements:\n\nLoop point: NOT a seamless loop (transition/action animation, single attack strike)\nStart frame: Ready stance with pitchfork at waist/neutral position matching initial image pose\nEnd frame: Ready stance with pitchfork returned to neutral waist position (ready for next action)\nInclude transition windows for blending to standing idle, running, or next attack\nOptimized for game engine integration (mobile/console performance, pixel art compatible)\nReference poses: Ready/start position (waist level), chamber position (shoulder height), peak extension position, recovery position\nInclude T-pose and combat-ready reference pose for implementation\nForeground/background render separation for UI flexibility\nNormal maps and roughness maps for material definition (clothing texture, tool, skin, hat)\nFacial rig: Mouth remains in neutral closed position, zero lip-sync or phoneme animation, no jaw movement, no combat expressions\nMouth constraint: Lips locked in resting state - no phonemes, no visemes, no speech animation, no battle cry expressions\nPitchfork rigging: Tool must follow realistic swing physics, collision detection at contact point (Phase 3), smooth arc motion\nBackpack rigging: Backpack remains secure, slight physics-based bounce following torso rotation\nHat rigging: Hat stays on head, rotates with head movement, secure attachment\nWhite slash effect specifications:\n\nLayer 1: Main bright white (#FFFFFF) slash line following tine path\nLayer 2: Secondary cyan (#E0FFFF) glow layer slightly offset for depth and glow effect\nLayer 3: Tertiary lighter white layer for additional intensity and bloom\nParticle system: 20-40 white energy particles radiating from contact point at peak\nMotion blur: Applied to slash lines showing high velocity strike\nFade curve: Fade-in 30-45%, sustain 45-65%, fade-out 65-85%\nGlow bloom: Bright white glow around slash lines (bloom radius ~2-4 pixels for impact)\n\n\nOptional: Variant intensities (light quick slash, medium power slash, heavy overhead slash)\nOptional: Variant directions (horizontal side slash, diagonal down slash, diagonal up slash, overhead downward slash)\nOptional environmental details: Screen shake on impact (slight), dust particles accompanying slash effect, ground disturbance at contact zone\nPerformance optimized: Effect particle count scalable for different hardware, shader-based glow for efficiency\nPixel art compatible: Effect should work with sprite-based rendering and pixel-perfect aesthetics\n\n"
+      ]
+    },
+    {
+      "id": 90,
+      "type": "VAELoader",
+      "pos": [
+        100,
+        366
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            36,
+            49
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "wan_2.1_vae.safetensors"
+      ]
+    },
+    {
+      "id": 95,
+      "type": "UNETLoader",
+      "pos": [
+        100,
+        554
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            40
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "wan2.2_i2v_high_noise_14B_fp16.safetensors",
+        "default"
+      ]
+    },
+    {
+      "id": 96,
+      "type": "UNETLoader",
+      "pos": [
+        100,
+        766
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            41
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "wan2.2_i2v_low_noise_14B_fp16.safetensors",
+        "default"
+      ]
+    },
+    {
+      "id": 84,
+      "type": "CLIPLoader",
+      "pos": [
+        100,
+        130
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            37,
+            38
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "umt5_xxl_fp16.safetensors",
+        "wan",
+        "default"
+      ]
+    },
+    {
+      "id": 126,
+      "type": "LoraLoaderModelOnly",
+      "pos": [
+        971.3441772460938,
+        1015.9906005859375
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 55
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            56
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "LoraLoaderModelOnly"
+      },
+      "widgets_values": [
+        "wan2.2_animate_adapter_model.safetensors",
+        1.0000000000000002
+      ]
+    }
+  ],
+  "links": [
+    [
+      27,
+      103,
+      0,
+      85,
+      0,
+      "MODEL"
+    ],
+    [
+      28,
+      120,
+      0,
+      85,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      29,
+      120,
+      1,
+      85,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      30,
+      86,
+      0,
+      85,
+      3,
+      "LATENT"
+    ],
+    [
+      31,
+      104,
+      0,
+      86,
+      0,
+      "MODEL"
+    ],
+    [
+      32,
+      120,
+      0,
+      86,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      33,
+      120,
+      1,
+      86,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      34,
+      120,
+      2,
+      86,
+      3,
+      "LATENT"
+    ],
+    [
+      35,
+      85,
+      0,
+      87,
+      0,
+      "LATENT"
+    ],
+    [
+      36,
+      90,
+      0,
+      87,
+      1,
+      "VAE"
+    ],
+    [
+      37,
+      84,
+      0,
+      89,
+      0,
+      "CLIP"
+    ],
+    [
+      38,
+      84,
+      0,
+      93,
+      0,
+      "CLIP"
+    ],
+    [
+      39,
+      87,
+      0,
+      94,
+      0,
+      "IMAGE"
+    ],
+    [
+      40,
+      95,
+      0,
+      101,
+      0,
+      "MODEL"
+    ],
+    [
+      41,
+      96,
+      0,
+      102,
+      0,
+      "MODEL"
+    ],
+    [
+      44,
+      94,
+      0,
+      108,
+      0,
+      "VIDEO"
+    ],
+    [
+      45,
+      122,
+      0,
+      120,
+      5,
+      "INT"
+    ],
+    [
+      46,
+      122,
+      1,
+      120,
+      6,
+      "INT"
+    ],
+    [
+      47,
+      93,
+      0,
+      120,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      48,
+      89,
+      0,
+      120,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      49,
+      90,
+      0,
+      120,
+      2,
+      "VAE"
+    ],
+    [
+      50,
+      97,
+      0,
+      120,
+      4,
+      "IMAGE"
+    ],
+    [
+      51,
+      97,
+      0,
+      121,
+      0,
+      "IMAGE"
+    ],
+    [
+      52,
+      121,
+      0,
+      122,
+      0,
+      "IMAGE"
+    ],
+    [
+      53,
+      101,
+      0,
+      125,
+      0,
+      "MODEL"
+    ],
+    [
+      54,
+      125,
+      0,
+      104,
+      0,
+      "MODEL"
+    ],
+    [
+      55,
+      102,
+      0,
+      126,
+      0,
+      "MODEL"
+    ],
+    [
+      56,
+      126,
+      0,
+      103,
+      0,
+      "MODEL"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.7247295000000007,
+      "offset": [
+        178.77787245381424,
+        48.52814110606756
+      ]
+    },
+    "frontendVersion": "1.23.4"
+  },
+  "version": 0.4
+}

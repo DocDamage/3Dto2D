@@ -78,7 +78,7 @@ function applyGoalDefaults(goalName) {
   toast(`Applied defaults for: ${goalName.replace('_', ' ').toUpperCase()}`);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initPresetBindings() {
   if ($('#presetSelect')) {
     $('#presetSelect').addEventListener('change', e => {
       const name = e.target.value;
@@ -195,4 +195,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if ($('#btnGoalTopDown')) $('#btnGoalTopDown').addEventListener('click', () => applyGoalDefaults('top_down'));
   if ($('#btnGoalLocalFast')) $('#btnGoalLocalFast').addEventListener('click', () => applyGoalDefaults('local_fast'));
   if ($('#btnGoalLocalQuality')) $('#btnGoalLocalQuality').addEventListener('click', () => applyGoalDefaults('local_quality'));
-});
+}
+
+if (window.onSpriteForgeReady) {
+  window.onSpriteForgeReady(initPresetBindings);
+} else if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPresetBindings, { once: true });
+} else {
+  initPresetBindings();
+}

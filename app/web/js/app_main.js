@@ -76,12 +76,20 @@ function updatePollingInterval() {
   pollIntervalId = setInterval(refreshAll, interval);
 }
 
-// Init all bindings on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
+function initSpriteForgeApp() {
   loadProjects();
   if (typeof initFormBindings === 'function') initFormBindings();
   if (typeof initListingsBindings === 'function') initListingsBindings();
   if (typeof initDashboardBindings === 'function') initDashboardBindings();
   refreshAll();
   updatePollingInterval();
-});
+}
+
+// Dynamic scripts can load after DOMContentLoaded once view components finish.
+if (window.onSpriteForgeReady) {
+  window.onSpriteForgeReady(initSpriteForgeApp);
+} else if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSpriteForgeApp, { once: true });
+} else {
+  initSpriteForgeApp();
+}

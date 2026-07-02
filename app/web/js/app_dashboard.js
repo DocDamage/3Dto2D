@@ -10,12 +10,23 @@ function formatDuration(start, finish) {
 
 function updateHealthBar(s) {
   if (!s) return;
+  const parseGpuMemoryGb = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    const text = String(value).trim();
+    const match = text.match(/([\d.]+)\s*(gib|gb|mib|mb)?/i);
+    if (!match) return null;
+    const amount = Number(match[1]);
+    if (!Number.isFinite(amount)) return null;
+    const unit = (match[2] || '').toLowerCase();
+    return unit === 'mib' || unit === 'mb' ? amount / 1024 : amount;
+  };
   const dotComfy = $('#health-dot-comfy'), valComfy = $('#health-val-comfy'), btnComfy = $('#healthLaunchComfyBtn');
   if (dotComfy && valComfy) { dotComfy.style.background = s.comfy_running ? 'var(--green)' : 'var(--danger)'; valComfy.textContent = s.comfy_running ? 'online' : 'offline'; if (btnComfy) btnComfy.classList.toggle('hidden', s.comfy_running); }
   const dotModels = $('#health-dot-models'), valModels = $('#health-val-models');
   if (dotModels && valModels) { const present = s.models ? s.models.present : 0; const total = s.models ? s.models.total : 0; dotModels.style.background = (s.models && s.models.ok) ? 'var(--green)' : (present > 0 ? 'var(--yellow)' : 'var(--danger)'); valModels.textContent = `${present}/${total} files`; }
   const dotVram = $('#health-dot-vram'), valVram = $('#health-val-vram');
-  if (dotVram && valVram) { if (s.gpu && s.gpu.vram_gb !== undefined) { const free = s.gpu.vram_free_gb || 0; const total = s.gpu.vram_gb || 12; const used = s.gpu.vram_allocated_gb || (total - free); const usedPct = (used / total) * 100; dotVram.style.background = usedPct > 90 ? 'var(--danger)' : (usedPct > 65 ? 'var(--yellow)' : 'var(--green)'); valVram.textContent = `${used.toFixed(1)} GB / ${total.toFixed(0)} GB (${Math.round(usedPct)}%)`; } else { dotVram.style.background = s.gpu && s.gpu.ok ? 'var(--green)' : 'var(--danger)'; valVram.textContent = s.gpu && s.gpu.ok ? (s.gpu.label || 'Supported') : 'N/A'; } }
+  if (dotVram && valVram) { if (s.gpu && s.gpu.vram_gb !== undefined) { const total = parseGpuMemoryGb(s.gpu.vram_gb) || 12; const free = parseGpuMemoryGb(s.gpu.vram_free_gb) ?? parseGpuMemoryGb(s.gpu.memory_free) ?? 0; const allocated = parseGpuMemoryGb(s.gpu.vram_allocated_gb); const used = allocated !== null ? allocated : Math.max(0, total - free); const usedPct = total > 0 ? (used / total) * 100 : 0; dotVram.style.background = usedPct > 90 ? 'var(--danger)' : (usedPct > 65 ? 'var(--yellow)' : 'var(--green)'); valVram.textContent = `${used.toFixed(1)} GB / ${total.toFixed(0)} GB (${Math.round(usedPct)}%)`; } else { dotVram.style.background = s.gpu && s.gpu.ok ? 'var(--green)' : 'var(--danger)'; valVram.textContent = s.gpu && s.gpu.ok ? (s.gpu.label || 'Supported') : 'N/A'; } }
   const dotDisk = $('#health-dot-disk'), valDisk = $('#health-val-disk');
   if (dotDisk && valDisk) { const freeGb = s.disk ? s.disk.free_gb : 0; dotDisk.style.background = s.disk && s.disk.ok ? 'var(--green)' : 'var(--danger)'; valDisk.textContent = `${freeGb} GB free`; }
   const dotQueue = $('#health-dot-queue'), valQueue = $('#health-val-queue');

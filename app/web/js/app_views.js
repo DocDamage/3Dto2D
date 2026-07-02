@@ -43,7 +43,7 @@ function initAccessibilityPreferences() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initAppViews() {
   // Bind Mode buttons click
   $$('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -69,4 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initAccessibilityPreferences();
   const savedMode = localStorage.getItem('uiMode') || 'simple';
   setUiMode(savedMode);
-});
+}
+
+if (window.onSpriteForgeReady) {
+  window.onSpriteForgeReady(initAppViews);
+} else if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAppViews, { once: true });
+} else {
+  initAppViews();
+}

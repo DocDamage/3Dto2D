@@ -21,7 +21,16 @@
   <link rel="stylesheet" href="/web/consistency_lock.css" />
   <link rel="stylesheet" href="/web/css/ux_enhancements.css" />
   <script>
-    window.viewComponentsLoaded = (async () => {
+    window.onSpriteForgeReady = (callback) => {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', callback, { once: true });
+      } else {
+        callback();
+      }
+    };
+
+    window.viewComponentsLoaded = new Promise((resolve) => {
+      window.onSpriteForgeReady(async () => {
       const views = [
         'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
         'packs', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
@@ -46,7 +55,9 @@
           }
         }
       }));
-    })();
+        resolve();
+      });
+    });
   </script>
 </head>
 <body>
@@ -431,8 +442,13 @@
       function loadNext(idx) {
         if (idx >= scripts.length) return;
         const s = document.createElement('script');
+        s.async = false;
         s.src = scripts[idx];
         s.onload = () => loadNext(idx + 1);
+        s.onerror = () => {
+          console.error('Failed to load script:', scripts[idx]);
+          loadNext(idx + 1);
+        };
         document.body.appendChild(s);
       }
 

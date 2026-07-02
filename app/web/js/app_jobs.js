@@ -162,5 +162,11 @@ function formatDuration(seconds) {
   return `${secs}s`;
 }
 
-// Connect SSE on load
-window.addEventListener('DOMContentLoaded', connectSSE);
+// Connect SSE once the page is ready, even when scripts load after DOMContentLoaded.
+if (window.onSpriteForgeReady) {
+  window.onSpriteForgeReady(connectSSE);
+} else if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', connectSSE, { once: true });
+} else {
+  connectSSE();
+}

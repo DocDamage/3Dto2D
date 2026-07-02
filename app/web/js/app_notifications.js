@@ -121,8 +121,16 @@ function clearAllNotifications() {
   renderNotifications();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initNotifications() {
   if ($('#notificationTrigger')) $('#notificationTrigger').addEventListener('click', () => $('#notificationDrawer')?.classList.toggle('show'));
   if ($('#closeDrawerBtn')) $('#closeDrawerBtn').addEventListener('click', () => $('#notificationDrawer')?.classList.remove('show'));
   if ($('#clearNotificationsBtn')) $('#clearNotificationsBtn').addEventListener('click', clearAllNotifications);
-});
+}
+
+if (window.onSpriteForgeReady) {
+  window.onSpriteForgeReady(initNotifications);
+} else if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNotifications, { once: true });
+} else {
+  initNotifications();
+}

@@ -301,7 +301,7 @@ async function queueAction(endpoint) {
 }
 
 // Queue Monitor setup
-document.addEventListener('DOMContentLoaded', () => {
+function initQueueMonitorBindings() {
   if ($('#queueRunBtn')) $('#queueRunBtn').addEventListener('click', () => queueAction('/api/queues/run'));
   if ($('#queueRetryBtn')) $('#queueRetryBtn').addEventListener('click', () => queueAction('/api/queues/retry-failed'));
   if ($('#queueResetBtn')) $('#queueResetBtn').addEventListener('click', () => api('/api/cancel', {method:'POST'}).then(refreshAll));
@@ -359,4 +359,12 @@ document.addEventListener('DOMContentLoaded', () => {
       loadQueueDetail(_selectedQueuePath);
     }
   }, 5000);
-});
+}
+
+if (window.onSpriteForgeReady) {
+  window.onSpriteForgeReady(initQueueMonitorBindings);
+} else if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initQueueMonitorBindings, { once: true });
+} else {
+  initQueueMonitorBindings();
+}

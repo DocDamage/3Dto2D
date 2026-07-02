@@ -55,11 +55,18 @@
       "base_model": "Wan2.2",
       "recommended_tier": "wan22_14b_cloud",
       "dest_subdir": "diffusion_models",
-      "file_patterns": [
-        "*scaled_fp8_e4m3_lightx2v_4step_comfyui*.safetensors"
+      "files": [
+        {
+          "filename": "wan2.2_i2v_A14b_high_noise_scaled_fp8_e4m3_lightx2v_4step_comfyui_1030.safetensors",
+          "approx_size": "~15 GB"
+        },
+        {
+          "filename": "wan2.2_i2v_A14b_low_noise_scaled_fp8_e4m3_lightx2v_4step_comfyui.safetensors",
+          "approx_size": "~15 GB"
+        }
       ],
       "status_note": "Optional performance profile for heavy GPUs. Useful when a ComfyUI-ready distilled workflow is selected.",
-      "install_command": "huggingface-cli download lightx2v/Wan2.2-Distill-Models --include \"*scaled_fp8_e4m3_lightx2v_4step_comfyui*.safetensors\" --local-dir vendor/ComfyUI/models/diffusion_models"
+      "install_command": "huggingface-cli download lightx2v/Wan2.2-Distill-Models wan2.2_i2v_A14b_high_noise_scaled_fp8_e4m3_lightx2v_4step_comfyui_1030.safetensors wan2.2_i2v_A14b_low_noise_scaled_fp8_e4m3_lightx2v_4step_comfyui.safetensors --local-dir vendor/ComfyUI/models/diffusion_models"
     },
     {
       "id": "wan22_attack_sprite_experimental",
@@ -73,8 +80,7 @@
       "dest_subdir": "loras",
       "file_patterns": [
         "*Sprite*Attack*.safetensors",
-        "*Attack*Sprite*.safetensors",
-        "*.safetensors"
+        "*Attack*Sprite*.safetensors"
       ],
       "status_note": "Experimental side-view attack-animation LoRA. Keep it opt-in and compare against the Pixel Animate adapter.",
       "install_command": "huggingface-cli download Teluv/Wan_Video_Attack_Sprite_Animation --local-dir vendor/ComfyUI/models/loras"

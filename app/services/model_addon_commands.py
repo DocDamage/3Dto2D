@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 from pathlib import Path
 from typing import Any, Dict
 
@@ -27,7 +28,7 @@ def _target_dir(dest_subdir: str) -> Path:
 
 
 def cmd_download_model_addon(args: argparse.Namespace) -> None:
-    from huggingface_hub import hf_hub_download, snapshot_download
+    from huggingface_hub import hf_hub_download, list_repo_files
 
     addon = _addon_by_id(str(args.addon))
     repo_id = str(addon.get("repo_id") or "").strip()
@@ -61,15 +62,25 @@ def cmd_download_model_addon(args: argparse.Namespace) -> None:
         dest_subdir = str(addon.get("dest_subdir") or "loras")
         target = _target_dir(dest_subdir)
         target.mkdir(parents=True, exist_ok=True)
-        print(f"Downloading patterns {patterns} -> {target}")
-        snapshot_download(
-            repo_id=repo_id,
-            allow_patterns=patterns,
-            local_dir=target,
-            local_dir_use_symlinks=False,
-            force_download=bool(getattr(args, "force", False)),
-        )
-        print("[DONE] Pattern download complete")
+        repo_files = list_repo_files(repo_id)
+        for pattern in patterns:
+            matches = sorted(
+                name for name in repo_files
+                if fnmatch.fnmatch(Path(name).name, pattern) or fnmatch.fnmatch(name, pattern)
+            )
+            if not matches:
+                raise FileNotFoundError(f"No files in {repo_id} matched {pattern}")
+            print(f"Pattern {pattern} matched {len(matches)} file(s).")
+            for filename in matches:
+                print(f"Downloading {filename} -> {target}")
+                hf_hub_download(
+                    repo_id=repo_id,
+                    filename=filename,
+                    local_dir=target,
+                    local_dir_use_symlinks=False,
+                    force_download=bool(getattr(args, "force", False)),
+                )
+                print(f"[DONE] {filename}")
 
     if not files and not patterns:
         raise ValueError(f"Model add-on {addon.get('id')} does not define downloadable files")

@@ -227,6 +227,14 @@ async function updateModelAddonsPanel() {
         actions.appendChild(link);
       }
       if (addon.install_command) {
+        if (!addon.installed) {
+          const install = document.createElement('button');
+          install.type = 'button';
+          install.className = 'mini primary';
+          install.dataset.installAddon = addon.id || '';
+          install.textContent = addon.partial ? 'Resume install' : 'Install';
+          actions.appendChild(install);
+        }
         const copy = document.createElement('button');
         copy.type = 'button';
         copy.className = 'mini';
@@ -319,6 +327,28 @@ function initListingsBindings() {
   if ($('#refreshModelAddons')) $('#refreshModelAddons').addEventListener('click', updateModelAddonsPanel);
   if ($('#modelAddonsList')) {
     $('#modelAddonsList').addEventListener('click', async (e) => {
+      const installBtn = e.target.closest('[data-install-addon]');
+      if (installBtn) {
+        const id = installBtn.dataset.installAddon || '';
+        if (!id) return;
+        try {
+          installBtn.disabled = true;
+          installBtn.textContent = 'Starting...';
+          const result = await api('/api/model/addons/install', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id })
+          });
+          toast(result.message || 'Add-on install started');
+          await refreshAll();
+          showView('logs');
+        } catch(err) {
+          installBtn.disabled = false;
+          installBtn.textContent = 'Install';
+          toast('Install failed: ' + err.message);
+        }
+        return;
+      }
       const copyBtn = e.target.closest('[data-copy-addon-command]');
       if (!copyBtn) return;
       const command = copyBtn.dataset.copyAddonCommand || '';

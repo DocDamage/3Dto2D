@@ -36,6 +36,7 @@ from spriteforge_commands import (
     cmd_model_report,
     cmd_model_tiers,
     cmd_download_model_tier,
+    cmd_download_model_addon,
     cmd_qa_report,
     cmd_open_model_pages,
     cmd_validate_workflow,

@@ -20,6 +20,7 @@ from spriteforge_commands import (
     cmd_model_report,
     cmd_model_tiers,
     cmd_download_model_tier,
+    cmd_download_model_addon,
     cmd_qa_report,
     cmd_open_model_pages,
     cmd_validate_workflow,
@@ -171,6 +172,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--dry-run", action="store_true")
     s.add_argument("--allow-heavy", action="store_true")
     s.set_defaults(func=cmd_download_model_tier)
+
+    s = sub.add_parser("download-model-addon", help="Download a recommended LoRA/model add-on from the add-on registry")
+    s.add_argument("--addon", required=True)
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(func=cmd_download_model_addon)
 
     s = sub.add_parser("model-tiers", help="List available model tiers and local file status")
     s.set_defaults(func=cmd_model_tiers)

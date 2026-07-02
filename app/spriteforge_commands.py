@@ -88,6 +88,7 @@ from services.wan_generation_service import (
     wait_for_history,
     write_run_manifest,
 )
+from services.model_addon_commands import cmd_download_model_addon
 
 from services.config_service import ConfigService
 from services.comfy_service import ComfyService

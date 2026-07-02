@@ -20,7 +20,7 @@ from services.generation_intelligence import (
 from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score
 from services.api_auth_service import get_session_token
 from web_helpers import (
-    ROOT, UPLOADS, OUTPUT, LOGS, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
+    ROOT, UPLOADS, OUTPUT, LOGS, PYTHON, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
     _project_meta_from_query, _project_workspace, _experiment_rows,
     _comfy_output_root, next_step_status, sprite_outputs,
     _ab_run_list, _ab_run_create, open_local_path, rel, _is_relative_to,
@@ -176,6 +176,34 @@ def get_model_explanation():
 @routes_misc.route("/api/model/addons", methods=["GET"])
 def get_model_addons():
     return jsonify(ModelService.get_addons_status())
+
+@routes_misc.route("/api/model/addons/install", methods=["POST"])
+def install_model_addon():
+    body = request.json or {}
+    addon_id = str(body.get("id") or "").strip()
+    if not addon_id:
+        return jsonify({"ok": False, "message": "add-on id required"}), 400
+
+    addons = ModelService.get_addons_status().get("addons", [])
+    addon = next((row for row in addons if row.get("id") == addon_id), None)
+    if not addon:
+        return jsonify({"ok": False, "message": f"Unknown model add-on: {addon_id}"}), 404
+    if addon.get("installed") and not body.get("force"):
+        return jsonify({"ok": True, "message": "Add-on is already installed.", "job": None})
+
+    from services.job_service import JobService
+    cmd = [PYTHON, "spriteforge_unified.py", "download-model-addon", "--addon", addon_id]
+    if body.get("force"):
+        cmd.append("--force")
+    title = f"Install model add-on: {addon.get('label') or addon_id}"
+    ok, job_id_or_err = JobService.start_job(title, cmd, metadata={
+        "addon_id": addon_id,
+        "addon_label": addon.get("label") or addon_id,
+        "repo_id": addon.get("repo_id") or "",
+    })
+    if ok:
+        return jsonify({"ok": True, "message": "Add-on install started.", "job": JobService.get_job(job_id_or_err)})
+    return jsonify({"ok": False, "message": job_id_or_err, "job": None}), 409
 
 @routes_misc.route("/api/preflight/generation", methods=["GET"])
 def get_preflight_generation():

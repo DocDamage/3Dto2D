@@ -85,7 +85,7 @@ async function api(path, opts={}){
 
 async function runAction(action, extra={}){
   // 1. Confirm before long jobs
-  if (['generate_sprite', 'convert_video', 'character_pack', 'animate_existing_sprite', 'training_dataset', 'lora_training', 'atlas', 'run_queue'].includes(action)) {
+  if (['generate_sprite', 'convert_video', 'character_pack', 'animate_existing_sprite', 'training_dataset', 'tile_training_dataset', 'lora_training', 'atlas', 'run_queue'].includes(action)) {
     if (localStorage.getItem('prefConfirmLongJobs') === 'true') {
       if (!confirm(`Confirm: Do you want to start this generation job? It will take several minutes.`)) {
         return;
@@ -126,7 +126,7 @@ async function runAction(action, extra={}){
     await refreshAll();
 
     // 3. Auto-switch to logs view unless disabled
-    if (['generate_sprite', 'convert_video', 'character_pack', 'animate_existing_sprite', 'training_dataset', 'lora_training', 'atlas', 'run_queue'].includes(action)) {
+    if (['generate_sprite', 'convert_video', 'character_pack', 'animate_existing_sprite', 'training_dataset', 'tile_training_dataset', 'lora_training', 'atlas', 'run_queue'].includes(action)) {
       if (localStorage.getItem('prefNeverAutoSwitch') !== 'true') {
         showView('logs');
       }

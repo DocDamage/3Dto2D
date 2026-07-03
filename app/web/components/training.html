@@ -108,6 +108,48 @@
         <button class="ghost big" type="button" data-open="output/training_runs">Open Runs Folder</button>
       </div>
     </form>
+
+    <form class="card form" id="tileTrainingDatasetForm">
+      <div class="card-head">
+        <h3>Auto-Tile Dataset</h3>
+      </div>
+      <label>Purchased tile-set folder
+        <input name="source_dir" placeholder="G:\All 2D Assets Stay Here\SakPix\Stage Assets" />
+      </label>
+      <div class="row">
+        <label>Trigger token
+          <input name="trigger" value="sakpix_tiles" />
+        </label>
+        <label>Cell size
+          <select name="cell_size">
+            <option value="auto" selected>Auto detect</option>
+            <option value="128x128">128x128</option>
+            <option value="209x209">209x209</option>
+            <option value="64x64">64x64</option>
+            <option value="32x32">32x32</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Samples per sheet
+          <input name="max_samples_per_source" value="32" />
+        </label>
+        <label class="checkbox-line">
+          <input type="checkbox" name="include_all" />
+          Include prop/object sheets
+        </label>
+      </div>
+      <label>Base caption
+        <input name="base_caption" value="premium top-down pixel art tileset" />
+      </label>
+      <label>Output dataset folder
+        <input name="output" placeholder="Optional. Defaults to app/output/training_datasets/..." />
+      </label>
+      <div class="button-row form-actions-tight">
+        <button class="primary big" type="submit">Build Auto-Tile Dataset</button>
+        <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
+      </div>
+    </form>
   </div>
 
   <div class="grid-2 training-run-grid">
@@ -128,6 +170,9 @@
       <div class="callout">
         For the SakPix RPG packs, use <b>92x92</b> for most collections and <b>128x128</b> for packs that say 128x128.
       </div>
+      <div class="callout">
+        Current character style default: <b>sakpix_8dir_sdxl_continue.safetensors</b>. Keep the first pass as backup; do not stack both.
+      </div>
     </section>
 
     <section class="card">
@@ -142,6 +187,9 @@
       </div>
       <div class="callout">
         SDXL uses Kohya-style configs. Flux uses an AI Toolkit starter config. Prepare is quick; Start Training can run for a long time.
+      </div>
+      <div class="callout">
+        Auto-tile datasets filter toward terrain, floor, wall, path, water, roof, bridge, edge, and corner sheets first. Use Include prop/object sheets only for a broader environment LoRA.
       </div>
     </section>
   </div>

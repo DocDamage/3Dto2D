@@ -40,6 +40,20 @@ def cmd_training_dataset(args: argparse.Namespace) -> None:
         cell_size=args.cell_size,
     )
 
+def cmd_autotile_dataset(args: argparse.Namespace) -> None:
+    from services.tile_training_dataset_service import build_tile_training_dataset, default_output_dir
+
+    output = args.output or str(default_output_dir(args.name or "sakpix_autotiles"))
+    build_tile_training_dataset(
+        source_dir=args.source,
+        output_dir=output,
+        trigger=args.trigger,
+        base_caption=args.base_caption,
+        cell_size=args.cell_size,
+        max_samples_per_source=args.max_samples_per_source,
+        include_all=args.include_all,
+    )
+
 def cmd_lora_train(args: argparse.Namespace) -> None:
     from services.lora_training_service import build_lora_training_run, default_output_dir
 
@@ -220,6 +234,17 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--base-caption", default="premium pixel art RPG character")
     s.add_argument("--cell-size", default=None, help="Optional sprite cell size for sheet slicing, e.g. 92x92 or 128x128")
     s.set_defaults(func=cmd_training_dataset)
+
+    s = sub.add_parser("autotile-dataset", help="Build an image/caption dataset from owned stage tile sheets for auto-tile LoRA training")
+    s.add_argument("--source", required=True, help="Folder containing purchased/owned tile-set sheets")
+    s.add_argument("--output", default=None, help="Output dataset folder. Defaults to output/training_datasets/<name>_<timestamp>.")
+    s.add_argument("--name", default="sakpix_autotiles")
+    s.add_argument("--trigger", default="sakpix_tiles")
+    s.add_argument("--base-caption", default="premium top-down pixel art tileset")
+    s.add_argument("--cell-size", default="auto", help="auto or explicit tile cell size, e.g. 128x128")
+    s.add_argument("--max-samples-per-source", default="32", help="Maximum cells kept from each source sheet; use 0 for no cap")
+    s.add_argument("--include-all", action="store_true", help="Include prop/object sheets too, not just tile-like sheet names")
+    s.set_defaults(func=cmd_autotile_dataset)
 
     s = sub.add_parser("lora-train", help="Prepare or launch an SDXL/Flux LoRA trainer run from a SpriteForge training dataset")
     s.add_argument("--dataset", required=True, help="Training dataset folder created by training-dataset")

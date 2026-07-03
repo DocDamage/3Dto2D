@@ -120,6 +120,33 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         if cell_size:
             cmd += ["--cell-size", cell_size]
         return "Build training dataset", cmd
+    if action == "tile_training_dataset":
+        source = str(payload.get("source_dir") or payload.get("source") or "").strip()
+        if not source:
+            raise ValueError("No tile-set source folder selected.")
+        output = str(payload.get("output") or payload.get("dataset_output") or "").strip()
+        trigger = str(payload.get("trigger") or "sakpix_tiles").strip()
+        base_caption = str(payload.get("base_caption") or "premium top-down pixel art tileset").strip()
+        cell_size = str(payload.get("cell_size") or "auto").strip()
+        max_samples = str(payload.get("max_samples_per_source") or "32").strip()
+        cmd = [
+            PYTHON,
+            "spriteforge_unified.py",
+            "autotile-dataset",
+            "--source",
+            source,
+        ]
+        if output:
+            cmd += ["--output", output]
+        cmd += [
+            "--trigger", trigger,
+            "--base-caption", base_caption,
+            "--cell-size", cell_size or "auto",
+            "--max-samples-per-source", max_samples or "32",
+        ]
+        if payload.get("include_all"):
+            cmd.append("--include-all")
+        return "Build auto-tile training dataset", cmd
     if action == "lora_training":
         dataset = str(payload.get("dataset_dir") or payload.get("dataset") or "").strip()
         if not dataset:

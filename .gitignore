@@ -17,6 +17,7 @@ app/releases/
 app/input/uploaded_videos/
 app/state/
 app/config/*.bak_*
+dist_release.zip
 
 
 # External dependencies and model payloads are installed/downloaded locally.

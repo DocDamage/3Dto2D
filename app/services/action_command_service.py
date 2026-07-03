@@ -74,7 +74,7 @@ def discover_commands() -> List[Dict[str, Any]]:
         {
             "id": "training_lab",
             "label": "Open Training Lab",
-            "description": "Builds a private LoRA-ready image and caption dataset from owned sprite assets.",
+            "description": "Builds private LoRA-ready character and auto-tile datasets from owned assets.",
             "view": "training",
             "enabled": True,
             "disabled_reason": None,

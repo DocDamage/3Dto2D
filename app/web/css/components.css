@@ -463,6 +463,21 @@ body.theme-light .form select option {
   gap: 10px;
 }
 
+.checkbox-line {
+  align-items: center;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px;
+  justify-content: flex-start;
+  min-height: 58px;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.checkbox-line input {
+  width: auto;
+}
+
 .switches {
   display: flex;
   flex-wrap: wrap;

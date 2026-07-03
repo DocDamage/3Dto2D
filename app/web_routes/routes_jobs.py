@@ -192,6 +192,7 @@ def run_action():
                 "existing_sprite_name", "existing_sprite_actions", "existing_sprite_directions",
                 "dataset_dir", "model_family", "trainer", "base_model", "trainer_dir",
                 "resolution", "max_train_steps", "learning_rate", "network_dim", "repeats",
+                "max_samples_per_source", "include_all",
             ]
             if payload.get(key) is not None
         }

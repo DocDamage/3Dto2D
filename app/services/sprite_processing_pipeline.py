@@ -12,7 +12,7 @@ from PIL import Image
 from services.sprite_service import SpriteService
 from services.sprite_video_loader import FrameItem, ensure_dir, save_png_sequence
 from services.sprite_chroma_alpha import (
-    apply_chroma_key, try_rembg, add_outline, solidify_transparent_rgb
+    apply_chroma_key, try_rembg, try_birefnet, apply_pixeloe_pixelization, add_outline, solidify_transparent_rgb
 )
 from services.sprite_frame_norm import normalize_frames, apply_frame_sequence_ops
 from services.sprite_sheet_service import (
@@ -105,6 +105,10 @@ def process_common(
     source_meta: Optional[Dict[str, Any]] = None,
     resolutions: Optional[str] = None,
     palette: Optional[List[Tuple[int, int, int]]] = None,
+    matting_engine: str = "chroma",
+    pixelize: bool = False,
+    pixelize_scale: int = 4,
+    generate_normal_maps: bool = False,
 ) -> ProcessResult:
     ensure_dir(output)
 
@@ -122,10 +126,17 @@ def process_common(
     processed: List[FrameItem] = []
     for item in working:
         img = item.image.convert("RGBA")
+        if matting_engine == "birefnet":
+            img = try_birefnet(img)
+        elif matting_engine == "rembg" or rembg:
+            img = try_rembg(img)
+
         if key_color is not None:
             img = apply_chroma_key(img, key_color, key_tolerance, key_feather)
-        if rembg:
-            img = try_rembg(img)
+
+        if pixelize:
+            img = apply_pixeloe_pixelization(img, pixel_size=pixelize_scale)
+
         if outline_width > 0:
             img = add_outline(img, outline_width, outline_color)
         processed.append(FrameItem(img, item.name, item.source_index))
@@ -187,6 +198,31 @@ def process_common(
         fps=fps,
         animation_name=animation_name,
     )
+
+    if generate_normal_maps:
+        from services.sprite_normal_map import SpriteNormalMapService
+        normal_frames = []
+        specular_frames = []
+        ao_frames = []
+        for item in normalized:
+            norm_img, spec_img, ao_img = SpriteNormalMapService.generate_maps(item.image)
+            normal_frames.append(FrameItem(norm_img, f"{item.name}_normal", item.source_index))
+            specular_frames.append(FrameItem(spec_img, f"{item.name}_specular", item.source_index))
+            ao_frames.append(FrameItem(ao_img, f"{item.name}_ao", item.source_index))
+
+        normal_sheet, _, _, _ = pack_sheet(normal_frames, cols, spacing, margin, power_of_two)
+        normal_sheet.save(output / "sheet_normal.png")
+
+        specular_sheet, _, _, _ = pack_sheet(specular_frames, cols, spacing, margin, power_of_two)
+        specular_sheet.save(output / "sheet_specular.png")
+
+        ao_sheet, _, _, _ = pack_sheet(ao_frames, cols, spacing, margin, power_of_two)
+        ao_sheet.save(output / "sheet_ao.png")
+
+        if save_processed_frames:
+            save_png_sequence(normal_frames, output / "frames_normal")
+            save_png_sequence(specular_frames, output / "frames_specular")
+            save_png_sequence(ao_frames, output / "frames_ao")
 
     if preview_gif:
         make_preview_gif(normalized, output / "preview.gif", fps)
@@ -332,4 +368,8 @@ def process_common_from_args(
         source_meta=source_meta,
         resolutions=getattr(args, "resolutions", None),
         palette=SpriteService.parse_palette(getattr(args, "palette", None)),
+        matting_engine=getattr(args, "matting_engine", "chroma"),
+        pixelize=getattr(args, "pixelize", False),
+        pixelize_scale=getattr(args, "pixelize_scale", 4),
+        generate_normal_maps=getattr(args, "generate_normal_maps", False),
     )

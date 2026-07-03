@@ -27,6 +27,10 @@ def copy_base_assets(sprite_dir: Path, dest: Path, meta: Dict) -> Path:
     preview = sprite_dir / "preview.gif"
     if preview.exists():
         shutil.copy2(preview, dest / "preview.gif")
+    for suffix in ["normal", "specular", "ao"]:
+        map_file = sprite_dir / f"sheet_{suffix}.png"
+        if map_file.exists():
+            shutil.copy2(map_file, dest / f"sheet_{suffix}.png")
     return dest / "sheet.png"
 
 def godot_res_path(project: Optional[Path], dest: Path, res_path: Optional[str], sprite_name: str, filename: str = "sheet.png") -> str:

@@ -2,6 +2,7 @@
 """Chroma-key, alpha bbox, rembg, outline, and solidify operations for sprite frames."""
 from __future__ import annotations
 
+import os
 from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -14,10 +15,15 @@ except Exception:
 
 from services.sprite_service import SpriteService
 
+BIREFNET_MATTING_MODEL_ID = os.environ.get("SPRITEFORGE_BIREFNET_MODEL", "ZhengPeng7/BiRefNet-matting")
+
 __all__ = [
+    "BIREFNET_MATTING_MODEL_ID",
     "guess_key_color_from_corners",
     "apply_chroma_key",
     "try_rembg",
+    "try_birefnet",
+    "apply_pixeloe_pixelization",
     "alpha_bbox",
     "expand_bbox",
     "union_bboxes",
@@ -51,6 +57,101 @@ def try_rembg(img: Image.Image) -> Image.Image:
     if isinstance(out, Image.Image):
         return out.convert("RGBA")
     return Image.open(out).convert("RGBA")
+
+
+def try_birefnet(img: Image.Image) -> Image.Image:
+    try:
+        import torch
+        from torchvision import transforms
+        from transformers import AutoModelForImageSegmentation
+    except Exception as exc:
+        raise RuntimeError(
+            "The BiRefNet option requires the optional transformers, torch, and torchvision packages. "
+            "Install them with: pip install transformers torch torchvision"
+        ) from exc
+
+    global _BIREFNET_MODEL, _BIREFNET_TRANSFORM
+    if '_BIREFNET_MODEL' not in globals() or _BIREFNET_MODEL is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _BIREFNET_MODEL = AutoModelForImageSegmentation.from_pretrained(
+            BIREFNET_MATTING_MODEL_ID, trust_remote_code=True
+        ).to(device)
+        _BIREFNET_MODEL.eval()
+        _BIREFNET_TRANSFORM = transforms.Compose([
+            transforms.Resize((1024, 1024)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
+    device = next(_BIREFNET_MODEL.parameters()).device
+    input_rgb = img.convert("RGB")
+    w, h = input_rgb.size
+    input_tensor = _BIREFNET_TRANSFORM(input_rgb).unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        preds = _BIREFNET_MODEL(input_tensor)[-1].sigmoid().cpu()
+
+    pred = preds[0].squeeze()
+    pred_pil = transforms.ToPILImage()(pred).resize((w, h), Image.Resampling.BILINEAR)
+
+    # Composite onto transparent background
+    img = img.convert("RGBA")
+    out = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    out.paste(img, (0, 0), mask=pred_pil)
+    return out
+
+
+def apply_pixeloe_pixelization(img: Image.Image, pixel_size: int = 4, thickness: int = 1) -> Image.Image:
+    """Applies detail-oriented pixelization using contrast-aware downscaling and outline expansion."""
+    try:
+        from pixeloe import pixelize
+        np_arr = np.array(img.convert("RGBA"))
+        out_arr = pixelize(np_arr, pixel_size=pixel_size, thickness=thickness)
+        return Image.fromarray(out_arr, mode="RGBA")
+    except Exception:
+        # High quality fallback implementation
+        img = img.convert("RGBA")
+        w, h = img.size
+        if w <= pixel_size or h <= pixel_size:
+            return img
+
+        # Dilation of alpha mask to keep outlines readable
+        alpha = img.getchannel("A")
+        if thickness > 0:
+            alpha = alpha.filter(ImageFilter.MaxFilter(3 if thickness == 1 else 5))
+
+        # Re-assemble expanded image
+        expanded = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        expanded.paste(img, (0, 0), mask=alpha)
+
+        # Contrast-aware block pixel sampling
+        dw = w // pixel_size
+        dh = h // pixel_size
+        if dw <= 0 or dh <= 0:
+            return img
+
+        arr = np.asarray(expanded)
+        downscaled = np.zeros((dh, dw, 4), dtype=np.uint8)
+
+        for y in range(dh):
+            for x in range(dw):
+                block = arr[y*pixel_size : (y+1)*pixel_size, x*pixel_size : (x+1)*pixel_size]
+                if np.max(block[:, :, 3]) < 8:
+                    downscaled[y, x] = [0, 0, 0, 0]
+                    continue
+                alphas = block[:, :, 3]
+                max_a = int(np.max(alphas))
+                mask = alphas >= max(8, max_a - 15)
+                rgb = block[:, :, :3][mask]
+                if len(rgb) > 0:
+                    mean_rgb = rgb.mean(axis=0).astype(np.uint8)
+                else:
+                    mean_rgb = np.zeros(3, dtype=np.uint8)
+                downscaled[y, x] = [mean_rgb[0], mean_rgb[1], mean_rgb[2], max_a]
+
+        down_img = Image.fromarray(downscaled, mode="RGBA")
+        return down_img.resize((w, h), Image.Resampling.NEAREST)
+
 
 
 def alpha_bbox(img: Image.Image, threshold: int = 8) -> Optional[Tuple[int, int, int, int]]:

@@ -53,7 +53,7 @@ def paste_center_fit(src: Image.Image, cell_size: Tuple[int, int]) -> Image.Imag
     return canvas
 
 
-def build_atlas(sprite_dirs: Sequence[Path], output: Path, columns: Optional[int] = None, cell_size: Optional[Tuple[int, int]] = None, name: str = "spriteforge_atlas") -> Path:
+def build_atlas(sprite_dirs: Sequence[Path], output: Path, columns: Optional[int] = None, cell_size: Optional[Tuple[int, int]] = None, name: str = "spriteforge_atlas", pack_mode: str = "grid") -> Path:
     output.mkdir(parents=True, exist_ok=True)
     animations: Dict[str, Any] = {}
     all_frames: List[Tuple[str, int, Image.Image, Dict[str, Any]]] = []
@@ -91,26 +91,49 @@ def build_atlas(sprite_dirs: Sequence[Path], output: Path, columns: Optional[int
             "loop": True,
         }
 
-    total = len(all_frames)
-    if columns is None:
-        columns = max(1, math.ceil(math.sqrt(total)))
-    rows = math.ceil(total / columns)
-    atlas = Image.new("RGBA", (columns * cell_w, rows * cell_h), (0, 0, 0, 0))
     frames_meta = []
-    for global_i, (anim, local_i, frame, meta) in enumerate(all_frames):
-        x = (global_i % columns) * cell_w
-        y = (global_i // columns) * cell_h
-        atlas.alpha_composite(frame, (x, y))
-        frames_meta.append({
-            "index": global_i,
-            "animation": anim,
-            "local_index": local_i,
-            "x": x,
-            "y": y,
-            "w": cell_w,
-            "h": cell_h,
-            "duration_ms": int(round(1000 / float(meta.get("fps", 12)))) if float(meta.get("fps", 12)) > 0 else 83,
-        })
+    if pack_mode == "packed":
+        from services.sprite_bin_packer import SpriteBinPackerService
+        rects_to_pack = [(cell_w, cell_h, (global_i, anim, local_i, frame, meta)) for global_i, (anim, local_i, frame, meta) in enumerate(all_frames)]
+        packed = SpriteBinPackerService.pack(rects_to_pack)
+        atlas_w = packed["width"]
+        atlas_h = packed["height"]
+        atlas = Image.new("RGBA", (atlas_w, atlas_h), (0, 0, 0, 0))
+        for (x, y), (global_i, anim, local_i, frame, meta) in packed["positions"]:
+            atlas.alpha_composite(frame, (x, y))
+            frames_meta.append({
+                "index": global_i,
+                "animation": anim,
+                "local_index": local_i,
+                "x": x,
+                "y": y,
+                "w": cell_w,
+                "h": cell_h,
+                "duration_ms": int(round(1000 / float(meta.get("fps", 12)))) if float(meta.get("fps", 12)) > 0 else 83,
+            })
+        frames_meta.sort(key=lambda f: f["index"])
+        total_w, total_h = atlas_w, atlas_h
+    else:
+        total = len(all_frames)
+        if columns is None:
+            columns = max(1, math.ceil(math.sqrt(total)))
+        rows = math.ceil(total / columns)
+        atlas = Image.new("RGBA", (columns * cell_w, rows * cell_h), (0, 0, 0, 0))
+        for global_i, (anim, local_i, frame, meta) in enumerate(all_frames):
+            x = (global_i % columns) * cell_w
+            y = (global_i // columns) * cell_h
+            atlas.alpha_composite(frame, (x, y))
+            frames_meta.append({
+                "index": global_i,
+                "animation": anim,
+                "local_index": local_i,
+                "x": x,
+                "y": y,
+                "w": cell_w,
+                "h": cell_h,
+                "duration_ms": int(round(1000 / float(meta.get("fps", 12)))) if float(meta.get("fps", 12)) > 0 else 83,
+            })
+        total_w, total_h = columns * cell_w, rows * cell_h
 
     atlas_path = output / "atlas.png"
     atlas.save(atlas_path)
@@ -119,9 +142,10 @@ def build_atlas(sprite_dirs: Sequence[Path], output: Path, columns: Optional[int
         "image": "atlas.png",
         "frame_width": cell_w,
         "frame_height": cell_h,
-        "frame_count": total,
+        "width": total_w,
+        "height": total_h,
         "columns": columns,
-        "rows": rows,
+        "rows": None if pack_mode == "packed" else math.ceil(len(all_frames) / columns),
         "animations": animations,
         "frames": frames_meta,
     }
@@ -297,11 +321,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--columns", type=int, default=None)
     s.add_argument("--cell-size", default=None)
     s.add_argument("--name", default="spriteforge_atlas")
+    s.add_argument("--pack-mode", choices=["grid", "packed"], default="grid")
     def _run(a):
         sprites = [Path(x) for x in a.sprites]
         if not sprites and a.root:
             sprites = discover_sprite_dirs(Path(a.root))
-        build_atlas(sprites, Path(a.output), a.columns, parse_size(a.cell_size), a.name)
+        build_atlas(sprites, Path(a.output), a.columns, parse_size(a.cell_size), a.name, a.pack_mode)
     s.set_defaults(func=_run)
     return p
 

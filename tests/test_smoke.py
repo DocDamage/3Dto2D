@@ -135,6 +135,97 @@ def test_power_of_two_web_option_forwarded():
     assert parsed.output is None
 
 
+def test_native_polish_web_options_forwarded():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+    from services.generation_commands import _normalize_sprite_extra_args
+
+    generate_html = (APP / "web" / "components" / "generate.html").read_text(encoding="utf-8")
+    convert_html = (APP / "web" / "components" / "convert.html").read_text(encoding="utf-8")
+
+    payload = {
+        "action": "generate_sprite",
+        "quality_check": False,
+        "matting_engine": "pixel-art",
+        "alpha_refine": True,
+        "temporal_alpha_stabilize": True,
+        "pixel_cleanup": True,
+        "pixel_cleanup_palette": "pico8",
+        "pixel_cleanup_dither_mode": "bayer",
+        "interpolate_fps": "24",
+        "interpolation_skip_pixel_art": True,
+        "interpolation_skip_impact_frames": True,
+        "generate_normal_maps": True,
+        "normal_map_engine": "native-depth",
+    }
+    _, generate_cmd = build_action_command(payload)
+    _, convert_cmd = build_action_command({**payload, "action": "convert_video", "input": "test.mp4"})
+
+    for flag in [
+        "--matting-engine",
+        "--alpha-refine",
+        "--temporal-alpha-stabilize",
+        "--pixel-cleanup",
+        "--pixel-cleanup-palette",
+        "--pixel-cleanup-dither-mode",
+        "--interpolate-fps",
+        "--interpolation-skip-pixel-art",
+        "--interpolation-skip-impact-frames",
+        "--generate-normal-maps",
+        "--normal-map-engine",
+    ]:
+        assert flag in generate_cmd
+        assert flag in convert_cmd
+
+    for field in [
+        'name="matting_engine"',
+        'name="alpha_refine"',
+        'name="temporal_alpha_stabilize"',
+        'name="pixel_cleanup"',
+        'name="pixel_cleanup_palette"',
+        'name="pixel_cleanup_dither_mode"',
+        'name="interpolate_fps"',
+        'name="interpolation_skip_pixel_art"',
+    ]:
+        assert field in generate_html
+        assert field in convert_html
+
+    parsed = build_parser().parse_args([
+        "generate-sprite",
+        "--matting-engine",
+        "pixel-art",
+        "--alpha-refine",
+        "--temporal-alpha-stabilize",
+        "--pixel-cleanup",
+        "--pixel-cleanup-palette",
+        "pico8",
+        "--pixel-cleanup-dither-mode",
+        "bayer",
+        "--interpolate-fps",
+        "24",
+        "--interpolation-skip-pixel-art",
+        "--interpolation-skip-impact-frames",
+        "--generate-normal-maps",
+        "--normal-map-engine",
+        "native-depth",
+    ])
+    assert parsed.matting_engine == "pixel-art"
+    assert parsed.alpha_refine is True
+    assert parsed.temporal_alpha_stabilize is True
+    assert parsed.pixel_cleanup is True
+    assert parsed.pixel_cleanup_palette == "pico8"
+    assert parsed.pixel_cleanup_dither_mode == "bayer"
+    assert parsed.interpolate_fps == 24
+    assert parsed.interpolation_skip_pixel_art is True
+    assert parsed.interpolation_skip_impact_frames is True
+    assert parsed.generate_normal_maps is True
+    assert parsed.normal_map_engine == "native-depth"
+
+    convert_parsed = build_parser().parse_args(["convert-video", "--input", "test.mp4", "--", "--pixel-cleanup"])
+    assert convert_parsed.extra == ["--", "--pixel-cleanup"]
+    assert _normalize_sprite_extra_args(convert_parsed.extra) == ["--pixel-cleanup"]
+
+
 
 def test_compare_smoke(tmp_path):
     """compare_dirs() on two minimal fake sprite dirs writes a report."""

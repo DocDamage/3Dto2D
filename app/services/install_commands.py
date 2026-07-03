@@ -19,12 +19,6 @@ WAN_VIDEO_CUSTOM_NODES = [
     ("https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git", "ComfyUI-VideoHelperSuite"),
 ]
 
-PIXEL_ART_CUSTOM_NODES = [
-    ("https://github.com/x0x0b/ComfyUI-spritefusion-pixel-snapper.git", "ComfyUI-spritefusion-pixel-snapper"),
-    ("https://github.com/dimtoneff/ComfyUI-PixelArt-Detector.git", "ComfyUI-PixelArt-Detector"),
-    ("https://github.com/ComfyNodePRs/PR-ComfyUI-PixelArt-Unfaker.git", "PR-ComfyUI-PixelArt-Unfaker"),
-]
-
 def venv_python(venv: Path) -> Path:
     from spriteforge_commands import venv_python as _vp
     return _vp(venv)
@@ -174,7 +168,7 @@ def cmd_install_nodes(args: argparse.Namespace) -> None:
     cn = cfg.comfy_dir / "custom_nodes"
     cn.mkdir(parents=True, exist_ok=True)
     py = comfy_python(cfg)
-    nodes = [(url, cn / name) for url, name in [*WAN_VIDEO_CUSTOM_NODES, *PIXEL_ART_CUSTOM_NODES]]
+    nodes = [(url, cn / name) for url, name in WAN_VIDEO_CUSTOM_NODES]
     for url, dest in nodes:
         install_node(url, dest, py)
         if dest.name == "ComfyUI-WanVideoWrapper":

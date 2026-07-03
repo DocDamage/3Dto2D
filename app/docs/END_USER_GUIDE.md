@@ -58,6 +58,24 @@ Use the **Convert Video** tab if you already have a WAN/ComfyUI `.mp4`, `.webm`,
 
 For easiest background removal, make the generated video use a solid green or blue background.
 
+Advanced CLI polish options:
+
+```text
+python spriteforge.py video --input input/clip.mp4 --output output/clip_sprite --matting-engine birefnet --alpha-refine --interpolate-fps 24
+```
+
+- `--matting-engine birefnet` uses the optional BiRefNet-matting checkpoint when `torch`, `torchvision`, and `transformers` are installed.
+- `--matting-engine pixel-art` uses native hard-edge border-connected background removal for flat or dithered pixel-art backgrounds.
+- `--temporal-alpha-stabilize` applies native motion-aware alpha smoothing to reduce frame-to-frame mask flicker.
+- `--pixel-cleanup --pixel-cleanup-colors 24` learns one native Oklab palette across the animation and snaps frames to it for steadier AI pixel art.
+- `--pixel-cleanup-palette pico8` or `--pixel-cleanup-palette gameboy` snaps cleanup to a native retro palette; custom hex lists also work.
+- `--pixel-cleanup-dither-mode bayer` adds ordered dithering, while `floyd-steinberg` keeps the existing error-diffusion style.
+- `--interpolate-fps 24` adds native interpolation; use `--interpolation-engine flow` for OpenCV optical-flow interpolation or `blend` for the simpler fallback.
+- `--interpolation-skip-pixel-art` and `--interpolation-skip-impact-frames` hold crisp frames instead of blending transitions that would ghost.
+- `--generate-normal-maps --normal-map-engine native-depth` creates native pseudo-depth normal, specular, AO, and height/parallax maps without an external depth tool.
+- `python spriteforge.py dual-alpha --black black.png --white white.png --output transparent.png` extracts clean alpha from matching black/white Blender renders.
+- `blender -b --python app/blender_render_ortho.py -- --blend input/character.blend --output output/frames --dual-background-alpha` renders black/white passes and writes transparent PNG frames directly.
+
 ## Fixing bad outputs
 
 Use **Quality Lab**:

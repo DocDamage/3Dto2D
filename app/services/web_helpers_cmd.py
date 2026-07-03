@@ -72,6 +72,38 @@ def _project_artifact_path(project_meta: Dict[str, str], folder: str, name: str)
         raise ValueError("Project root must be inside projects.")
     return project_root / folder / safe_name(name)
 
+
+def _sprite_polish_args(payload: Dict[str, Any]) -> List[str]:
+    args: List[str] = []
+    for key, arg in [
+        ("matting_engine", "--matting-engine"),
+        ("alpha_refine_radius", "--alpha-refine-radius"),
+        ("temporal_alpha_strength", "--temporal-alpha-strength"),
+        ("pixel_cleanup_colors", "--pixel-cleanup-colors"),
+        ("pixel_cleanup_palette", "--pixel-cleanup-palette"),
+        ("pixel_cleanup_dither_mode", "--pixel-cleanup-dither-mode"),
+        ("interpolate_fps", "--interpolate-fps"),
+        ("interpolation_engine", "--interpolation-engine"),
+        ("interpolation_skip_patterns", "--interpolation-skip-patterns"),
+        ("normal_map_engine", "--normal-map-engine"),
+    ]:
+        value = str(payload.get(key) or "").strip()
+        if value:
+            args += [arg, value]
+    for key, arg in [
+        ("alpha_refine", "--alpha-refine"),
+        ("temporal_alpha_stabilize", "--temporal-alpha-stabilize"),
+        ("pixel_cleanup", "--pixel-cleanup"),
+        ("pixel_cleanup_dither", "--pixel-cleanup-dither"),
+        ("interpolation_skip_pixel_art", "--interpolation-skip-pixel-art"),
+        ("interpolation_skip_impact_frames", "--interpolation-skip-impact-frames"),
+        ("generate_normal_maps", "--generate-normal-maps"),
+    ]:
+        if payload.get(key):
+            args.append(arg)
+    return args
+
+
 def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
     action = str(payload.get("action") or "")
     project_meta = ProjectService.metadata_for_path(str(payload.get("active_project") or "")) or {}
@@ -228,6 +260,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             cmd.append("--quality-check")
         if payload.get("power_of_two", False):
             cmd.append("--power-of-two")
+        cmd += _sprite_polish_args(payload)
         return "Generate WAN sprite", cmd
     if action == "animate_existing_sprite":
         source = str(payload.get("source_sprite") or payload.get("existing_sprite_source") or payload.get("reference_image") or "").strip()
@@ -296,6 +329,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             value = str(payload.get(key) or "").strip()
             if value:
                 extra += [arg, value]
+        extra += _sprite_polish_args(payload)
         if payload.get("drop_loop_duplicate", True):
             extra.append("--drop-loop-duplicate")
         if payload.get("preview_gif", True):

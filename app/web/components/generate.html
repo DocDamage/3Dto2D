@@ -209,6 +209,59 @@
         </div>
       </details>
 
+      <details class="collapsible-section" style="margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);">
+        <summary style="cursor: pointer; font-weight: bold; font-size: 13px; color: var(--text);">Native Polish</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+          <div class="row">
+            <label>Matting
+              <select name="matting_engine">
+                <option value="chroma" selected>Chroma key</option>
+                <option value="pixel-art">Pixel-art hard edge</option>
+                <option value="birefnet">BiRefNet matting</option>
+                <option value="rembg">rembg</option>
+              </select>
+            </label>
+            <label>Interpolate FPS
+              <input name="interpolate_fps" placeholder="Optional, e.g. 24" />
+            </label>
+            <label>Normal maps
+              <select name="normal_map_engine">
+                <option value="height" selected>Height</option>
+                <option value="native-depth">Native depth</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Pixel palette
+              <select name="pixel_cleanup_palette">
+                <option value="">Learned Oklab</option>
+                <option value="pico8">PICO-8</option>
+                <option value="gameboy">Game Boy</option>
+                <option value="nes">NES</option>
+              </select>
+            </label>
+            <label>Palette colors
+              <input name="pixel_cleanup_colors" value="24" />
+            </label>
+            <label>Dither
+              <select name="pixel_cleanup_dither_mode">
+                <option value="none" selected>None</option>
+                <option value="bayer">Bayer</option>
+                <option value="floyd-steinberg">Floyd-Steinberg</option>
+              </select>
+            </label>
+          </div>
+          <div class="switches">
+            <label class="switch"><input type="checkbox" name="alpha_refine" /><span></span>Alpha refine</label>
+            <label class="switch"><input type="checkbox" name="temporal_alpha_stabilize" /><span></span>Temporal alpha</label>
+            <label class="switch"><input type="checkbox" name="pixel_cleanup" /><span></span>Pixel cleanup</label>
+            <label class="switch"><input type="checkbox" name="generate_normal_maps" /><span></span>Normal maps</label>
+            <label class="switch"><input type="checkbox" name="interpolation_skip_pixel_art" checked /><span></span>Hold pixel frames</label>
+            <label class="switch"><input type="checkbox" name="interpolation_skip_impact_frames" checked /><span></span>Hold impact frames</label>
+          </div>
+        </div>
+      </details>
+
       <div class="switches" style="margin-top: 12px;">
         <label class="switch"><input type="checkbox" name="start_comfy" checked /><span></span>Start ComfyUI if needed</label>
         <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run quality check after conversion</label>

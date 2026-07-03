@@ -82,10 +82,68 @@ class SpriteNormalMapService:
             dist = np.zeros_like(dist)
         return dist.astype(np.float32, copy=False)
 
+    @staticmethod
+    def normalize_heightmap(height: np.ndarray) -> np.ndarray:
+        height = height.astype(np.float32, copy=False)
+        low = float(np.min(height))
+        high = float(np.max(height))
+        if high - low <= 1e-6:
+            return np.zeros_like(height, dtype=np.float32)
+        return ((height - low) / (high - low)).astype(np.float32)
+
+    @classmethod
+    def build_heightmap(cls, img: Image.Image, engine: str = "height") -> np.ndarray:
+        """Build a native height/depth estimate for normal-map generation."""
+        img = img.convert("RGBA")
+        arr = np.asarray(img)
+        rgb = arr[:, :, :3].astype(np.float32)
+        alpha = arr[:, :, 3]
+        gray = (0.299 * rgb[:, :, 0] + 0.587 * rgb[:, :, 1] + 0.114 * rgb[:, :, 2]) / 255.0
+        vol = cls.compute_distance_transform(alpha)
+
+        if engine == "height":
+            return np.clip(0.6 * vol + 0.4 * gray, 0.0, 1.0).astype(np.float32)
+
+        if engine not in {"native-depth", "depth"}:
+            raise RuntimeError(f"Unknown normal-map engine: {engine}")
+
+        # A native shape-from-sprite approximation: alpha volume gives broad
+        # form, luminance contributes local relief, and a vertical bias keeps
+        # grounded characters from reading like perfectly flat coins.
+        h, w = alpha.shape
+        y = np.linspace(1.0, 0.0, h, dtype=np.float32)[:, None]
+        vertical_prior = np.repeat(y, w, axis=1)
+        alpha_soft = (alpha.astype(np.float32) / 255.0)
+
+        if cv2 is not None:
+            smooth_gray = cv2.bilateralFilter(gray.astype(np.float32), 5, 0.12, 4.0)
+            edge = cv2.Laplacian(smooth_gray, cv2.CV_32F)
+        else:
+            smooth_gray_img = Image.fromarray((gray * 255.0).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.0))
+            smooth_gray = np.asarray(smooth_gray_img).astype(np.float32) / 255.0
+            gy, gx = np.gradient(smooth_gray)
+            edge = gx + gy
+
+        relief = cls.normalize_heightmap(smooth_gray + np.clip(edge, -0.15, 0.15))
+        depth = 0.68 * vol + 0.22 * relief + 0.10 * vertical_prior
+        depth *= alpha_soft
+        return cls.normalize_heightmap(depth)
+
+    @classmethod
+    def generate_height_map(cls, img: Image.Image, engine: str = "height") -> Image.Image:
+        """Generate a grayscale RGBA height/parallax map using the sprite alpha."""
+        rgba = img.convert("RGBA")
+        alpha = np.asarray(rgba)[:, :, 3]
+        height = cls.build_heightmap(rgba, engine=engine)
+        value = np.clip(height * 255.0, 0, 255).astype(np.uint8)
+        arr = np.stack([value, value, value, alpha], axis=-1)
+        return Image.fromarray(arr, mode="RGBA")
+
     @classmethod
     def generate_maps(
         cls,
         img: Image.Image,
+        engine: str = "height",
         strength: float = 2.0,
         blur_radius: float = 1.0,
         volume_weight: float = 0.6,
@@ -104,15 +162,12 @@ class SpriteNormalMapService:
         arr = np.asarray(img)
         r, g, b, alpha = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2], arr[:, :, 3]
 
-        # 1. Grayscale heightmap (bump)
         gray = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
-
-        # 2. Alpha volume heightmap
-        vol = cls.compute_distance_transform(alpha)
-
-        # 3. Blend heightmaps
-        h_map = volume_weight * vol + bump_weight * gray
-        h_map = np.clip(h_map, 0.0, 1.0)
+        if engine == "height":
+            vol = cls.compute_distance_transform(alpha)
+            h_map = np.clip(volume_weight * vol + bump_weight * gray, 0.0, 1.0)
+        else:
+            h_map = cls.build_heightmap(img, engine=engine)
 
         # 4. Apply optional Pillow blur to smooth gradients
         if blur_radius > 0:

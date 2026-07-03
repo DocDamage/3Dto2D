@@ -20,6 +20,45 @@ from services.wan_generation_service import (
 
 ROOT = Path(__file__).resolve().parent.parent
 
+
+def _normalize_sprite_extra_args(extra: list[str] | None) -> list[str]:
+    values = list(extra or [])
+    while values and values[0] == "--":
+        values.pop(0)
+    return values
+
+
+def _sprite_extra_from_generate_args(args: argparse.Namespace) -> list[str]:
+    extra: list[str] = []
+    for attr, flag in [
+        ("matting_engine", "--matting-engine"),
+        ("alpha_refine_radius", "--alpha-refine-radius"),
+        ("temporal_alpha_strength", "--temporal-alpha-strength"),
+        ("pixel_cleanup_colors", "--pixel-cleanup-colors"),
+        ("pixel_cleanup_palette", "--pixel-cleanup-palette"),
+        ("pixel_cleanup_dither_mode", "--pixel-cleanup-dither-mode"),
+        ("interpolate_fps", "--interpolate-fps"),
+        ("interpolation_engine", "--interpolation-engine"),
+        ("interpolation_skip_patterns", "--interpolation-skip-patterns"),
+        ("normal_map_engine", "--normal-map-engine"),
+    ]:
+        value = getattr(args, attr, None)
+        if value not in (None, ""):
+            extra += [flag, str(value)]
+    for attr, flag in [
+        ("alpha_refine", "--alpha-refine"),
+        ("temporal_alpha_stabilize", "--temporal-alpha-stabilize"),
+        ("pixel_cleanup", "--pixel-cleanup"),
+        ("pixel_cleanup_dither", "--pixel-cleanup-dither"),
+        ("interpolation_skip_pixel_art", "--interpolation-skip-pixel-art"),
+        ("interpolation_skip_impact_frames", "--interpolation-skip-impact-frames"),
+        ("generate_normal_maps", "--generate-normal-maps"),
+    ]:
+        if getattr(args, attr, False):
+            extra.append(flag)
+    return extra
+
+
 def cmd_submit_wan(args: argparse.Namespace) -> None:
     from spriteforge_commands import load_config
     cfg = load_config()
@@ -53,7 +92,8 @@ def cmd_generate_sprite(args: argparse.Namespace) -> None:
 
     print(f"Source video: {video}")
     sprite_dir = Path(getattr(args, "output", None) or f"output/wan_sprite_{time.strftime('%Y%m%d_%H%M%S')}")
-    sprite_cmd = build_sprite_args(video, sprite_dir.resolve(), cfg, getattr(args, "sprite_extra_args", None))
+    explicit_extra = _normalize_sprite_extra_args(getattr(args, "sprite_extra_args", None))
+    sprite_cmd = build_sprite_args(video, sprite_dir.resolve(), cfg, explicit_extra + _sprite_extra_from_generate_args(args))
     run(sprite_cmd)
     write_run_manifest(prompt_id, patched, resp, outputs, video, sprite_dir)
     print(f"Sprite output: {sprite_dir}")
@@ -92,6 +132,6 @@ def cmd_convert_video(args: argparse.Namespace) -> None:
     input_video = Path(args.input)
     output_dir = Path(args.output or f"output/convert_{time.strftime('%Y%m%d_%H%M%S')}")
     print(f"Source video: {input_video}")
-    cmd = build_sprite_args(input_video, output_dir.resolve(), cfg, getattr(args, "extra", None))
+    cmd = build_sprite_args(input_video, output_dir.resolve(), cfg, _normalize_sprite_extra_args(getattr(args, "extra", None)))
     run(cmd)
     print(f"Converted to sprite: {output_dir}")

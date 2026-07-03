@@ -31,6 +31,11 @@ The local virtual environment runs standard Python packages which are documented
 - **ImageIO:** BSD-2-Clause License (GIF exporting)
 - **HuggingFace Hub:** Apache-2.0 License (automated model downloader)
 
+Optional enhancement packages used only when the user installs them:
+
+- **Transformers / Torch / TorchVision:** Apache-2.0 / BSD-style ecosystem licenses (BiRefNet-matting inference)
+- **BiRefNet-matting checkpoint:** MIT License (higher-quality image matting)
+
 ---
 
 *Note: No proprietary, commercially restricted, or unlicensed models/nodes are packaged with this software.*

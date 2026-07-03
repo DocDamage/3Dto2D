@@ -52,9 +52,43 @@ function inferredJobProgress(job, running) {
 }
 
 function renderGlobalProgress(job) {
-  const bar = $('#global-progress-bar');
-  if (bar) {
-    bar.style.width = `${inferredJobProgress(job, job.running)}%`;
+  const running = !!job?.running;
+  const done = !running && job?.exit_code === 0;
+  const failed = !running && job?.exit_code;
+  const progress = inferredJobProgress(job || {}, running);
+
+  const box = $('#globalTaskProgress');
+  if (box) {
+    box.classList.toggle('idle', !running && !done && !failed);
+    box.classList.toggle('done', !!done);
+    box.classList.toggle('failed', !!failed);
+  }
+
+  const title = $('#globalTaskTitle');
+  if (title) {
+    title.textContent = running
+      ? (job.title || 'Task running')
+      : (done ? 'Last task complete' : failed ? 'Last task failed' : 'No task running');
+  }
+
+  const detail = $('#globalTaskDetail');
+  if (detail) {
+    if (running) {
+      const stage = job.stage_label || 'Running';
+      const stageDetail = job.stage_detail || 'Running now';
+      const eta = job.eta_label || job.metadata?.eta?.label;
+      detail.textContent = `${stage} - ${stageDetail}${eta ? ` - ETA ${eta}` : ''}`;
+    } else {
+      detail.textContent = done || failed ? (job.finished_at || 'Complete') : 'Ready';
+    }
+  }
+
+  const pct = $('#globalProgressPct');
+  if (pct) pct.textContent = `${Math.round(progress)}%`;
+
+  const fill = $('#globalProgressFill') || $('#global-progress-bar');
+  if (fill) {
+    setProgressFill(fill, progress, running ? 'busy' : done ? 'done' : failed ? 'failed' : '');
   }
 }
 

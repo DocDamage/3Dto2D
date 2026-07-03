@@ -7,6 +7,10 @@
   padding: 16px;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .glow {
   box-shadow: none;
   border: 1px solid rgba(255, 255, 255, .12);
@@ -70,6 +74,7 @@ button {
 
 .primary,
 .ghost,
+.danger,
 .mini {
   border: 0;
   cursor: pointer;
@@ -118,8 +123,24 @@ button {
 }
 
 .danger {
+  padding: 10px 16px;
+  background: rgba(220, 77, 112, .16);
   color: #ffd0d8;
-  border-color: rgba(255, 107, 145, .35);
+  border: 1px solid rgba(255, 107, 145, .35);
+}
+
+.danger:hover {
+  background: rgba(220, 77, 112, .24);
+}
+
+.danger.big {
+  width: 100%;
+  height: 46px;
+  font-size: 15px;
+}
+
+.training-run-grid {
+  margin-top: 14px;
 }
 
 .pipeline-orb {
@@ -490,4 +511,3 @@ body.theme-light .form select option {
 .switch input:checked+span:before {
   transform: translateX(16px);
 }
-

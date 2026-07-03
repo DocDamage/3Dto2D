@@ -228,6 +228,8 @@ class JobService:
                     set_stage("pack_sprite", "Packing sprite", "Writing sheet, preview, and metadata.", 88)
                 elif "quality" in text or "qa report" in text:
                     set_stage("qa", "Quality check", "Running quality analysis and writing the report.", 92)
+                elif "lora training run" in text or "trainer:" in text:
+                    set_stage("lora_training", "LoRA training", "Preparing or running the LoRA trainer.", 55)
                 elif "download" in text:
                     set_stage("download", "Downloading", "Downloading or checking model files.", 35)
                 elif "install" in text:

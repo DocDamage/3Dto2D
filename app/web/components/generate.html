@@ -21,17 +21,18 @@
             <button class="mini ghost" id="openArchetypesBtn" type="button" style="border-color: var(--cyan); color: var(--cyan); margin-left: 6px;">Browse Archetypes...</button>
           </div>
         </div>
-        <div class="quick-goals-row" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-          <span style="font-size: 10px; color: var(--muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Defaults:</span>
-          <button class="mini" type="button" id="btnGoalPixelArt">Pixel Art</button>
-          <button class="mini" type="button" id="btnGoalSmooth2D">Smooth 2D</button>
-          <button class="mini" type="button" id="btnGoalSideScroller">Side</button>
-          <button class="mini" type="button" id="btnGoalTopDown">TopDown</button>
-          <button class="mini" type="button" id="btnGoalIsometric">Isometric</button>
-          <span style="width: 1px; height: 12px; background: rgba(255,255,255,0.1);"></span>
-          <button class="mini" type="button" id="btnGoalLocalFast">Fast</button>
-          <button class="mini" type="button" id="btnGoalLocalQuality">Quality</button>
-        </div>
+        <details class="quick-goals-panel" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+          <summary>Quick defaults</summary>
+          <div class="quick-goals-row" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <button class="mini" type="button" id="btnGoalPixelArt">Pixel Art</button>
+            <button class="mini" type="button" id="btnGoalSmooth2D">Smooth 2D</button>
+            <button class="mini" type="button" id="btnGoalSideScroller">Side</button>
+            <button class="mini" type="button" id="btnGoalTopDown">TopDown</button>
+            <button class="mini" type="button" id="btnGoalIsometric">Isometric</button>
+            <button class="mini" type="button" id="btnGoalLocalFast">Fast</button>
+            <button class="mini" type="button" id="btnGoalLocalQuality">Quality</button>
+          </div>
+        </details>
       </div>
 
       <!-- Essential Fields (Always visible) -->
@@ -39,6 +40,52 @@
         <textarea name="character" rows="3">single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette</textarea>
         <div id="recipeSuggestions" class="recipe-suggestions hidden"></div>
       </label>
+
+      <details class="collapsible-section existing-sprite-section" id="existingSpritePanel" style="margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);">
+        <summary style="cursor: pointer; font-weight: bold; font-size: 13px; color: var(--text);">Animate Existing Sprite</summary>
+        <div class="existing-sprite-grid">
+          <label>Source sprite image
+            <input name="existing_sprite_source" id="existingSpriteSource" placeholder="Upload or paste sprite image path" />
+          </label>
+          <label>Sprite name
+            <input name="existing_sprite_name" id="existingSpriteName" placeholder="hero" />
+          </label>
+          <label class="existing-sprite-wide">Identity notes
+            <textarea name="existing_sprite_description" id="existingSpriteDescription" rows="2" placeholder="Optional notes to preserve face, outfit, palette, silhouette"></textarea>
+          </label>
+          <label>Animations
+            <input name="existing_sprite_actions" id="existingSpriteActions" value="idle,walk,run,attack_light,attack_heavy,cast,jump,hurt,death,block,dodge,shoot,slash,thrust,spin_attack,throw,heal,summon,talk,wave,cheer" />
+          </label>
+          <label>Directions
+            <input name="existing_sprite_directions" id="existingSpriteDirections" value="front,front_right,right,back_right,back,back_left,left,front_left" />
+          </label>
+          <label>Camera perspective
+            <select name="existing_sprite_perspective" id="existingSpritePerspective">
+              <option value="match_source" selected>Match source sprite</option>
+              <option value="side">Side view</option>
+              <option value="front">Front view</option>
+              <option value="back">Back view</option>
+              <option value="three_quarter">Three-quarter view</option>
+              <option value="top_down">Top-down RPG</option>
+              <option value="isometric">Isometric</option>
+              <option value="orthographic">Orthographic</option>
+            </select>
+          </label>
+          <label>Model path
+            <select name="existing_sprite_model" id="existingSpriteModel">
+              <option value="local_5b" selected>Local Wan2.2 5B reference</option>
+              <option value="pixel_animate_14b">Wan2.2 I2V Pixel Animate-ready</option>
+              <option value="current_form">Use current Generate settings</option>
+              <option value="safe">Safe Wan2.1 fallback</option>
+            </select>
+          </label>
+        </div>
+        <div class="button-row form-actions-tight existing-sprite-actions">
+          <button class="ghost" id="btnGenerateExistingSprite" type="button">Generate first animation</button>
+          <button class="primary" id="btnCreateExistingSpritePack" type="button">Create animation pack</button>
+        </div>
+      </details>
+
       <div class="row">
         <label>Action
           <select name="sprite_action">
@@ -184,8 +231,8 @@
       </div>
 
       <!-- Preflight Checklist -->
-      <div class="preflight-checklist" id="generatePreflightContainer" style="margin-top: 14px;">
-        <h4>Preflight Checklist</h4>
+      <details class="preflight-checklist" id="generatePreflightContainer" style="margin-top: 14px;">
+        <summary>Preflight checklist</summary>
         <ul class="preflight-list">
           <li id="check-comfy"><span class="check-icon">❓</span> ComfyUI online</li>
           <li id="check-models"><span class="check-icon">❓</span> Model files found</li>
@@ -193,7 +240,7 @@
           <li id="check-output"><span class="check-icon">❓</span> Output folder ready</li>
           <li id="check-job"><span class="check-icon">❓</span> No job currently running</li>
         </ul>
-      </div>
+      </details>
 
       <!-- Preflight Detailed Error Box -->
       <div class="preflight-error-box hidden" id="generateErrorBox" style="margin-top: 12px;">
@@ -212,29 +259,32 @@
 
     </form>
 
-    <div class="card preview-panel">
-      <h3>Sprite recipe</h3>
-      <div class="recipe">
-        <div><span>01</span><b>Prompt lock</b><small>single character, full body, locked camera</small></div>
-        <div><span>02</span><b>WAN render</b><small>short controlled video from ComfyUI</small></div>
-        <div><span>03</span><b>Extract</b><small>transparent/keyed frames</small></div>
-        <div><span>04</span><b>Stabilize</b><small>bottom-center anchor + loop cleanup</small></div>
-        <div><span>05</span><b>Export</b><small>sheet.png, sheet.json, GIF, report</small></div>
-      </div>
-      <div class="callout">Start with <b>Safe / Wan 2.1 + auto profile</b>. Add <b>Wan 2.2 5B</b> after the health check passes.</div>
-      <div class="model-addons-panel" id="modelAddonsPanel">
-        <div class="model-addons-header">
-          <div>
-            <p class="eyebrow">Optional weights</p>
-            <h4>Recommended WAN add-ons</h4>
+    <details class="card preview-panel generate-helper-panel">
+      <summary>Sprite recipe &amp; add-ons</summary>
+      <div class="generate-helper-body">
+        <h3>Sprite recipe</h3>
+        <div class="recipe">
+          <div><span>01</span><b>Prompt lock</b><small>single character, full body, locked camera</small></div>
+          <div><span>02</span><b>WAN render</b><small>short controlled video from ComfyUI</small></div>
+          <div><span>03</span><b>Extract</b><small>transparent/keyed frames</small></div>
+          <div><span>04</span><b>Stabilize</b><small>bottom-center anchor + loop cleanup</small></div>
+          <div><span>05</span><b>Export</b><small>sheet.png, sheet.json, GIF, report</small></div>
+        </div>
+        <div class="callout">Start with <b>Safe / Wan 2.1 + auto profile</b>. Add <b>Wan 2.2 5B</b> after the health check passes.</div>
+        <div class="model-addons-panel" id="modelAddonsPanel">
+          <div class="model-addons-header">
+            <div>
+              <p class="eyebrow">Optional weights</p>
+              <h4>Recommended WAN add-ons</h4>
+            </div>
+            <button class="mini ghost" id="refreshModelAddons" type="button">Refresh</button>
           </div>
-          <button class="mini ghost" id="refreshModelAddons" type="button">Refresh</button>
-        </div>
-        <div class="model-addons-list" id="modelAddonsList">
-          <div class="empty compact">Checking installed add-ons...</div>
+          <div class="model-addons-list" id="modelAddonsList">
+            <div class="empty compact">Checking installed add-ons...</div>
+          </div>
         </div>
       </div>
-    </div>
+    </details>
 
   </div>
 </section>

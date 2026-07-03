@@ -283,6 +283,12 @@ async function reviewExperiment(decision, id) {
 }
 
 function initListingsBindings() {
+  document.addEventListener('click', e => {
+    if (e.target.closest('[data-preview-close]') && typeof closeResultPreview === 'function') {
+      closeResultPreview();
+    }
+  });
+
   if ($('#refreshReferences')) $('#refreshReferences').addEventListener('click', loadReferences);
   if ($('#referenceList')) {
     $('#referenceList').addEventListener('click', async (e) => {

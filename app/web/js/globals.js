@@ -85,7 +85,7 @@ async function api(path, opts={}){
 
 async function runAction(action, extra={}){
   // 1. Confirm before long jobs
-  if (['generate_sprite', 'convert_video', 'character_pack', 'atlas', 'run_queue'].includes(action)) {
+  if (['generate_sprite', 'convert_video', 'character_pack', 'animate_existing_sprite', 'training_dataset', 'lora_training', 'atlas', 'run_queue'].includes(action)) {
     if (localStorage.getItem('prefConfirmLongJobs') === 'true') {
       if (!confirm(`Confirm: Do you want to start this generation job? It will take several minutes.`)) {
         return;
@@ -126,7 +126,7 @@ async function runAction(action, extra={}){
     await refreshAll();
 
     // 3. Auto-switch to logs view unless disabled
-    if (['generate_sprite', 'convert_video', 'character_pack', 'atlas', 'run_queue'].includes(action)) {
+    if (['generate_sprite', 'convert_video', 'character_pack', 'animate_existing_sprite', 'training_dataset', 'lora_training', 'atlas', 'run_queue'].includes(action)) {
       if (localStorage.getItem('prefNeverAutoSwitch') !== 'true') {
         showView('logs');
       }
@@ -217,6 +217,10 @@ function showView(name){
   if (name === 'quality-parent') name = 'quality';
 
   const parentName = window.SUBVIEW_PARENTS[name] || name;
+  if (document.body) {
+    document.body.dataset.activeView = name;
+    document.body.dataset.activeParentView = parentName;
+  }
   
   // Deactivate all top-level views except the active parent/view
   $$('.shell > .view').forEach(v => {
@@ -260,6 +264,7 @@ function showView(name){
 
   // Store for API polling context
   localStorage.setItem('activeView', name);
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
   if (name === 'library' && typeof refreshLibrary === 'function') refreshLibrary();
   if (name === 'qa_dashboard') {
@@ -429,7 +434,53 @@ function closeResultPreview(){
   const videoSlot = $('#previewVideoSlot');
   const spriteSlot = $('#previewSpriteSlot');
   if(videoSlot) clearNode(videoSlot);
-  if(spriteSlot) clearNode(spriteSlot);
+  if(spriteSlot) {
+    clearNode(spriteSlot);
+    spriteSlot.classList.remove('sprite-zoom-frame', 'zoomed');
+    delete spriteSlot.dataset.spriteZoom;
+  }
+}
+
+function clampSpriteZoom(value){
+  const n = Number(value);
+  if(!Number.isFinite(n)) return 1;
+  return Math.max(0.5, Math.min(6, n));
+}
+
+function applySpriteZoom(container, target, zoom, pointer){
+  if(!container || !target) return;
+  const nextZoom = clampSpriteZoom(zoom);
+  const rect = container.getBoundingClientRect();
+  const anchorX = pointer ? pointer.clientX - rect.left : rect.width / 2;
+  const anchorY = pointer ? pointer.clientY - rect.top : rect.height / 2;
+  const relX = (container.scrollLeft + anchorX) / Math.max(1, container.scrollWidth);
+  const relY = (container.scrollTop + anchorY) / Math.max(1, container.scrollHeight);
+
+  container.dataset.spriteZoom = String(nextZoom);
+  container.classList.toggle('zoomed', nextZoom > 1.01);
+  target.style.maxWidth = 'none';
+  target.style.maxHeight = 'none';
+  target.style.width = `${nextZoom * 100}%`;
+  target.style.height = 'auto';
+
+  requestAnimationFrame(() => {
+    container.scrollLeft = Math.max(0, relX * container.scrollWidth - anchorX);
+    container.scrollTop = Math.max(0, relY * container.scrollHeight - anchorY);
+  });
+}
+
+function setupSpriteWheelZoom(container, targetGetter){
+  if(!container || container.dataset.zoomBound === '1') return;
+  container.dataset.zoomBound = '1';
+  container.classList.add('sprite-zoom-frame');
+  container.addEventListener('wheel', e => {
+    const target = typeof targetGetter === 'function' ? targetGetter() : container.querySelector('img, canvas');
+    if(!target) return;
+    e.preventDefault();
+    const current = clampSpriteZoom(container.dataset.spriteZoom || 1);
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    applySpriteZoom(container, target, current * factor, e);
+  }, { passive: false });
 }
 
 async function openResultPreview(spritePath){
@@ -465,7 +516,11 @@ async function openResultPreview(spritePath){
       const img = document.createElement('img');
       img.src = spriteUrl + '?t=' + Date.now();
       img.alt = data.name || 'Sprite preview';
+      img.className = 'zoomable-sprite';
       spriteSlot.appendChild(img);
+      spriteSlot.dataset.spriteZoom = '1';
+      setupSpriteWheelZoom(spriteSlot, () => spriteSlot.querySelector('img'));
+      applySpriteZoom(spriteSlot, img, 1);
     } else {
       spriteSlot.appendChild(mediaEmpty('No sprite preview image found.'));
     }

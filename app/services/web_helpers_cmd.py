@@ -55,6 +55,16 @@ def _resolve_existing_file(value: str) -> Optional[Path]:
     candidate = candidate.resolve()
     return candidate if candidate.exists() and candidate.is_file() and _safe_preview_file(candidate) else None
 
+def _pixel_animate_workflow_path() -> Optional[str]:
+    candidates = [
+        ROOT / "vendor" / "ComfyUI" / "models" / "workflows" / "wan2-2-video.json",
+        ROOT / "workflows" / "wan2-2-video.json",
+    ]
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return str(candidate)
+    return None
+
 def _project_artifact_path(project_meta: Dict[str, str], folder: str, name: str) -> Path:
     project_root = (ROOT / str(project_meta["project_root"])).resolve()
     projects_root = (ROOT / "projects").resolve()
@@ -89,14 +99,79 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
     }
     if action in table:
         return table[action]
+    if action == "training_dataset":
+        source = str(payload.get("source_dir") or payload.get("source") or "").strip()
+        if not source:
+            raise ValueError("No source sprite folder selected.")
+        output = str(payload.get("output") or payload.get("dataset_output") or "").strip()
+        trigger = str(payload.get("trigger") or "sakpix_style").strip()
+        base_caption = str(payload.get("base_caption") or "premium pixel art RPG character").strip()
+        cell_size = str(payload.get("cell_size") or "").strip()
+        cmd = [
+            PYTHON,
+            "spriteforge_unified.py",
+            "training-dataset",
+            "--source",
+            source,
+        ]
+        if output:
+            cmd += ["--output", output]
+        cmd += ["--trigger", trigger, "--base-caption", base_caption]
+        if cell_size:
+            cmd += ["--cell-size", cell_size]
+        return "Build training dataset", cmd
+    if action == "lora_training":
+        dataset = str(payload.get("dataset_dir") or payload.get("dataset") or "").strip()
+        if not dataset:
+            raise ValueError("No training dataset folder selected.")
+        mode = str(payload.get("mode") or "prepare").strip().lower()
+        run_now = mode == "run" or str(payload.get("run_now") or "").lower() in {"1", "true", "yes", "on"}
+        cmd = [
+            PYTHON,
+            "spriteforge_unified.py",
+            "lora-train",
+            "--dataset",
+            dataset,
+        ]
+        output = str(payload.get("output") or payload.get("run_output") or "").strip()
+        if output:
+            cmd += ["--output", output]
+        for key, arg, default in [
+            ("name", "--name", "sprite_lora"),
+            ("model_family", "--model-family", "sdxl"),
+            ("trainer", "--trainer", "auto"),
+            ("base_model", "--base-model", ""),
+            ("trigger", "--trigger", "sakpix_style"),
+            ("resolution", "--resolution", "768"),
+            ("max_train_steps", "--max-train-steps", "1200"),
+            ("learning_rate", "--learning-rate", "1e-4"),
+            ("network_dim", "--network-dim", "16"),
+            ("repeats", "--repeats", "10"),
+            ("batch_size", "--batch-size", ""),
+            ("trainer_dir", "--trainer-dir", ""),
+        ]:
+            value = str(payload.get(key) if payload.get(key) is not None else default).strip()
+            if value:
+                cmd += [arg, value]
+        if run_now:
+            cmd.append("--run")
+        title = "Start LoRA training run" if run_now else "Prepare LoRA training run"
+        return title, cmd
     if action == "generate_sprite":
         cmd = [PYTHON, "spriteforge_unified.py", "generate-sprite"]
         if payload.get("start_comfy", True):
             cmd.append("--start-comfy")
         tier = str(payload.get("tier") or "wan22_5b")
         cmd += ["--tier", tier]
+        mode = str(payload.get("mode") or "").strip()
+        if mode:
+            cmd += ["--mode", mode]
         cmd += ["--profile", str(payload.get("profile") or "auto")]
-        for key, arg in [("sprite_action", "--action"), ("direction", "--direction"), ("character", "--character"), ("style", "--style"), ("prompt", "--prompt"), ("negative", "--negative"), ("reference_image", "--reference-image"), ("seed", "--seed")]:
+        if not payload.get("workflow") and payload.get("existing_sprite_model") == "pixel_animate_14b":
+            workflow = _pixel_animate_workflow_path()
+            if workflow:
+                payload["workflow"] = workflow
+        for key, arg in [("workflow", "--workflow"), ("sprite_action", "--action"), ("direction", "--direction"), ("character", "--character"), ("style", "--style"), ("background", "--background"), ("prompt", "--prompt"), ("negative", "--negative"), ("reference_image", "--reference-image"), ("seed", "--seed"), ("output_prefix", "--output-prefix")]:
             value = str(payload.get(key) or "").strip()
             if value:
                 cmd += [arg, value]
@@ -127,6 +202,58 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         if payload.get("power_of_two", False):
             cmd.append("--power-of-two")
         return "Generate WAN sprite", cmd
+    if action == "animate_existing_sprite":
+        source = str(payload.get("source_sprite") or payload.get("existing_sprite_source") or payload.get("reference_image") or "").strip()
+        if not source:
+            raise ValueError("No source sprite image selected.")
+        name_seed = str(payload.get("existing_sprite_name") or payload.get("name") or Path(source).stem or "existing_sprite")
+        name = safe_name(name_seed)
+        description = str(payload.get("existing_sprite_description") or payload.get("character") or "single full body game sprite").strip()
+        style = str(payload.get("style") or "polished 2D game sprite, preserve the uploaded source sprite identity, exact outfit, palette, proportions, and silhouette").strip()
+        if "preserve" not in style.lower():
+            style += ", preserve the uploaded source sprite identity, exact outfit, palette, proportions, and silhouette"
+        actions = str(payload.get("existing_sprite_actions") or payload.get("default_actions") or payload.get("actions") or payload.get("sprite_action") or "idle,walk,run,attack_light,hurt,death").strip()
+        directions = str(payload.get("existing_sprite_directions") or payload.get("default_directions") or payload.get("directions") or payload.get("direction") or "right").strip()
+        tier = str(payload.get("tier") or "wan22_5b").strip()
+        mode = str(payload.get("mode") or "auto").strip()
+        profile = str(payload.get("profile") or "wan22_5b_3060_best").strip()
+        background = str(payload.get("background") or "plain bright green chroma key background").strip()
+        seed = str(payload.get("seed") or "-1").strip() or "-1"
+        workflow = str(payload.get("workflow") or "").strip()
+        if not workflow and payload.get("existing_sprite_model") == "pixel_animate_14b":
+            workflow = _pixel_animate_workflow_path() or ""
+        cmd = [
+            PYTHON,
+            "spriteforge_unified.py",
+            "character-pack",
+            "--name",
+            name,
+            "--description",
+            description,
+            "--reference-image",
+            source,
+            "--style",
+            style,
+            "--background",
+            background,
+            "--actions",
+            actions,
+            "--directions",
+            directions,
+            "--tier",
+            tier,
+            "--mode",
+            mode,
+            "--profile",
+            profile,
+            "--seed",
+            seed,
+        ]
+        if workflow:
+            cmd += ["--workflow", workflow]
+        if project_meta:
+            cmd += ["--output", str(_project_artifact_path(project_meta, "characters", name))]
+        return f"Create animation pack for {name}", cmd
     if action == "convert_video":
         inp = str(payload.get("input") or "").strip()
         if not inp:

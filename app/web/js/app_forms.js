@@ -18,6 +18,108 @@ function runRecommended(){
   runAction(recommendedAction); showView('logs');
 }
 
+const EXISTING_SPRITE_MODEL_PRESETS = {
+  local_5b: { tier: 'wan22_5b', mode: 'auto', profile: 'wan22_5b_3060_best' },
+  pixel_animate_14b: { tier: 'wan22_14b_cloud', mode: 'i2v', profile: 'i2v_cloud_24gb_plus' },
+  safe: { tier: 'wan21_safe', mode: 'auto', profile: 'auto' }
+};
+
+const EXISTING_SPRITE_PERSPECTIVES = {
+  match_source: 'match the camera perspective of the uploaded source sprite',
+  side: 'side-view game sprite camera',
+  front: 'front-facing game sprite camera',
+  back: 'back-facing game sprite camera',
+  three_quarter: 'three-quarter game sprite camera',
+  top_down: 'top-down RPG sprite camera',
+  isometric: 'isometric 2.5D sprite camera, angled at 30 degrees',
+  orthographic: 'orthographic game sprite camera, no perspective distortion'
+};
+
+function csvValues(value) {
+  return String(value || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function firstCsvValue(value, fallback) {
+  return csvValues(value)[0] || fallback;
+}
+
+function inferSpriteName(source, fallback) {
+  const explicit = String(fallback || '').trim();
+  if (explicit) return explicit;
+  const file = String(source || '').split(/[\\/]/).pop() || 'existing_sprite';
+  return file.replace(/\.[^.]+$/, '') || 'existing_sprite';
+}
+
+function setFieldValue(input, value) {
+  if (!input) return;
+  if (typeof setInputValue === 'function') {
+    setInputValue(input, value);
+    return;
+  }
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function buildExistingSpritePayload() {
+  const form = $('#generateForm');
+  if (!form) return null;
+  const data = formData(form);
+  const source = String(data.existing_sprite_source || data.reference_image || '').trim();
+  if (!source) {
+    toast('Upload or paste a source sprite image first.');
+    $('#existingSpritePanel')?.setAttribute('open', '');
+    $('#existingSpriteSource')?.focus();
+    return null;
+  }
+
+  const modelChoice = data.existing_sprite_model || 'local_5b';
+  const modelPreset = modelChoice === 'current_form'
+    ? { tier: data.tier || 'wan22_5b', mode: data.mode || 'auto', profile: data.profile || 'auto' }
+    : (EXISTING_SPRITE_MODEL_PRESETS[modelChoice] || EXISTING_SPRITE_MODEL_PRESETS.local_5b);
+  const actions = csvValues(data.existing_sprite_actions || data.default_actions || data.sprite_action || 'idle').join(',');
+  const directions = csvValues(data.existing_sprite_directions || data.default_directions || data.direction || 'right').join(',');
+  const action = firstCsvValue(actions, data.sprite_action || 'idle');
+  const direction = firstCsvValue(directions, data.direction || 'right');
+  const perspective = data.existing_sprite_perspective || 'match_source';
+  const perspectiveText = EXISTING_SPRITE_PERSPECTIVES[perspective] || EXISTING_SPRITE_PERSPECTIVES.match_source;
+  const spriteName = inferSpriteName(source, data.existing_sprite_name || data.preset_select || data.preset_name);
+  const character = String(data.existing_sprite_description || data.character || 'single full body game sprite').trim();
+  const baseStyle = String(data.style || 'polished 2D game sprite, crisp silhouette, consistent outfit').trim();
+  const addonHint = modelChoice === 'pixel_animate_14b'
+    ? ', pixel-art sprite animation adapter friendly motion, clean short sprite sequence'
+    : '';
+  const style = `${baseStyle}, preserve the uploaded source sprite identity, exact outfit, palette, proportions, silhouette, and readable shape language, ${perspectiveText}, locked camera${addonHint}`;
+  const negative = String(data.negative || '').trim()
+    || 'changing outfit, changing face, changing proportions, camera movement, zoom, cuts, close up, extra limbs, missing limbs, messy silhouette, text, watermark';
+
+  setFieldValue($('#generationReferenceImage'), source);
+  setFieldValue(form.querySelector('[name="sprite_action"]'), action);
+  setFieldValue(form.querySelector('[name="direction"]'), direction);
+
+  return {
+    ...data,
+    source_sprite: source,
+    reference_image: source,
+    existing_sprite_name: spriteName,
+    existing_sprite_actions: actions,
+    existing_sprite_directions: directions,
+    character,
+    style,
+    negative,
+    sprite_action: action,
+    direction,
+    default_actions: actions,
+    default_directions: directions,
+    tier: modelPreset.tier,
+    mode: modelPreset.mode,
+    profile: modelPreset.profile
+  };
+}
+
 function initFormBindings() {
   // Nav, jump, run, open binders
   $$('.nav').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
@@ -40,6 +142,22 @@ function initFormBindings() {
       showView('logs');
     });
   }
+  if ($('#btnGenerateExistingSprite')) {
+    $('#btnGenerateExistingSprite').addEventListener('click', () => {
+      const payload = buildExistingSpritePayload();
+      if (!payload) return;
+      runAction('generate_sprite', payload);
+      showView('logs');
+    });
+  }
+  if ($('#btnCreateExistingSpritePack')) {
+    $('#btnCreateExistingSpritePack').addEventListener('click', () => {
+      const payload = buildExistingSpritePayload();
+      if (!payload) return;
+      runAction('animate_existing_sprite', payload);
+      showView('logs');
+    });
+  }
   if ($('#convertForm')) $('#convertForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('convert_video', formData(e.currentTarget)); showView('logs'); });
 
   // Quality actions
@@ -53,6 +171,13 @@ function initFormBindings() {
   }));
   if ($('#packForm')) $('#packForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('character_pack', formData(e.currentTarget)); showView('logs'); });
   if ($('#atlasForm')) $('#atlasForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('atlas', formData(e.currentTarget)); showView('logs'); });
+  if ($('#trainingDatasetForm')) $('#trainingDatasetForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('training_dataset', formData(e.currentTarget)); showView('logs'); });
+  $$('[data-lora-mode]').forEach(btn=>btn.addEventListener('click',()=>{
+    const form = $('#loraTrainingForm');
+    if (!form) return;
+    runAction('lora_training', { ...formData(form), mode: btn.dataset.loraMode || 'prepare' });
+    showView('logs');
+  }));
 
   // Release and queue forms
   if ($('#releaseForm')) $('#releaseForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('release_package', formData(e.currentTarget)); showView('logs'); });

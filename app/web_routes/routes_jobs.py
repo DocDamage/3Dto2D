@@ -158,11 +158,14 @@ def run_action():
     
     # Disk Budget Guard check
     estimated_gb = 1.0
-    if action == "generate_sprite":
+    if action in {"generate_sprite", "animate_existing_sprite"}:
         act_list = [a.strip() for a in str(payload.get("default_actions") or "").split(",") if a.strip()]
         dir_list = [d.strip() for d in str(payload.get("default_directions") or "").split(",") if d.strip()]
+        if action == "animate_existing_sprite":
+            act_list = [a.strip() for a in str(payload.get("existing_sprite_actions") or payload.get("default_actions") or "").split(",") if a.strip()]
+            dir_list = [d.strip() for d in str(payload.get("existing_sprite_directions") or payload.get("default_directions") or "").split(",") if d.strip()]
         num_jobs = max(1, len(act_list) * len(dir_list))
-        estimated_gb = num_jobs * 0.8
+        estimated_gb = 0.2 if action == "animate_existing_sprite" else num_jobs * 0.8
         
     try:
         total, used, free = shutil.disk_usage(ROOT)
@@ -183,7 +186,13 @@ def run_action():
         title, cmd = build_action_command(payload)
         metadata = {
             key: payload.get(key)
-            for key in ["project_name", "project_path", "project_root", "tier", "profile", "sprite_action", "direction", "seed", "preview", "style_image"]
+            for key in [
+                "project_name", "project_path", "project_root", "tier", "mode", "profile",
+                "sprite_action", "direction", "seed", "preview", "style_image", "source_sprite",
+                "existing_sprite_name", "existing_sprite_actions", "existing_sprite_directions",
+                "dataset_dir", "model_family", "trainer", "base_model", "trainer_dir",
+                "resolution", "max_train_steps", "learning_rate", "network_dim", "repeats",
+            ]
             if payload.get(key) is not None
         }
         if action == "generate_sprite":

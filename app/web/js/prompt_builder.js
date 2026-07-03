@@ -61,10 +61,10 @@ async function promptBuilderInstall() {
   const form = $('#generateForm');
   if (!form || $('#promptBuilderCard')) return;
   const opts = await promptBuilderOptions();
-  const card = document.createElement('section');
+  const card = document.createElement('details');
   card.id = 'promptBuilderCard';
   card.className = 'prompt-builder';
-  card.innerHTML = '<p class="eyebrow">AI Prompt Wizard</p><div class="prompt-builder-grid"></div>';
+  card.innerHTML = '<summary>AI Prompt Wizard</summary><div class="prompt-builder-grid"></div>';
   const grid = $('.prompt-builder-grid', card);
 
   const character = document.createElement('input');

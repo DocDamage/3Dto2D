@@ -28,6 +28,40 @@ from spriteforge_commands import (
     cmd_history
 )
 
+def cmd_training_dataset(args: argparse.Namespace) -> None:
+    from services.training_dataset_service import build_training_dataset, default_output_dir
+
+    output = args.output or str(default_output_dir(args.name or "sprite_dataset"))
+    build_training_dataset(
+        source_dir=args.source,
+        output_dir=output,
+        trigger=args.trigger,
+        base_caption=args.base_caption,
+        cell_size=args.cell_size,
+    )
+
+def cmd_lora_train(args: argparse.Namespace) -> None:
+    from services.lora_training_service import build_lora_training_run, default_output_dir
+
+    output = args.output or str(default_output_dir(args.name or f"{args.model_family}_lora"))
+    build_lora_training_run(
+        dataset_dir=args.dataset,
+        output_dir=output,
+        name=args.name,
+        model_family=args.model_family,
+        trainer=args.trainer,
+        base_model=args.base_model,
+        trigger=args.trigger,
+        resolution=args.resolution,
+        max_train_steps=args.max_train_steps,
+        learning_rate=args.learning_rate,
+        network_dim=args.network_dim,
+        repeats=args.repeats,
+        batch_size=args.batch_size,
+        trainer_dir=args.trainer_dir,
+        mode="run" if args.run else "prepare",
+    )
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Unified ComfyUI + WAN + SpriteForge tool v12")
     sub = p.add_subparsers(dest="command", required=True)
@@ -177,6 +211,33 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--addon", required=True)
     s.add_argument("--force", action="store_true")
     s.set_defaults(func=cmd_download_model_addon)
+
+    s = sub.add_parser("training-dataset", help="Build an image/caption dataset from owned sprite assets for LoRA training")
+    s.add_argument("--source", required=True, help="Folder containing purchased/owned sprite PNGs or sheets")
+    s.add_argument("--output", default=None, help="Output dataset folder. Defaults to output/training_datasets/<name>_<timestamp>.")
+    s.add_argument("--name", default="sprite_dataset")
+    s.add_argument("--trigger", default="sakpix_style")
+    s.add_argument("--base-caption", default="premium pixel art RPG character")
+    s.add_argument("--cell-size", default=None, help="Optional sprite cell size for sheet slicing, e.g. 92x92 or 128x128")
+    s.set_defaults(func=cmd_training_dataset)
+
+    s = sub.add_parser("lora-train", help="Prepare or launch an SDXL/Flux LoRA trainer run from a SpriteForge training dataset")
+    s.add_argument("--dataset", required=True, help="Training dataset folder created by training-dataset")
+    s.add_argument("--output", default=None, help="Output training run folder. Defaults to output/training_runs/<name>_<timestamp>.")
+    s.add_argument("--name", default="sprite_lora")
+    s.add_argument("--model-family", default="sdxl", choices=["sdxl", "flux"])
+    s.add_argument("--trainer", default="auto", choices=["auto", "kohya", "ai_toolkit"])
+    s.add_argument("--base-model", default="", help="Base checkpoint path or Hugging Face model id used by the trainer")
+    s.add_argument("--trigger", default="sakpix_style")
+    s.add_argument("--resolution", default="768")
+    s.add_argument("--max-train-steps", default="1200")
+    s.add_argument("--learning-rate", default="1e-4")
+    s.add_argument("--network-dim", default="16")
+    s.add_argument("--repeats", default="10")
+    s.add_argument("--batch-size", default="1")
+    s.add_argument("--trainer-dir", default=None, help="Installed trainer folder. Defaults to vendor/kohya_ss or vendor/ai-toolkit.")
+    s.add_argument("--run", action="store_true", help="Start the external trainer after writing configs")
+    s.set_defaults(func=cmd_lora_train)
 
     s = sub.add_parser("model-tiers", help="List available model tiers and local file status")
     s.set_defaults(func=cmd_model_tiers)
@@ -452,21 +513,25 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--background", default="plain bright green background")
     s.add_argument("--actions", default="idle,walk,run,attack_light,attack_heavy,hurt,death")
     s.add_argument("--directions", default="right")
-    s.add_argument("--mode", default="t2v", choices=["t2v", "i2v", "vace", "custom"])
+    s.add_argument("--tier", default="wan22_5b")
+    s.add_argument("--mode", default="auto", choices=["auto", "t2v", "ti2v22", "i2v", "vace", "custom"])
     s.add_argument("--profile", default="rtx3060_12gb")
+    s.add_argument("--workflow", default=None)
     s.add_argument("--seed", type=int, default=-1)
     s.add_argument("--output", default=None)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_character.py"), "create", "--name", a.name, "--description", a.description, "--style", a.style, "--background", a.background, "--actions", a.actions, "--directions", a.directions, "--mode", a.mode, "--profile", a.profile, "--seed", str(a.seed)] + (["--reference-image", a.reference_image] if a.reference_image else []) + (["--output", a.output] if a.output else [])))
+    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_character.py"), "create", "--name", a.name, "--description", a.description, "--style", a.style, "--background", a.background, "--actions", a.actions, "--directions", a.directions, "--tier", a.tier, "--mode", a.mode, "--profile", a.profile, "--seed", str(a.seed)] + (["--workflow", a.workflow] if a.workflow else []) + (["--reference-image", a.reference_image] if a.reference_image else []) + (["--output", a.output] if a.output else [])))
 
     s = sub.add_parser("batch-actions", help="Create a sequential generation batch from a character_profile.json")
     s.add_argument("--profile", required=True, help="Path to character_profile.json")
     s.add_argument("--actions", default=None)
     s.add_argument("--directions", default=None)
-    s.add_argument("--mode", default="t2v", choices=["t2v", "i2v", "vace", "custom"])
+    s.add_argument("--tier", default=None)
+    s.add_argument("--mode", default="auto", choices=["auto", "t2v", "ti2v22", "i2v", "vace", "custom"])
     s.add_argument("--local-profile", default=None)
+    s.add_argument("--workflow", default=None)
     s.add_argument("--seed", type=int, default=-1)
     s.add_argument("--output", default=None)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_character.py"), "batch", "--profile", a.profile, "--mode", a.mode, "--seed", str(a.seed)] + (["--actions", a.actions] if a.actions else []) + (["--directions", a.directions] if a.directions else []) + (["--local-profile", a.local_profile] if a.local_profile else []) + (["--output", a.output] if a.output else [])))
+    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_character.py"), "batch", "--profile", a.profile, "--mode", a.mode, "--seed", str(a.seed)] + (["--workflow", a.workflow] if a.workflow else []) + (["--tier", a.tier] if a.tier else []) + (["--actions", a.actions] if a.actions else []) + (["--directions", a.directions] if a.directions else []) + (["--local-profile", a.local_profile] if a.local_profile else []) + (["--output", a.output] if a.output else [])))
 
     s = sub.add_parser("export-atlas", help="Export TexturePacker/Phaser/PixiJS/Aseprite/CSS/XML atlas metadata")
     s.add_argument("--sprite-dir", required=True)

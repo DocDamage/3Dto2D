@@ -79,6 +79,7 @@ def build_prompt_pack(action: str, direction: str, character: str, style: str, b
 def make_command(job: Dict[str, Any]) -> str:
     args = [
         "python", "spriteforge_unified.py", "generate-sprite", "--start-comfy",
+        "--tier", job.get("tier", "wan22_5b"),
         "--mode", job.get("mode", "t2v"),
         "--profile", job.get("profile", "rtx3060_12gb"),
         "--action", job["action"],
@@ -140,6 +141,8 @@ def cmd_create(args: argparse.Namespace) -> None:
         "actions": actions,
         "directions": directions,
         "seed_base": seed_base,
+        "recommended_tier": args.tier,
+        "recommended_workflow": args.workflow,
         "recommended_local_profile": args.profile,
     }
     (out / "character_profile.json").write_text(json.dumps(profile, indent=2), encoding="utf-8")
@@ -157,8 +160,10 @@ def cmd_create(args: argparse.Namespace) -> None:
                 "background": args.background,
                 "action": action,
                 "direction": direction,
+                "tier": args.tier,
                 "mode": args.mode,
                 "profile": args.profile,
+                "workflow": args.workflow,
                 "seed": seed,
                 "reference_image": str((out / ref_rel).resolve()) if ref_rel and args.reference_absolute else (str(out / ref_rel) if ref_rel else None),
                 "positive": prompt.get("positive"),
@@ -224,8 +229,10 @@ def cmd_batch(args: argparse.Namespace) -> None:
                 "background": args.background or profile.get("background"),
                 "action": action,
                 "direction": direction,
+                "tier": args.tier or profile.get("recommended_tier", "wan22_5b"),
                 "mode": args.mode,
                 "profile": args.local_profile or profile.get("recommended_local_profile", "rtx3060_12gb"),
+                "workflow": args.workflow or profile.get("recommended_workflow"),
                 "seed": seed_base + n * 9973,
                 "reference_image": ref_path,
                 "output_prefix": f"SpriteForge/{profile.get('slug','character')}_{action}_{direction}",
@@ -256,8 +263,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--background", default="plain bright green background")
     s.add_argument("--actions", default=",".join(DEFAULT_ACTIONS))
     s.add_argument("--directions", default=",".join(DEFAULT_DIRECTIONS))
-    s.add_argument("--mode", default="t2v", choices=["t2v", "i2v", "vace", "custom"])
+    s.add_argument("--tier", default="wan22_5b")
+    s.add_argument("--mode", default="auto", choices=["auto", "t2v", "ti2v22", "i2v", "vace", "custom"])
     s.add_argument("--profile", default="rtx3060_12gb")
+    s.add_argument("--workflow", default=None)
     s.add_argument("--seed", type=int, default=-1)
     s.add_argument("--palette-colors", type=int, default=8)
     s.add_argument("--reference-absolute", action="store_true", help="Write absolute reference image path in generated batch jobs")
@@ -268,8 +277,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--profile", required=True)
     s.add_argument("--actions", default=None)
     s.add_argument("--directions", default=None)
-    s.add_argument("--mode", default="t2v", choices=["t2v", "i2v", "vace", "custom"])
+    s.add_argument("--tier", default=None)
+    s.add_argument("--mode", default="auto", choices=["auto", "t2v", "ti2v22", "i2v", "vace", "custom"])
     s.add_argument("--local-profile", default=None)
+    s.add_argument("--workflow", default=None)
     s.add_argument("--style", default=None)
     s.add_argument("--background", default=None)
     s.add_argument("--seed", type=int, default=-1)

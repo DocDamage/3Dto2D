@@ -23,10 +23,18 @@ ROOT = Path(__file__).resolve().parent
 
 DIRECTIONS = {
     "front": "front view, character facing camera",
+    "front_right": "front-right diagonal view, character facing down and right, RPG 8-direction sprite angle",
     "back": "back view, character facing away from camera",
+    "back_right": "back-right diagonal view, character facing up and right, RPG 8-direction sprite angle",
+    "back_left": "back-left diagonal view, character facing up and left, RPG 8-direction sprite angle",
     "left": "left side view, character facing left",
     "right": "right side view, character facing right",
+    "front_left": "front-left diagonal view, character facing down and left, RPG 8-direction sprite angle",
     "three_quarter": "three quarter view, slight turn, readable silhouette",
+    "iso_front_left": "isometric front-left view, diagonal RPG projection, character readable from head to feet",
+    "iso_front_right": "isometric front-right view, diagonal RPG projection, character readable from head to feet",
+    "iso_back_left": "isometric back-left view, diagonal RPG projection, character readable from head to feet",
+    "iso_back_right": "isometric back-right view, diagonal RPG projection, character readable from head to feet",
 }
 
 ACTION_TEMPLATES: Dict[str, Dict[str, object]] = {

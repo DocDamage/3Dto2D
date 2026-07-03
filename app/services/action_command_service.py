@@ -70,6 +70,17 @@ def discover_commands() -> List[Dict[str, Any]]:
             "action_type": "frontend_route",
             "endpoint": "/api/onboarding/wizard",
             "requires_confirmation": False
+        },
+        {
+            "id": "training_lab",
+            "label": "Open Training Lab",
+            "description": "Builds a private LoRA-ready image and caption dataset from owned sprite assets.",
+            "view": "training",
+            "enabled": True,
+            "disabled_reason": None,
+            "action_type": "frontend_route",
+            "endpoint": "",
+            "requires_confirmation": False
         }
     ]
 

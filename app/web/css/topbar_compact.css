@@ -136,3 +136,462 @@
   padding: 6px;
   width: 100%;
 }
+
+/* Generate route: compact controls and keep long add-on lists local */
+body[data-active-view="generate"] .topbar {
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 6px !important;
+  padding: 4px 0 8px !important;
+}
+
+body[data-active-view="generate"] .topbar > div:first-child {
+  display: none !important;
+}
+
+body[data-active-view="generate"] .topbar-controls,
+body[data-active-view="generate"] .status-row,
+body[data-active-view="generate"] .project-strip {
+  justify-content: flex-start !important;
+}
+
+body[data-active-view="generate"] .status-row {
+  gap: 5px !important;
+}
+
+body[data-active-view="generate"] .chip {
+  border-radius: 8px !important;
+  padding: 4px 7px !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+}
+
+body[data-active-view="generate"] .project-strip {
+  gap: 5px !important;
+}
+
+body[data-active-view="generate"] .project-strip label {
+  gap: 4px !important;
+}
+
+body[data-active-view="generate"] .project-strip input,
+body[data-active-view="generate"] .project-strip select {
+  height: 26px !important;
+  font-size: 11px !important;
+}
+
+body[data-active-view="generate"] #globalTaskProgress.idle,
+body[data-active-view="generate"] #globalTaskProgress.done {
+  display: none !important;
+}
+
+body[data-active-view="generate"] .global-task-progress {
+  grid-template-columns: minmax(150px, 1fr) minmax(120px, 280px) 42px;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 7px 9px;
+}
+
+body[data-active-view="generate"] #view-generate .section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+body[data-active-view="generate"] #view-generate .section-title h2 {
+  font-size: 24px;
+}
+
+body[data-active-view="generate"] #view-generate .grid-2 {
+  align-items: start;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body[data-active-view="generate"] #view-generate .grid-2 > * {
+  min-width: 0;
+}
+
+body[data-active-view="generate"] #generateForm,
+body[data-active-view="generate"] #view-generate .preview-panel {
+  padding: 12px;
+}
+
+body[data-active-view="generate"] #generateForm {
+  gap: 8px;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr) !important;
+  min-width: 0;
+}
+
+body[data-active-view="generate"] #generateForm > * {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+body[data-active-view="generate"] #generateForm .field-hint {
+  display: none !important;
+}
+
+body[data-active-view="generate"] #generateForm label {
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: .06em;
+}
+
+body[data-active-view="generate"] #generateForm input,
+body[data-active-view="generate"] #generateForm textarea,
+body[data-active-view="generate"] #generateForm select {
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 7px 9px;
+}
+
+body[data-active-view="generate"] #generateForm textarea {
+  min-height: 56px;
+}
+
+body[data-active-view="generate"] #generateForm .preset-builder-card {
+  gap: 6px !important;
+  margin-bottom: 4px !important;
+  padding: 8px !important;
+}
+
+body[data-active-view="generate"] #generateForm .preset-builder-card > div:first-child {
+  align-items: end !important;
+  gap: 8px !important;
+}
+
+body[data-active-view="generate"] #generateForm .quick-goals-panel > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+body[data-active-view="generate"] #generateForm .quick-goals-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+body[data-active-view="generate"] #generateForm .quick-goals-panel > summary::after {
+  content: " +";
+}
+
+body[data-active-view="generate"] #generateForm .quick-goals-panel[open] > summary::after {
+  content: " -";
+}
+
+body[data-active-view="generate"] #generateForm .quick-goals-row {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 6px !important;
+  margin-top: 7px;
+  overflow: visible;
+  padding-bottom: 0;
+}
+
+body[data-active-view="generate"] #generateForm .quick-goals-row .mini {
+  min-width: 0;
+  padding-inline: 7px;
+}
+
+body[data-active-view="generate"] .prompt-builder {
+  gap: 7px;
+  margin-bottom: 4px;
+  padding: 9px;
+}
+
+body[data-active-view="generate"] .prompt-builder .eyebrow {
+  margin-bottom: 0;
+}
+
+body[data-active-view="generate"] .prompt-builder-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 7px;
+}
+
+body[data-active-view="generate"] .prompt-builder textarea {
+  min-height: 42px;
+}
+
+body[data-active-view="generate"] .collapsible-section {
+  margin-top: 4px !important;
+  padding: 8px !important;
+}
+
+body[data-active-view="generate"] .collapsible-section summary {
+  font-size: 12px !important;
+}
+
+body[data-active-view="generate"] .existing-sprite-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+body[data-active-view="generate"] .existing-sprite-grid > * {
+  min-width: 0;
+}
+
+body[data-active-view="generate"] .existing-sprite-wide {
+  grid-column: 1 / -1;
+}
+
+body[data-active-view="generate"] #existingSpriteDropTarget {
+  min-height: 54px;
+  padding: 8px;
+}
+
+body[data-active-view="generate"] .existing-sprite-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body[data-active-view="generate"] #generateForm .switches {
+  gap: 6px;
+  margin-top: 6px !important;
+}
+
+body[data-active-view="generate"] #generateForm .switch {
+  font-size: 12px;
+}
+
+body[data-active-view="generate"] #modelProfileExplainer {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px !important;
+  padding: 8px;
+  font-size: 12px;
+}
+
+body[data-active-view="generate"] #generatePreflightContainer {
+  margin: 6px 0 !important;
+  padding: 8px;
+}
+
+body[data-active-view="generate"] #generatePreflightContainer summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+body[data-active-view="generate"] #generatePreflightContainer summary::-webkit-details-marker {
+  display: none;
+}
+
+body[data-active-view="generate"] #generatePreflightContainer summary::after {
+  content: " +";
+}
+
+body[data-active-view="generate"] #generatePreflightContainer[open] summary::after {
+  content: " -";
+}
+
+body[data-active-view="generate"] #generatePreflightContainer .preflight-list {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 4px 8px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+body[data-active-view="generate"] #generateForm .button-row,
+body[data-active-view="generate"] #generateForm .form-actions-tight {
+  gap: 6px;
+  margin-top: 6px !important;
+}
+
+body[data-active-view="generate"] #generateForm .primary.big,
+body[data-active-view="generate"] #generateForm .ghost.big {
+  height: 38px;
+}
+
+body[data-active-view="generate"] #view-generate .preview-panel {
+  max-height: calc(100vh - 118px);
+  overflow: auto;
+  order: -1;
+  position: static;
+}
+
+body[data-active-view="generate"] #view-generate .preview-panel h3 {
+  font-size: 16px;
+}
+
+body[data-active-view="generate"] #view-generate .generate-helper-panel > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+body[data-active-view="generate"] #view-generate .generate-helper-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+body[data-active-view="generate"] #view-generate .generate-helper-panel > summary::after {
+  content: " +";
+}
+
+body[data-active-view="generate"] #view-generate .generate-helper-panel[open] > summary::after {
+  content: " -";
+}
+
+body[data-active-view="generate"] #view-generate .generate-helper-body {
+  margin-top: 10px;
+}
+
+body[data-active-view="generate"] #view-generate .recipe {
+  gap: 6px;
+}
+
+body[data-active-view="generate"] #view-generate .recipe div,
+body[data-active-view="generate"] #view-generate .model-addon-card {
+  padding: 8px;
+}
+
+body[data-active-view="generate"] #view-generate .callout {
+  margin-top: 8px;
+  padding: 8px;
+  font-size: 12px;
+}
+
+body[data-active-view="generate"] #view-generate .model-addons-panel {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+body[data-active-view="generate"] #view-generate .model-addons-list {
+  max-height: min(46vh, 460px);
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.sprite-zoom-frame {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.result-media-frame.sprite-zoom-frame {
+  display: block;
+  padding: 8px;
+  text-align: center;
+}
+
+.result-media-frame.sprite-zoom-frame img,
+.inspector-canvas-container.sprite-zoom-frame .inspector-img {
+  display: block;
+  flex: 0 0 auto;
+  margin: auto;
+  transform-origin: center center;
+}
+
+.result-media-frame.sprite-zoom-frame.zoomed,
+.inspector-canvas-container.sprite-zoom-frame.zoomed {
+  cursor: zoom-out;
+}
+
+.inspector-canvas-container.sprite-zoom-frame {
+  align-items: flex-start;
+  box-sizing: border-box;
+  justify-content: center;
+  overflow: auto;
+  padding: 8px;
+}
+
+@media (max-width: 900px) {
+  body[data-active-view="generate"] #view-generate .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  body[data-active-view="generate"] #view-generate .preview-panel {
+    max-height: 420px;
+    position: static;
+  }
+}
+
+@media (max-width: 620px) {
+  body[data-active-view="generate"] .topbar {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  body[data-active-view="generate"] .topbar-controls {
+    align-items: stretch !important;
+  }
+
+  body[data-active-view="generate"] .status-row,
+  body[data-active-view="generate"] .project-strip {
+    min-width: 0;
+  }
+
+  body[data-active-view="generate"] .status-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  body[data-active-view="generate"] .status-row > * {
+    flex: 0 0 auto;
+  }
+
+  body[data-active-view="generate"] .project-strip {
+    display: grid !important;
+    grid-template-columns: minmax(104px, 1fr) minmax(118px, 1fr) auto;
+  }
+
+  body[data-active-view="generate"] .project-strip label,
+  body[data-active-view="generate"] .project-strip input,
+  body[data-active-view="generate"] .project-strip button {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  body[data-active-view="generate"] #view-generate .section-title h2 {
+    font-size: 22px;
+  }
+
+  body[data-active-view="generate"] #generateForm .preset-builder-card > div:first-child {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  body[data-active-view="generate"] #generateForm > .row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  body[data-active-view="generate"] #generateForm .preset-builder-card .button-row,
+  body[data-active-view="generate"] #generateForm .preset-builder-card > div:first-child > .button-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body[data-active-view="generate"] #openArchetypesBtn {
+    grid-column: 1 / -1;
+    margin-left: 0 !important;
+  }
+
+  body[data-active-view="generate"] #generateForm .button-row:last-child {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  body[data-active-view="generate"] .existing-sprite-grid,
+  body[data-active-view="generate"] .existing-sprite-actions {
+    grid-template-columns: 1fr;
+  }
+}

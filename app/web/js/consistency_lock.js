@@ -40,7 +40,7 @@
   async function saveLock() {
     const referenceInput = $('#generationReferenceImage');
     const status = $('#consistencyLockStatus');
-    const characterInput = document.querySelector('input[name="character"]');
+    const characterInput = document.querySelector('[name="character"]');
     const payload = {
       name: characterInput ? characterInput.value : 'character_lock',
       reference_image: referenceInput ? referenceInput.value : '',

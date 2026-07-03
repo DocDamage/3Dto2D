@@ -79,6 +79,13 @@ function installGenerateDrops() {
   styleInput.closest('label')?.insertAdjacentElement('afterend', row);
 }
 
+function installExistingSpriteDrop() {
+  const sourceInput = $('#existingSpriteSource');
+  if (!sourceInput || $('#existingSpriteDropTarget')) return;
+  const card = makeDropCard('existingSpriteDropTarget', 'Source sprite image', sourceInput, 'image/*');
+  sourceInput.closest('label')?.insertAdjacentElement('afterend', card);
+}
+
 function installQualityDrops() {
   const input = $('#qualitySpriteDir');
   if (!input || $('#qualityDropTarget')) return;
@@ -88,6 +95,7 @@ function installQualityDrops() {
 
 function installDragDropEverywhere() {
   installGenerateDrops();
+  installExistingSpriteDrop();
   installQualityDrops();
 }
 

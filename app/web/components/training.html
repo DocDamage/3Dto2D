@@ -1,0 +1,148 @@
+<section class="view" id="view-training">
+  <div class="section-title">
+    <p class="eyebrow">LoRA prep</p>
+    <h2>Training Lab</h2>
+  </div>
+
+  <div class="grid-2 training-primary-grid">
+    <form class="card form" id="trainingDatasetForm">
+      <div class="card-head">
+        <h3>Build Training Dataset</h3>
+      </div>
+      <label>Purchased sprite folder
+        <input name="source_dir" placeholder="C:\Users\dferr\Downloads\SakPix characters" />
+      </label>
+      <div class="row">
+        <label>Trigger token
+          <input name="trigger" value="sakpix_style" />
+        </label>
+        <label>Cell size
+          <select name="cell_size">
+            <option value="">No slicing</option>
+            <option value="92x92" selected>92x92</option>
+            <option value="128x128">128x128</option>
+            <option value="64x64">64x64</option>
+            <option value="32x32">32x32</option>
+          </select>
+        </label>
+      </div>
+      <label>Base caption
+        <input name="base_caption" value="premium pixel art RPG character" />
+      </label>
+      <label>Output dataset folder
+        <input name="output" placeholder="Optional. Defaults to app/output/training_datasets/..." />
+      </label>
+      <div class="button-row form-actions-tight">
+        <button class="primary big" type="submit">Build Dataset</button>
+        <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
+      </div>
+    </form>
+
+    <form class="card form" id="loraTrainingForm">
+      <div class="card-head">
+        <h3>LoRA Training Run</h3>
+      </div>
+      <label>Training dataset folder
+        <input name="dataset_dir" placeholder="app/output/training_datasets/sakpix_dataset_..." />
+      </label>
+      <div class="row">
+        <label>Model family
+          <select name="model_family">
+            <option value="sdxl" selected>SDXL</option>
+            <option value="flux">Flux</option>
+          </select>
+        </label>
+        <label>Trainer
+          <select name="trainer">
+            <option value="auto" selected>Auto</option>
+            <option value="kohya">Kohya SDXL</option>
+            <option value="ai_toolkit">AI Toolkit Flux</option>
+          </select>
+        </label>
+      </div>
+      <label>Base model
+        <input name="base_model" placeholder="C:\models\sdxl-base.safetensors or black-forest-labs/FLUX.1-dev" />
+      </label>
+      <label>Trainer folder
+        <input name="trainer_dir" placeholder="Optional. Defaults to app/vendor/kohya_ss or app/vendor/ai-toolkit" />
+      </label>
+      <div class="row">
+        <label>Run name
+          <input name="name" value="sakpix_sprite_lora" />
+        </label>
+        <label>Trigger token
+          <input name="trigger" value="sakpix_style" />
+        </label>
+      </div>
+      <div class="row">
+        <label>Resolution
+          <select name="resolution">
+            <option value="512">512</option>
+            <option value="768" selected>768</option>
+            <option value="1024">1024</option>
+          </select>
+        </label>
+        <label>Steps
+          <input name="max_train_steps" value="1200" />
+        </label>
+      </div>
+      <div class="row">
+        <label>Learning rate
+          <input name="learning_rate" value="1e-4" />
+        </label>
+        <label>LoRA rank
+          <input name="network_dim" value="16" />
+        </label>
+      </div>
+      <div class="row">
+        <label>Repeats
+          <input name="repeats" value="10" />
+        </label>
+        <label>Output run folder
+          <input name="output" placeholder="Optional. Defaults to app/output/training_runs/..." />
+        </label>
+      </div>
+      <div class="button-row form-actions-tight">
+        <button class="primary big" type="button" data-lora-mode="prepare">Prepare Run Files</button>
+        <button class="danger big" type="button" data-lora-mode="run">Start Training</button>
+        <button class="ghost big" type="button" data-open="output/training_runs">Open Runs Folder</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="grid-2 training-run-grid">
+    <section class="card">
+      <div class="card-head">
+        <h3>What This Creates</h3>
+      </div>
+      <div class="recipe">
+        <div><span>01</span><b>Scan</b><small>PNG/JPG/WebP assets from your owned folder</small></div>
+        <div><span>02</span><b>Slice</b><small>Optional grid slicing for 92x92 or 128x128 sheets</small></div>
+        <div><span>03</span><b>Caption</b><small>Trigger token, action, direction, style, transparency</small></div>
+        <div><span>04</span><b>Palette</b><small>Shared color summary for matching future generations</small></div>
+        <div><span>05</span><b>Manifest</b><small>Train-ready image/caption pairs and notes</small></div>
+      </div>
+      <div class="callout">
+        Start with an SDXL or Flux style LoRA for new static characters. Use Wan2.2 animation LoRA training later only after the static style dataset looks clean.
+      </div>
+      <div class="callout">
+        For the SakPix RPG packs, use <b>92x92</b> for most collections and <b>128x128</b> for packs that say 128x128.
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h3>Training Path</h3>
+      </div>
+      <div class="recipe">
+        <div><span>A</span><b>Prepare</b><small>Writes trainer config, manifest, and Windows launch script</small></div>
+        <div><span>B</span><b>Inspect</b><small>Check base model, trainer folder, rank, repeats, and step count</small></div>
+        <div><span>C</span><b>Train</b><small>Runs the external trainer only when Start Training is clicked</small></div>
+        <div><span>D</span><b>Use</b><small>Drop the resulting .safetensors into your image model workflow</small></div>
+      </div>
+      <div class="callout">
+        SDXL uses Kohya-style configs. Flux uses an AI Toolkit starter config. Prepare is quick; Start Training can run for a long time.
+      </div>
+    </section>
+  </div>
+</section>

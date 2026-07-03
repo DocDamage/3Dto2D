@@ -12,7 +12,7 @@
     guide: 'Guide', dashboard: 'Dashboard', tasks: 'Task Center',
     launchpad: 'Launchpad', generate: 'Generate Sprite', convert: 'Convert Video',
     quality: 'Quality Lab', ab_runs: 'A/B Runs', library: 'Pose Library',
-    qa_dashboard: 'QA Dashboard', packs: 'Packs & Atlas', queue: 'Queue Builder',
+    qa_dashboard: 'QA Dashboard', training: 'Training Lab', packs: 'Packs & Atlas', queue: 'Queue Builder',
     queues: 'Queue Monitor', history: 'History', release: 'Release',
     cleanup: 'Cleanup Manager', setup: 'Setup', logs: 'Logs'
   };
@@ -29,6 +29,7 @@
     ab_runs: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22V2"/><path d="m21 3-7.5 7.5"/><path d="m3 3 7.5 7.5"/></svg>`,
     qa_dashboard: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
     library: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+    training: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M10 2v6.5L4.5 18a3 3 0 0 0 2.6 4.5h9.8a3 3 0 0 0 2.6-4.5L14 8.5V2"/><path d="M8 2h8"/><path d="M7 16h10"/></svg>`,
     dashboard: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>`,
     tasks: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
     launchpad: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 3.42-2 3.42s2.16-.5 3.42-2c1.24-1.46 1.77-3.9 1.77-3.9s-2.44.53-3.9 1.77z"/><path d="M12 12c-2-2-5.5-2.5-5.5-2.5s.5 3.5 2.5 5.5c2 2 5.5 2.5 5.5 2.5s-.5-3.5-2.5-5.5z"/><path d="M19 5c-3 0-8.5 4.5-8.5 4.5s4 4 8.5 8.5c0 0 4.5-5.5 4.5-8.5 0-3-1.5-4.5-4.5-4.5z"/></svg>`,
@@ -42,7 +43,7 @@
   };
 
   const NAV_GROUPS = [
-    { name: 'Create', views: ['guide', 'generate', 'convert'] },
+    { name: 'Create', views: ['guide', 'training', 'generate', 'convert'] },
     { name: 'Review', views: ['quality'] },
     { name: 'Manage', views: ['dashboard', 'tasks', 'packs', 'history', 'release', 'cleanup'] },
     { name: 'System', views: ['setup', 'logs'] }

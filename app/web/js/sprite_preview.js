@@ -98,6 +98,11 @@ function spritePreviewRenderFrame(index) {
       if (placeholder) placeholder.replaceWith(canvas);
       else $('#inspector-canvas-container')?.appendChild(canvas);
     }
+    if (typeof setupSpriteWheelZoom === 'function') {
+      const container = $('#inspector-canvas-container');
+      setupSpriteWheelZoom(container, () => $('#inspector-canvas'));
+      applySpriteZoom(container, canvas, Number(container?.dataset.spriteZoom || 1));
+    }
 
     const compare = $('#toggleCompareSibling') && $('#toggleCompareSibling').checked && window._siblingImg;
     if (compare && typeof window._baseRenderInspectorFrame === 'function') {

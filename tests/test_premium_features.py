@@ -195,7 +195,12 @@ def test_birefnet_defaults_to_matting_checkpoint():
 def test_pixel_art_cleanup_is_native_not_comfy_node_auto_install():
     node_names = {name for _url, name in WAN_VIDEO_CUSTOM_NODES}
 
-    assert node_names == {"ComfyUI-WanVideoWrapper", "ComfyUI-VideoHelperSuite"}
+    assert node_names == {
+        "ComfyUI-WanVideoWrapper",
+        "ComfyUI-VideoHelperSuite",
+        "ComfyUI_IPAdapter_plus",
+        "ComfyUI-Wan-VACE-Prep",
+    }
 
 
 def test_blend_interpolation_expands_frame_count_and_metadata():

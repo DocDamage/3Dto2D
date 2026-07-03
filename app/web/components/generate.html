@@ -174,6 +174,9 @@
           <label style="width: 100%;">Resolutions hierarchy (e.g. 0.5x,1x,2x)
             <input name="resolutions" placeholder="Optional. Example: 0.5x,1x,2x" style="width: 100%;" />
           </label>
+          <label style="width: 100%;">LoRA Model Name
+            <input name="lora_name" placeholder="Optional, e.g. wan2.2_pixel_animate.safetensors" style="width: 100%;" />
+          </label>
           <label style="width: 100%;">Optional full prompt override
             <textarea name="prompt" rows="3" placeholder="Leave empty to use automatic sprite prompt builder." style="width: 100%;"></textarea>
           </label>
@@ -223,6 +226,24 @@
             </label>
             <label>Interpolate FPS
               <input name="interpolate_fps" placeholder="Optional, e.g. 24" />
+            </label>
+            <label>Interp. Engine
+              <select name="interpolation_engine">
+                <option value="blend" selected>Blend</option>
+                <option value="flow">OpenCV Flow</option>
+                <option value="bitmapflow">BitmapFlow</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Packing Mode
+              <select name="pack_mode">
+                <option value="grid" selected>Grid</option>
+                <option value="maxrects">MaxRects</option>
+              </select>
+            </label>
+            <label style="flex: 2;">Segment Parts (clicks)
+              <input name="segment_parts" placeholder="e.g. weapon:150,220,1;hair:200,100,1" />
             </label>
             <label>Normal maps
               <select name="normal_map_engine">

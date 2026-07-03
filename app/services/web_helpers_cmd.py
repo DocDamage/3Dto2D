@@ -86,8 +86,10 @@ def _sprite_polish_args(payload: Dict[str, Any]) -> List[str]:
         ("interpolation_engine", "--interpolation-engine"),
         ("interpolation_skip_patterns", "--interpolation-skip-patterns"),
         ("normal_map_engine", "--normal-map-engine"),
+        ("pack_mode", "--pack-mode"),
+        ("segment_parts", "--segment-parts"),
     ]:
-        value = str(payload.get(key) or "").strip()
+        value = str(payload.get(key) if payload.get(key) is not None else "").strip()
         if value:
             args += [arg, value]
     for key, arg in [
@@ -230,8 +232,8 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             workflow = _pixel_animate_workflow_path()
             if workflow:
                 payload["workflow"] = workflow
-        for key, arg in [("workflow", "--workflow"), ("sprite_action", "--action"), ("direction", "--direction"), ("character", "--character"), ("style", "--style"), ("background", "--background"), ("prompt", "--prompt"), ("negative", "--negative"), ("reference_image", "--reference-image"), ("seed", "--seed"), ("output_prefix", "--output-prefix")]:
-            value = str(payload.get(key) or "").strip()
+        for key, arg in [("workflow", "--workflow"), ("sprite_action", "--action"), ("direction", "--direction"), ("character", "--character"), ("style", "--style"), ("background", "--background"), ("prompt", "--prompt"), ("negative", "--negative"), ("reference_image", "--reference-image"), ("seed", "--seed"), ("output_prefix", "--output-prefix"), ("lora_name", "--lora-name")]:
+            value = str(payload.get(key) if payload.get(key) is not None else "").strip()
             if value:
                 cmd += [arg, value]
 

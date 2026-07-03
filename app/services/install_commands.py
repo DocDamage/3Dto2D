@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parent.parent
 WAN_VIDEO_CUSTOM_NODES = [
     ("https://github.com/kijai/ComfyUI-WanVideoWrapper.git", "ComfyUI-WanVideoWrapper"),
     ("https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git", "ComfyUI-VideoHelperSuite"),
+    ("https://github.com/cubiq/ComfyUI_IPAdapter_plus.git", "ComfyUI_IPAdapter_plus"),
+    ("https://github.com/talesofai/ComfyUI-Wan-VACE-Prep.git", "ComfyUI-Wan-VACE-Prep"),
 ]
 
 def venv_python(venv: Path) -> Path:

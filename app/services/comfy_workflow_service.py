@@ -166,3 +166,15 @@ def patch_posepack_nodes(workflow: Dict[str, Any], posepack_path: str) -> int:
                         inputs[key] = str(first[0])
                         count += 1
     return count
+
+
+def patch_lora_nodes(workflow: Dict[str, Any], lora_name: Optional[str]) -> int:
+    if not lora_name:
+        return 0
+    count = 0
+    for node in workflow.values():
+        if isinstance(node, dict) and node.get("class_type") == "LoraLoader":
+            inputs = node.setdefault("inputs", {})
+            if set_input(inputs, ["lora_name"], lora_name):
+                count += 1
+    return count

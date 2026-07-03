@@ -31,9 +31,38 @@ def pack_sheet(
     spacing: int,
     margin: int,
     power_of_two: bool,
+    pack_mode: str = "grid",
 ) -> Tuple[Image.Image, int, int, List[Dict[str, int]]]:
     if not frames:
         raise RuntimeError("No frames to pack.")
+
+    if pack_mode == "maxrects":
+        from services.sprite_bin_packer import SpriteBinPackerService
+        rectangles = [(f.image.width, f.image.height, i) for i, f in enumerate(frames)]
+        res = SpriteBinPackerService.pack(rectangles, max_width=4096, pack_mode="maxrects", spacing=spacing, margin=margin)
+        
+        sheet_w = res["width"]
+        sheet_h = res["height"]
+        sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
+        
+        rects = [{} for _ in range(len(frames))]
+        for (x, y), idx in res["positions"]:
+            orig_frame = frames[idx]
+            sheet.alpha_composite(orig_frame.image.convert("RGBA"), (x, y))
+            rects[idx] = {"x": x, "y": y, "w": orig_frame.image.width, "h": orig_frame.image.height}
+            
+        cols = columns if columns is not None else int(math.ceil(math.sqrt(len(frames))))
+        rows = int(math.ceil(len(frames) / cols))
+        
+        if power_of_two:
+            new_w = next_power_of_two(sheet.width)
+            new_h = next_power_of_two(sheet.height)
+            if (new_w, new_h) != sheet.size:
+                padded = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 0))
+                padded.alpha_composite(sheet, (0, 0))
+                sheet = padded
+        return sheet, cols, rows, rects
+
     cell_w, cell_h = frames[0].image.size
     n = len(frames)
     if columns is None:

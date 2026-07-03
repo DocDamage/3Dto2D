@@ -171,6 +171,14 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
         patched_pose = wf_svc.patch_posepack_nodes(out, str(posepack_path))
         print(f"Posepack available: {posepack_path} (patched {patched_pose} workflow fields)")
 
+    lora_name = getattr(args, "lora_name", None)
+    if not lora_name and (mode == "pixel_animate" or getattr(args, "profile", None) == "pixel_animate"):
+        lora_name = "wan2.2_pixel_animate.safetensors"
+    patched_lora = 0
+    if lora_name:
+        patched_lora = wf_svc.patch_lora_nodes(out, lora_name)
+        print(f"LoRA available: {lora_name} (patched {patched_lora} workflow fields)")
+
     seed = int(args.seed)
     if seed < 0:
         seed = random.randint(1, 2**48 - 1)
@@ -210,8 +218,10 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
         "reference_image": staged_reference,
         "posepack": str(posepack_path) if posepack_path else None,
         "pose_nodes_patched": patched_pose if posepack_path else 0,
+        "lora_name": lora_name,
+        "lora_nodes_patched": patched_lora,
         "save_node": save_id,
-        "workflow_patch_version": 11,
+        "workflow_patch_version": 12,
     }
     return out
 

@@ -193,6 +193,7 @@ def run_action():
                 "dataset_dir", "model_family", "trainer", "base_model", "trainer_dir",
                 "resolution", "max_train_steps", "learning_rate", "network_dim", "repeats",
                 "max_samples_per_source", "include_all",
+                "pack_mode", "segment_parts", "lora_name", "interpolation_engine"
             ]
             if payload.get(key) is not None
         }

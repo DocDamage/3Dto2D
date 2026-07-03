@@ -41,6 +41,8 @@ def _sprite_extra_from_generate_args(args: argparse.Namespace) -> list[str]:
         ("interpolation_engine", "--interpolation-engine"),
         ("interpolation_skip_patterns", "--interpolation-skip-patterns"),
         ("normal_map_engine", "--normal-map-engine"),
+        ("pack_mode", "--pack-mode"),
+        ("segment_parts", "--segment-parts"),
     ]:
         value = getattr(args, attr, None)
         if value not in (None, ""):

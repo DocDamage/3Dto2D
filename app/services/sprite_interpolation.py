@@ -2,7 +2,12 @@
 """Native frame interpolation helpers for sprite animations."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
+import os
+import shutil
+import subprocess
+import tempfile
 
 import numpy as np
 
@@ -140,6 +145,62 @@ def held_transition_count(
     )
 
 
+def interpolate_frames_bitmapflow(
+    frames: Sequence[FrameItem],
+    source_fps: float,
+    target_fps: float,
+    hold_all_transitions: bool = False,
+    hold_name_patterns: Sequence[str] = (),
+) -> Tuple[List[FrameItem], float]:
+    """Interpolate frames using external BitmapFlow executable, with flow fallback."""
+    bitmapflow_exe = shutil.which("bitmapflow")
+    if not bitmapflow_exe:
+        bin_candidate = Path(__file__).resolve().parent.parent / "bin" / "bitmapflow.exe"
+        if bin_candidate.exists():
+            bitmapflow_exe = str(bin_candidate)
+        else:
+            bin_candidate_linux = Path(__file__).resolve().parent.parent / "bin" / "bitmapflow"
+            if bin_candidate_linux.exists():
+                bitmapflow_exe = str(bin_candidate_linux)
+
+    if not bitmapflow_exe:
+        print("[BitmapFlow] executable 'bitmapflow' not found in PATH or bin/ directory. Falling back to OpenCV Farneback flow...")
+        return interpolate_frames_flow(frames, source_fps, target_fps, hold_all_transitions, hold_name_patterns)
+
+    if len(frames) <= 1 or source_fps <= 0 or target_fps <= source_fps:
+        return list(frames), source_fps
+
+    factor = int(round(target_fps / source_fps))
+    if factor <= 1:
+        return list(frames), source_fps
+
+    with tempfile.TemporaryDirectory() as tmp_in_dir, tempfile.TemporaryDirectory() as tmp_out_dir:
+        for idx, item in enumerate(frames):
+            item.image.save(os.path.join(tmp_in_dir, f"frame_{idx:05d}.png"))
+
+        num_inbetweens = factor - 1
+        cmd = [
+            bitmapflow_exe,
+            "-i", tmp_in_dir,
+            "-o", tmp_out_dir,
+            "-n", str(num_inbetweens)
+        ]
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+            out_files = sorted(Path(tmp_out_dir).glob("*.png"))
+            if not out_files:
+                raise RuntimeError("BitmapFlow produced no output files")
+
+            out_frames = []
+            for idx, out_file in enumerate(out_files):
+                img = Image.open(out_file).convert("RGBA")
+                out_frames.append(FrameItem(img, f"{frames[0].name}_bitmapflow_{idx:04d}", frames[0].source_index))
+            return out_frames, target_fps
+        except Exception as exc:
+            print(f"[BitmapFlow] execution failed: {exc}. Falling back to OpenCV Farneback flow...")
+            return interpolate_frames_flow(frames, source_fps, target_fps, hold_all_transitions, hold_name_patterns)
+
+
 def interpolate_frames(
     frames: Sequence[FrameItem],
     source_fps: float,
@@ -156,6 +217,8 @@ def interpolate_frames(
         out, fps = interpolate_frames_blend(frames, source_fps, target_fps, hold_all_transitions, patterns)
     elif engine == "flow":
         out, fps = interpolate_frames_flow(frames, source_fps, target_fps, hold_all_transitions, patterns)
+    elif engine == "bitmapflow":
+        out, fps = interpolate_frames_bitmapflow(frames, source_fps, target_fps, hold_all_transitions, patterns)
     else:
         raise RuntimeError(f"Unknown interpolation engine: {engine}")
 

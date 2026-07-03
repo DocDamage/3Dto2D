@@ -128,6 +128,9 @@ def process_common(
     interpolation_skip_pixel_art: bool = False,
     interpolation_skip_impact_frames: bool = False,
     interpolation_skip_patterns: Optional[str] = None,
+    pack_mode: str = "grid",
+    segment_parts: Optional[str] = None,
+    pixel_snap_scale: int = 0,
 ) -> ProcessResult:
     ensure_dir(output)
 
@@ -200,7 +203,22 @@ def process_common(
             for item in processed
         ]
 
-    pixel_art_active = bool(pixelize or pixel_cleanup or matting_engine == "pixel-art")
+    if pixel_snap_scale > 1:
+        from services.sprite_pixel_snapper import SpritePixelSnapper
+        processed = [
+            FrameItem(
+                SpritePixelSnapper.snap_pixels_to_grid(
+                    item.image,
+                    scale=pixel_snap_scale,
+                    alpha_threshold=alpha_threshold
+                ),
+                item.name,
+                item.source_index
+            )
+            for item in processed
+        ]
+
+    pixel_art_active = bool(pixelize or pixel_cleanup or pixel_snap_scale > 1 or matting_engine == "pixel-art")
     hold_patterns = []
     if interpolation_skip_impact_frames:
         from services.sprite_interpolation import DEFAULT_IMPACT_PATTERNS
@@ -238,7 +256,40 @@ def process_common(
     if save_processed_frames:
         save_png_sequence(normalized, output / "frames_processed")
 
-    sheet, cols, rows, rects = pack_sheet(normalized, columns, spacing, margin, power_of_two)
+    if segment_parts:
+        from services.sprite_sam2_service import SpriteSAM2Service
+        click_prompts = {}
+        for part_spec in segment_parts.split(";"):
+            if not part_spec.strip() or ":" not in part_spec:
+                continue
+            part_name, clicks_str = part_spec.split(":", 1)
+            part_name = part_name.strip()
+            clicks = []
+            for click_group in clicks_str.split("|"):
+                pts = [p.strip() for p in click_group.split(",") if p.strip()]
+                if len(pts) >= 2:
+                    try:
+                        cx = int(pts[0])
+                        cy = int(pts[1])
+                        clabel = int(pts[2]) if len(pts) > 2 else 1
+                        clicks.append((cx, cy, clabel))
+                    except ValueError:
+                        pass
+            if clicks:
+                click_prompts[part_name] = clicks
+
+        if click_prompts:
+            print(f"[SAM2] Running part segmentation for parts: {list(click_prompts.keys())}")
+            part_frames_dict = SpriteSAM2Service.segment_parts(normalized, click_prompts)
+            for part_name, part_frames in part_frames_dict.items():
+                part_dir = output / f"part_{part_name}"
+                save_png_sequence(part_frames, part_dir)
+                print(f"[SAM2] Saved segmented part '{part_name}' to: {part_dir}")
+                part_sheet, _, _, _ = pack_sheet(part_frames, columns, spacing, margin, power_of_two, pack_mode=pack_mode)
+                part_sheet.save(output / f"sheet_{part_name}.png")
+                print(f"[SAM2] Saved spritesheet for '{part_name}' to: {output / f'sheet_{part_name}.png'}")
+
+    sheet, cols, rows, rects = pack_sheet(normalized, columns, spacing, margin, power_of_two, pack_mode=pack_mode)
     sheet_path = output / "sheet.png"
     sheet.save(sheet_path)
 
@@ -263,6 +314,8 @@ def process_common(
         "normal_map_engine": normal_map_engine if generate_normal_maps else None,
         "matting_engine": matting_engine,
         "interpolation": interpolation_info,
+        "pack_mode": pack_mode,
+        "segment_parts": segment_parts,
     }
 
     metadata_path = output / "sheet.json"
@@ -486,4 +539,7 @@ def process_common_from_args(
         interpolation_skip_pixel_art=getattr(args, "interpolation_skip_pixel_art", False),
         interpolation_skip_impact_frames=getattr(args, "interpolation_skip_impact_frames", False),
         interpolation_skip_patterns=getattr(args, "interpolation_skip_patterns", None),
+        pack_mode=getattr(args, "pack_mode", "grid"),
+        segment_parts=getattr(args, "segment_parts", None),
+        pixel_snap_scale=getattr(args, "pixel_snap_scale", 0),
     )

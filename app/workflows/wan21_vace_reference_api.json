@@ -1,0 +1,138 @@
+{
+  "37": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.1_vace_14B_fp16.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "38": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    }
+  },
+  "39": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    }
+  },
+  "49": {
+    "class_type": "CLIPVisionLoader",
+    "inputs": {
+      "clip_name": "clip_vision_h.safetensors"
+    }
+  },
+  "52": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "spriteforge_reference.png",
+      "upload": "image"
+    }
+  },
+  "51": {
+    "class_type": "CLIPVisionEncode",
+    "inputs": {
+      "clip_vision": ["49", 0],
+      "image": ["52", 0],
+      "crop": "none"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["38", 0],
+      "text": "single full body original game character, outfit swap, professional appealing character design, heroic adult proportions, clear face, locked orthographic camera, plain solid green background, high quality 2D game sprite animation"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["38", 0],
+      "text": "camera movement, zoom, cuts, motion blur, changing identity, complex background, text, watermark, deformed body, bad anatomy"
+    }
+  },
+  "65": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "video": "spriteforge_input_video.mp4"
+    }
+  },
+  "66": {
+    "class_type": "LoadImageMask",
+    "inputs": {
+      "image": "spriteforge_mask.png",
+      "channel": "red"
+    }
+  },
+  "67": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": ["65", 0],
+      "vae": ["39", 0]
+    }
+  },
+  "50": {
+    "class_type": "WanVaceToVideo",
+    "inputs": {
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "vae": ["39", 0],
+      "clip_vision_output": ["51", 0],
+      "start_image": ["52", 0],
+      "edit_video_latent": ["67", 0],
+      "mask": ["66", 0],
+      "width": 512,
+      "height": 512,
+      "length": 33,
+      "batch_size": 1
+    }
+  },
+  "54": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": ["37", 0],
+      "shift": 8
+    }
+  },
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["54", 0],
+      "positive": ["50", 0],
+      "negative": ["50", 1],
+      "latent_image": ["50", 2],
+      "seed": 1,
+      "steps": 20,
+      "cfg": 6,
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["39", 0]
+    }
+  },
+  "47": {
+    "class_type": "SaveWEBM",
+    "inputs": {
+      "images": ["8", 0],
+      "filename_prefix": "SpriteForge/wan_vace_sprite",
+      "codec": "vp9",
+      "fps": 12,
+      "crf": 32
+    }
+  },
+  "_spriteforge_template": {
+    "name": "wan21_vace_reference_api",
+    "source_docs": "https://docs.comfy.org/tutorials/video/wan/",
+    "notes": "API workflow for Wan2.1 VACE character editing/inpainting."
+  }
+}

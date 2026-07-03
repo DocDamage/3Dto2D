@@ -216,10 +216,21 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
                 cmd += [arg, value]
         if run_now:
             cmd.append("--run")
+        if payload.get("native_only"):
+            cmd.append("--native-only")
         title = "Start LoRA training run" if run_now else "Prepare LoRA training run"
         return title, cmd
     if action == "generate_sprite":
         cmd = [PYTHON, "spriteforge_unified.py", "generate-sprite"]
+        if payload.get("native_only"):
+            cmd.append("--native-only")
+            native_source = str(payload.get("native_source_video") or payload.get("input") or payload.get("source_video") or "").strip()
+            if not native_source:
+                reference_candidate = str(payload.get("reference_image") or "").strip()
+                if reference_candidate and Path(reference_candidate).suffix.lower() in VIDEO_SUFFIXES:
+                    native_source = reference_candidate
+            if native_source:
+                cmd += ["--native-source-video", native_source]
         if payload.get("start_comfy", True):
             cmd.append("--start-comfy")
         tier = str(payload.get("tier") or "wan22_5b")

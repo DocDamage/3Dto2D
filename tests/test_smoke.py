@@ -226,6 +226,58 @@ def test_native_polish_web_options_forwarded():
     assert _normalize_sprite_extra_args(convert_parsed.extra) == ["--pixel-cleanup"]
 
 
+def test_native_only_flags_are_parsed_and_forwarded():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+
+    _, generate_cmd = build_action_command({
+        "action": "generate_sprite",
+        "native_only": True,
+        "quality_check": False,
+    })
+    assert "--native-only" in generate_cmd
+
+    _, lora_cmd = build_action_command({
+        "action": "lora_training",
+        "dataset_dir": "output/training_datasets/test",
+        "native_only": True,
+        "mode": "run",
+    })
+    assert "--native-only" in lora_cmd
+    assert "--run" in lora_cmd
+
+    parsed_generate = build_parser().parse_args(["generate-sprite", "--native-only"])
+    assert parsed_generate.native_only is True
+
+    parsed_lora = build_parser().parse_args(["lora-train", "--dataset", "output/training_datasets/test", "--native-only"])
+    assert parsed_lora.native_only is True
+
+
+def test_generate_native_source_video_forwarding_and_parse():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+
+    _, cmd = build_action_command({
+        "action": "generate_sprite",
+        "native_only": True,
+        "native_source_video": "input/clip.mp4",
+        "quality_check": False,
+    })
+    assert "--native-only" in cmd
+    assert "--native-source-video" in cmd
+    idx = cmd.index("--native-source-video")
+    assert cmd[idx + 1] == "input/clip.mp4"
+
+    parsed = build_parser().parse_args([
+        "generate-sprite",
+        "--native-only",
+        "--native-source-video",
+        "input/clip.mp4",
+    ])
+    assert parsed.native_only is True
+    assert parsed.native_source_video == "input/clip.mp4"
+
+
 
 def test_compare_smoke(tmp_path):
     """compare_dirs() on two minimal fake sprite dirs writes a report."""

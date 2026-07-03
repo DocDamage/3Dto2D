@@ -19,6 +19,7 @@ from services.generation_intelligence import (
 )
 from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score
 from services.api_auth_service import get_session_token
+from services.feature_capability_service import capability_report
 from web_helpers import (
     ROOT, UPLOADS, OUTPUT, LOGS, PYTHON, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
     _project_meta_from_query, _project_workspace, _experiment_rows,
@@ -66,12 +67,17 @@ def get_status():
         "models": ModelService.get_summary(),
         "disk": ModelService.get_disk_summary(),
         "cleanup_suggestions": cleanup_suggestions(ROOT)[:8],
+        "feature_capabilities": capability_report(),
         "next_step": next_step_status(),
         "outputs": sprite_outputs(24, project_meta),
         "project_workspace": _project_workspace(project_meta),
         "job": job_status,
         "time": time.strftime("%H:%M:%S")
     })
+
+@routes_misc.route("/api/features/capabilities", methods=["GET"])
+def get_feature_capabilities():
+    return jsonify({"ok": True, **capability_report()})
 
 @routes_misc.route("/api/config", methods=["GET"])
 def get_config():

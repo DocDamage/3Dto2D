@@ -192,6 +192,59 @@ def test_birefnet_defaults_to_matting_checkpoint():
     assert BIREFNET_MATTING_MODEL_ID == "ZhengPeng7/BiRefNet-matting"
 
 
+def test_pipeline_birefnet_falls_back_to_native_chroma(monkeypatch, tmp_path):
+    from services import sprite_processing_pipeline as spp
+
+    def _raise(_img):
+        raise RuntimeError("missing optional birefnet deps")
+
+    monkeypatch.setattr(spp, "try_birefnet", _raise)
+
+    img = Image.new("RGBA", (32, 32), (0, 255, 0, 255))
+    for x in range(10, 22):
+        for y in range(8, 26):
+            img.putpixel((x, y), (220, 20, 20, 255))
+
+    result = process_common(
+        frames=[FrameItem(img, "frame_0", 0)],
+        output=tmp_path,
+        fps=12.0,
+        cell_size=(32, 32),
+        key_color=None,
+        key_tolerance=30.0,
+        key_feather=16.0,
+        rembg=False,
+        crop_mode="none",
+        pad=0,
+        alpha_threshold=8,
+        columns=1,
+        animation_name="fallback_test",
+        preview_gif=False,
+        save_processed_frames=True,
+        anchor="center",
+        ground_margin=0,
+        spacing=0,
+        margin=0,
+        solidify=0,
+        outline_width=0,
+        outline_color=(0, 0, 0, 255),
+        power_of_two=False,
+        loop_mode="normal",
+        drop_last=False,
+        drop_loop_duplicate=False,
+        reverse=False,
+        flip_x=False,
+        flip_y=False,
+        report=False,
+        matting_engine="birefnet",
+    )
+
+    assert result.sheet_path.exists()
+    processed = Image.open(tmp_path / "frames_processed" / "frame_0000.png").convert("RGBA")
+    assert processed.getpixel((0, 0))[3] == 0
+    assert processed.getpixel((16, 16))[3] > 0
+
+
 def test_pixel_art_cleanup_is_native_not_comfy_node_auto_install():
     node_names = {name for _url, name in WAN_VIDEO_CUSTOM_NODES}
 

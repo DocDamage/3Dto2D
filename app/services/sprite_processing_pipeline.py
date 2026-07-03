@@ -12,6 +12,7 @@ from PIL import Image
 from services.sprite_service import SpriteService
 from services.sprite_video_loader import FrameItem, ensure_dir, save_png_sequence
 from services.sprite_chroma_alpha import (
+    guess_key_color_from_corners,
     apply_chroma_key, apply_pixel_art_background_removal, try_rembg, try_birefnet, apply_pixeloe_pixelization,
     fit_native_pixel_palette, apply_native_pixel_cleanup, add_outline, solidify_transparent_rgb
 )
@@ -149,11 +150,22 @@ def process_common(
     for item in working:
         img = item.image.convert("RGBA")
         if matting_engine == "birefnet":
-            img = try_birefnet(img)
+            try:
+                img = try_birefnet(img)
+            except RuntimeError as exc:
+                # Keep birefnet selectable, but degrade gracefully to native chroma keying.
+                print(f"[Matting] BiRefNet unavailable ({exc}); falling back to native chroma keying.")
+                fallback_key = key_color if key_color is not None else guess_key_color_from_corners(img)
+                img = apply_chroma_key(img, fallback_key, key_tolerance, key_feather)
         elif matting_engine == "pixel-art":
             img = apply_pixel_art_background_removal(img, tolerance=key_tolerance, alpha_threshold=alpha_threshold)
         elif matting_engine == "rembg" or rembg:
-            img = try_rembg(img)
+            try:
+                img = try_rembg(img)
+            except RuntimeError as exc:
+                print(f"[Matting] rembg unavailable ({exc}); falling back to native chroma keying.")
+                fallback_key = key_color if key_color is not None else guess_key_color_from_corners(img)
+                img = apply_chroma_key(img, fallback_key, key_tolerance, key_feather)
 
         if key_color is not None:
             img = apply_chroma_key(img, key_color, key_tolerance, key_feather)

@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from services.shell_service import run
+from services.feature_capability_service import resolve_runtime
 from services.wan_generation_service import (
     build_sprite_args,
     find_newest_video,
@@ -70,6 +71,28 @@ def cmd_submit_wan(args: argparse.Namespace) -> None:
 
 
 def cmd_generate_sprite(args: argparse.Namespace) -> None:
+    native_source_video = str(getattr(args, "native_source_video", "") or "").strip()
+    if native_source_video:
+        resolve_runtime("video_to_sprite_conversion", native_only=True)
+        from spriteforge_commands import load_config
+
+        cfg = load_config()
+        input_video = Path(native_source_video)
+        if not input_video.exists():
+            raise RuntimeError(f"Native source video not found: {input_video}")
+
+        output_dir = Path(getattr(args, "output", None) or f"output/native_sprite_{time.strftime('%Y%m%d_%H%M%S')}")
+        explicit_extra = _normalize_sprite_extra_args(getattr(args, "sprite_extra_args", None))
+        sprite_cmd = build_sprite_args(input_video, output_dir.resolve(), cfg, explicit_extra + _sprite_extra_from_generate_args(args))
+        run(sprite_cmd)
+        print(f"Native sprite output: {output_dir}")
+        return
+
+    runtime = resolve_runtime("wan_generation", native_only=bool(getattr(args, "native_only", False)))
+    if runtime.get("runtime") == "external":
+        ext = ", ".join(runtime.get("external_apps") or [])
+        print(f"[Capability] Using external generation backend: {ext}")
+
     from spriteforge_commands import load_config, start_comfy_background
     cfg = load_config()
     if not is_comfy_running(cfg):

@@ -2,11 +2,12 @@ import os
 import json
 import shutil
 import zipfile
+import sys
 from pathlib import Path
 import pytest
+import numpy as np
 from PIL import Image
 
-import sys
 ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT / "app"
 sys.path.insert(0, str(APP))
@@ -15,6 +16,54 @@ from services.sprite_service import SpriteService
 from services.pose_estimation_service import PoseEstimationService
 from services.tilemap_service import TilemapService
 from services.plugin_manager import PluginManager
+
+
+def test_pose_estimation_native_fallback_without_mediapipe(tmp_path, monkeypatch):
+    try:
+        import cv2
+    except Exception:
+        pytest.skip("OpenCV unavailable in test environment")
+
+    import services.pose_estimation_service as pose_mod
+
+    original_root = pose_mod.ROOT
+    pose_mod.ROOT = tmp_path
+    monkeypatch.setitem(sys.modules, "mediapipe", None)
+
+    try:
+        video_path = tmp_path / "input.mp4"
+        writer = cv2.VideoWriter(
+            str(video_path),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            6.0,
+            (96, 96),
+        )
+        assert writer.isOpened(), "Failed to create test video"
+        for i in range(6):
+            frame = Image.new("RGB", (96, 96), (0, 220, 0))
+            x = 35 + i
+            for px in range(x, x + 18):
+                for py in range(20, 85):
+                    if 0 <= px < 96:
+                        frame.putpixel((px, py), (240, 240, 240))
+            bgr = cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR)
+            writer.write(bgr)
+        writer.release()
+
+        project_dir = tmp_path / "projects" / "demo_project"
+        project_dir.mkdir(parents=True, exist_ok=True)
+
+        result = PoseEstimationService.estimate_pose("input.mp4", "projects/demo_project", "walk")
+        assert result["ok"] is True
+        assert result.get("backend") == "native-opencv-fallback"
+
+        anchors = tmp_path / result["posepack_path"] / "anchors.json"
+        assert anchors.exists()
+        payload = json.loads(anchors.read_text(encoding="utf-8"))
+        assert payload.get("backend") == "native-opencv-fallback"
+        assert len(payload.get("frames") or []) > 0
+    finally:
+        pose_mod.ROOT = original_root
 
 def test_chroma_spill_suppression():
     # Create an image with transparent green fringe

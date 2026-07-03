@@ -85,6 +85,15 @@
                 <option value="object">Static / Interactive Object</option>
               </select>
             </label>
+            <div class="wizard-reference-fields">
+              <label>Character reference image
+                <input name="wiz_reference_image" id="wizReferenceImage" placeholder="Optional path from uploaded references or project/references/hero.png" />
+              </label>
+              <label>Style reference image
+                <input name="wiz_style_image" id="wizStyleImage" placeholder="Optional IP-Adapter style image path" />
+              </label>
+              <small>Use a character reference to preserve identity. Use a style reference to borrow palette, rendering, or tile-set look.</small>
+            </div>
           </div>
           <div class="wizard-preview-panel">
             <h4>Generated Prompt Preview</h4>
@@ -258,6 +267,10 @@
             <div class="wizard-summary-item">
               <span>Camera Perspective</span>
               <span id="wizSummaryPerspective">Side View</span>
+            </div>
+            <div class="wizard-summary-item">
+              <span>References</span>
+              <span id="wizSummaryReferences">None</span>
             </div>
             <div class="wizard-summary-item" style="border: none;">
               <span>Preset Quality</span>

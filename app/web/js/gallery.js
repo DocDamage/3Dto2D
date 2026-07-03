@@ -69,6 +69,7 @@ function renderOutputs(outputs){
     }
     showView('quality');
     toast('Selected '+selectedSpriteDir);
+    if (typeof refreshQualityLivePreview === 'function') refreshQualityLivePreview(selectedSpriteDir, { force: true });
     loadSpriteDetails(selectedSpriteDir);
   }));
   $$('[data-preview-path]', g).forEach(btn=>btn.addEventListener('click', e=>{

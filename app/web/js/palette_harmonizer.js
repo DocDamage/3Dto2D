@@ -75,20 +75,22 @@ function installPaletteHarmonizer() {
   if (!form || $('#paletteHarmonizerCard')) return;
   const card = document.createElement('section');
   card.id = 'paletteHarmonizerCard';
-  card.className = 'palette-harmonizer';
+  card.className = 'card quality-control-panel palette-harmonizer';
   card.innerHTML = `
-    <div class="card-head">
-      <div><p class="eyebrow">Batch Palette</p><h3>Harmonize sprite sheets</h3></div>
-      <button class="mini primary" id="runPaletteHarmonizer" type="button">Run</button>
-    </div>
-    <label>Sprite folders
-      <textarea id="paletteHarmonizerPaths" rows="4" placeholder="output\\hero_idle&#10;output\\hero_walk"></textarea>
-    </label>
-    <div class="row">
-      <label>Shared colors<input id="paletteHarmonizerColors" class="short-number" type="number" min="2" max="256" value="32" /></label>
-      <button class="mini" id="fillPaletteHarmonizerPaths" type="button">Use recent</button>
-    </div>
-    <div id="paletteHarmonizerResult" class="palette-harmonizer-result empty compact">No palette report yet.</div>
+    <details class="quality-accordion">
+      <summary>Palette harmonizer</summary>
+      <div class="quality-accordion-body palette-harmonizer-body">
+        <label>Sprite folders
+          <textarea id="paletteHarmonizerPaths" rows="3" placeholder="output\\hero_idle&#10;output\\hero_walk"></textarea>
+        </label>
+        <div class="row compact-fields">
+          <label>Shared colors<input id="paletteHarmonizerColors" class="short-number" type="number" min="2" max="256" value="32" /></label>
+          <button class="mini" id="fillPaletteHarmonizerPaths" type="button">Use recent</button>
+        </div>
+        <button class="mini primary quality-full-action" id="runPaletteHarmonizer" type="button">Run palette harmonizer</button>
+        <div id="paletteHarmonizerResult" class="palette-harmonizer-result empty compact">No palette report yet.</div>
+      </div>
+    </details>
   `;
   form.insertAdjacentElement('afterend', card);
   $('#runPaletteHarmonizer')?.addEventListener('click', runPaletteHarmonizer);

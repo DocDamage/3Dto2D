@@ -55,21 +55,34 @@ async function setFrameReviewStatus(status) {
 
 function installFrameReview() {
   if ($('#frameReviewPanel') || !$('#inspector-card')) return;
-  const panel = document.createElement('section');
-  panel.id = 'frameReviewPanel';
-  panel.className = 'frame-review-panel';
-  panel.innerHTML = `
-    <p class="eyebrow">Frame Approval</p>
-    <div class="frame-review-actions">
-      <button type="button" class="mini frame-review-btn" data-status="approved">Approve</button>
-      <button type="button" class="mini frame-review-btn" data-status="needs_edit">Needs Edit</button>
-      <button type="button" class="mini frame-review-btn danger" data-status="rejected">Reject</button>
-    </div>
-    <input id="frameReviewNote" placeholder="Optional frame note" />
-    <small id="frameReviewSummary">0 approved · 0 needs edit · 0 rejected</small>
-  `;
   const controls = $('.inspector-controls');
-  if (controls) controls.prepend(panel);
+  const inspectorAccordion = controls?.closest('.quality-accordion');
+  let panel;
+  const panelMarkup = `
+    <section id="frameReviewPanel" class="frame-review-panel">
+      <div class="frame-review-actions">
+        <button type="button" class="mini frame-review-btn" data-status="approved">Approve</button>
+        <button type="button" class="mini frame-review-btn" data-status="needs_edit">Needs Edit</button>
+        <button type="button" class="mini frame-review-btn danger" data-status="rejected">Reject</button>
+      </div>
+      <input id="frameReviewNote" placeholder="Optional frame note" />
+      <small id="frameReviewSummary">0 approved · 0 needs edit · 0 rejected</small>
+    </section>
+  `;
+  if (inspectorAccordion) {
+    const reviewAccordion = document.createElement('details');
+    reviewAccordion.className = 'quality-accordion frame-review-accordion';
+    reviewAccordion.innerHTML = `
+      <summary>Frame approval</summary>
+      <div class="quality-accordion-body">${panelMarkup}</div>
+    `;
+    inspectorAccordion.insertAdjacentElement('afterend', reviewAccordion);
+    panel = reviewAccordion.querySelector('#frameReviewPanel');
+  } else if (controls) {
+    controls.insertAdjacentHTML('afterbegin', panelMarkup);
+    panel = $('#frameReviewPanel');
+  }
+  if (!panel) return;
   $$('.frame-review-btn', panel).forEach(btn => {
     btn.addEventListener('click', () => setFrameReviewStatus(btn.dataset.status));
   });

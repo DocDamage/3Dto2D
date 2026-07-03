@@ -271,6 +271,23 @@
   box-shadow: 0 0 8px rgba(0, 173, 181, 0.2);
 }
 
+.wizard-reference-fields {
+  border: 1px solid rgba(0, 173, 181, 0.14);
+  border-radius: 10px;
+  background: rgba(0, 173, 181, 0.04);
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.wizard-reference-fields small {
+  color: var(--muted, #a9b7d0);
+  font-size: 11px;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .wizard-preview-panel {
   border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
   border-radius: 12px;
@@ -610,6 +627,8 @@
 .wizard-summary-item span:last-child {
   font-weight: bold;
   color: var(--text, #fff);
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .wizard-preflight-container {

@@ -70,6 +70,81 @@ const GOAL_DEFAULTS = {
   }
 };
 
+const TILE_TRAINING_PRESETS = {
+  top_down_terrain: {
+    trigger: 'sakpix_tiles_terrain',
+    cell_size: 'auto',
+    max_samples_per_source: '32',
+    include_all: false,
+    base_caption: 'trained SakPix top-down terrain auto-tile, grass, dirt, stone path, edge and corner pieces',
+    manifest: 'Terrain preset: prioritizes floors, paths, cliffs, bridges, and ground sheets for a focused 16-tile auto-tile sheet.'
+  },
+  dungeon_edges: {
+    trigger: 'sakpix_tiles_dungeon',
+    cell_size: '128x128',
+    max_samples_per_source: '40',
+    include_all: false,
+    base_caption: 'trained SakPix dungeon tile set, stone floor, wall edge, corner, stair, shadowed top-down RPG tiles',
+    manifest: 'Dungeon preset: favors wall, floor, stair, edge, and corner sheets so generated tiles keep collision-friendly borders.'
+  },
+  town_roofs: {
+    trigger: 'sakpix_tiles_town',
+    cell_size: 'auto',
+    max_samples_per_source: '28',
+    include_all: true,
+    base_caption: 'trained SakPix town stage tile set, roof, wall, wood, stone path, cozy top-down RPG material tiles',
+    manifest: 'Town preset: includes broader structure and roof sheets because town packs often mix terrain, walls, roofs, and props.'
+  },
+  water_coast: {
+    trigger: 'sakpix_tiles_water',
+    cell_size: 'auto',
+    max_samples_per_source: '36',
+    include_all: false,
+    base_caption: 'trained SakPix water and coast auto-tile, shoreline edge, corner, bridge, animated-friendly top-down RPG tile',
+    manifest: 'Water preset: narrows captions around water, coast, bridge, edge, and corner cells for cleaner shoreline generations.'
+  }
+};
+
+function setTileTrainingField(form, name, value) {
+  const field = form?.querySelector(`[name="${name}"]`);
+  if (!field) return;
+  if (field.type === 'checkbox') {
+    field.checked = Boolean(value);
+  } else {
+    field.value = value;
+  }
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+  field.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function applyTileTrainingPreset(presetName) {
+  const preset = TILE_TRAINING_PRESETS[presetName];
+  const form = $('#tileTrainingDatasetForm');
+  if (!preset || !form) return;
+
+  setTileTrainingField(form, 'trigger', preset.trigger);
+  setTileTrainingField(form, 'cell_size', preset.cell_size);
+  setTileTrainingField(form, 'max_samples_per_source', preset.max_samples_per_source);
+  setTileTrainingField(form, 'include_all', preset.include_all);
+  setTileTrainingField(form, 'base_caption', preset.base_caption);
+
+  const manifest = $('#tileTrainingPreviewManifest');
+  if (manifest) {
+    clearNode(manifest);
+    const title = document.createElement('b');
+    title.textContent = '16-tile auto-tile sheet';
+    const body = document.createElement('span');
+    body.textContent = preset.manifest;
+    manifest.appendChild(title);
+    manifest.appendChild(body);
+  }
+
+  document.querySelectorAll('[data-tile-preset]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tilePreset === presetName);
+  });
+  toast(`Tile preset applied: ${presetName.replace(/_/g, ' ')}`);
+}
+
 function applyGoalDefaults(goalName) {
   const g = GOAL_DEFAULTS[goalName];
   if (!g) return;
@@ -179,7 +254,7 @@ function renderArchetypeTags() {
   if (!tagsContainer) return;
   clearNode(tagsContainer);
   
-  const commonTags = ['all', 'human', 'monster', 'magic', 'melee', 'ranged', 'cyberpunk', 'sci-fi', 'animal'];
+  const commonTags = ['all', 'sakpix', 'trained', 'human', 'npc', 'magic', 'melee', 'ranged', 'cyberpunk', 'sci-fi'];
   commonTags.forEach(tag => {
     const pill = document.createElement('div');
     pill.className = 'recipe-tag-pill' + (activeArchetypeTag === tag || (tag === 'all' && !activeArchetypeTag) ? ' active' : '');
@@ -421,6 +496,10 @@ function initPresetBindings() {
   if ($('#btnGoalIsometric')) $('#btnGoalIsometric').addEventListener('click', () => applyGoalDefaults('isometric'));
   if ($('#btnGoalLocalFast')) $('#btnGoalLocalFast').addEventListener('click', () => applyGoalDefaults('local_fast'));
   if ($('#btnGoalLocalQuality')) $('#btnGoalLocalQuality').addEventListener('click', () => applyGoalDefaults('local_quality'));
+
+  document.querySelectorAll('[data-tile-preset]').forEach(btn => {
+    btn.addEventListener('click', () => applyTileTrainingPreset(btn.dataset.tilePreset));
+  });
 }
 
 if (window.onSpriteForgeReady) {

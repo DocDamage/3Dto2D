@@ -98,12 +98,15 @@ function checkFailureRecovery(job) {
 
 async function renderProjectDashboard(s) {
   const hub = $('#projectDashboardHub');
+  const empty = $('#projectDashboardEmpty');
   if (!hub) return;
   if (!activeProjectPath) {
     hub.classList.add('hidden');
+    if (empty) empty.classList.remove('hidden');
     return;
   }
   hub.classList.remove('hidden');
+  if (empty) empty.classList.add('hidden');
 
   const drl = $('#dashReferencesList');
   const dql = $('#dashQueuesList');
@@ -204,6 +207,22 @@ function renderCleanupTable() {
 async function purgeSelectedCleanup() { const checked = $$('.cleanup-checkbox:checked').map(chk => chk.value); if (!checked.length) return; if (!confirm(`Delete ${checked.length} selected files?`)) return; try { toast(`Purging ${checked.length} files...`); const res = await api('/api/cleanup/purge', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ids: checked }) }); if (res.ok) { toast(`Deleted ${res.count} items, reclaimed ${res.reclaimed_mb} MB.`); await scanCleanup(); } else toast('Purge failed: ' + res.message); } catch(e) { toast('Purge error: ' + e.message); } }
 
 function initDashboardBindings() {
+  const activateDashboardTab = (tabName) => {
+    const target = tabName || 'overview';
+    $$('.dashboard-tab-btn').forEach(btn => {
+      const active = btn.dataset.dashboardTab === target;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    $$('.dashboard-tab-panel').forEach(panel => {
+      panel.classList.toggle('active', panel.dataset.dashboardPanel === target);
+    });
+  };
+
+  $$('.dashboard-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateDashboardTab(btn.dataset.dashboardTab));
+  });
+
   if ($('#healthLaunchComfyBtn')) $('#healthLaunchComfyBtn').addEventListener('click', async () => { try { await api('/api/launch_comfy', {method:'POST'}); toast('ComfyUI launch requested'); setTimeout(refreshAll, 1800); } catch(err) { toast(err.message); } });
   if ($('#health-item-error')) $('#health-item-error').addEventListener('click', () => showView('tasks'));
   if ($('#activeTaskCancelBtn')) $('#activeTaskCancelBtn').addEventListener('click', () => api('/api/cancel', {method:'POST'}).then(refreshAll));

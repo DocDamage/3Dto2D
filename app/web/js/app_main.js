@@ -51,6 +51,12 @@ async function refreshAll() {
     const jobTransitionedToDone = previousJobId && previousJobId === activeJobId && previousJobRunning && !activeJobRunning;
     const exitCode = activeJob ? activeJob.exit_code : null;
     const spriteFolder = activeJob && activeJob.metadata ? activeJob.metadata.sprite_folder : null;
+    if (spriteFolder && typeof window.refreshQualityLivePreview === 'function') {
+      const qualityVisible = $('#view-quality')?.classList.contains('active') || localStorage.getItem('activeView') === 'quality';
+      if (qualityVisible) {
+        window.refreshQualityLivePreview(spriteFolder, { force: !!activeJobRunning, silent: true, source: 'active' });
+      }
+    }
     if (jobTransitionedToDone) {
       if (exitCode === 0) {
         const duration = formatDuration(activeJob.started_at, activeJob.finished_at);

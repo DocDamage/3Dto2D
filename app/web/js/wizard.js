@@ -111,8 +111,10 @@
     const nameInput = form.querySelector('[name="wiz_name"]');
     const descTextarea = form.querySelector('[name="wiz_character"]');
     const templateSelect = form.querySelector('[name="wiz_template"]');
+    const referenceInput = form.querySelector('[name="wiz_reference_image"]');
+    const styleInput = form.querySelector('[name="wiz_style_image"]');
 
-    [nameInput, descTextarea, templateSelect].forEach(el => {
+    [nameInput, descTextarea, templateSelect, referenceInput, styleInput].forEach(el => {
       if (el) el.addEventListener('input', updatePromptPreview);
       if (el) el.addEventListener('change', updatePromptPreview);
     });
@@ -382,6 +384,8 @@
     const desc = form.querySelector('[name="wiz_character"]').value.trim();
     const templateName = form.querySelector('[name="wiz_template"]').value;
     const template = WIZARD_TEMPLATES[templateName] || WIZARD_TEMPLATES.platformer;
+    const referenceImage = form.querySelector('[name="wiz_reference_image"]').value.trim();
+    const styleImage = form.querySelector('[name="wiz_style_image"]').value.trim();
 
     const style = template.style;
     const direction = getSelectedDirections()[0] || 'right';
@@ -391,6 +395,8 @@
     let previewText = `Character Name: ${name || 'hero'}\n`;
     previewText += `Description: ${desc || '...'}\n`;
     previewText += `Style Inject: ${style}, ${perspectivePrompt}\n`;
+    previewText += `Reference Image: ${referenceImage || 'none'}\n`;
+    previewText += `Style Reference: ${styleImage || 'none'}\n`;
     previewText += `Primary Direction: ${direction}\n`;
     previewText += `Camera Perspective: ${perspective.replace(/_/g, ' ')}`;
 
@@ -472,6 +478,8 @@
     const actions = getSelectedActions();
     const directions = getSelectedDirections();
     const perspective = getSelectedPerspective();
+    const referenceImage = form.querySelector('[name="wiz_reference_image"]').value.trim();
+    const styleImage = form.querySelector('[name="wiz_style_image"]').value.trim();
 
     const goalLabels = {
       single: 'Single Sprite',
@@ -486,6 +494,13 @@
     document.getElementById('wizSummaryDirection').textContent = directions.join(', ');
     const perspectiveSummary = document.getElementById('wizSummaryPerspective');
     if (perspectiveSummary) perspectiveSummary.textContent = perspective.replace(/_/g, ' ');
+    const referencesSummary = document.getElementById('wizSummaryReferences');
+    if (referencesSummary) {
+      const refs = [];
+      if (referenceImage) refs.push('Character');
+      if (styleImage) refs.push('Style');
+      referencesSummary.textContent = refs.length ? refs.join(' + ') : 'None';
+    }
   }
 
   async function runPreflightCheck() {
@@ -565,6 +580,8 @@
     const perspective = getSelectedPerspective();
     const perspectivePrompt = PERSPECTIVE_PROMPTS[perspective] || PERSPECTIVE_PROMPTS.side_view;
     const quality = document.getElementById('wizQualitySelect').value;
+    const referenceImage = form.querySelector('[name="wiz_reference_image"]').value.trim();
+    const styleImage = form.querySelector('[name="wiz_style_image"]').value.trim();
 
     // Pre-calculate advisor recommend profiles
     let rec = { tier: 'wan21_safe', profile: 'auto' };
@@ -586,6 +603,8 @@
       direction: direction,
       directions: directions.join(','),
       perspective: perspective,
+      reference_image: referenceImage,
+      style_image: styleImage,
       tier: rec.tier || 'wan21_safe',
       profile: rec.profile || 'auto',
       start_comfy: true,
@@ -681,6 +700,8 @@
     const template = form.querySelector('[name="wiz_template"]').value;
     const goal = getSelectedGoal();
     const video = form.querySelector('[name="wiz_video_path"]').value;
+    const referenceImage = form.querySelector('[name="wiz_reference_image"]').value;
+    const styleImage = form.querySelector('[name="wiz_style_image"]').value;
     const actions = getSelectedActions();
     const directions = getSelectedDirections();
     const perspective = getSelectedPerspective();
@@ -692,6 +713,8 @@
       desc,
       template,
       video,
+      referenceImage,
+      styleImage,
       actions,
       directions,
       perspective
@@ -728,6 +751,8 @@
       if (state.desc) form.querySelector('[name="wiz_character"]').value = state.desc;
       if (state.template) form.querySelector('[name="wiz_template"]').value = state.template;
       if (state.video) form.querySelector('[name="wiz_video_path"]').value = state.video;
+      if (state.referenceImage) form.querySelector('[name="wiz_reference_image"]').value = state.referenceImage;
+      if (state.styleImage) form.querySelector('[name="wiz_style_image"]').value = state.styleImage;
       if (Array.isArray(state.actions)) setSelectedActions(state.actions);
       if (Array.isArray(state.directions)) setSelectedDirections(state.directions);
       if (state.perspective) setSelectedPerspective(state.perspective);
@@ -742,10 +767,11 @@
     const container = document.getElementById('wizardContainer');
     if (!container) return;
     try {
-      const res = await fetch('/web/components/wizard.html');
+      const res = await fetch('/web/components/wizard.html?v=wizard-reference-upload-buttons');
       if (res.ok) {
         container.innerHTML = await res.text();
         initWizard();
+        window.installWizardDrops?.();
         exposeWizardGlobals();
       }
     } catch (e) {

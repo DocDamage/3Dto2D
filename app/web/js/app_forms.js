@@ -126,6 +126,7 @@ function initFormBindings() {
   $$('[data-jump]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.jump)));
   $$('[data-run]').forEach(b=>b.addEventListener('click',()=>runAction(b.dataset.run)));
   $$('[data-open]').forEach(b=>b.addEventListener('click',()=>openPath(b.dataset.open)));
+  initTrainingTabs();
 
   if ($('#refreshOutputs')) $('#refreshOutputs').addEventListener('click', refreshAll);
   if ($('#cancelJob')) $('#cancelJob').addEventListener('click',()=>api('/api/cancel',{method:'POST'}).then(refreshAll));
@@ -219,5 +220,28 @@ function initFormBindings() {
   if($('#createProjectBtn')) $('#createProjectBtn').addEventListener('click', createProject);
   if($('#projectNameInput')) $('#projectNameInput').addEventListener('keydown', e => {
     if(e.key === 'Enter'){ e.preventDefault(); createProject(); }
+  });
+}
+
+function initTrainingTabs() {
+  const root = $('#view-training');
+  if (!root) return;
+  const buttons = Array.from(root.querySelectorAll('[data-training-tab]'));
+  const panels = Array.from(root.querySelectorAll('[data-training-panel]'));
+  if (!buttons.length || !panels.length) return;
+
+  const activate = (name) => {
+    buttons.forEach(btn => {
+      const active = btn.dataset.trainingTab === name;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach(panel => {
+      panel.classList.toggle('active', panel.dataset.trainingPanel === name);
+    });
+  };
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => activate(btn.dataset.trainingTab));
   });
 }

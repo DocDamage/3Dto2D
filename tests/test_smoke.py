@@ -96,9 +96,16 @@ def test_drag_drop_assets_loaded():
 
     assert "/web/drag_drop.css" in index
     assert "/web/js/drag_drop.js" in index
+    assert "reference-upload-buttons" in index
     assert "referenceDropTarget" in script
+    assert "styleDropTarget" in script
+    assert "wizardReferenceDropTarget" in script
+    assert "wizardStyleDropTarget" in script
+    assert "Choose image" in script
+    assert "installWizardDrops" in script
     assert "qualityDropTarget" in script
     assert ".drop-target-card" in css
+    assert ".drop-target-button" in css
 
 
 def test_power_of_two_web_option_forwarded():

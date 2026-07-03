@@ -151,6 +151,22 @@ def test_status_diagnostics(client):
     assert "disk" in data
 
 
+def test_features_capabilities_api_exposes_runtime_state(client):
+    response = client.get("/api/features/capabilities")
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert data["schema"] == "spriteforge.feature_capabilities.v1"
+    assert isinstance(data["entries"], list)
+    entries = {entry["id"]: entry for entry in data["entries"]}
+    assert "lora_training_run" in entries
+    lora = entries["lora_training_run"]
+    assert lora["runtime"] == "external"
+    assert lora["default_runtime"] == "external"
+    assert "native_ready" in lora
+    assert "external_ready" in lora
+
+
 def test_qa_batch_summary(client):
     """GET /api/qa/batch_summary lists quality metrics of project folders."""
     response = client.get("/api/qa/batch_summary")

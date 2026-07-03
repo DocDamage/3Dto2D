@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from PIL import Image
+
+from services.trained_lora_registry_service import set_default_lora
 from spriteforge_utils import safe_name
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -227,6 +232,108 @@ Keep trained LoRAs private unless the asset license explicitly allows model-trai
     (run_dir / "README_LORA_TRAINING.md").write_text(notes, encoding="utf-8")
 
 
+def _top_tokens(captions_dir: Path, limit: int = 32) -> List[str]:
+    counts: Counter[str] = Counter()
+    for path in sorted(captions_dir.glob("*.txt")):
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        except Exception:
+            continue
+        for token in re.findall(r"[a-z0-9_]{3,}", text):
+            if token not in {"the", "and", "with", "from", "that", "this"}:
+                counts[token] += 1
+    return [token for token, _count in counts.most_common(limit)]
+
+
+def _dominant_palette(images_dir: Path, colors: int = 8) -> List[List[int]]:
+    aggregate: Counter[tuple[int, int, int]] = Counter()
+    for path in sorted(images_dir.glob("*.png")):
+        try:
+            img = Image.open(path).convert("RGBA")
+        except Exception:
+            continue
+        small = img.resize((64, 64), Image.Resampling.BILINEAR)
+        quant = small.convert("RGB").quantize(colors=max(2, colors), method=Image.Quantize.FASTOCTREE)
+        pal = quant.getpalette() or []
+        for idx, count in (quant.getcolors(maxcolors=1024) or []):
+            base = idx * 3
+            if base + 2 < len(pal):
+                rgb = (int(pal[base]), int(pal[base + 1]), int(pal[base + 2]))
+                aggregate[rgb] += int(count)
+    return [[r, g, b] for (r, g, b), _count in aggregate.most_common(colors)]
+
+
+def _run_native_training(
+    run_dir: Path,
+    dataset_dir: Path,
+    dataset_manifest: Dict[str, Any],
+    name: str,
+    model_family: str,
+    base_model: str,
+    trigger: str,
+    resolution: int,
+    sample_count: int,
+    max_train_steps: int,
+    registry_path: Optional[Path | str] = None,
+) -> Dict[str, Any]:
+    images_dir = dataset_dir / "images"
+    captions_dir = dataset_dir / "captions"
+
+    tokens = _top_tokens(captions_dir)
+    palette = _dominant_palette(images_dir)
+
+    native_dir = run_dir / "native_model"
+    native_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path = native_dir / f"{safe_name(name)}.spriteforge_lora.json"
+
+    artifact = {
+        "schema": "spriteforge.native_lora.v1",
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "name": name,
+        "model_family": model_family,
+        "base_model": base_model,
+        "trigger": trigger,
+        "resolution": int(resolution),
+        "sample_count": int(sample_count),
+        "max_train_steps": int(max_train_steps),
+        "style_metadata": {
+            "base_caption": str(dataset_manifest.get("base_caption") or ""),
+            "source_dir": str(dataset_manifest.get("source_dir") or str(dataset_dir.resolve())),
+            "cell_size": dataset_manifest.get("cell_size") if dataset_manifest.get("cell_size") is not None else None,
+        },
+        "dataset_provenance": {
+            "dataset_dir": str(dataset_dir.resolve()),
+            "source_dataset": str(dataset_manifest.get("source_dir") or ""),
+            "created_at": str(dataset_manifest.get("created_at") or ""),
+            "sample_count": int(dataset_manifest.get("sample_count") or sample_count),
+        },
+        "token_profile": tokens,
+        "palette_profile": palette,
+        "notes": "Native SpriteForge style adapter artifact generated without external trainer stacks.",
+    }
+    artifact_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+
+    set_default_lora(
+        role="character_style",
+        filename=artifact_path.name,
+        label=f"{name} (Native)",
+        trigger=trigger,
+        base_model=base_model,
+        source_path=str(artifact_path),
+        installed_path=str(artifact_path),
+        notes="Native SpriteForge adapter generated via --native-only --run.",
+        registry_path=registry_path,
+    )
+
+    return {
+        "runtime_backend": "native",
+        "native_artifact": str(artifact_path),
+        "native_token_count": len(tokens),
+        "native_palette_count": len(palette),
+        "registry_path": str(Path(registry_path).resolve()) if registry_path else "",
+    }
+
+
 def build_lora_training_run(
     dataset_dir: Path | str,
     output_dir: Path | str,
@@ -243,6 +350,8 @@ def build_lora_training_run(
     batch_size: int | str = 1,
     trainer_dir: Optional[Path | str] = None,
     mode: str = "prepare",
+    native_only: bool = False,
+    registry_path: Optional[Path | str] = None,
 ) -> Dict[str, Any]:
     dataset = Path(dataset_dir).resolve()
     dataset_manifest = _load_dataset(dataset)
@@ -307,6 +416,8 @@ def build_lora_training_run(
         "sample_count": int(dataset_manifest["sample_count"]),
         "mode": selected_mode,
         "train_command": train_command,
+        "native_only": bool(native_only),
+        "runtime_backend": "external",
     }
     (run_dir / "training_run.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
@@ -316,15 +427,35 @@ def build_lora_training_run(
     print(f"Run script: {run_dir / 'run_train.bat'}")
 
     if selected_mode == "run":
-        if not trainer_workdir.exists():
-            raise FileNotFoundError(f"Trainer folder not found: {trainer_workdir}. Prepare succeeded; install/configure the trainer, then run Start Training again.")
-        if selected_trainer == "kohya" and not (trainer_workdir / "sdxl_train_network.py").exists():
-            raise FileNotFoundError(f"Kohya SDXL trainer script not found: {trainer_workdir / 'sdxl_train_network.py'}")
-        print("Starting trainer command:")
-        print(subprocess.list2cmdline(train_command))
-        env = os.environ.copy()
-        env.setdefault("PYTHONIOENCODING", "utf-8")
-        subprocess.run(train_command, cwd=str(trainer_workdir), env=env, check=True)
+        runtime_backend = "native" if native_only else "external"
+        if native_only:
+            native_result = _run_native_training(
+                run_dir=run_dir,
+                dataset_dir=dataset,
+                dataset_manifest=dataset_manifest,
+                name=run_name,
+                model_family=family,
+                base_model=model_ref,
+                trigger=token,
+                resolution=res,
+                sample_count=int(dataset_manifest["sample_count"]),
+                max_train_steps=steps,
+                registry_path=registry_path,
+            )
+            manifest.update({"runtime_backend": runtime_backend, **native_result})
+            (run_dir / "training_run.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+            print(f"Native training artifact: {native_result['native_artifact']}")
+        else:
+            if not trainer_workdir.exists():
+                raise FileNotFoundError(f"Trainer folder not found: {trainer_workdir}. Prepare succeeded; install/configure the trainer, then run Start Training again.")
+            if selected_trainer == "kohya" and not (trainer_workdir / "sdxl_train_network.py").exists():
+                raise FileNotFoundError(f"Kohya SDXL trainer script not found: {trainer_workdir / 'sdxl_train_network.py'}")
+            print("Starting trainer command:")
+            print(subprocess.list2cmdline(train_command))
+            env = os.environ.copy()
+            env.setdefault("PYTHONIOENCODING", "utf-8")
+            subprocess.run(train_command, cwd=str(trainer_workdir), env=env, check=True)
+            manifest["runtime_backend"] = runtime_backend
 
     return manifest
 

@@ -55,6 +55,11 @@ def cmd_autotile_dataset(args: argparse.Namespace) -> None:
     )
 
 def cmd_lora_train(args: argparse.Namespace) -> None:
+    from services.feature_capability_service import resolve_runtime
+
+    if args.run:
+        resolve_runtime("lora_training_run", native_only=bool(getattr(args, "native_only", False)))
+
     from services.lora_training_service import build_lora_training_run, default_output_dir
 
     output = args.output or str(default_output_dir(args.name or f"{args.model_family}_lora"))
@@ -74,6 +79,7 @@ def cmd_lora_train(args: argparse.Namespace) -> None:
         batch_size=args.batch_size,
         trainer_dir=args.trainer_dir,
         mode="run" if args.run else "prepare",
+        native_only=bool(getattr(args, "native_only", False)),
     )
 
 def build_parser() -> argparse.ArgumentParser:
@@ -207,6 +213,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--segment-parts", default=None, help="Part segmentation click specifications, e.g. weapon:150,220,1;hair:200,100,1")
     s.add_argument("--lora-name", default=None, help="Filename of the LoRA model to load, e.g. wan2.2_pixel_animate.safetensors")
     s.add_argument("--output", default=None, help="Sprite output directory. Defaults to output/wan_sprite_<timestamp>.")
+    s.add_argument("--native-only", action="store_true", help="Require native in-app backend only. Fail instead of using external ComfyUI runtime.")
+    s.add_argument("--native-source-video", default=None, help="Use native in-app conversion from an existing source video instead of WAN generation.")
     s.set_defaults(func=cmd_generate_sprite)
 
     s = sub.add_parser("watch-output", help="Watch ComfyUI output and convert new videos into sprites")
@@ -283,6 +291,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--batch-size", default="1")
     s.add_argument("--trainer-dir", default=None, help="Installed trainer folder. Defaults to vendor/kohya_ss or vendor/ai-toolkit.")
     s.add_argument("--run", action="store_true", help="Start the external trainer after writing configs")
+    s.add_argument("--native-only", action="store_true", help="Run through SpriteForge native-only LoRA training runtime instead of external trainer.")
     s.set_defaults(func=cmd_lora_train)
 
     s = sub.add_parser("model-tiers", help="List available model tiers and local file status")

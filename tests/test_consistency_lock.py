@@ -82,5 +82,5 @@ def test_consistency_lock_api_and_assets(tmp_path, monkeypatch):
         assert data["lock"]["reference_image"] == str(ref.resolve())
 
         html = client.get("/").data.decode("utf-8")
-        assert "/web/consistency_lock.css" in html
-        assert "/web/js/consistency_lock.js" in html
+        assert "consistency_lock.css" in html
+        assert "js/consistency_lock.js" in html

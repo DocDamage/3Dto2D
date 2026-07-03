@@ -767,7 +767,7 @@
     const container = document.getElementById('wizardContainer');
     if (!container) return;
     try {
-      const res = await fetch('/web/components/wizard.html?v=wizard-reference-upload-buttons');
+      const res = await fetch('components/wizard.html?v=wizard-reference-upload-buttons');
       if (res.ok) {
         container.innerHTML = await res.text();
         initWizard();

@@ -53,6 +53,6 @@ def test_wizard_cache_buster_updated_for_references():
     html = (APP / "web" / "index.html").read_text(encoding="utf-8")
     js = (APP / "web" / "js" / "wizard.js").read_text(encoding="utf-8")
 
-    assert "/web/js/wizard.js?v=wizard-reference-upload-buttons" in html
-    assert "/web/css/wizard.css?v=wizard-reference-upload-buttons" in html
-    assert "/web/components/wizard.html?v=wizard-reference-upload-buttons" in js
+    assert "js/wizard.js?v=wizard-reference-upload-buttons" in html
+    assert "css/wizard.css?v=wizard-reference-upload-buttons" in html
+    assert "components/wizard.html?v=wizard-reference-upload-buttons" in js

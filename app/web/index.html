@@ -4,24 +4,24 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SpriteForge Studio v12</title>
-  <link rel="icon" href="/web/logo.svg" />
-  <link rel="stylesheet" href="/web/styles.css?v=dashboard-fit-no-window-resize" />
-  <link rel="stylesheet" href="/web/sprite_preview.css" />
-  <link rel="stylesheet" href="/web/prompt_builder.css?v=generate-compact-fit2" />
-  <link rel="stylesheet" href="/web/seed_gallery.css" />
-  <link rel="stylesheet" href="/web/frame_review.css" />
-  <link rel="stylesheet" href="/web/palette_harmonizer.css" />
-  <link rel="stylesheet" href="/web/theme.css" />
-  <link rel="stylesheet" href="/web/mobile_nav.css" />
-  <link rel="stylesheet" href="/web/drag_drop.css?v=reference-upload-buttons" />
-  <link rel="stylesheet" href="/web/audio_cues.css" />
-  <link rel="stylesheet" href="/web/state_machine.css" />
-  <link rel="stylesheet" href="/web/marketplace_gallery.css" />
-  <link rel="stylesheet" href="/web/scene_compositor.css" />
-  <link rel="stylesheet" href="/web/consistency_lock.css?v=generate-existing-sprite" />
-  <link rel="stylesheet" href="/web/css/ux_enhancements.css" />
-  <link rel="stylesheet" href="/web/css/topbar_compact.css?v=generate-existing-sprite" />
-  <link rel="stylesheet" href="/web/css/wizard.css?v=wizard-reference-upload-buttons" />
+  <link rel="icon" href="logo.svg" />
+  <link rel="stylesheet" href="styles.css?v=rail-footer-fit" />
+  <link rel="stylesheet" href="sprite_preview.css" />
+  <link rel="stylesheet" href="prompt_builder.css?v=generate-compact-fit2" />
+  <link rel="stylesheet" href="seed_gallery.css" />
+  <link rel="stylesheet" href="frame_review.css" />
+  <link rel="stylesheet" href="palette_harmonizer.css" />
+  <link rel="stylesheet" href="theme.css" />
+  <link rel="stylesheet" href="mobile_nav.css" />
+  <link rel="stylesheet" href="drag_drop.css?v=reference-upload-buttons" />
+  <link rel="stylesheet" href="audio_cues.css" />
+  <link rel="stylesheet" href="state_machine.css" />
+  <link rel="stylesheet" href="marketplace_gallery.css" />
+  <link rel="stylesheet" href="scene_compositor.css" />
+  <link rel="stylesheet" href="consistency_lock.css?v=generate-existing-sprite" />
+  <link rel="stylesheet" href="css/ux_enhancements.css" />
+  <link rel="stylesheet" href="css/topbar_compact.css?v=generate-existing-sprite" />
+  <link rel="stylesheet" href="css/wizard.css?v=wizard-reference-upload-buttons" />
   <script>
     window.onSpriteForgeReady = (callback) => {
       if (document.readyState === 'loading') {
@@ -33,37 +33,42 @@
 
     window.viewComponentsLoaded = new Promise((resolve) => {
       window.onSpriteForgeReady(async () => {
-      const views = [
-        'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
-        'packs', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
-        'ab_runs', 'library', 'qa_dashboard', 'training'
-      ];
-      await Promise.all(views.map(async (name) => {
-        const el = document.getElementById('view-' + name);
-        if (el) {
-          try {
-            const componentVersion = name === 'generate'
-              ? '?v=generate-existing-sprite'
-              : (name === 'training'
-                ? '?v=sakpix-training-polish'
-                : (name === 'quality'
-                  ? '?v=quality-lab-compact'
-                  : (name === 'dashboard' ? '?v=dashboard-fit-no-window-resize' : '')));
-            const res = await fetch('/web/components/' + name + '.html' + componentVersion);
-            if (res.ok) {
-              const html = await res.text();
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(html, 'text/html');
-              const newEl = doc.querySelector('section.view');
-              if (newEl) {
-                el.innerHTML = newEl.innerHTML;
-              }
-            }
-          } catch (e) {
-            console.error('Error loading view component ' + name, e);
-          }
+        if (window.location.protocol === 'file:') {
+          document.documentElement.classList.add('file-mode');
+          resolve();
+          return;
         }
-      }));
+        const views = [
+          'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
+          'packs', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
+          'ab_runs', 'library', 'qa_dashboard', 'training'
+        ];
+        await Promise.all(views.map(async (name) => {
+          const el = document.getElementById('view-' + name);
+          if (el) {
+            try {
+              const componentVersion = name === 'generate'
+                ? '?v=generate-existing-sprite'
+                : (name === 'training'
+                  ? '?v=sakpix-training-polish'
+                  : (name === 'quality'
+                    ? '?v=quality-lab-compact'
+                    : (name === 'dashboard' ? '?v=dashboard-fit-no-window-resize' : '')));
+              const res = await fetch('components/' + name + '.html' + componentVersion);
+              if (res.ok) {
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newEl = doc.querySelector('section.view');
+                if (newEl) {
+                  el.innerHTML = newEl.innerHTML;
+                }
+              }
+            } catch (e) {
+              console.error('Error loading view component ' + name, e);
+            }
+          }
+        }));
         resolve();
       });
     });
@@ -75,10 +80,14 @@
   <div class="aurora aurora-three"></div>
   <button class="mobile-rail-toggle" id="mobileRailToggle" type="button" aria-label="Open navigation" aria-expanded="false"><span></span></button>
   <div class="mobile-rail-backdrop" id="mobileRailBackdrop"></div>
+  <div class="file-mode-warning" role="status">
+    <strong>SpriteForge needs the local server.</strong>
+    <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally or serve the <code>app</code> folder and open <code>http://127.0.0.1:&lt;port&gt;/web/index.html</code>.</span>
+  </div>
 
   <aside class="rail">
     <div class="brand">
-      <img src="/web/logo.svg" alt="" />
+      <img src="logo.svg" alt="" />
       <div>
         <strong>SpriteForge</strong>
         <span>Studio v12</span>
@@ -389,40 +398,42 @@
     }
 
     window.viewComponentsLoaded.then(() => {
+      if (window.location.protocol === 'file:') return;
+
       const scripts = [
-        '/web/js/globals.js?v=training-lora-launcher',
-        '/web/js/project.js',
-        '/web/js/gallery.js',
-        '/web/js/editor_history.js',
-        '/web/js/editor.js',
-        '/web/js/sprite_preview.js?v=generate-compact-fit2',
-        '/web/js/prompt_builder.js?v=generate-compact-fit2',
-        '/web/js/seed_gallery.js',
-        '/web/js/frame_review.js',
-        '/web/js/palette_harmonizer.js',
-        '/web/js/keyboard_shortcuts.js',
-        '/web/js/theme_toggle.js',
-        '/web/js/mobile_nav.js',
-        '/web/js/drag_drop.js?v=reference-upload-buttons',
-        '/web/js/audio_cues.js',
-        '/web/js/state_machine.js',
-        '/web/js/marketplace_gallery.js',
-        '/web/js/scene_compositor.js',
-        '/web/js/consistency_lock.js?v=generate-existing-sprite',
-        '/web/js/experiments.js',
-        '/web/js/qa.js?v=quality-lab-compact',
-        '/web/js/app_views.js',
-        '/web/js/app_notifications.js',
-        '/web/js/app_presets.js?v=sakpix-training-polish',
-        '/web/js/app_status.js',
-        '/web/js/app_jobs.js?v=generate-compact-fit2',
-        '/web/js/app_forms.js?v=training-lora-launcher',
-        '/web/js/app_listings.js?v=generate-compact-fit2',
-        '/web/js/wizard.js?v=wizard-reference-upload-buttons',
-        '/web/js/app_dashboard.js?v=dashboard-fit-no-window-resize',
-        '/web/js/command_palette.js',
-        '/web/js/ux_enhancements.js?v=training-lora-launcher',
-        '/web/js/app_main.js?v=quality-lab-compact'
+        'js/globals.js?v=training-lora-launcher',
+        'js/project.js',
+        'js/gallery.js',
+        'js/editor_history.js',
+        'js/editor.js',
+        'js/sprite_preview.js?v=generate-compact-fit2',
+        'js/prompt_builder.js?v=generate-compact-fit2',
+        'js/seed_gallery.js',
+        'js/frame_review.js',
+        'js/palette_harmonizer.js',
+        'js/keyboard_shortcuts.js',
+        'js/theme_toggle.js',
+        'js/mobile_nav.js',
+        'js/drag_drop.js?v=reference-upload-buttons',
+        'js/audio_cues.js',
+        'js/state_machine.js',
+        'js/marketplace_gallery.js',
+        'js/scene_compositor.js',
+        'js/consistency_lock.js?v=generate-existing-sprite',
+        'js/experiments.js',
+        'js/qa.js?v=quality-lab-compact',
+        'js/app_views.js',
+        'js/app_notifications.js',
+        'js/app_presets.js?v=sakpix-training-polish',
+        'js/app_status.js',
+        'js/app_jobs.js?v=generate-compact-fit2',
+        'js/app_forms.js?v=training-lora-launcher',
+        'js/app_listings.js?v=generate-compact-fit2',
+        'js/wizard.js?v=wizard-reference-upload-buttons',
+        'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
+        'js/command_palette.js',
+        'js/ux_enhancements.js?v=training-lora-launcher',
+        'js/app_main.js?v=quality-lab-compact'
       ];
 
       function loadNext(idx) {

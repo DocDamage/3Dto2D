@@ -16,7 +16,7 @@
     padding: 10px;
     position: fixed !important;
     top: 8px;
-    width: 236px;
+    width: 256px;
   }
 
   .brand {
@@ -61,8 +61,26 @@
     padding-top: 6px;
   }
 
+  .rail-footer .mode-toggle-container {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .rail-footer .mode-buttons {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+  }
+
   .mode-btn {
     height: 24px;
+    min-width: 0;
+    white-space: nowrap;
   }
 
   .shell {
@@ -70,12 +88,12 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-    margin-left: 262px;
+    margin-left: 282px;
     margin-top: 0 !important;
     max-width: none;
     overflow: hidden;
     padding: 8px 14px 12px;
-    width: calc(100vw - 262px);
+    width: calc(100vw - 282px);
   }
 
   body.rail-collapsed .shell {

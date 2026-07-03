@@ -59,7 +59,7 @@ def test_keyboard_shortcuts_module_loaded():
     index = (APP / "web" / "index.html").read_text(encoding="utf-8")
     script = (APP / "web" / "js" / "keyboard_shortcuts.js").read_text(encoding="utf-8")
 
-    assert "/web/js/keyboard_shortcuts.js" in index
+    assert "js/keyboard_shortcuts.js" in index
     for shortcut in ["'g'", "'q'", "'s'", "'arrowleft'", "'arrowright'"]:
         assert shortcut in script
     assert "shortcutTargetAllowsTyping" in script
@@ -70,8 +70,8 @@ def test_theme_toggle_assets_loaded():
     script = (APP / "web" / "js" / "theme_toggle.js").read_text(encoding="utf-8")
     css = (APP / "web" / "theme.css").read_text(encoding="utf-8")
 
-    assert "/web/theme.css" in index
-    assert "/web/js/theme_toggle.js" in index
+    assert "theme.css" in index
+    assert "js/theme_toggle.js" in index
     assert 'id="themeToggle"' in index
     assert "spriteforgeTheme" in script
     assert "theme-light" in css
@@ -82,8 +82,8 @@ def test_mobile_nav_assets_loaded():
     script = (APP / "web" / "js" / "mobile_nav.js").read_text(encoding="utf-8")
     css = (APP / "web" / "mobile_nav.css").read_text(encoding="utf-8")
 
-    assert "/web/mobile_nav.css" in index
-    assert "/web/js/mobile_nav.js" in index
+    assert "mobile_nav.css" in index
+    assert "js/mobile_nav.js" in index
     assert 'id="mobileRailToggle"' in index
     assert "mobile-rail-open" in script
     assert "@media (max-width: 760px)" in css
@@ -94,8 +94,8 @@ def test_drag_drop_assets_loaded():
     script = (APP / "web" / "js" / "drag_drop.js").read_text(encoding="utf-8")
     css = (APP / "web" / "drag_drop.css").read_text(encoding="utf-8")
 
-    assert "/web/drag_drop.css" in index
-    assert "/web/js/drag_drop.js" in index
+    assert "drag_drop.css" in index
+    assert "js/drag_drop.js" in index
     assert "reference-upload-buttons" in index
     assert "referenceDropTarget" in script
     assert "styleDropTarget" in script

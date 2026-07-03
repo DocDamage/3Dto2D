@@ -7,6 +7,7 @@ using click prompts, and propagates the masks across the frame sequence.
 from __future__ import annotations
 
 import os
+import importlib.util
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
@@ -74,7 +75,11 @@ class SpriteSAM2Service:
         part_name: str
     ) -> List[FrameItem]:
         """Runs the actual Segment Anything Model 2 video predictor."""
-        # Import dynamically to avoid crash if not installed
+        # Avoid importing heavy native runtimes unless SAM2 itself is present.
+        if importlib.util.find_spec("sam2") is None:
+            raise RuntimeError("SAM2 package is not installed")
+
+        # Import dynamically so the OpenCV fallback remains lightweight.
         import torch
         from sam2.build_sam import build_sam2_video_predictor
 
@@ -137,8 +142,8 @@ class SpriteSAM2Service:
 
         for idx, item in enumerate(frames):
             arr = np.asarray(item.image.convert("RGBA"))
-            rgb = arr[:, :, :3]
-            alpha = arr[:, :, 3]
+            rgb = np.ascontiguousarray(arr[:, :, :3], dtype=np.uint8)
+            alpha = np.ascontiguousarray(arr[:, :, 3], dtype=np.uint8)
 
             h, w = alpha.shape
             gc_mask = np.zeros((h, w), dtype=np.uint8)

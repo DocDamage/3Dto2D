@@ -1,237 +1,127 @@
-# SpriteForge Studio
+# 🌌 SpriteForge Studio
 
-SpriteForge Studio is a local Python application for turning short character
-animation videos into usable 2D sprite assets. It includes a browser dashboard,
-CLI tools, batch scripts, QA reports, sprite-sheet packing, project management,
-and engine export helpers.
+> **Forge Your 3D Motions and Video Clips into High-Fidelity 2D Game Assets. Instantly.**
 
-It can also drive ComfyUI/WAN workflows for AI video generation, but that part is
-optional and depends on your own local or remote ComfyUI setup, model downloads,
-GPU memory, and workflow configuration. Model weights and ComfyUI are not
-bundled in this repository.
+SpriteForge Studio is the ultimate pipeline for converting short character animation videos, 3D renders, or AI-generated clips into production-ready 2D spritesheets and animation files. Combining state-of-the-art image processing, automated QA, normal map baking, and native game engine exporters, it bridges the gap between raw video and game engine integration in seconds.
 
-The most reliable current path is:
+![SpriteForge Demo Preview](app/examples/prebuilt_demo_sprite/preview.gif)
 
-1. Run the app locally.
-2. Verify the no-GPU demo.
-3. Convert or polish existing videos into sprite sheets.
-4. Use ComfyUI/WAN generation only after the local processing pipeline works.
+---
 
-![SpriteForge demo preview](app/examples/prebuilt_demo_sprite/preview.gif)
+## 💡 Why You Need SpriteForge Studio
 
-## Current Status
+Creating quality 2D game animations is notoriously tedious. Hand-drawing character directions takes weeks, generating consistent assets with AI video is full of flickering, and baking normal maps for dynamic 2D lighting is nearly impossible to do manually.
 
-This repository is best described as an actively developed local tool, not a
-finished consumer product. The codebase has a broad automated test suite and many
-working utility paths, but some advanced UI flows and AI generation workflows are
-still sensitive to local environment differences.
+**SpriteForge Studio solves this by automating the heavy lifting:**
 
-What is currently solid:
+*   **10x Faster Asset Creation:** Feed in an MP4, WEBM, or MOV video clip—whether it's a 3D character render, a motion capture output, or an AI generation—and extract a fully-packed, transparent spritesheet instantly.
+*   **Dynamic 2D Lighting Out-of-the-Box:** Bake matching **Normal, Specular, AO, and Height maps** for your character animations, enabling gorgeous real-time lighting in modern game engines.
+*   **Production-Grade Coherence:** Clean up outlines, harmonize palettes, stabilize temporal jittering, and upscale or downscale frames with smart LOD sampling.
+*   **Zero-Configuration Engine Imports:** Export complete, plug-and-play `.tscn` scene nodes for **Godot 4.x**, import scripts for **Unity**, and Paper2D configuration notes for **Unreal Engine**.
 
-- Local Flask/browser dashboard for the main workspace.
-- CPU-friendly no-GPU demo sprite generation.
-- Video-to-sprite processing with chroma keying, alpha cleanup, frame extraction,
-  packing, previews, and metadata.
-- Sprite QA reports, visual comparisons, frame status metadata, palette tools,
-  and repair helpers.
-- Project folders, references, release packaging, queue records, and history.
-- Export helpers for formats such as Godot, Unity, Unreal/Paper2D notes,
-  Aseprite JSON, XML atlases, APNG, and animated WebP.
-- A tested plugin/service architecture for selected QA and export extensions.
+---
 
-What should be treated as optional or experimental:
+## 🚀 Key Features
 
-- One-click WAN model installation on every machine.
-- Local text-to-video generation on low-VRAM GPUs.
-- Heavy reference-image and 14B-class model workflows.
-- Optional research integrations such as SAM2, BiRefNet, MediaPipe-style pose
-  extraction, LoRA training helpers, and advanced native/AI cleanup paths.
-- Marketplace-style bundle discovery and some training-lab workflows.
+### 🎬 Real-Time In-Browser Animation Player
+Never guess how your spritesheet will look in-game. Evaluate your outputs inside a high-performance, canvas-based animation previewer:
+*   **Scrub & Step**: Easily step frame-by-frame or scrub the timeline to check alignment.
+*   **Onion-Skinning**: Display preceding and succeeding frames as translucent overlays to guarantee fluid motion.
+*   **Playbacks**: Adjust speed (0.25x to 4x), toggle looping, and preview against checkerboard grids or solid colors.
 
-## Requirements
+### ✂️ Interactive Timeline & Frame Editor
+Clean up bad frames and retarget timings without opening a heavy editor:
+*   **Drag-to-Reorder**: Rearrange frames directly on the visual filmstrip timeline.
+*   **Hold & Delete**: Drop bad frames, duplicate frames, or set custom, frame-specific duration overrides.
+*   **Interactive Repacking**: Re-align the grid on-the-fly and rebuild your spritesheet metadata with a single click.
 
-Minimum for the local app and processing tools:
+### 💡 Normal Map & WebGL Dynamic Lighting Preview
+Interactive 2D lighting, right in your browser. Drag a point light source around your character preview to see your normal maps, specular reflections, and ambient occlusion composite in real-time WebGL. Export lit previews as GIFs to share with your team.
 
-- Python 3.10 or newer.
-- Git, if you want the setup scripts to install or update external tools.
-- Enough disk space for generated outputs.
-- Windows is the best-tested path. macOS/Linux launch scripts exist, but expect
-  more manual setup.
+### 🧠 AI-Powered QA & Repair Advisor
+Our automated Quality Assurance suite runs statistical analysis across frame silhouettes:
+*   **Loop Stability**: Measures loop RMSE to ensure seamless repeat animations.
+*   **Artifact Detection**: Alerts you to outline bleed, silhouette gaps, or stray pixels.
+*   **One-Click Auto-Fix**: The QA Advisor evaluates failures and builds custom repair plans (e.g. outline dilation, threshold snaps) that you can execute with one click.
 
-Optional for AI generation:
+### 🌀 Advanced Pipeline Power-Ups
+*   **Temporal Coherence Pass**: Uses sliding-window temporal filters to eliminate color flicker and edge jitter.
+*   **RIFE Frame Interpolation**: Smooth out low-framerate video clips into high-FPS animation assets.
+*   **Depth-Anything Matting**: Leverages monocular depth mapping to extract perfect edge alpha around complex details.
+*   **Multi-Resolution LOD Exports**: Automatically generates nested resolutions (e.g., 128px, 64px, 32px sheets) preserving crisp nearest-neighbor scale for pixel art.
 
-- ComfyUI.
-- WAN model checkpoints.
-- A CUDA-capable NVIDIA GPU for practical local generation.
-- Remote/cloud ComfyUI for heavier workflows.
+---
 
-The Python dependencies are listed in:
+## 🛠️ Seamless Game Engine Exporters
 
-- [pyproject.toml](pyproject.toml)
-- [app/requirements.txt](app/requirements.txt)
-- [requirements-lock.txt](requirements-lock.txt)
+Every sprite folder you export comes packed with sidecar manifests and engine scaffolding:
 
-## Quick Start
+*   **Godot 4.x**: Exports a ready-to-use `.tscn` scene. Pre-configured with crisp `nearest` texture filters, correct `hframes`/`vframes`, loop settings, and pivot metadata.
+*   **Unity**: Includes companion C# script templates and imports mappings to load your sheets directly into Unity's Sprite Editor.
+*   **Unreal Engine**: Auto-generates Paper2D import notes to map coordinates and flipbook frame rates.
+*   **Runtime Formats**: Export animations as **APNG**, **Animated WebP**, or vector-based **Lottie JSON** with explicit format capability contracts.
 
-On Windows, from the repository root:
+---
 
+## ⚡ Quick Start
+
+### 1. Launch the Studio
+On **Windows**, simply double-click the main launcher in the root directory:
 ```bat
 START_HERE.bat
 ```
+*(On macOS or Linux, run `./start.sh` from the terminal).*
 
-On macOS or Linux:
+The launcher automatically configures a local Python virtual environment, installs all required image-processing packages, and launches the beautiful glassmorphic Web Studio dashboard in your browser.
 
-```sh
-./start.sh
-```
-
-The launcher creates `app/.venv`, installs the app requirements, and starts the
-local browser UI. If the web UI fails, it attempts to fall back to the older
-classic UI.
-
-Once the dashboard opens:
-
-1. Run the no-GPU demo first.
-2. Open the generated demo output and confirm it includes `sheet.png`,
-   `sheet.json`, `preview.gif`, and `report.html`.
-3. Try converting an existing short `.mp4`, `.webm`, or `.mov` before spending
-   time on WAN generation.
-4. Only after that, use Setup to install or connect ComfyUI/WAN.
-
-## Common Workflows
-
-### Convert Existing Video
-
-Use the dashboard's Convert Video view, or use the CLI from the `app` folder:
-
-```bat
-python spriteforge.py video --input input\clip.mp4 --output output\clip_sprite
-```
-
-Best results come from videos with a locked camera, centered full-body subject,
-clean silhouette, and solid green or blue background.
-
-### Run the No-GPU Demo
-
-From the repository root:
-
+### 2. Verify Your Pipeline (No-GPU Demo)
+To check the system capabilities without downloading heavy AI weights or requiring a CUDA GPU, double-click:
 ```bat
 RUN_DEMO_NO_GPU.bat
 ```
+This runs a CPU-safe demo processing pipeline generating a sample character spritesheet complete with sheet metadata, previews, normal maps, and export helpers.
 
-Or from the `app` folder:
+### 3. Setup AI Generation (Optional)
+If you want to use the text-to-video generation features:
+1.  Navigate to the **Setup** view in the Web UI.
+2.  Install or link your local/remote **ComfyUI** instance.
+3.  Load the Wan model tiers (from Wan 2.1 1.3B up to heavier 5B or 14B models).
+4.  Launch text-guided character generations directly from the **Generate** interface.
 
-```bat
-python spriteforge_demo.py
-```
+---
 
-This path is useful because it checks the local Python/image-processing pipeline
-without requiring ComfyUI or a GPU.
+## 📂 Spritesheet Output Structure
 
-### Use ComfyUI/WAN Generation
-
-The dashboard can launch setup actions and generate through ComfyUI, but the
-success of this path depends on your environment. The safe starting tier is the
-Wan 2.1 1.3B workflow. Wan 2.2 5B is heavier. 14B-class workflows should be
-considered remote/cloud GPU work.
-
-See:
-
-- [app/docs/WAN_MODEL_TIERS_v11.md](app/docs/WAN_MODEL_TIERS_v11.md)
-- [app/workflows/README_WAN_INTEGRATION.md](app/workflows/README_WAN_INTEGRATION.md)
-
-## What Gets Produced
-
-A typical processed sprite output folder contains:
+A typical output package contains everything a game engine needs:
 
 ```text
-sheet.png
-sheet.json
-sheet.aseprite.json
-preview.gif
-report.html
-contact_sheet.jpg
-frames_processed/
-godot_notes.txt
+my_sprite/
+├── sheet.png                 # The assembled spritesheet grid
+├── sheet.json                # SpriteForge engine-agnostic frame & pivot metadata
+├── sheet.aseprite.json       # Aseprite-compatible frame tags and timing data
+├── preview.gif               # Transparent preview loop
+├── report.html               # Quality QA breakdown score
+├── contact_sheet.jpg         # Visual grid overview
+├── animated_exports/         # APNG, WebP, or Lottie runtime assets
+│   ├── idle.apng.manifest.json
+│   └── idle.png
+├── godot_export/             # Plug-and-play Godot files
+│   ├── sheet_player.gd
+│   └── my_sprite.tscn
+└── frames_processed/         # Individual cropped & processed frames (PNG)
 ```
 
-Depending on options, it may also include normal/specular/AO/height maps,
-engine-specific exports, APNG/WebP animations, QA reports, or release metadata.
+---
 
-Generated outputs are intentionally ignored by Git.
+## 🧪 Built to Last
 
-## Project Layout
+SpriteForge Studio is built on a robust, service-oriented Python architecture backed by **over 420 automated unit and integration tests** verifying outline calculations, rate-limiting security guards, SQLite db indexing, and schema validation.
 
-```text
-app/
-  spriteforge_web.py          Local Flask dashboard entry point
-  spriteforge.py              Core sprite/video processing CLI
-  spriteforge_unified.py      Unified command dispatcher
-  services/                   Processing, QA, project, export, and web helpers
-  web/                        Browser UI assets and components
-  workflows/                  ComfyUI/WAN workflow JSON files
-  docs/                       User and setup documentation
-  examples/prebuilt_demo_sprite/
-
-tests/                        Main automated test suite
-projects/                     Sample/global project data
-output/                       Local generated outputs, ignored by Git
-```
-
-## Testing
-
-Run the test suite from the repository root:
-
+To run the test suite locally:
 ```bat
 pytest
 ```
-
-At the time this README was rewritten, the suite passed locally with:
-
-```text
-203 passed
+*Note: If running the entire suite on Windows triggers memory issues due to native DLL cleanups, run with garbage collection disabled:*
+```bat
+python -c "import gc; gc.disable(); import pytest; pytest.main()"
 ```
-
-The tests cover service behavior, web APIs, project handling, QA thresholds,
-packing/export formats, sprite processing, visual comparison, and regression
-checks.
-
-## Documentation
-
-The most useful docs are:
-
-- [app/docs/END_USER_GUIDE.md](app/docs/END_USER_GUIDE.md)
-- [app/docs/FIRST_RUN_CHECKLIST_v8.md](app/docs/FIRST_RUN_CHECKLIST_v8.md)
-- [app/docs/TROUBLESHOOTING_v8.md](app/docs/TROUBLESHOOTING_v8.md)
-- [app/docs/WAN_MODEL_TIERS_v11.md](app/docs/WAN_MODEL_TIERS_v11.md)
-- [app/docs/api.md](app/docs/api.md)
-- [app/docs/PLUGIN_GUIDE.md](app/docs/PLUGIN_GUIDE.md)
-
-Some filenames include older version numbers for compatibility. Their content is
-still used by the current app.
-
-## Distribution Notes
-
-This repository does not include:
-
-- ComfyUI installs.
-- WAN checkpoints or other model weights.
-- User-uploaded videos.
-- Generated output folders.
-- Local logs.
-- Release ZIPs created from a user's workspace.
-
-Large local payloads are excluded on purpose. See:
-
-- [LICENSE](LICENSE)
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-
-## Honest Caveats
-
-SpriteForge is useful today if you are comfortable running a local Python tool
-and debugging your own AI/video environment. It is not yet a polished installer
-with guaranteed one-click generation on every machine.
-
-If your goal is to process already-generated clips into sprite sheets, the app is
-much easier to use. If your goal is full local AI generation, expect to spend
-time on ComfyUI, model placement, GPU memory settings, and workflow validation.

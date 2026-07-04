@@ -13,9 +13,8 @@ from typing import Any, Dict, List, Optional
 from PIL import Image
 
 from services.trained_lora_registry_service import set_default_lora
-from spriteforge_utils import safe_name
+from spriteforge_utils import ROOT, safe_name
 
-ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT = ROOT / "output" / "training_runs"
 
 TRAINER_DEFAULTS = {
@@ -51,6 +50,47 @@ def _trainer_for(model_family: str, trainer: str) -> str:
     if selected not in {"kohya", "ai_toolkit"}:
         raise ValueError("trainer must be auto, kohya, or ai_toolkit.")
     return selected
+
+
+def recommend_lora_training_defaults(vram_gb: Any = None, model_family: str = "sdxl") -> Dict[str, Any]:
+    """Recommend conservative LoRA settings from available GPU VRAM."""
+    try:
+        vram = float(vram_gb)
+    except (TypeError, ValueError):
+        vram = 0.0
+    family = (model_family or "sdxl").strip().lower()
+    if family == "flux":
+        if vram >= 24:
+            preset = {"resolution": 1024, "max_train_steps": 1600, "network_dim": 16, "batch_size": 1, "learning_rate": "4e-4"}
+            tier = "flux_high_vram"
+        elif vram >= 16:
+            preset = {"resolution": 768, "max_train_steps": 1200, "network_dim": 12, "batch_size": 1, "learning_rate": "3e-4"}
+            tier = "flux_balanced"
+        else:
+            preset = {"resolution": 512, "max_train_steps": 800, "network_dim": 8, "batch_size": 1, "learning_rate": "2e-4"}
+            tier = "flux_low_vram"
+    else:
+        family = "sdxl"
+        if vram >= 16:
+            preset = {"resolution": 1024, "max_train_steps": 1600, "network_dim": 32, "batch_size": 1, "learning_rate": "1e-4"}
+            tier = "sdxl_high_vram"
+        elif vram >= 10:
+            preset = {"resolution": 768, "max_train_steps": 1200, "network_dim": 16, "batch_size": 1, "learning_rate": "1e-4"}
+            tier = "sdxl_balanced"
+        else:
+            preset = {"resolution": 512, "max_train_steps": 800, "network_dim": 8, "batch_size": 1, "learning_rate": "8e-5"}
+            tier = "sdxl_low_vram"
+    return {
+        "schema": "spriteforge.lora_training_defaults.v1",
+        "model_family": family,
+        "vram_gb": vram,
+        "tier": tier,
+        "repeats": 10,
+        "gradient_checkpointing": True,
+        "cache_latents_to_disk": True,
+        "recommendation": preset,
+        "notes": "Conservative defaults; inspect dataset quality and trainer docs before long runs.",
+    }
 
 
 def _trainer_workdir(trainer: str, trainer_root: Path) -> Path:
@@ -237,7 +277,8 @@ def _top_tokens(captions_dir: Path, limit: int = 32) -> List[str]:
     for path in sorted(captions_dir.glob("*.txt")):
         try:
             text = path.read_text(encoding="utf-8", errors="ignore").lower()
-        except Exception:
+        except Exception as exc:
+            logger.debug("Skipping unreadable caption file %s while summarizing LoRA dataset: %s", path, exc)
             continue
         for token in re.findall(r"[a-z0-9_]{3,}", text):
             if token not in {"the", "and", "with", "from", "that", "this"}:
@@ -250,12 +291,13 @@ def _dominant_palette(images_dir: Path, colors: int = 8) -> List[List[int]]:
     for path in sorted(images_dir.glob("*.png")):
         try:
             img = Image.open(path).convert("RGBA")
-        except Exception:
+        except Exception as exc:
+            logger.debug("Skipping unreadable training image %s while summarizing LoRA palette: %s", path, exc)
             continue
         small = img.resize((64, 64), Image.Resampling.BILINEAR)
         quant = small.convert("RGB").quantize(colors=max(2, colors), method=Image.Quantize.FASTOCTREE)
         pal = quant.getpalette() or []
-        for idx, count in (quant.getcolors(maxcolors=1024) or []):
+        for count, idx in (quant.getcolors(maxcolors=1024) or []):
             base = idx * 3
             if base + 2 < len(pal):
                 rgb = (int(pal[base]), int(pal[base + 1]), int(pal[base + 2]))
@@ -322,6 +364,19 @@ def _run_native_training(
         source_path=str(artifact_path),
         installed_path=str(artifact_path),
         notes="Native SpriteForge adapter generated via --native-only --run.",
+        metadata={
+            "schema": "spriteforge.trained_lora_metadata.v1",
+            "runtime_backend": "native",
+            "artifact_schema": artifact["schema"],
+            "model_family": model_family,
+            "resolution": int(resolution),
+            "sample_count": int(sample_count),
+            "max_train_steps": int(max_train_steps),
+            "style_metadata": artifact["style_metadata"],
+            "dataset_provenance": artifact["dataset_provenance"],
+            "token_profile": tokens,
+            "palette_profile": palette,
+        },
         registry_path=registry_path,
     )
 

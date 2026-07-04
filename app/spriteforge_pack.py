@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import re
 import shutil
@@ -20,13 +21,14 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from PIL import Image
-from spriteforge_utils import safe_name, load_meta
+from spriteforge_utils import ROOT, safe_name, load_meta
 
-ROOT = Path(__file__).resolve().parent
+logger = logging.getLogger(__name__)
 
 try:
     from spriteforge_prompts import ACTION_TEMPLATES, DIRECTIONS, build_prompt, make_posepack, DEFAULT_CHARACTER, DEFAULT_STYLE, DEFAULT_BACKGROUND
-except Exception:
+except Exception as exc:
+    logger.warning("Could not import spriteforge prompt templates; using fallback pack defaults: %s", exc)
     ACTION_TEMPLATES = {}
     DIRECTIONS = {}
     DEFAULT_CHARACTER = "single full body original game character, professional appealing character design, heroic adult proportions, distinctive outfit, clean silhouette"

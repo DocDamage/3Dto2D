@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from services.project_service import ProjectService
+from services.project_palette_service import DEFAULT_PALETTE_LOCK, normalize_palette_lock
 from services.consistency_lock_service import build_consistency_lock
 from services.prompt_builder_service import build_structured_prompt, prompt_builder_options
 from services.scene_compositor_service import build_scene_manifest
@@ -135,6 +136,7 @@ def get_project_config():
                 "required_frame_count": None,
                 "alpha_cleanliness": 0.05
             }
+        data["palette_lock"] = normalize_palette_lock(data.get("palette_lock", DEFAULT_PALETTE_LOCK))
         return jsonify(data)
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
@@ -154,6 +156,8 @@ def save_project_config():
         for key in ["character", "style", "actions", "directions", "fps", "cell_size", "frames_by_action", "quality_gates"]:
             if key in body:
                 data[key] = body[key]
+        if "palette_lock" in body:
+            data["palette_lock"] = normalize_palette_lock(body.get("palette_lock"))
         data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         save_json(p_path, data)
         return jsonify({"ok": True, "config": data})
@@ -360,13 +364,26 @@ def run_pose_estimation():
 @routes_projects.route("/api/tilemap/generate", methods=["POST"])
 def generate_tilemap_autotile():
     body = request.json or {}
+    mode = str(body.get("mode") or "autotile_16").strip()
     base_path = str(body.get("base_path") or "").strip()
     border_path = str(body.get("border_path") or "").strip()
     output_path = str(body.get("output_path") or "output/tilesets/autotile_16.png").strip()
-    
-    if not base_path or not border_path:
-        return jsonify({"ok": False, "message": "base_path and border_path are required."}), 400
-        
+
     from services.tilemap_service import TilemapService
-    res = TilemapService.generate_16_autotiles(base_path, border_path, output_path)
+    if mode == "wang_16":
+        required = ["north_path", "east_path", "south_path", "west_path"]
+        if any(not str(body.get(key) or "").strip() for key in required):
+            return jsonify({"ok": False, "message": "north_path, east_path, south_path, and west_path are required."}), 400
+        res = TilemapService.generate_wang_tiles(
+            str(body.get("north_path") or "").strip(),
+            str(body.get("east_path") or "").strip(),
+            str(body.get("south_path") or "").strip(),
+            str(body.get("west_path") or "").strip(),
+            output_path or "output/tilesets/wang_16.png",
+            tile_size=int(body.get("tile_size") or 0),
+        )
+    else:
+        if not base_path or not border_path:
+            return jsonify({"ok": False, "message": "base_path and border_path are required."}), 400
+        res = TilemapService.generate_16_autotiles(base_path, border_path, output_path)
     return jsonify(res)

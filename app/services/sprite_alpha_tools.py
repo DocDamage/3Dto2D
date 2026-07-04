@@ -2,6 +2,7 @@
 """Alpha extraction and refinement helpers for sprite frames."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Tuple
 
@@ -77,7 +78,8 @@ def refine_alpha_edges(
             sigmaSpace=max(1.0, float(radius * 2)),
         )
         smooth = bilateral * 0.65 + gaussian_smooth * 0.35
-    except Exception:
+    except Exception as exc:
+        logging.getLogger(__name__).debug("OpenCV unavailable for bilateral alpha refinement; Gaussian fallback will be used: %s", exc)
         smooth = gaussian_smooth
 
     refined = alpha_arr.copy()

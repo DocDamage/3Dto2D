@@ -7,7 +7,7 @@ import threading
 from pathlib import Path
 from typing import Callable, List, Optional, Sequence, Tuple
 
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import ROOT
 
 
 class CommandRunner:
@@ -39,6 +39,8 @@ class CommandRunner:
 
         self.app.progress_bar["value"] = 0
         self.app.progress_bar["maximum"] = 100
+        self.app.progress_bar["mode"] = "indeterminate"
+        self.app.progress_bar.start(12)
 
         def worker():
             final_code = 0

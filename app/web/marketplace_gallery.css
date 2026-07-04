@@ -105,6 +105,43 @@
   gap: 8px;
 }
 
+.marketplace-share-result {
+  margin-top: 12px;
+  width: 100%;
+  min-height: 160px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.plugin-sdk-card {
+  grid-column: 1 / -1;
+}
+
+.plugin-sdk-summary {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.plugin-sdk-summary b {
+  color: var(--text);
+}
+
+.plugin-sdk-summary small {
+  color: var(--muted);
+}
+
+.plugin-sdk-scaffold {
+  margin-top: 12px;
+  min-height: 220px;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
 @media (max-width: 560px) {
   .marketplace-item {
     grid-template-columns: 64px 1fr;

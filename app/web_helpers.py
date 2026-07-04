@@ -35,7 +35,7 @@ from services.generation_intelligence import (
     safer_retry_payload,
     summarize_qa_gates,
 )
-from spriteforge_utils import load_json, save_json, app_python, PYTHON, safe_name
+from spriteforge_utils import ROOT, load_json, save_json, app_python, PYTHON, safe_name
 
 # Re-exports from split helper services
 from services.web_helpers_ab import (
@@ -87,7 +87,6 @@ def _is_relative_to(path: Path, base: Path) -> bool:
     except ValueError:
         return False
 
-ROOT = Path(__file__).resolve().parent
 PROJECTS = ROOT / "projects"
 WEB = ROOT / "web"
 OUTPUT = ROOT / "output"

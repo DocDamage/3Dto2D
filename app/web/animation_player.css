@@ -1,0 +1,183 @@
+.animation-player-view .panel-head {
+  align-items: flex-start;
+}
+
+.animation-export-status {
+  align-self: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.animation-player-shell {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.animation-player-sidebar,
+.animation-player-stage {
+  border-radius: 8px;
+}
+
+.animation-player-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.animation-player-sidebar label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.animation-player-sidebar select,
+.animation-player-sidebar input[type="range"] {
+  width: 100%;
+}
+
+.animation-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.animation-meta-grid div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.animation-meta-grid b,
+.animation-meta-grid span {
+  display: block;
+}
+
+.animation-meta-grid span {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.animation-control-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.animation-player-stage {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.animation-canvas-wrap {
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: grab;
+}
+
+.animation-canvas-wrap:active {
+  cursor: grabbing;
+}
+
+.animation-canvas-wrap.bg-dark {
+  background: #10131c;
+}
+
+.animation-canvas-wrap.bg-light {
+  background: #eef2f7;
+}
+
+.animation-canvas-wrap.bg-magenta {
+  background: #ff00ff;
+}
+
+.animation-canvas-wrap.bg-custom {
+  background-color: #10131c;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.animation-custom-bg-field.hidden {
+  display: none;
+}
+
+#animationCanvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transform-origin: center center;
+}
+
+.animation-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.animation-frame-readout {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.animation-frame-readout b {
+  color: var(--text);
+}
+
+.animation-timeline-ticks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
+  gap: 4px;
+}
+
+.animation-hit-frame-legend {
+  color: #fcd34d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.animation-hit-frame-legend.hidden {
+  display: none;
+}
+
+.animation-tick {
+  min-height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.animation-tick.hit-frame {
+  border-color: rgba(252, 211, 77, 0.82);
+  color: #fcd34d;
+  box-shadow: inset 0 -3px 0 rgba(252, 211, 77, 0.55);
+}
+
+.animation-tick.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(65, 190, 255, 0.16);
+}
+
+@media (max-width: 900px) {
+  .animation-player-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .animation-canvas-wrap {
+    min-height: 300px;
+  }
+}

@@ -58,10 +58,7 @@ def load_local_env(root: Path = ROOT) -> Dict[str, str]:
 def resolve_api_key(provider: str) -> str:
     load_local_env()
     provider = provider.lower().strip()
-    names = {
-        "openai": ("OPENAI_API_KEY", "SPRITEFORGE_OPENAI_API_KEY"),
-        "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY", "SPRITEFORGE_GEMINI_API_KEY"),
-    }.get(provider, ())
+    names = provider_key_names(provider)
     for name in names:
         value = os.environ.get(name)
         if value:
@@ -69,14 +66,48 @@ def resolve_api_key(provider: str) -> str:
     raise RuntimeError(f"Missing API key for {provider}. Put it in a local .env file or process environment.")
 
 
-def hardened_prompt(user_prompt: str, constraints: str = DEFAULT_CONSTRAINTS) -> str:
+def provider_key_names(provider: str) -> Tuple[str, ...]:
+    return {
+        "openai": ("OPENAI_API_KEY", "SPRITEFORGE_OPENAI_API_KEY"),
+        "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY", "SPRITEFORGE_GEMINI_API_KEY"),
+    }.get(provider.lower().strip(), ())
+
+
+def cloud_image_provider_status(provider: Optional[str] = None) -> Dict[str, Any]:
+    load_local_env()
+    providers = [provider.lower().strip()] if provider else ["openai", "gemini"]
+    rows = {}
+    for name in providers:
+        key_names = provider_key_names(name)
+        configured_name = next((key for key in key_names if os.environ.get(key)), "")
+        rows[name] = {
+            "provider": name,
+            "ok": bool(configured_name),
+            "configured": bool(configured_name),
+            "env_names": list(key_names),
+            "configured_env_name": configured_name,
+            "message": "API key configured locally." if configured_name else "Missing local API key.",
+        }
+    return {
+        "ok": True,
+        "providers": rows,
+        "local_env_supported": True,
+        "local_env_files": [".env", "app/.env"],
+    }
+
+
+def hardened_prompt(user_prompt: str, constraints: str = DEFAULT_CONSTRAINTS, negative: str = DEFAULT_NEGATIVE) -> str:
     user_prompt = str(user_prompt or "").strip()
     if not user_prompt:
         raise ValueError("Prompt is required.")
     constraints = str(constraints or DEFAULT_CONSTRAINTS).strip()
-    if constraints.lower() in user_prompt.lower():
-        return user_prompt
-    return f"{user_prompt}, {constraints}"
+    negative = str(negative or DEFAULT_NEGATIVE).strip()
+    prompt = user_prompt
+    if constraints and constraints.lower() not in prompt.lower():
+        prompt = f"{prompt}, {constraints}"
+    if negative and negative.lower() not in prompt.lower():
+        prompt = f"{prompt}. Avoid: {negative}"
+    return prompt
 
 
 def parse_cell_size(value: str | Tuple[int, int] | None, default: Tuple[int, int] = (64, 64)) -> Tuple[int, int]:
@@ -156,6 +187,109 @@ def generate_cloud_image(provider: str, prompt: str, model: Optional[str], size:
     raise ValueError(f"Unsupported cloud image provider: {provider}")
 
 
+def _cloud_generation_contract(
+    *,
+    source: str,
+    frame_count: int,
+    constraints: str,
+    negative: str,
+    key_color: str,
+    cell_size: Tuple[int, int],
+    palette_colors: Optional[int],
+) -> Dict[str, Any]:
+    return {
+        "schema": "spriteforge.cloud_generation_contract.v1",
+        "cloud_api_opt_in": source == "cloud_api",
+        "source": source,
+        "request_strategy": "one_frame_per_request" if source == "cloud_api" else "local_source_images_only",
+        "planned_cloud_requests": frame_count if source == "cloud_api" else 0,
+        "secrets_policy": {
+            "read_from_local_env": True,
+            "secret_values_exposed": False,
+            "secret_values_persisted": False,
+            "supported_env_files": [".env", "app/.env"],
+        },
+        "prompt_policy": {
+            "constraints": constraints,
+            "negative": negative,
+            "force_appended": True,
+            "single_asset": "single isolated 2D game asset" in constraints,
+            "sprite_sheet_disallowed": "sprite sheet grid" in negative,
+        },
+        "post_processing": {
+            "background_to_alpha": key_color,
+            "downsample_interpolation": "nearest",
+            "target_cell_size": f"{cell_size[0]}x{cell_size[1]}",
+            "palette_quantization": bool(palette_colors),
+            "palette_colors": palette_colors,
+            "grid_stitching": True,
+        },
+    }
+
+
+def build_cloud_generation_plan(
+    prompt: str,
+    provider: str = "openai",
+    model: Optional[str] = None,
+    size: str = "1024x1024",
+    cell_size: str | Tuple[int, int] = "64x64",
+    frame_count: int = 1,
+    frame_prompts: Optional[Sequence[str]] = None,
+    source_images: Optional[Sequence[str]] = None,
+    key_color: str = DEFAULT_KEY_COLOR,
+    palette_colors: Optional[int] = 24,
+    constraints: str = DEFAULT_CONSTRAINTS,
+    negative: str = DEFAULT_NEGATIVE,
+) -> Dict[str, Any]:
+    """Return a secret-safe dry-run plan for cloud image sprite generation."""
+    provider = provider.lower().strip()
+    if provider not in {"openai", "gemini"}:
+        raise ValueError(f"Unsupported cloud image provider: {provider}")
+    cell = parse_cell_size(cell_size)
+    source_images = list(source_images or [])
+    frame_prompts = list(frame_prompts or [])
+    planned_count = len(source_images) if source_images else max(1, int(frame_count))
+    source = "local_images" if source_images else "cloud_api"
+    prompts = []
+    if not source_images:
+        for idx in range(planned_count):
+            pose_suffix = frame_prompts[idx] if idx < len(frame_prompts) else f"pose frame {idx + 1}"
+            prompts.append(hardened_prompt(f"{prompt}, {pose_suffix}", constraints, negative))
+    provider_status = cloud_image_provider_status(provider)["providers"].get(provider, {})
+    return {
+        "schema": "spriteforge.cloud_generation_plan.v1",
+        "provider": provider,
+        "model": model or ("gpt-image-1" if provider == "openai" else "imagen-3.0-generate-002"),
+        "provider_configured": bool(provider_status.get("configured")),
+        "configured_env_name": provider_status.get("configured_env_name", ""),
+        "secret_values_exposed": False,
+        "source": source,
+        "source_image_count": len(source_images),
+        "frame_count": planned_count,
+        "generation_size": size,
+        "cell_size": f"{cell[0]}x{cell[1]}",
+        "key_color": key_color,
+        "palette_colors": palette_colors,
+        "hardened_prompts": prompts,
+        "processing_steps": [
+            {"name": "isolate", "detail": "Generate one isolated pose per frame."},
+            {"name": "transparency", "detail": f"Remove chroma key background {key_color} into alpha."},
+            {"name": "downscale", "detail": f"Resize to {cell[0]}x{cell[1]} using nearest-neighbor interpolation."},
+            {"name": "palette", "detail": "Quantize to a limited palette." if palette_colors else "Keep source colors."},
+            {"name": "stitch", "detail": "Pack processed frames onto a grid-aligned sprite sheet."},
+        ],
+        "generation_contract": _cloud_generation_contract(
+            source=source,
+            frame_count=planned_count,
+            constraints=constraints,
+            negative=negative,
+            key_color=key_color,
+            cell_size=cell,
+            palette_colors=palette_colors,
+        ),
+    }
+
+
 def process_cloud_frame(
     image: Image.Image,
     cell_size: Tuple[int, int],
@@ -180,6 +314,25 @@ def process_cloud_frame(
     if palette_colors:
         out = apply_native_pixel_cleanup(out, colors=int(palette_colors), alpha_threshold=8, dither=False)
     return FrameItem(out, "cloud_frame", 0)
+
+
+def _frame_cleanup_metrics(raw: Image.Image, processed: Image.Image) -> Dict[str, Any]:
+    rgba = processed.convert("RGBA")
+    bbox = alpha_bbox(rgba, threshold=8)
+    alpha = rgba.getchannel("A")
+    alpha_histogram = alpha.histogram()
+    opaque_pixels = sum(alpha_histogram[9:])
+    total_pixels = max(1, rgba.width * rgba.height)
+    colors = rgba.convert("RGBA").getcolors(maxcolors=rgba.width * rgba.height + 1) or []
+    return {
+        "schema": "spriteforge.cloud_frame_cleanup.v1",
+        "raw_size": f"{raw.width}x{raw.height}",
+        "processed_size": f"{rgba.width}x{rgba.height}",
+        "alpha_bbox": list(bbox) if bbox else [],
+        "opaque_pixel_ratio": round(opaque_pixels / total_pixels, 4),
+        "transparent_pixel_ratio": round(1.0 - (opaque_pixels / total_pixels), 4),
+        "unique_color_count": len(colors),
+    }
 
 
 def _load_source_images(paths: Sequence[str]) -> List[Image.Image]:
@@ -226,6 +379,8 @@ def build_cloud_sprite_sheet(
     cell = parse_cell_size(cell_size)
     raw_images = _load_source_images(source_images or [])
     prompts: List[str] = []
+    source = "local_images" if raw_images else "cloud_api"
+    resolved_model = model or ("gpt-image-1" if provider.lower().strip() == "openai" else "imagen-3.0-generate-002")
     if raw_images:
         frame_count = len(raw_images)
     else:
@@ -233,10 +388,11 @@ def build_cloud_sprite_sheet(
         frame_prompts = list(frame_prompts or [])
         for idx in range(frame_count):
             pose_suffix = frame_prompts[idx] if idx < len(frame_prompts) else f"pose frame {idx + 1}"
-            prompts.append(hardened_prompt(f"{prompt}, {pose_suffix}", constraints))
-        raw_images = [generate_cloud_image(provider, item, model, size) for item in prompts]
+            prompts.append(hardened_prompt(f"{prompt}, {pose_suffix}", constraints, negative))
+        raw_images = [generate_cloud_image(provider, item, resolved_model, size) for item in prompts]
 
     processed: List[FrameItem] = []
+    frame_sources: List[Dict[str, Any]] = []
     for idx, image in enumerate(raw_images):
         raw_path = raw_dir / f"raw_{idx:04d}.png"
         image.save(raw_path)
@@ -247,21 +403,72 @@ def build_cloud_sprite_sheet(
             palette_colors=palette_colors,
         )
         processed.append(FrameItem(item.image, f"cloud_{idx:04d}", idx))
+        cleanup_metrics = _frame_cleanup_metrics(image, item.image)
+        frame_sources.append({
+            "index": idx,
+            "name": f"cloud_{idx:04d}",
+            "source": "local_image" if source_images else "cloud_api",
+            "source_image": str(source_images[idx]) if source_images and idx < len(source_images) else "",
+            "raw_frame": str(raw_path.relative_to(out)).replace("\\", "/"),
+            "processed_frame": f"frames_processed/frame_{idx:04d}.png",
+            "hardened_prompt": prompts[idx] if idx < len(prompts) else "",
+            "provider": provider,
+            "model": resolved_model,
+            "cell_size": f"{cell[0]}x{cell[1]}",
+            "key_color": key_color,
+            "palette_colors": palette_colors,
+            "cleanup_metrics": cleanup_metrics,
+        })
 
     save_png_sequence(processed, processed_dir, prefix="frame")
     sheet, used_columns, rows, rects = pack_sheet(processed, columns=columns, spacing=0, margin=0, power_of_two=False)
     sheet.save(out / "sheet.png")
     extra = {
         "schema": "spriteforge.cloud_image_sprite.v1",
+        "plan_schema": "spriteforge.cloud_generation_plan.v1",
         "provider": provider,
-        "model": model,
+        "model": resolved_model,
         "prompt": prompt,
         "hardened_prompts": prompts,
+        "frame_sources": frame_sources,
         "negative": negative,
         "constraints": constraints,
         "key_color": key_color,
         "palette_colors": palette_colors,
-        "source": "local_images" if source_images else "cloud_api",
+        "processing": {
+            "transparency_extraction": {
+                "engine": "chroma_key",
+                "background_color": key_color,
+                "key_tolerance": 18.0,
+            },
+            "downsampling": {
+                "target_cell_size": f"{cell[0]}x{cell[1]}",
+                "interpolation": "nearest",
+            },
+            "palette_quantization": {
+                "enabled": bool(palette_colors),
+                "colors": palette_colors,
+            },
+            "cleanup_metrics": {
+                "schema": "spriteforge.cloud_frame_cleanup.v1",
+                "per_frame": True,
+            },
+            "assembly": {
+                "stitcher": "sprite_sheet_service.pack_sheet",
+                "grid_aligned": True,
+            },
+        },
+        "source": source,
+        "generation_contract": _cloud_generation_contract(
+            source=source,
+            frame_count=len(raw_images),
+            constraints=constraints,
+            negative=negative,
+            key_color=key_color,
+            cell_size=cell,
+            palette_colors=palette_colors,
+        ),
+        "provider_configured": cloud_image_provider_status(provider)["providers"].get(provider, {}).get("configured", False),
     }
     write_metadata(
         out / "sheet.json",

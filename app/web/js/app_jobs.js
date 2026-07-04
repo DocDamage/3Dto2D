@@ -46,16 +46,16 @@ function connectSSE() {
   };
 }
 
-function inferredJobProgress(job, running) {
+function jobSseInferredProgress(job, running) {
   if (!running) return job.exit_code === 0 ? 100 : 0;
   return job.progress || 10;
 }
 
-function renderGlobalProgress(job) {
+function renderJobGlobalProgress(job) {
   const running = !!job?.running;
   const done = !running && job?.exit_code === 0;
   const failed = !running && job?.exit_code;
-  const progress = inferredJobProgress(job || {}, running);
+  const progress = jobSseInferredProgress(job || {}, running);
 
   const box = $('#globalTaskProgress');
   if (box) {
@@ -88,11 +88,11 @@ function renderGlobalProgress(job) {
 
   const fill = $('#globalProgressFill') || $('#global-progress-bar');
   if (fill) {
-    setProgressFill(fill, progress, running ? 'busy' : done ? 'done' : failed ? 'failed' : '');
+    setJobProgressFill(fill, progress, running ? 'busy' : done ? 'done' : failed ? 'failed' : '');
   }
 }
 
-function setProgressFill(el, pct, status) {
+function setJobProgressFill(el, pct, status) {
   if (!el) return;
   el.style.width = `${pct}%`;
   el.className = 'progress-fill ' + status;
@@ -100,7 +100,7 @@ function setProgressFill(el, pct, status) {
 
 function renderJob(job) {
   const running = !!job.running;
-  const progress = inferredJobProgress(job, running);
+  const progress = jobSseInferredProgress(job, running);
 
   const jTitle = $('#job-title');
   const lTitle = $('#log-title');
@@ -116,9 +116,9 @@ function renderJob(job) {
     jState.className = 'badge ' + (running ? 'busy' : '');
   }
   if (progFill) {
-    setProgressFill(progFill, progress, running ? 'busy' : job.exit_code === 0 ? 'done' : job.exit_code ? 'failed' : '');
+    setJobProgressFill(progFill, progress, running ? 'busy' : job.exit_code === 0 ? 'done' : job.exit_code ? 'failed' : '');
   }
-  renderGlobalProgress(job);
+  renderJobGlobalProgress(job);
 
   const logs = (job.logs || []).join('\n');
   window.lastLogText = logs;
@@ -172,8 +172,8 @@ function renderJob(job) {
 
       timeStateEl.style.display = 'block';
       const eta = job.eta_label || job.metadata?.eta?.label || estTime;
-      const elapsed = job.elapsed_seconds ? `Elapsed: ${formatDuration(job.elapsed_seconds)} · ` : '';
-      const remaining = job.remaining_seconds !== null && job.remaining_seconds !== undefined ? ` · Remaining: ${formatDuration(job.remaining_seconds)}` : '';
+      const elapsed = job.elapsed_seconds ? `Elapsed: ${formatJobDuration(job.elapsed_seconds)} · ` : '';
+      const remaining = job.remaining_seconds !== null && job.remaining_seconds !== undefined ? ` · Remaining: ${formatJobDuration(job.remaining_seconds)}` : '';
       const progressMode = job.progress_mode === 'comfy_ws' ? 'Exact ComfyUI websocket progress' : 'Estimated progress';
       const detail = job.stage_detail || currentStep;
       timeStateEl.innerHTML = `${escapeHtml(elapsed)}ETA: ${escapeHtml(eta)}${escapeHtml(remaining)}<br>${escapeHtml(progressMode)}: ${escapeHtml(detail)}`;
@@ -184,7 +184,7 @@ function renderJob(job) {
   }
 }
 
-function formatDuration(seconds) {
+function formatJobDuration(seconds) {
   const total = Math.max(0, Math.round(Number(seconds) || 0));
   const mins = Math.floor(total / 60);
   const secs = total % 60;

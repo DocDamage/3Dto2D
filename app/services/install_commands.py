@@ -11,8 +11,7 @@ from typing import List, Optional
 
 from services.shell_service import ensure_venv, git_clone_or_pull, install_requirements, run
 from services.model_install_service import manifests_for_install_tier
-
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import ROOT
 
 WAN_VIDEO_CUSTOM_NODES = [
     ("https://github.com/kijai/ComfyUI-WanVideoWrapper.git", "ComfyUI-WanVideoWrapper"),

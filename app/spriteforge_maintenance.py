@@ -12,7 +12,8 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
+
 CONFIG_PATH = ROOT / "config" / "spriteforge_config.json"
 SNAP_ROOT = ROOT / "snapshots"
 

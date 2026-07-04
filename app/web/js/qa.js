@@ -470,6 +470,115 @@ if ($('#projectConfigForm')) {
   });
 }
 
+function renderQaAdvisor(data) {
+  const panel = $('#qaAdvisorPanel');
+  if (!panel) return;
+  clearNode(panel);
+  if (!data || !data.ok) {
+    appendText(panel, 'div', data?.message || 'Advisor unavailable.', 'empty compact');
+    return;
+  }
+  const head = document.createElement('div');
+  head.className = 'qa-advisor-head';
+  appendText(head, 'b', data.score !== null && data.score !== undefined ? `QA score ${data.score}` : 'QA advisor');
+  appendText(head, 'span', data.report_found ? 'Based on the latest QA report.' : 'No QA report found; using available metadata only.');
+  panel.appendChild(head);
+  if (data.learning_summary) {
+    const learning = document.createElement('div');
+    learning.className = 'qa-advisor-learning';
+    const promoted = (data.learning_summary.promoted_codes || []).join(', ') || 'none';
+    const deprioritized = (data.learning_summary.deprioritized_codes || []).join(', ') || 'none';
+    appendText(learning, 'b', `${data.learning_summary.feedback_count || 0} feedback decision${Number(data.learning_summary.feedback_count || 0) === 1 ? '' : 's'} learned`);
+    appendText(learning, 'span', `Promoted: ${promoted} · Deprioritized: ${deprioritized}`);
+    panel.appendChild(learning);
+  }
+
+  (data.advice || []).forEach(row => {
+    const item = document.createElement('article');
+    item.className = `qa-advisor-item severity-${row.severity || 'medium'}`;
+    appendText(item, 'b', row.title || row.code || 'Advice');
+    appendText(item, 'p', row.reason || '');
+    appendText(item, 'span', row.action || '');
+    if (row.feedback) {
+      appendText(item, 'small', `Feedback: ${row.feedback.accepted || 0} accepted · ${row.feedback.rejected || 0} rejected · ${row.feedback.dismissed || 0} dismissed`);
+    }
+    if (row.repair_plan) {
+      appendText(item, 'small', `Plan: ${row.repair_plan.mode || 'manual_review'} · ${row.repair_plan.follow_up || 'Run QA again after repair.'}`);
+    }
+    if (row.command_hint) appendText(item, 'code', row.command_hint);
+    const actions = document.createElement('div');
+    actions.className = 'button-row compact-actions';
+    if (row.repair_action && (row.repair_action.button_id || row.repair_action.view)) {
+      const repair = document.createElement('button');
+      repair.className = 'mini primary qa-advisor-repair';
+      repair.type = 'button';
+      repair.textContent = row.repair_action.label || 'Apply repair';
+      repair.addEventListener('click', () => {
+        if (row.repair_action.button_id) {
+          const target = document.getElementById(row.repair_action.button_id);
+          if (target) {
+            target.click();
+            toast(`Started repair: ${row.repair_action.label || row.code}`);
+            return;
+          }
+        }
+        if (row.repair_action.view && typeof showView === 'function') {
+          showView(row.repair_action.view);
+          toast(`Opened ${row.repair_action.label || row.repair_action.view}.`);
+          return;
+        }
+        toast('Repair action is not available in this view yet.');
+      });
+      actions.appendChild(repair);
+    }
+    ['accepted', 'rejected', 'dismissed'].forEach(decision => {
+      const btn = document.createElement('button');
+      btn.className = 'mini';
+      btn.type = 'button';
+      btn.textContent = decision;
+      btn.addEventListener('click', async () => {
+        try {
+          await api('/api/qa/advisor/feedback', {
+            method: 'POST',
+            body: JSON.stringify({ path: $('#qaAdvisorPath')?.value || $('#qaSpriteDir')?.value || '', code: row.code, decision }),
+          });
+          toast('QA advisor feedback saved.');
+        } catch (err) {
+          toast(err.message || 'Could not save advisor feedback.');
+        }
+      });
+      actions.appendChild(btn);
+    });
+    item.appendChild(actions);
+    panel.appendChild(item);
+  });
+
+  if (data.suggestions && data.suggestions.length) {
+    const list = document.createElement('div');
+    list.className = 'qa-advisor-suggestions';
+    appendText(list, 'b', 'Original QA suggestions');
+    data.suggestions.forEach(suggestion => appendText(list, 'span', suggestion));
+    panel.appendChild(list);
+  }
+}
+
+async function loadQaAdvisor() {
+  const path = String($('#qualitySpriteDir')?.value || '').trim();
+  if (!path) {
+    renderQaAdvisor({ ok: false, message: 'Select a sprite folder first.' });
+    return;
+  }
+  try {
+    const data = await api('/api/qa/advisor?path=' + encodeURIComponent(path));
+    renderQaAdvisor(data);
+  } catch (err) {
+    renderQaAdvisor({ ok: false, message: err.message || 'Advisor failed.' });
+  }
+}
+
+$('#qaAdvisorBtn')?.addEventListener('click', loadQaAdvisor);
+$('#qaAdvisorRefreshBtn')?.addEventListener('click', loadQaAdvisor);
+
 if ($('#qualityList')) {
   $('#qualityList').addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-select-quality-path]');
@@ -479,6 +588,7 @@ if ($('#qualityList')) {
     $('#qualitySpriteDir').value = selectedSpriteDir;
     if (typeof refreshQualityLivePreview === 'function') await refreshQualityLivePreview(selectedSpriteDir, { force: true });
     if (typeof loadSpriteDetails === 'function') await loadSpriteDetails(selectedSpriteDir);
+    await loadQaAdvisor();
   });
 }
 

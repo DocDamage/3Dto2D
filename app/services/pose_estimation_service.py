@@ -2,12 +2,14 @@ import os
 import time
 import json
 import math
+import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 from PIL import Image, ImageDraw
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent.parent
+logger = logging.getLogger(__name__)
 
 class PoseEstimationService:
     @staticmethod
@@ -15,7 +17,8 @@ class PoseEstimationService:
         try:
             import cv2
             import numpy as np
-        except Exception:
+        except Exception as exc:
+            logger.warning("OpenCV/numpy unavailable for largest pose component mask; using original mask: %s", exc)
             return mask
         if mask is None or mask.size == 0:
             return mask
@@ -39,7 +42,8 @@ class PoseEstimationService:
         try:
             import cv2
             import numpy as np
-        except Exception:
+        except Exception as exc:
+            logger.warning("OpenCV/numpy unavailable for native subject mask: %s", exc)
             return None
 
         h, w = cv_bgr.shape[:2]
@@ -78,7 +82,8 @@ class PoseEstimationService:
         try:
             import cv2
             import numpy as np
-        except Exception:
+        except Exception as exc:
+            logger.warning("OpenCV/numpy unavailable for native pose drawing; using fallback anchors: %s", exc)
             return {
                 "anchor_x": w / 2.0,
                 "anchor_y": float(h),

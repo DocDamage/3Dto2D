@@ -16,6 +16,8 @@ def test_capability_report_contains_expected_entries():
     ids = {row["id"] for row in report["entries"]}
     assert "wan_generation" in ids
     assert "video_to_sprite_conversion" in ids
+    assert "cloud_image_generation" in ids
+    assert "realtime_progress" in ids
 
 
 def test_resolve_runtime_blocks_non_native_when_native_only():
@@ -63,8 +65,36 @@ def test_capability_report_exposes_runtime_state():
     lora_entry = entries["lora_training_run"]
     assert lora_entry["runtime"] == "external"
     assert lora_entry["default_runtime"] == "external"
+    assert "External trainer" in lora_entry["selection_reason"]
+    assert "--native-only" in lora_entry["opt_in_flags"]
     assert "native_ready" in lora_entry
     assert "external_ready" in lora_entry
+    assert lora_entry["runtime_modes"] == {"native": True, "external": True}
+
+
+def test_capability_report_exposes_cloud_image_generation_modes():
+    from services.feature_capability_service import capability_report
+
+    entries = {entry["id"]: entry for entry in capability_report()["entries"]}
+    cloud_entry = entries["cloud_image_generation"]
+    assert cloud_entry["runtime"] == "external"
+    assert cloud_entry["default_runtime"] == "external"
+    assert "Cloud APIs" in cloud_entry["selection_reason"]
+    assert "provider=openai" in cloud_entry["opt_in_flags"]
+    assert cloud_entry["runtime_modes"] == {"native": True, "external": True}
+    assert "OpenAI Images API" in cloud_entry["external_apps"]
+    assert "prompt hardening" in cloud_entry["notes"]
+
+
+def test_capability_report_exposes_realtime_progress_transport():
+    from services.feature_capability_service import capability_report
+
+    entries = {entry["id"]: entry for entry in capability_report()["entries"]}
+    progress = entries["realtime_progress"]
+    assert progress["runtime"] == "native"
+    assert "SSE" in progress["selection_reason"]
+    assert progress["transport"]["browser_transport"] == "sse"
+    assert progress["transport"]["upstream_transports"]["comfyui"] == "websocket"
 
 
 def test_feature_registry_covers_current_runtime_consumers():
@@ -74,6 +104,7 @@ def test_feature_registry_covers_current_runtime_consumers():
         "video_to_sprite_conversion",
         "wan_generation",
         "lora_training_run",
+        "cloud_image_generation",
     }
 
     assert expected <= set(FEATURES)

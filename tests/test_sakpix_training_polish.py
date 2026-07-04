@@ -65,6 +65,9 @@ def test_training_lab_contains_tile_set_representation_controls():
     assert 'data-tile-preset="top_down_terrain"' in html
     assert 'data-tile-preset="dungeon_edges"' in html
     assert 'id="tileTrainingPreviewManifest"' in html
+    assert 'id="tilemapGeneratorForm"' in html
+    assert 'value="autotile_16"' in html
+    assert 'value="wang_16"' in html
     assert "16-tile auto-tile sheet" in html
 
 

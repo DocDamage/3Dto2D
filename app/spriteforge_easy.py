@@ -22,7 +22,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
+
 CONFIG_PATH = ROOT / "config" / "spriteforge_config.json"
 EASY_CONFIG_PATH = ROOT / "config" / "easy_mode.json"
 PRESETS_PATH = ROOT / "config" / "easy_presets.json"

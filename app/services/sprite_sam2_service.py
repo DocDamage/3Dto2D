@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import importlib.util
+import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
@@ -16,10 +17,12 @@ from PIL import Image
 
 try:
     import cv2
-except Exception:
+except Exception as exc:
+    logging.getLogger(__name__).debug("OpenCV unavailable for SAM2 fallback segmentation: %s", exc)
     cv2 = None
 
 from services.sprite_video_loader import FrameItem
+logger = logging.getLogger(__name__)
 
 class SpriteSAM2Service:
     @classmethod
@@ -176,7 +179,8 @@ class SpriteSAM2Service:
                     cv2.grabCut(rgb, gc_mask, None, bgdModel, fgdModel, 3, cv2.GC_INIT_WITH_MASK)
                     # Create binary mask: pixels that are definitely or probably foreground
                     mask = np.where((gc_mask == cv2.GC_FGD) | (gc_mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
-                except Exception:
+                except Exception as exc:
+                    logger.debug("GrabCut refinement failed for frame %s; using alpha fallback mask: %s", frame.name, exc)
                     mask = (alpha > 10).astype(np.uint8) * 255
             else:
                 mask = (alpha > 10).astype(np.uint8) * 255

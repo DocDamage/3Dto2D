@@ -6,8 +6,11 @@ with try-except imports for PyTexturePacker, and a fallback to Shelf packing.
 """
 from __future__ import annotations
 
+import logging
 import math
 from typing import List, Tuple, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 class SpriteBinPackerService:
     @classmethod
@@ -48,8 +51,8 @@ class SpriteBinPackerService:
                 res = cls._pack_pytexturepacker(adjusted_rects, max_width, spacing, margin)
                 if res:
                     return res
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("PyTexturePacker backend unavailable; using native MaxRects fallback: %s", exc)
 
             # Use native pure-Python MaxRects
             try:

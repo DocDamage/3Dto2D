@@ -1,5 +1,246 @@
 let currentHistory = [];
 let selectedCompareIds = new Set();
+let currentExperimentAnalytics = null;
+let promptSearchTimer = null;
+
+function metricText(value, suffix = '') {
+  if (value === null || value === undefined || value === '') return '-';
+  return `${value}${suffix}`;
+}
+
+function renderBarList(container, rows, options = {}) {
+  if (!container) return;
+  clearNode(container);
+  if (!rows || !rows.length) {
+    appendText(container, 'div', options.empty || 'No analytics yet.', 'empty compact');
+    return;
+  }
+  const valueKey = options.valueKey || 'count';
+  const labelKey = options.labelKey || 'label';
+  const maxValue = Math.max(1, ...rows.map(row => Number(row[valueKey] || 0)));
+  rows.forEach(row => {
+    const item = document.createElement('div');
+    item.className = 'experiment-bar-row';
+    const label = document.createElement('span');
+    label.textContent = row[labelKey] || row.name || row.date || 'Unknown';
+    const track = document.createElement('div');
+    track.className = 'experiment-bar-track';
+    const fill = document.createElement('i');
+    fill.style.width = `${Math.max(4, (Number(row[valueKey] || 0) / maxValue) * 100)}%`;
+    track.appendChild(fill);
+    const value = document.createElement('b');
+    value.textContent = options.format ? options.format(row) : String(row[valueKey] ?? '-');
+    item.append(label, track, value);
+    container.appendChild(item);
+  });
+}
+
+function renderExperimentAnalytics() {
+  const data = currentExperimentAnalytics;
+  if (!data) return;
+  const total = $('#expMetricTotal');
+  const scored = $('#expMetricScored');
+  const average = $('#expMetricAverage');
+  const pass = $('#expMetricPassRate');
+  const starred = $('#expMetricStarred');
+  if (total) total.textContent = metricText(data.total_runs);
+  if (scored) scored.textContent = metricText(data.scored_runs);
+  if (average) average.textContent = metricText(data.average_score);
+  if (pass) pass.textContent = metricText(data.pass_rate, '%');
+  if (starred) starred.textContent = metricText(data.starred_runs);
+
+  const recommendations = $('#expRecommendations');
+  if (recommendations) {
+    clearNode(recommendations);
+    const rows = data.recommendations || [];
+    if (!rows.length) {
+      appendText(recommendations, 'div', 'Run QA on a few variants to unlock next-run recommendations.', 'empty compact');
+    }
+    rows.forEach(row => {
+      const item = document.createElement('article');
+      item.className = 'experiment-recommendation';
+      item.dataset.recommendationKind = row.kind || 'insight';
+      appendText(item, 'span', row.kind ? row.kind.replace(/_/g, ' ') : 'insight');
+      appendText(item, 'b', row.title || 'Try this next');
+      appendText(item, 'small', row.detail || '');
+      if (row.score !== null && row.score !== undefined) appendText(item, 'em', `${row.score} QA`);
+      recommendations.appendChild(item);
+    });
+  }
+
+  renderBarList($('#expScoreDistribution'), data.score_distribution, {
+    labelKey: 'label',
+    valueKey: 'count',
+    empty: 'No scored runs yet.',
+  });
+  renderBarList($('#expScoreTrend'), data.score_over_time, {
+    labelKey: 'date',
+    valueKey: 'average_score',
+    empty: 'No trend data yet.',
+    format: row => `${row.average_score ?? '-'} (${row.count})`,
+  });
+  renderBarList($('#expActionScores'), data.score_by_action, {
+    labelKey: 'name',
+    valueKey: 'average_score',
+    empty: 'No action scores yet.',
+    format: row => `${row.average_score ?? '-'} / ${row.count}`,
+  });
+
+  const settings = $('#expBestSettings');
+  if (settings) {
+    clearNode(settings);
+    const rows = [
+      ...(data.best_profiles || []).slice(0, 3).map(row => ({...row, kind: 'Profile'})),
+      ...(data.best_seeds || []).slice(0, 3).map(row => ({...row, kind: 'Seed'})),
+    ];
+    if (!rows.length) appendText(settings, 'div', 'No ranked settings yet.', 'empty compact');
+    rows.forEach(row => {
+      const item = document.createElement('div');
+      item.className = 'experiment-insight';
+      appendText(item, 'span', row.kind);
+      appendText(item, 'b', row.name);
+      appendText(item, 'small', `${row.average_score ?? '-'} avg · ${row.count} run(s)`);
+      settings.appendChild(item);
+    });
+  }
+
+  const bestRuns = $('#expBestRuns');
+  if (bestRuns) {
+    clearNode(bestRuns);
+    const runs = data.best_runs || [];
+    if (!runs.length) appendText(bestRuns, 'div', 'Run QA to surface winning prompts here.', 'empty compact');
+    runs.forEach(run => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'experiment-best-run';
+      item.dataset.runId = run.id || '';
+      item.dataset.previewPath = run.sprite_folder || '';
+      appendText(item, 'b', `${run.score} QA · ${run.action || 'action'} ${run.direction || ''}`.trim());
+      appendText(item, 'span', run.prompt || run.profile || 'No prompt captured.');
+      appendText(item, 'small', `${run.profile || 'profile'} · seed ${run.seed ?? '-'}`);
+      bestRuns.appendChild(item);
+    });
+  }
+
+  renderPromptHistory();
+}
+
+function renderPromptHistory() {
+  const box = $('#experimentPromptHistory');
+  if (!box || !currentExperimentAnalytics) return;
+  const query = ($('#experimentPromptSearch')?.value || '').trim().toLowerCase();
+  clearNode(box);
+  const rows = (currentExperimentAnalytics.prompt_history || []).filter(row => {
+    if (!query) return true;
+    return [row.prompt, row.action, row.direction].some(value => String(value || '').toLowerCase().includes(query));
+  }).slice(0, 20);
+  if (!rows.length) {
+    appendText(box, 'div', 'No matching prompt history.', 'empty compact');
+    return;
+  }
+  rows.forEach(row => {
+    const item = document.createElement('article');
+    item.className = 'experiment-prompt-row';
+    item.dataset.runId = row.id || '';
+    appendText(item, 'b', `${row.action || 'run'} ${row.direction || ''}`.trim());
+    appendText(item, 'span', row.prompt || '');
+    appendText(item, 'small', row.score !== null && row.score !== undefined ? `${row.score} QA` : 'unscored');
+    const actions = document.createElement('div');
+    actions.className = 'button-row compact-actions';
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'mini primary';
+    use.dataset.promptUse = row.id || '';
+    use.textContent = 'Use prompt';
+    actions.appendChild(use);
+    const pin = document.createElement('button');
+    pin.type = 'button';
+    pin.className = 'mini';
+    pin.dataset.promptPin = row.id || '';
+    pin.dataset.starred = row.starred ? 'false' : 'true';
+    pin.textContent = row.starred ? 'Unpin' : 'Pin';
+    actions.appendChild(pin);
+    item.appendChild(actions);
+    box.appendChild(item);
+  });
+}
+
+async function searchPromptHistory() {
+  const box = $('#experimentPromptHistory');
+  if (!box) return;
+  const q = ($('#experimentPromptSearch')?.value || '').trim();
+  try {
+    const data = await api('/api/experiments/prompts?q=' + encodeURIComponent(q) + '&limit=40' + projectQuery().replace('?', '&'));
+    currentExperimentAnalytics = currentExperimentAnalytics || {};
+    currentExperimentAnalytics.prompt_history = data.prompts || [];
+    renderPromptHistory();
+  } catch (e) {
+    console.error('Prompt history search failed:', e);
+  }
+}
+
+function usePromptHistoryRow(row) {
+  const form = $('#generateForm');
+  if (!form || !row) return;
+  const set = (name, value) => {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (field && value !== undefined && value !== null) field.value = value;
+  };
+  set('prompt', row.prompt || '');
+  set('negative', row.negative || '');
+  set('sprite_action', row.action || '');
+  set('direction', row.direction || '');
+  set('profile', row.profile || '');
+  set('tier', row.tier || '');
+  set('seed', row.seed ?? '');
+  showView('generate');
+  if (typeof refreshGeneratePromptPreview === 'function') refreshGeneratePromptPreview();
+  toast('Loaded prompt history into Generate.');
+}
+
+async function loadExperimentAnalytics() {
+  try {
+    currentExperimentAnalytics = await api('/api/experiments/analytics' + projectQuery());
+    renderExperimentAnalytics();
+  } catch (e) {
+    console.error('Experiment analytics load failed:', e);
+  }
+}
+
+async function exportWinningPrompts() {
+  const target = $('#winningPromptPackResult');
+  if (target) target.textContent = 'Building winning prompt pack...';
+  try {
+    const pack = await api('/api/experiments/winning-prompts?limit=24' + projectQuery().replace('?', '&'));
+    if (!target) return;
+    clearNode(target);
+    appendText(target, 'b', `${pack.entry_count || 0} winning prompt${pack.entry_count === 1 ? '' : 's'} ready`);
+    appendText(target, 'small', pack.selection || 'Pinned prompts first, then high QA runs.');
+    const textarea = document.createElement('textarea');
+    textarea.readOnly = true;
+    textarea.rows = 5;
+    textarea.value = JSON.stringify(pack, null, 2);
+    textarea.className = 'winning-prompt-pack-json';
+    target.appendChild(textarea);
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'mini primary';
+    copy.textContent = 'Copy JSON';
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(textarea.value);
+        toast('Winning prompt pack copied.');
+      } catch (err) {
+        textarea.select();
+        toast('Select/copy the prompt pack JSON.');
+      }
+    });
+    target.appendChild(copy);
+  } catch (err) {
+    if (target) target.textContent = err.message || 'Could not build winning prompt pack.';
+    toast(err.message || 'Could not build winning prompt pack.');
+  }
+}
 
 function statusBadge(rec) {
   const span = document.createElement('span');
@@ -32,6 +273,7 @@ async function loadHistory() {
     selectedCompareIds.clear();
     updateCompareButton();
     renderHistory();
+    await loadExperimentAnalytics();
   } catch(e) { console.error(e); }
 }
 
@@ -216,6 +458,8 @@ function resolveSpriteDirNameFromCommand(cmd) {
 }
 
 if ($('#refreshHistory')) $('#refreshHistory').addEventListener('click', loadHistory);
+if ($('#refreshExperimentAnalytics')) $('#refreshExperimentAnalytics').addEventListener('click', loadExperimentAnalytics);
+if ($('#exportWinningPrompts')) $('#exportWinningPrompts').addEventListener('click', exportWinningPrompts);
 if ($('#exportHistory')) $('#exportHistory').addEventListener('click', () => { window.location.href = '/api/experiments/export' + projectQuery(); });
 if ($('#clearHistory')) $('#clearHistory').addEventListener('click', async () => {
   if (!confirm('Clear unstarred experiment history? Starred runs will be kept.')) return;
@@ -234,6 +478,18 @@ if ($('#clearHistory')) $('#clearHistory').addEventListener('click', async () =>
   $(`#${id}`)?.addEventListener('change', renderHistory);
 });
 $('#historyFilterStarred')?.addEventListener('change', renderHistory);
+$('#experimentPromptSearch')?.addEventListener('input', () => {
+  clearTimeout(promptSearchTimer);
+  promptSearchTimer = setTimeout(searchPromptHistory, 250);
+});
+
+if ($('#expBestRuns')) {
+  $('#expBestRuns').addEventListener('click', async (event) => {
+    const btn = event.target.closest('[data-preview-path]');
+    const path = btn?.dataset.previewPath;
+    if (path && typeof openResultPreview === 'function') await openResultPreview(path);
+  });
+}
 
 if ($('#historyCompareBtn')) {
   $('#historyCompareBtn').addEventListener('click', async () => {
@@ -243,18 +499,9 @@ if ($('#historyCompareBtn')) {
       return;
     }
     try {
-      toast('Comparing runs...');
-      const res = await api('/api/compare', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({a: selected[0], b: selected[1]})
-      });
-      if (res.ok) {
-        window.open(res.report_url, '_blank');
-        toast('Compare report opened!');
-      } else {
-        toast('Compare failed: ' + res.message);
-      }
+      showView('compare_player');
+      if (typeof setComparePlayerSelection === 'function') setComparePlayerSelection(selected);
+      toast('Opened synchronized compare player.');
     } catch(e) {
       toast('Compare error: ' + e.message);
     }
@@ -280,6 +527,26 @@ if ($('#historyBody')) {
         await api('/api/experiments/star', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:starBtn.dataset.runId, starred})});
         await loadHistory();
       } catch(err) { toast('Star update failed: ' + err.message); }
+    }
+  });
+}
+
+if ($('#experimentPromptHistory')) {
+  $('#experimentPromptHistory').addEventListener('click', async (event) => {
+    const useBtn = event.target.closest('[data-prompt-use]');
+    const pinBtn = event.target.closest('[data-prompt-pin]');
+    if (useBtn) {
+      const row = (currentExperimentAnalytics?.prompt_history || []).find(item => item.id === useBtn.dataset.promptUse);
+      usePromptHistoryRow(row);
+      return;
+    }
+    if (pinBtn) {
+      try {
+        await api('/api/experiments/star', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id: pinBtn.dataset.promptPin, starred: pinBtn.dataset.starred === 'true'})});
+        await searchPromptHistory();
+      } catch (err) {
+        toast('Prompt pin failed: ' + err.message);
+      }
     }
   });
 }

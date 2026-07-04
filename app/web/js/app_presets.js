@@ -165,6 +165,121 @@ function applyGoalDefaults(goalName) {
 
 let activeArchetypeTag = '';
 let currentArchetypes = [];
+let selectedArchetype = null;
+
+function archetypeInitials(arc) {
+  return String(arc.name || 'SF')
+    .split(/[\s/]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join('') || 'SF';
+}
+
+function archetypeGradient(arc) {
+  const tags = Array.isArray(arc.tags) ? arc.tags.join('|') : '';
+  const seed = `${arc.id || ''}|${arc.name || ''}|${tags}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+  const hue = Math.abs(hash) % 360;
+  return `linear-gradient(135deg, hsl(${hue} 78% 35% / .95), hsl(${(hue + 52) % 360} 80% 22% / .92))`;
+}
+
+function updateSelectedArchetypePanel(arc) {
+  selectedArchetype = arc || null;
+  const panel = $('#archetypeSelectedPanel');
+  const portrait = $('#archetypeSelectedPortrait');
+  const name = $('#archetypeSelectedName');
+  const description = $('#archetypeSelectedDescription');
+  const meta = $('#archetypeSelectedMeta');
+  const applyBtn = $('#applySelectedArchetypeBtn');
+  if (!panel || !portrait || !name || !description || !meta || !applyBtn) return;
+
+  clearNode(meta);
+  if (!arc) {
+    portrait.textContent = 'SF';
+    portrait.style.background = '';
+    name.textContent = 'Choose a visual card';
+    description.textContent = 'Pick an archetype to preview the character prompt, style hint, actions, directions, and palette guidance before applying it to Generate.';
+    applyBtn.disabled = true;
+    return;
+  }
+
+  portrait.textContent = archetypeInitials(arc);
+  portrait.style.background = archetypeGradient(arc);
+  name.textContent = arc.name || 'Untitled archetype';
+  description.textContent = arc.description || arc.character || 'No description provided.';
+  const chips = [
+    ['Actions', (arc.recommended_actions || []).join(', ') || 'custom'],
+    ['Directions', (arc.recommended_directions || []).join(', ') || 'custom'],
+    ['Palette', arc.palette_hint || 'project palette'],
+  ];
+  chips.forEach(([label, value]) => {
+    const chip = document.createElement('span');
+    const labelNode = document.createElement('b');
+    labelNode.textContent = label;
+    chip.appendChild(labelNode);
+    chip.append(` ${value}`);
+    meta.appendChild(chip);
+  });
+  applyBtn.disabled = false;
+  populateArchetypeCustomizePanel(arc);
+}
+
+function populateArchetypeCustomizePanel(arc) {
+  const panel = $('#archetypeCustomizePanel');
+  if (!panel) return;
+  const character = $('#archetypeCustomizeCharacter');
+  const style = $('#archetypeCustomizeStyle');
+  const actions = $('#archetypeCustomizeActions');
+  const directions = $('#archetypeCustomizeDirections');
+  if (!arc) {
+    if (character) character.value = '';
+    if (style) style.value = '';
+    if (actions) actions.value = '';
+    if (directions) directions.value = '';
+    return;
+  }
+  if (character) character.value = arc.character || '';
+  if (style) style.value = arc.style || '';
+  if (actions) actions.value = (arc.recommended_actions || []).join(',');
+  if (directions) directions.value = (arc.recommended_directions || []).join(',');
+}
+
+function archetypeCustomizeList(value) {
+  return String(value || '').split(',').map(item => item.trim()).filter(Boolean);
+}
+
+function customizedArchetypePayload(arc) {
+  if (!arc) return null;
+  const custom = {...arc};
+  const character = $('#archetypeCustomizeCharacter');
+  const style = $('#archetypeCustomizeStyle');
+  const actions = $('#archetypeCustomizeActions');
+  const directions = $('#archetypeCustomizeDirections');
+  if (character && character.value.trim()) custom.character = character.value.trim();
+  if (style && style.value.trim()) custom.style = style.value.trim();
+  const customActions = archetypeCustomizeList(actions?.value || '');
+  const customDirections = archetypeCustomizeList(directions?.value || '');
+  if (customActions.length) custom.recommended_actions = customActions;
+  if (customDirections.length) custom.recommended_directions = customDirections;
+  custom.customized = true;
+  return custom;
+}
+
+function setArchetypeProvenance(form, arc) {
+  const fields = {
+    archetype_id: arc.id || '',
+    archetype_name: arc.name || '',
+    archetype_tags: Array.isArray(arc.tags) ? arc.tags.join(',') : '',
+    archetype_palette_hint: arc.palette_hint || '',
+    archetype_customized: arc.customized ? 'true' : 'false'
+  };
+  Object.entries(fields).forEach(([name, value]) => {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (field) field.value = value;
+  });
+}
 
 async function loadArchetypes(search = '', tag = '') {
   try {
@@ -184,12 +299,27 @@ async function loadArchetypes(search = '', tag = '') {
     currentArchetypes.forEach(arc => {
       const card = document.createElement('article');
       card.className = 'archetype-card';
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', `Preview archetype ${arc.name || 'Untitled archetype'}`);
+      card.dataset.archetypeId = arc.id || arc.name || '';
+      card.style.setProperty('--archetype-glow', archetypeGradient(arc));
+
+      const portrait = document.createElement('div');
+      portrait.className = 'archetype-card-portrait';
+      portrait.style.background = archetypeGradient(arc);
+      portrait.textContent = archetypeInitials(arc);
+      card.appendChild(portrait);
       
       const head = document.createElement('div');
       head.className = 'archetype-card-head';
       const name = document.createElement('h4');
       name.textContent = arc.name;
       head.appendChild(name);
+      const family = document.createElement('span');
+      family.className = 'archetype-card-family';
+      family.textContent = (arc.tags || [])[0] || 'sprite';
+      head.appendChild(family);
       card.appendChild(head);
       
       const desc = document.createElement('p');
@@ -209,15 +339,45 @@ async function loadArchetypes(search = '', tag = '') {
       
       const actionsRow = document.createElement('div');
       actionsRow.className = 'archetype-card-actions';
-      actionsRow.innerHTML = `Actions: <code>${(arc.recommended_actions || []).length}</code>`;
+      const actionCount = document.createElement('span');
+      actionCount.append('Actions ');
+      appendText(actionCount, 'code', String((arc.recommended_actions || []).length));
+      const directionCount = document.createElement('span');
+      directionCount.append('Dirs ');
+      appendText(directionCount, 'code', String((arc.recommended_directions || []).length || 1));
+      const apply = document.createElement('button');
+      apply.className = 'mini primary archetype-apply-btn';
+      apply.type = 'button';
+      apply.textContent = 'Customize';
+      apply.addEventListener('click', (event) => {
+        event.stopPropagation();
+        updateSelectedArchetypePanel(arc);
+        document.querySelectorAll('.archetype-card.selected').forEach(el => el.classList.remove('selected'));
+        card.classList.add('selected');
+        $('#archetypeCustomizeCharacter')?.focus();
+      });
+      actionsRow.append(actionCount, directionCount, apply);
       card.appendChild(actionsRow);
       
       card.addEventListener('click', () => {
-        applyArchetype(arc);
+        updateSelectedArchetypePanel(arc);
+        document.querySelectorAll('.archetype-card.selected').forEach(el => el.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          updateSelectedArchetypePanel(arc);
+          document.querySelectorAll('.archetype-card.selected').forEach(el => el.classList.remove('selected'));
+          card.classList.add('selected');
+        }
       });
       
       grid.appendChild(card);
     });
+    updateSelectedArchetypePanel(currentArchetypes[0] || null);
+    const firstCard = grid.querySelector('.archetype-card');
+    if (firstCard) firstCard.classList.add('selected');
   } catch (e) {
     console.error('Failed to load archetypes:', e);
   }
@@ -226,6 +386,7 @@ async function loadArchetypes(search = '', tag = '') {
 function applyArchetype(arc) {
   const form = $('#generateForm');
   if (!form) return;
+  setArchetypeProvenance(form, arc);
   
   if (arc.character !== undefined && form.querySelector('[name="character"]')) {
     form.querySelector('[name="character"]').value = arc.character;
@@ -242,11 +403,22 @@ function applyArchetype(arc) {
   if (arc.recommended_directions && form.querySelector('[name="default_directions"]')) {
     form.querySelector('[name="default_directions"]').value = arc.recommended_directions.join(',');
   }
+  if (arc.recommended_actions && arc.recommended_actions.length && form.querySelector('[name="sprite_action"]')) {
+    form.querySelector('[name="sprite_action"]').value = arc.recommended_actions[0];
+  }
+  if (arc.recommended_directions && arc.recommended_directions.length && form.querySelector('[name="direction"]')) {
+    form.querySelector('[name="direction"]').value = arc.recommended_directions[0];
+  }
+  if (arc.palette_hint && form.querySelector('[name="pixel_cleanup"]')) {
+    form.querySelector('[name="pixel_cleanup"]').checked = true;
+  }
+  if (typeof refreshGeneratePromptPreview === 'function') refreshGeneratePromptPreview();
+  updateSelectedArchetypePanel(arc);
   
   const modal = $('#recipesModal');
   if (modal) modal.classList.add('hidden');
   
-  toast(`Applied archetype: ${arc.name}`);
+  toast(arc.customized ? `Applied customized archetype: ${arc.name}` : `Applied archetype: ${arc.name}`);
 }
 
 function renderArchetypeTags() {
@@ -404,6 +576,17 @@ function initPresetBindings() {
   }
   if (backdrop && modal) {
     backdrop.addEventListener('click', () => modal.classList.add('hidden'));
+  }
+
+  const applySelectedBtn = $('#applySelectedArchetypeBtn');
+  if (applySelectedBtn) {
+    applySelectedBtn.addEventListener('click', () => {
+      if (selectedArchetype) applyArchetype(customizedArchetypePayload(selectedArchetype));
+    });
+  }
+  const resetCustomizeBtn = $('#resetArchetypeCustomizeBtn');
+  if (resetCustomizeBtn) {
+    resetCustomizeBtn.addEventListener('click', () => populateArchetypeCustomizePanel(selectedArchetype));
   }
   
   // Bind search input filter

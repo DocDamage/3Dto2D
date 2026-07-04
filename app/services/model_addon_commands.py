@@ -6,8 +6,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from services.config_service import ConfigService, load_json
-
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import ROOT
 
 
 def _addon_registry() -> Dict[str, Any]:

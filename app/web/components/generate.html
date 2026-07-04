@@ -3,6 +3,11 @@
   <div class="grid-2">
     
     <form class="card form" id="generateForm">
+      <input type="hidden" name="archetype_id" id="generateArchetypeId" value="" />
+      <input type="hidden" name="archetype_name" id="generateArchetypeName" value="" />
+      <input type="hidden" name="archetype_tags" id="generateArchetypeTags" value="" />
+      <input type="hidden" name="archetype_palette_hint" id="generateArchetypePaletteHint" value="" />
+      <input type="hidden" name="archetype_customized" id="generateArchetypeCustomized" value="" />
       
       <!-- Preset Manager & Smarter Defaults Row (Compact) -->
       <div class="preset-builder-card" style="padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
@@ -124,6 +129,16 @@
           <label style="width: 100%;">Style Reference Image (IP-Adapter)
             <input name="style_image" id="generationStyleImage" placeholder="Optional uploaded style reference image path" style="width: 100%;" />
           </label>
+          <div class="generate-reference-preview" id="generateReferencePreview">
+            <div class="generate-reference-tile checkerboard">
+              <img id="generateReferencePreviewImage" class="hidden" alt="Character reference preview" />
+              <span id="generateReferencePreviewEmpty">Drop or paste a reference image path to preview it here.</span>
+            </div>
+            <div class="generate-reference-meta">
+              <b id="generateReferencePreviewTitle">No reference selected</b>
+              <small id="generateReferencePreviewStatus">Supports workspace PNG, JPG, WebP, and GIF paths.</small>
+            </div>
+          </div>
         </div>
       </details>
 
@@ -221,6 +236,7 @@
                 <option value="chroma" selected>Chroma key</option>
                 <option value="pixel-art">Pixel-art hard edge</option>
                 <option value="birefnet">BiRefNet matting</option>
+                <option value="depth-anything">Depth Anything</option>
                 <option value="rembg">rembg</option>
               </select>
             </label>
@@ -232,6 +248,7 @@
                 <option value="blend" selected>Blend</option>
                 <option value="flow">OpenCV Flow</option>
                 <option value="bitmapflow">BitmapFlow</option>
+                <option value="rife">RIFE</option>
               </select>
             </label>
           </div>
@@ -276,6 +293,7 @@
             <label class="switch"><input type="checkbox" name="alpha_refine" /><span></span>Alpha refine</label>
             <label class="switch"><input type="checkbox" name="temporal_alpha_stabilize" /><span></span>Temporal alpha</label>
             <label class="switch"><input type="checkbox" name="pixel_cleanup" /><span></span>Pixel cleanup</label>
+            <label class="switch"><input type="checkbox" name="palette_project_lock" /><span></span>Use project palette lock</label>
             <label class="switch"><input type="checkbox" name="generate_normal_maps" /><span></span>Normal maps</label>
             <label class="switch"><input type="checkbox" name="interpolation_skip_pixel_art" checked /><span></span>Hold pixel frames</label>
             <label class="switch"><input type="checkbox" name="interpolation_skip_impact_frames" checked /><span></span>Hold impact frames</label>
@@ -290,6 +308,18 @@
       </div>
 
       <div class="callout hidden" id="advisor-result"></div>
+      <section class="prompt-preview-panel" id="generatePromptPreviewPanel">
+        <div class="prompt-preview-head">
+          <div>
+            <b>Final prompt preview</b>
+            <small>Updates as you edit generation fields.</small>
+          </div>
+          <span class="prompt-quality-badge muted" id="generatePromptQuality">checking</span>
+        </div>
+        <div class="generation-estimate" id="generateEstimate">Runtime estimate: learning from previous runs.</div>
+        <pre id="generatePromptPreview" class="prompt-preview-text">Prompt preview will appear here.</pre>
+        <div id="generatePromptLint" class="prompt-lint-list"></div>
+      </section>
       <div class="callout" id="modelProfileExplainer" style="margin-top: 12px;">
         <b id="modelProfileExplainerTitle">Model/profile</b>
         <span id="modelProfileExplainerBody">Checking selected generation profile...</span>

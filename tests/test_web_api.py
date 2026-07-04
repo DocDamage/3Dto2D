@@ -220,6 +220,31 @@ def test_frame_status_api_updates_sprite_metadata(client, tmp_path, monkeypatch)
     assert meta["frames"][0]["review_status"] == "approved"
 
 
+def test_frame_status_api_sanitizes_review_note(client, tmp_path, monkeypatch):
+    import web_helpers as web_mod
+
+    sprite_dir = tmp_path / "output" / "hero"
+    sprite_dir.mkdir(parents=True)
+    (sprite_dir / "sheet.json").write_text(json.dumps({
+        "frame_count": 1,
+        "frames": [{"index": 0}]
+    }), encoding="utf-8")
+    monkeypatch.setattr(web_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(web_mod, "OUTPUT", tmp_path / "output")
+
+    response = client.post(
+        "/api/sprite/frame/status",
+        data=json.dumps({"path": "output/hero", "frame_index": 0, "status": "needs_edit", "note": "../secret\\bad note"}),
+        content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    meta = json.loads((sprite_dir / "sheet.json").read_text(encoding="utf-8"))
+    assert ".." not in meta["frames"][0]["review_note"]
+    assert "\\" not in meta["frames"][0]["review_note"]
+    assert meta["frames"][0]["review_note"] == "secret/bad note"
+
+
 def test_palette_harmonize_api_creates_report(client, tmp_path, monkeypatch):
     import web_helpers as web_mod
 

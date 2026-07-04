@@ -7,9 +7,10 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Generator
+from typing import Any, Callable, Dict, Generator, Iterable, Sequence
 
 import pytest
+from PIL import Image
 
 
 @pytest.fixture
@@ -174,6 +175,137 @@ def sample_sprite_dirs(temp_dir: Path) -> list[Path]:
         (d / "sheet.json").write_text(json.dumps(sheet, indent=2), encoding="utf-8")
         dirs.append(d)
     return dirs
+
+
+@pytest.fixture
+def synthetic_rgba_frames() -> Callable[..., list[Image.Image]]:
+    """Factory for deterministic RGBA frame sequences."""
+    def make_frames(
+        *,
+        size: tuple[int, int] = (16, 16),
+        colors: Sequence[tuple[int, int, int, int]] | None = None,
+    ) -> list[Image.Image]:
+        palette = colors or [
+            (220, 40, 40, 255),
+            (40, 220, 40, 255),
+            (40, 40, 220, 255),
+        ]
+        return [Image.new("RGBA", size, color) for color in palette]
+    return make_frames
+
+
+@pytest.fixture
+def synthetic_frame_items(synthetic_rgba_frames: Callable[..., list[Image.Image]]) -> Callable[..., list[Any]]:
+    """Factory for services.sprite_video_loader.FrameItem sequences."""
+    def make_items(
+        *,
+        size: tuple[int, int] = (16, 16),
+        colors: Sequence[tuple[int, int, int, int]] | None = None,
+        prefix: str = "frame",
+    ) -> list[Any]:
+        from services.sprite_video_loader import FrameItem
+
+        return [
+            FrameItem(image=img, name=f"{prefix}_{idx:04d}", source_index=idx)
+            for idx, img in enumerate(synthetic_rgba_frames(size=size, colors=colors))
+        ]
+    return make_items
+
+
+@pytest.fixture
+def mock_comfy_system_stats(monkeypatch) -> Dict[str, int]:
+    """Mock ComfyUI /system_stats responses and count health-check calls."""
+    calls = {"count": 0}
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def fake_urlopen(_url, timeout):
+        calls["count"] += 1
+        return FakeResponse()
+
+    monkeypatch.setattr("services.comfy_service.urllib.request.urlopen", fake_urlopen)
+    return calls
+
+
+@pytest.fixture
+def synthetic_sprite_factory(tmp_path: Path) -> Callable[..., Path]:
+    """Create a complete SpriteForge-like output folder with frames and sheet metadata."""
+    def make_sprite(
+        name: str = "hero_idle",
+        *,
+        root: Path | None = None,
+        size: tuple[int, int] = (16, 16),
+        colors: Sequence[tuple[int, int, int, int]] | None = None,
+        fps: float = 12.0,
+        animation: str = "idle",
+        action: str | None = None,
+        direction: str | None = None,
+        durations_ms: Sequence[int] | None = None,
+        frame_names: Sequence[str] | None = None,
+        qa_report: Dict[str, Any] | None = None,
+    ) -> Path:
+        sprite_dir = (root or tmp_path) / name
+        sprite_dir.mkdir(parents=True, exist_ok=True)
+        frames_dir = sprite_dir / "frames_processed"
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        palette = colors or [
+            (220, 40, 40, 255),
+            (40, 220, 40, 255),
+            (40, 40, 220, 255),
+        ]
+        width, height = size
+        sheet = Image.new("RGBA", (width * len(palette), height), (0, 0, 0, 0))
+        frames = []
+        for idx, color in enumerate(palette):
+            frame = Image.new("RGBA", size, color)
+            frame.save(frames_dir / f"frame_{idx:04d}.png")
+            sheet.alpha_composite(frame, (idx * width, 0))
+            duration = int(durations_ms[idx]) if durations_ms and idx < len(durations_ms) else int(round(1000 / fps)) if fps else 0
+            frame_name = str(frame_names[idx]) if frame_names and idx < len(frame_names) else f"{animation}_{idx:04d}"
+            frames.append({
+                "index": idx,
+                "name": frame_name,
+                "source_name": f"frame_{idx:04d}.png",
+                "source_index": idx,
+                "x": idx * width,
+                "y": 0,
+                "w": width,
+                "h": height,
+                "duration_ms": duration,
+                "action": action or animation,
+                "direction": direction or "right",
+            })
+        sheet.save(sprite_dir / "sheet.png")
+        meta = {
+            "image": "sheet.png",
+            "animation": animation,
+            "action": action or animation,
+            "direction": direction or "right",
+            "frame_width": width,
+            "frame_height": height,
+            "frame_count": len(palette),
+            "fps": fps,
+            "columns": len(palette),
+            "rows": 1,
+            "spacing": 0,
+            "margin": 0,
+            "frames": frames,
+            "frame_durations_ms": [frame["duration_ms"] for frame in frames],
+        }
+        (sprite_dir / "sheet.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        if qa_report is not None:
+            qa_dir = sprite_dir / "qa"
+            qa_dir.mkdir(exist_ok=True)
+            (qa_dir / "qa_report.json").write_text(json.dumps(qa_report, indent=2), encoding="utf-8")
+        return sprite_dir
+    return make_sprite
 
 
 @pytest.fixture(autouse=True)

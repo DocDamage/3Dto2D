@@ -1,0 +1,84 @@
+{
+  "schema": "spriteforge.js_architecture.v1",
+  "loader": "sequential-script-loader",
+  "migration_target": "es-modules-no-bundler",
+  "script_order": [
+    {
+      "layer": "core",
+      "files": [
+        "js/globals.js?v=training-lora-launcher",
+        "js/project.js",
+        "js/gallery.js",
+        "js/editor_history.js",
+        "js/editor.js"
+      ],
+      "purpose": "Shared globals, project state, gallery selection, and editor foundations."
+    },
+    {
+      "layer": "sprite-tools",
+      "files": [
+        "js/sprite_preview.js?v=generate-compact-fit2",
+        "js/animation_player.js",
+        "js/compare_player.js",
+        "js/lighting_preview.js",
+        "js/cloud_hub.js",
+        "js/frame_editor.js",
+        "js/prompt_builder.js?v=generate-compact-fit2",
+        "js/seed_gallery.js",
+        "js/frame_review.js",
+        "js/palette_harmonizer.js"
+      ],
+      "purpose": "Sprite inspection, playback, comparison, lighting, cloud, frame, prompt, seed, review, and palette tools."
+    },
+    {
+      "layer": "interaction",
+      "files": [
+        "js/keyboard_shortcuts.js",
+        "js/theme_toggle.js",
+        "js/mobile_nav.js",
+        "js/drag_drop.js?v=reference-upload-buttons",
+        "js/audio_cues.js",
+        "js/state_machine.js",
+        "js/marketplace_gallery.js",
+        "js/scene_compositor.js",
+        "js/consistency_lock.js?v=generate-existing-sprite"
+      ],
+      "purpose": "Cross-cutting interaction affordances and optional panels."
+    },
+    {
+      "layer": "views",
+      "files": [
+        "js/experiments.js",
+        "js/qa.js?v=quality-lab-compact",
+        "js/app_views.js",
+        "js/app_notifications.js",
+        "js/app_presets.js?v=sakpix-training-polish",
+        "js/app_status.js",
+        "js/app_jobs.js?v=generate-compact-fit2",
+        "js/app_forms.js?v=training-lora-launcher",
+        "js/app_listings.js?v=generate-compact-fit2",
+        "js/wizard_templates.js",
+        "js/wizard_state.js",
+        "js/wizard_submit.js",
+        "js/wizard_ui.js",
+        "js/wizard.js?v=wizard-reference-upload-buttons",
+        "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
+        "js/command_palette.js"
+      ],
+      "purpose": "View rendering, forms, jobs, dashboard, wizard, history, QA, and command palette."
+    },
+    {
+      "layer": "bootstrap",
+      "files": [
+        "js/ux_enhancements.js?v=training-lora-launcher",
+        "js/app_main.js?v=quality-lab-compact"
+      ],
+      "purpose": "Final UX wrappers and application startup. Must stay last until ES module migration is complete."
+    }
+  ],
+  "known_global_contracts": [
+    "globals.js exports api(), showView(), runAction(), openResultPreview(), and shared DOM helpers.",
+    "app_main.js is the terminal bootstrap script and depends on earlier view/init functions.",
+    "ux_enhancements.js intentionally wraps selected globals and must load immediately before app_main.js."
+  ]
+}

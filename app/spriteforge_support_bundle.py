@@ -13,7 +13,8 @@ import zipfile
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
+
 OUT = ROOT / "output" / "support_bundles"
 LOGS = ROOT / "logs"
 

@@ -1,12 +1,13 @@
 import json
+import logging
 import shutil
 import time
 from pathlib import Path
 from typing import Any, Dict
-from spriteforge_utils import load_json, save_json
+from spriteforge_utils import ROOT, load_json, save_json
 
-ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "output"
+logger = logging.getLogger(__name__)
 
 def _is_relative_to(path: Path, base: Path) -> bool:
     try:
@@ -80,8 +81,8 @@ def _sprite_version_list(sprite_dir_str: str) -> Dict[str, Any]:
                 try:
                     qa_data = json.loads(p_path.read_text(encoding="utf-8"))
                     break
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Could not read version metrics from %s: %s", p_path, exc)
         v["metrics"] = qa_data.get("metrics", {}) if qa_data else {}
         
     return data

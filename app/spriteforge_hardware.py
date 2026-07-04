@@ -12,7 +12,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
+
 CONFIG = ROOT / "config" / "spriteforge_config.json"
 
 

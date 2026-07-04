@@ -18,10 +18,12 @@ from services.sprite_bin_packer import SpriteBinPackerService
 from services.sprite_alpha_tools import extract_dual_background_alpha, refine_alpha_edges
 from services.sprite_chroma_alpha import (
     BIREFNET_MATTING_MODEL_ID,
+    DEPTH_ANYTHING_MODEL_ID,
     apply_pixel_art_background_removal,
     apply_native_pixel_cleanup,
     fit_native_pixel_palette,
     try_birefnet,
+    try_depth_anything,
     apply_pixeloe_pixelization,
 )
 from services.install_commands import WAN_VIDEO_CUSTOM_NODES
@@ -192,6 +194,17 @@ def test_birefnet_defaults_to_matting_checkpoint():
     assert BIREFNET_MATTING_MODEL_ID == "ZhengPeng7/BiRefNet-matting"
 
 
+def test_depth_anything_defaults_to_small_checkpoint():
+    assert DEPTH_ANYTHING_MODEL_ID == "LiheYoung/depth-anything-small-hf"
+
+
+def test_depth_anything_failure_handling(monkeypatch):
+    img = Image.new("RGBA", (64, 64), (255, 255, 255, 255))
+    monkeypatch.setattr("sys.modules", {**sys.modules, "transformers": None})
+    with pytest.raises(RuntimeError, match="depth-anything matting option requires"):
+        try_depth_anything(img)
+
+
 def test_pipeline_birefnet_falls_back_to_native_chroma(monkeypatch, tmp_path):
     from services import sprite_processing_pipeline as spp
 
@@ -237,6 +250,59 @@ def test_pipeline_birefnet_falls_back_to_native_chroma(monkeypatch, tmp_path):
         flip_y=False,
         report=False,
         matting_engine="birefnet",
+    )
+
+    assert result.sheet_path.exists()
+    processed = Image.open(tmp_path / "frames_processed" / "frame_0000.png").convert("RGBA")
+    assert processed.getpixel((0, 0))[3] == 0
+    assert processed.getpixel((16, 16))[3] > 0
+
+
+def test_pipeline_depth_anything_falls_back_to_native_chroma(monkeypatch, tmp_path):
+    from services import sprite_processing_pipeline as spp
+
+    def _raise(_img):
+        raise RuntimeError("missing optional depth deps")
+
+    monkeypatch.setattr(spp, "try_depth_anything", _raise)
+
+    img = Image.new("RGBA", (32, 32), (0, 255, 0, 255))
+    for x in range(10, 22):
+        for y in range(8, 26):
+            img.putpixel((x, y), (220, 20, 20, 255))
+
+    result = process_common(
+        frames=[FrameItem(img, "frame_0", 0)],
+        output=tmp_path,
+        fps=12.0,
+        cell_size=(32, 32),
+        key_color=None,
+        key_tolerance=30.0,
+        key_feather=16.0,
+        rembg=False,
+        crop_mode="none",
+        pad=0,
+        alpha_threshold=8,
+        columns=1,
+        animation_name="fallback_test",
+        preview_gif=False,
+        save_processed_frames=True,
+        anchor="center",
+        ground_margin=0,
+        spacing=0,
+        margin=0,
+        solidify=0,
+        outline_width=0,
+        outline_color=(0, 0, 0, 255),
+        power_of_two=False,
+        loop_mode="normal",
+        drop_last=False,
+        drop_loop_duplicate=False,
+        reverse=False,
+        flip_x=False,
+        flip_y=False,
+        report=False,
+        matting_engine="depth-anything",
     )
 
     assert result.sheet_path.exists()

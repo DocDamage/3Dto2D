@@ -7,10 +7,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from PIL import Image
 
-from spriteforge_utils import IMAGE_SUFFIXES, safe_name
+from spriteforge_utils import IMAGE_SUFFIXES, ROOT, safe_name
 from services.training_dataset_service import _palette_from_samples
 
-ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT = ROOT / "output" / "training_datasets"
 
 TILE_KEYWORDS = {

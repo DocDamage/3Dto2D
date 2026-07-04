@@ -13,3 +13,6 @@ def test_scene_compositor_assets_are_loaded():
     assert "js/scene_compositor.js" in index
     assert "/api/scene_compositor/preview" in script
     assert "sceneCompositorCanvas" in script
+    assert "sceneCompositorBackgroundImage" in script
+    assert "background_image" in script
+    assert "backgroundImage" in script

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
+import logging
 import os
 import shutil
 import subprocess
@@ -15,7 +16,8 @@ from PIL import Image
 
 try:
     import cv2
-except Exception:
+except Exception as exc:
+    logging.getLogger(__name__).debug("OpenCV unavailable for optical-flow interpolation; blend fallback will be used: %s", exc)
     cv2 = None
 
 from services.sprite_video_loader import FrameItem
@@ -201,6 +203,89 @@ def interpolate_frames_bitmapflow(
             return interpolate_frames_flow(frames, source_fps, target_fps, hold_all_transitions, hold_name_patterns)
 
 
+def _rife_executable() -> Optional[str]:
+    for name in ("rife-ncnn-vulkan", "rife-ncnn-vulkan.exe", "rife"):
+        found = shutil.which(name)
+        if found:
+            return found
+    bin_dir = Path(__file__).resolve().parent.parent / "bin"
+    for name in ("rife-ncnn-vulkan.exe", "rife-ncnn-vulkan", "rife.exe", "rife"):
+        candidate = bin_dir / name
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def _nearest_alpha_frame(left: Image.Image, right: Image.Image, frac: float) -> Image.Image:
+    source = left if frac < 0.5 else right
+    return source.convert("RGBA").getchannel("A")
+
+
+def _rife_midpoint(left: Image.Image, right: Image.Image, exe: str) -> Image.Image:
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp = Path(tmp_dir)
+        left_path = tmp / "left.png"
+        right_path = tmp / "right.png"
+        out_path = tmp / "mid.png"
+        left.convert("RGB").save(left_path)
+        right.convert("RGB").save(right_path)
+        cmd = [exe, "-0", str(left_path), "-1", str(right_path), "-o", str(out_path)]
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=45)
+        rgb = Image.open(out_path).convert("RGBA")
+        rgb.putalpha(_nearest_alpha_frame(left, right, 0.5))
+        return rgb
+
+
+def interpolate_frames_rife(
+    frames: Sequence[FrameItem],
+    source_fps: float,
+    target_fps: float,
+    hold_all_transitions: bool = False,
+    hold_name_patterns: Sequence[str] = (),
+) -> Tuple[List[FrameItem], float]:
+    """Interpolate with optional RIFE midpoint generation, falling back to blend.
+
+    The supported external path is ``rife-ncnn-vulkan``. It is treated as
+    optional because most SpriteForge installs will not have it locally.
+    Non-midpoint timing still uses alpha-aware blending so arbitrary target FPS
+    remains deterministic.
+    """
+    exe = _rife_executable()
+    if not exe:
+        print("[RIFE] executable not found. Falling back to alpha-aware blend interpolation...")
+        return interpolate_frames_blend(frames, source_fps, target_fps, hold_all_transitions, hold_name_patterns)
+    if len(frames) <= 1 or source_fps <= 0 or target_fps <= source_fps:
+        return list(frames), source_fps
+
+    total = interpolated_count(len(frames), source_fps, target_fps)
+    out: List[FrameItem] = []
+    midpoint_cache = {}
+    for out_idx in range(total):
+        t = out_idx / target_fps
+        source_pos = min(t * source_fps, len(frames) - 1)
+        left = int(source_pos)
+        right = min(left + 1, len(frames) - 1)
+        frac = source_pos - left
+        if right == left or frac <= 1e-6:
+            img = frames[left].image.copy()
+        elif _should_hold_transition(frames[left], frames[right], hold_all_transitions, hold_name_patterns):
+            chosen = left if frac < 0.5 else right
+            img = frames[chosen].image.copy()
+        elif abs(frac - 0.5) <= 1e-6:
+            key = (left, right)
+            if key not in midpoint_cache:
+                try:
+                    midpoint_cache[key] = _rife_midpoint(frames[left].image, frames[right].image, exe)
+                except Exception as exc:
+                    print(f"[RIFE] midpoint generation failed: {exc}. Falling back to blend for this transition...")
+                    midpoint_cache[key] = Image.blend(frames[left].image.convert("RGBA"), frames[right].image.convert("RGBA"), frac)
+            img = midpoint_cache[key].copy()
+        else:
+            img = Image.blend(frames[left].image.convert("RGBA"), frames[right].image.convert("RGBA"), frac)
+        out.append(FrameItem(img, f"{frames[left].name}_rife_{out_idx:04d}", frames[left].source_index))
+    return out, target_fps
+
+
 def interpolate_frames(
     frames: Sequence[FrameItem],
     source_fps: float,
@@ -219,6 +304,8 @@ def interpolate_frames(
         out, fps = interpolate_frames_flow(frames, source_fps, target_fps, hold_all_transitions, patterns)
     elif engine == "bitmapflow":
         out, fps = interpolate_frames_bitmapflow(frames, source_fps, target_fps, hold_all_transitions, patterns)
+    elif engine == "rife":
+        out, fps = interpolate_frames_rife(frames, source_fps, target_fps, hold_all_transitions, patterns)
     else:
         raise RuntimeError(f"Unknown interpolation engine: {engine}")
 

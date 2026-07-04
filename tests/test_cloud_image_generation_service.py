@@ -17,6 +17,62 @@ def test_hardened_prompt_appends_sprite_constraints():
     assert "clockwork knight idle" in prompt
     assert "pixel art sprite" in prompt
     assert "solid magenta background" in prompt
+    assert "Avoid:" in prompt
+    assert "sprite sheet grid" in prompt
+
+
+def test_hardened_prompt_does_not_duplicate_constraints():
+    from services.cloud_image_generation_service import DEFAULT_CONSTRAINTS, DEFAULT_NEGATIVE, hardened_prompt
+
+    prompt = hardened_prompt(f"clockwork knight idle, {DEFAULT_CONSTRAINTS}. Avoid: {DEFAULT_NEGATIVE}")
+
+    assert prompt.count(DEFAULT_CONSTRAINTS) == 1
+    assert prompt.count(DEFAULT_NEGATIVE) == 1
+
+
+def test_cloud_image_provider_status_does_not_expose_secret_values(monkeypatch):
+    from services.cloud_image_generation_service import cloud_image_provider_status
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-secret-value")
+
+    status = cloud_image_provider_status("openai")
+
+    provider = status["providers"]["openai"]
+    assert provider["configured"] is True
+    assert provider["configured_env_name"] == "OPENAI_API_KEY"
+    assert "sk-secret-value" not in json.dumps(status)
+
+
+def test_cloud_generation_plan_is_secret_safe_and_provider_specific(monkeypatch):
+    from services.cloud_image_generation_service import build_cloud_generation_plan
+
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-secret-value")
+
+    plan = build_cloud_generation_plan(
+        prompt="mossy goblin idle",
+        provider="gemini",
+        frame_count=2,
+        frame_prompts=["idle facing right", "idle blink"],
+        cell_size="32x32",
+    )
+
+    dumped = json.dumps(plan)
+    assert plan["schema"] == "spriteforge.cloud_generation_plan.v1"
+    assert plan["provider"] == "gemini"
+    assert plan["model"] == "imagen-3.0-generate-002"
+    assert plan["provider_configured"] is True
+    assert plan["configured_env_name"] == "GEMINI_API_KEY"
+    assert plan["secret_values_exposed"] is False
+    assert plan["frame_count"] == 2
+    assert len(plan["hardened_prompts"]) == 2
+    assert plan["generation_contract"]["schema"] == "spriteforge.cloud_generation_contract.v1"
+    assert plan["generation_contract"]["cloud_api_opt_in"] is True
+    assert plan["generation_contract"]["request_strategy"] == "one_frame_per_request"
+    assert plan["generation_contract"]["planned_cloud_requests"] == 2
+    assert plan["generation_contract"]["secrets_policy"]["secret_values_persisted"] is False
+    assert "solid magenta background" in plan["hardened_prompts"][0]
+    assert "nearest-neighbor" in json.dumps(plan["processing_steps"])
+    assert "gemini-secret-value" not in dumped
 
 
 def test_cloud_image_source_processing_builds_engine_ready_sheet(tmp_path):
@@ -45,6 +101,29 @@ def test_cloud_image_source_processing_builds_engine_ready_sheet(tmp_path):
 
     assert manifest["schema"] == "spriteforge.cloud_image_sprite.v1"
     assert manifest["source"] == "local_images"
+    assert manifest["model"] == "gpt-image-1"
+    assert manifest["generation_contract"]["schema"] == "spriteforge.cloud_generation_contract.v1"
+    assert manifest["generation_contract"]["cloud_api_opt_in"] is False
+    assert manifest["generation_contract"]["request_strategy"] == "local_source_images_only"
+    assert manifest["generation_contract"]["planned_cloud_requests"] == 0
+    assert manifest["generation_contract"]["post_processing"]["downsample_interpolation"] == "nearest"
+    assert manifest["processing"]["transparency_extraction"]["engine"] == "chroma_key"
+    assert manifest["processing"]["downsampling"]["interpolation"] == "nearest"
+    assert manifest["processing"]["assembly"]["grid_aligned"] is True
+    assert manifest["processing"]["cleanup_metrics"]["per_frame"] is True
+    assert manifest["frame_sources"][0]["source"] == "local_image"
+    assert manifest["frame_sources"][0]["source_image"] == str(src)
+    assert manifest["frame_sources"][0]["raw_frame"] == "frames_raw/raw_0000.png"
+    assert manifest["frame_sources"][0]["processed_frame"] == "frames_processed/frame_0000.png"
+    cleanup = manifest["frame_sources"][0]["cleanup_metrics"]
+    assert cleanup["schema"] == "spriteforge.cloud_frame_cleanup.v1"
+    assert cleanup["raw_size"] == "128x128"
+    assert cleanup["processed_size"] == "32x32"
+    assert cleanup["alpha_bbox"]
+    assert 0 < cleanup["opaque_pixel_ratio"] < 1
+    assert cleanup["unique_color_count"] >= 2
+    assert meta["extra"]["frame_sources"][0]["processed_frame"] == "frames_processed/frame_0000.png"
+    assert meta["extra"]["frame_sources"][0]["cleanup_metrics"]["processed_size"] == "32x32"
     assert meta["frame_width"] == 32
     assert meta["frame_height"] == 32
     assert meta["frame_count"] == 1
@@ -90,3 +169,26 @@ def test_cloud_image_sprite_parser_and_web_command_forwarding():
     assert "--provider" in cmd
     assert "--source-image" in cmd
     assert "--no-palette-cleanup" in cmd
+
+
+def test_cloud_image_generation_plan_endpoint():
+    from flask import Flask
+    from web_routes.routes_misc import routes_misc
+
+    app = Flask(__name__)
+    app.register_blueprint(routes_misc)
+
+    response = app.test_client().post(
+        "/api/cloud/image-generation-plan",
+        json={"prompt": "tiny alchemist idle", "provider": "openai", "frames": 1, "cell_size": "32x32"},
+    )
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert payload["schema"] == "spriteforge.cloud_generation_plan.v1"
+    assert payload["provider"] == "openai"
+    assert payload["frame_count"] == 1
+    assert payload["cell_size"] == "32x32"
+    assert payload["secret_values_exposed"] is False
+    assert payload["generation_contract"]["schema"] == "spriteforge.cloud_generation_contract.v1"
+    assert payload["generation_contract"]["request_strategy"] == "one_frame_per_request"

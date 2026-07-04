@@ -1,0 +1,45 @@
+.lighting-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+  gap: 16px;
+}
+
+.lighting-preview-stage canvas {
+  width: 100%;
+  max-height: 62vh;
+  aspect-ratio: 1;
+  display: block;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.06) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.06) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.06) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.06) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+.lighting-preview-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lighting-preview-controls input[type="range"] {
+  width: 100%;
+}
+
+.lighting-preview-controls .hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .lighting-preview-layout {
+    grid-template-columns: 1fr;
+  }
+}

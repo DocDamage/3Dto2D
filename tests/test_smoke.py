@@ -102,6 +102,8 @@ def test_drag_drop_assets_loaded():
     assert "wizardReferenceDropTarget" in script
     assert "wizardStyleDropTarget" in script
     assert "Choose image" in script
+    assert "Preview updates after upload" in script
+    assert "refreshGenerateReferencePreview" in script
     assert "installWizardDrops" in script
     assert "qualityDropTarget" in script
     assert ".drop-target-card" in css
@@ -150,6 +152,7 @@ def test_native_polish_web_options_forwarded():
         "alpha_refine": True,
         "temporal_alpha_stabilize": True,
         "pixel_cleanup": True,
+        "palette_project_lock": True,
         "pixel_cleanup_palette": "pico8",
         "pixel_cleanup_dither_mode": "bayer",
         "interpolate_fps": "24",
@@ -179,9 +182,11 @@ def test_native_polish_web_options_forwarded():
 
     for field in [
         'name="matting_engine"',
+        'value="depth-anything"',
         'name="alpha_refine"',
         'name="temporal_alpha_stabilize"',
         'name="pixel_cleanup"',
+        'name="palette_project_lock"',
         'name="pixel_cleanup_palette"',
         'name="pixel_cleanup_dither_mode"',
         'name="interpolate_fps"',
@@ -193,7 +198,7 @@ def test_native_polish_web_options_forwarded():
     parsed = build_parser().parse_args([
         "generate-sprite",
         "--matting-engine",
-        "pixel-art",
+        "depth-anything",
         "--alpha-refine",
         "--temporal-alpha-stabilize",
         "--pixel-cleanup",
@@ -209,7 +214,7 @@ def test_native_polish_web_options_forwarded():
         "--normal-map-engine",
         "native-depth",
     ])
-    assert parsed.matting_engine == "pixel-art"
+    assert parsed.matting_engine == "depth-anything"
     assert parsed.alpha_refine is True
     assert parsed.temporal_alpha_stabilize is True
     assert parsed.pixel_cleanup is True
@@ -224,6 +229,29 @@ def test_native_polish_web_options_forwarded():
     convert_parsed = build_parser().parse_args(["convert-video", "--input", "test.mp4", "--", "--pixel-cleanup"])
     assert convert_parsed.extra == ["--", "--pixel-cleanup"]
     assert _normalize_sprite_extra_args(convert_parsed.extra) == ["--pixel-cleanup"]
+
+
+def test_project_palette_lock_forwards_custom_palette():
+    from web_helpers import build_action_command
+
+    payload = {
+        "action": "generate_sprite",
+        "quality_check": False,
+        "palette_project_lock": True,
+        "palette_lock": {
+            "enabled": True,
+            "colors": ["#112233", "445566", "#AABBCC"],
+            "colors_limit": 3,
+            "source": "test",
+        },
+    }
+    _, cmd = build_action_command(payload)
+
+    assert "--pixel-cleanup" in cmd
+    assert "--pixel-cleanup-palette" in cmd
+    assert "#112233,#445566,#AABBCC" in cmd
+    assert "--pixel-cleanup-colors" in cmd
+    assert "3" in cmd
 
 
 def test_native_only_flags_are_parsed_and_forwarded():

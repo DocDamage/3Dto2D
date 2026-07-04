@@ -89,6 +89,21 @@ def test_lora_training_run_prepares_kohya_sdxl_files(tmp_path):
     assert (output / "README_LORA_TRAINING.md").exists()
 
 
+def test_lora_training_recommends_vram_safe_defaults():
+    from services.lora_training_service import recommend_lora_training_defaults
+
+    low = recommend_lora_training_defaults(8, "sdxl")
+    high = recommend_lora_training_defaults(24, "flux")
+
+    assert low["schema"] == "spriteforge.lora_training_defaults.v1"
+    assert low["tier"] == "sdxl_low_vram"
+    assert low["recommendation"]["resolution"] == 512
+    assert low["recommendation"]["network_dim"] == 8
+    assert high["tier"] == "flux_high_vram"
+    assert high["recommendation"]["resolution"] == 1024
+    assert high["recommendation"]["batch_size"] == 1
+
+
 def test_lora_training_run_prepares_flux_ai_toolkit_files(tmp_path):
     from services.lora_training_service import build_lora_training_run
 
@@ -287,3 +302,12 @@ def test_lora_training_native_run_executes_without_external_trainer(tmp_path):
 
     registry_data = load_registry(registry_path=registry)
     assert registry_data["defaults"]["character_style"]["filename"] == native_artifact.name
+    metadata = registry_data["defaults"]["character_style"]["metadata"]
+    assert metadata["schema"] == "spriteforge.trained_lora_metadata.v1"
+    assert metadata["runtime_backend"] == "native"
+    assert metadata["resolution"] == 768
+    assert metadata["sample_count"] == 1
+    assert metadata["style_metadata"]["base_caption"] == "premium pixel art RPG character"
+    assert metadata["dataset_provenance"]["dataset_dir"] == str(dataset.resolve())
+    assert metadata["token_profile"]
+    assert metadata["palette_profile"]

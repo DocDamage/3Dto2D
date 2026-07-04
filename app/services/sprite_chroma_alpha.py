@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from collections import Counter, deque
 from typing import Iterable, List, Optional, Sequence, Tuple, Union
 
@@ -11,20 +12,26 @@ from PIL import Image, ImageChops, ImageFilter
 
 try:
     import cv2
-except Exception:
+except Exception as exc:
     cv2 = None
+    logging.getLogger(__name__).debug("OpenCV is not available; depth matting morphology will use fallback behavior: %s", exc)
 
 from services.sprite_service import SpriteService
 
+logger = logging.getLogger(__name__)
+
 BIREFNET_MATTING_MODEL_ID = os.environ.get("SPRITEFORGE_BIREFNET_MODEL", "ZhengPeng7/BiRefNet-matting")
+DEPTH_ANYTHING_MODEL_ID = os.environ.get("SPRITEFORGE_DEPTH_ANYTHING_MODEL", "LiheYoung/depth-anything-small-hf")
 
 __all__ = [
     "BIREFNET_MATTING_MODEL_ID",
+    "DEPTH_ANYTHING_MODEL_ID",
     "guess_key_color_from_corners",
     "apply_chroma_key",
     "apply_pixel_art_background_removal",
     "try_rembg",
     "try_birefnet",
+    "try_depth_anything",
     "apply_pixeloe_pixelization",
     "palette_to_native_array",
     "fit_native_pixel_palette",
@@ -178,6 +185,67 @@ def try_birefnet(img: Image.Image) -> Image.Image:
     return out
 
 
+def _border_depth_values(depth: np.ndarray) -> np.ndarray:
+    if depth.size == 0:
+        return np.asarray([], dtype=np.float32)
+    h, w = depth.shape[:2]
+    border = [depth[0, :], depth[h - 1, :], depth[:, 0], depth[:, w - 1]]
+    return np.concatenate([b.reshape(-1) for b in border]).astype(np.float32)
+
+
+def try_depth_anything(img: Image.Image) -> Image.Image:
+    """Use optional Depth Anything depth estimation to build an alpha matte."""
+    try:
+        import torch
+        from transformers import AutoImageProcessor, AutoModelForDepthEstimation
+    except Exception as exc:
+        raise RuntimeError(
+            "The depth-anything matting option requires optional transformers and torch packages. "
+            "Install them with: pip install transformers torch"
+        ) from exc
+
+    global _DEPTH_ANYTHING_MODEL, _DEPTH_ANYTHING_PROCESSOR
+    if "_DEPTH_ANYTHING_MODEL" not in globals() or _DEPTH_ANYTHING_MODEL is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _DEPTH_ANYTHING_PROCESSOR = AutoImageProcessor.from_pretrained(DEPTH_ANYTHING_MODEL_ID)
+        _DEPTH_ANYTHING_MODEL = AutoModelForDepthEstimation.from_pretrained(DEPTH_ANYTHING_MODEL_ID).to(device)
+        _DEPTH_ANYTHING_MODEL.eval()
+
+    input_rgb = img.convert("RGB")
+    w, h = input_rgb.size
+    device = next(_DEPTH_ANYTHING_MODEL.parameters()).device
+    inputs = _DEPTH_ANYTHING_PROCESSOR(images=input_rgb, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = _DEPTH_ANYTHING_MODEL(**inputs)
+        predicted_depth = outputs.predicted_depth
+        prediction = torch.nn.functional.interpolate(
+            predicted_depth.unsqueeze(1),
+            size=(h, w),
+            mode="bicubic",
+            align_corners=False,
+        ).squeeze().cpu().numpy()
+
+    depth = prediction.astype(np.float32)
+    depth = (depth - float(depth.min())) / max(1e-6, float(depth.max() - depth.min()))
+    border = _border_depth_values(depth)
+    if border.size == 0:
+        return img.convert("RGBA")
+
+    background_depth = float(np.median(border))
+    delta = np.abs(depth - background_depth)
+    threshold = max(0.08, float(np.percentile(np.abs(border - background_depth), 90)) * 1.5)
+    alpha = np.where(delta > threshold, 255, 0).astype(np.uint8)
+    if cv2 is not None:
+        alpha = cv2.medianBlur(alpha, 5)
+        kernel = np.ones((3, 3), np.uint8)
+        alpha = cv2.morphologyEx(alpha, cv2.MORPH_CLOSE, kernel, iterations=1)
+    mask = Image.fromarray(alpha, mode="L").filter(ImageFilter.GaussianBlur(1.0))
+    rgba = img.convert("RGBA")
+    out = Image.new("RGBA", rgba.size, (0, 0, 0, 0))
+    out.paste(rgba, (0, 0), mask=mask)
+    return out
+
+
 def apply_pixeloe_pixelization(img: Image.Image, pixel_size: int = 4, thickness: int = 1) -> Image.Image:
     """Applies detail-oriented pixelization using contrast-aware downscaling and outline expansion."""
     try:
@@ -185,7 +253,8 @@ def apply_pixeloe_pixelization(img: Image.Image, pixel_size: int = 4, thickness:
         np_arr = np.array(img.convert("RGBA"))
         out_arr = pixelize(np_arr, pixel_size=pixel_size, thickness=thickness)
         return Image.fromarray(out_arr, mode="RGBA")
-    except Exception:
+    except Exception as exc:
+        logger.debug("Pixeloe pixelization unavailable; using native fallback: %s", exc)
         # High quality fallback implementation
         img = img.convert("RGBA")
         w, h = img.size

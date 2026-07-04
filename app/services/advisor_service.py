@@ -6,8 +6,10 @@ guess around Wan 2.1 vs 2.2, debug vs quality, frame count, etc.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List
 
+logger = logging.getLogger(__name__)
 
 # Quality-goal multipliers relative to the base hardware recommendation
 _QUALITY_PRESETS: Dict[str, Dict[str, Any]] = {
@@ -41,19 +43,22 @@ def advise(quality_goal: str = "balanced") -> Dict[str, Any]:
     try:
         from services.model_service import ModelService
         models = ModelService.get_summary()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Preset advisor could not read model summary: %s", exc)
         models = {}
 
     try:
         from services.comfy_service import ComfyService
         gpu = ComfyService.get_gpu_info()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Preset advisor could not read GPU info: %s", exc)
         gpu = {}
 
     try:
         from services.config_service import ConfigService
         cfg = ConfigService.get_config()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Preset advisor could not read config: %s", exc)
         cfg = {}
 
     # --- derive VRAM in MiB ---
@@ -68,14 +73,15 @@ def advise(quality_goal: str = "balanced") -> Dict[str, Any]:
                 vram_mib = int(num * 1024)
             else:
                 vram_mib = int(num)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Preset advisor could not parse GPU memory string %r: %s", mem_str, exc)
 
     # --- base hardware recommendation ---
     try:
         from spriteforge_hardware import recommendation
         hw = recommendation(vram_mib)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Preset advisor could not compute hardware recommendation: %s", exc)
         hw = {
             "tier": "wan21_safe",
             "profile": "auto",

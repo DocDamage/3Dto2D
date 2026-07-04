@@ -15,6 +15,36 @@
           <label>Sprite folders<textarea name="sprites" rows="8" placeholder="output\hero_idle_sprite&#10;output\hero_walk_sprite&#10;output\hero_attack_sprite"></textarea></label>
           <button class="primary big" type="submit">Build Atlas</button>
         </form>
+        <form class="card form" id="animatedExportForm">
+          <h3>Animated export</h3>
+          <label>Sprite folder<input name="path" placeholder="output/hero_idle_sprite" /></label>
+          <div class="row">
+            <label>Format
+              <select name="format">
+                <option value="apng">APNG</option>
+                <option value="webp">Animated WebP</option>
+                <option value="lottie">Lottie JSON</option>
+              </select>
+            </label>
+            <label>WebP quality<input name="quality" type="number" min="1" max="100" value="85" /></label>
+          </div>
+          <div class="button-row compact-actions">
+            <button class="mini" id="animatedExportUseSelected" type="button">Use selected sprite</button>
+            <button class="mini primary" type="submit">Export animation</button>
+          </div>
+          <div id="animatedExportResult" class="empty compact">No animated export yet.</div>
+        </form>
+        <form class="card form" id="skeletalExportForm">
+          <h3>Skeletal export</h3>
+          <label>Sprite folder<input name="path" placeholder="output/hero_idle_sprite" /></label>
+          <label>Rig name<input name="name" placeholder="hero_idle" /></label>
+          <label>Output folder<input name="output" placeholder="output/skeletal_exports/hero_idle" /></label>
+          <div class="button-row compact-actions">
+            <button class="mini" id="skeletalExportUseSelected" type="button">Use selected sprite</button>
+            <button class="mini primary" type="submit">Export Spine / DragonBones</button>
+          </div>
+          <div id="skeletalExportResult" class="empty compact">No skeletal export yet.</div>
+        </form>
         <section class="card">
           <div class="card-head"><h3>Recent packs</h3><button class="mini" id="refreshPacks" type="button">Refresh</button></div>
           <div id="packList" class="release-list">

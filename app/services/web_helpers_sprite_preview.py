@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -24,6 +25,8 @@ from services.web_helpers_library import (
 from services.web_helpers_listings import (
     _list_queues, _list_releases, _list_packs, _list_quality_reports,
 )
+
+logger = logging.getLogger(__name__)
 
 
 _VIDEO_CANDIDATE_CACHE: Dict[str, List[Path]] = {}
@@ -82,7 +85,8 @@ def _video_candidates() -> List[Path]:
         try:
             stat = root.stat()
             cache_key_parts.append(f"{root}:{stat.st_mtime_ns}:{stat.st_size}")
-        except OSError:
+        except OSError as exc:
+            logger.debug("Could not stat video candidate root %s: %s", root, exc)
             cache_key_parts.append(f"{root}:missing")
     cache_key = "|".join(cache_key_parts)
     cached = _VIDEO_CANDIDATE_CACHE.get(cache_key)
@@ -97,7 +101,8 @@ def _video_candidates() -> List[Path]:
             for file in root.rglob("*"):
                 if file.suffix.lower() in VIDEO_SUFFIXES:
                     candidates.append(file)
-        except OSError:
+        except OSError as exc:
+            logger.debug("Could not scan video candidates under %s: %s", root, exc)
             continue
 
     _VIDEO_CANDIDATE_CACHE.clear()
@@ -294,8 +299,8 @@ def _qa_batch_summary(project_meta: Optional[Dict[str, str]] = None) -> Dict[str
                 try:
                     qa_data = json.loads(p.read_text(encoding="utf-8"))
                     break
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Could not read QA report %s for batch summary: %s", p, exc)
 
         metrics = qa_data.get("metrics", {}) if qa_data else {}
 
@@ -345,7 +350,8 @@ def _qa_batch_summary(project_meta: Optional[Dict[str, str]] = None) -> Dict[str
                         arr = np.asarray(img.convert("RGBA"))
                         alpha = arr[:, :, 3]
                         cleanliness = float(((alpha > 0) & (alpha < 16)).sum() / max(1, alpha.size))
-                except Exception:
+                except Exception as exc:
+                    logger.debug("Could not compute alpha cleanliness for %s: %s", sheet_png, exc)
                     cleanliness = 0.0
             else:
                 cleanliness = 0.0
@@ -363,8 +369,8 @@ def _qa_batch_summary(project_meta: Optional[Dict[str, str]] = None) -> Dict[str
                 exp_cnt = sheet_json.get("frame_count", 0)
                 if exp_cnt and frames_cnt and frames_cnt < exp_cnt:
                     missing_frames = True
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Could not compare expected frame count for %s: %s", sheet_json_path, exc)
 
         version_history = []
         versions_dir = sprite_dir / ".versions"
@@ -382,8 +388,8 @@ def _qa_batch_summary(project_meta: Optional[Dict[str, str]] = None) -> Dict[str
                             try:
                                 v_qa = json.loads(p_path.read_text(encoding="utf-8"))
                                 break
-                            except Exception:
-                                pass
+                            except Exception as exc:
+                                logger.debug("Could not read version QA report %s: %s", p_path, exc)
                     v_metrics = v_qa.get("metrics", {}) if v_qa else {}
                     version_history.append({
                         "version_id": vid,
@@ -394,8 +400,8 @@ def _qa_batch_summary(project_meta: Optional[Dict[str, str]] = None) -> Dict[str
                         "brightness_stdev": v_metrics.get("brightness_stdev"),
                         "alpha_cleanliness": v_metrics.get("alpha_cleanliness"),
                     })
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Could not load version history from %s: %s", vfile, exc)
 
         version_history.append({
             "version_id": "current",

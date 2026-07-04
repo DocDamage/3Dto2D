@@ -18,6 +18,11 @@
           <div class="card-head">
             <h3>Build Training Dataset</h3>
           </div>
+          <div id="trainingDatasetDropzone" class="training-dataset-dropzone" tabindex="0" role="button" aria-label="Drop or paste a sprite folder path">
+            <b>Drop or paste your owned sprite folder path</b>
+            <span>Use PNG/JPG/WebP sprites or sheets. File drops show a quick visual count; folder paths fill the source field for the local builder.</span>
+            <small id="trainingDatasetDropHint">Tip: copy a folder path from Explorer, click here, then paste.</small>
+          </div>
           <label>Purchased sprite folder
             <input name="source_dir" placeholder="C:\Users\dferr\Downloads\SakPix characters" />
           </label>
@@ -42,9 +47,11 @@
             <input name="output" placeholder="Optional. Defaults to app/output/training_datasets/..." />
           </label>
           <div class="button-row form-actions-tight">
+            <button class="ghost big" type="button" id="previewTrainingDataset">Preview Dataset</button>
             <button class="primary big" type="submit">Build Dataset</button>
             <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
           </div>
+          <div id="trainingDatasetPreview" class="training-dataset-preview empty compact">Preview estimates sample count, captions, actions, directions, and cell slicing before writing files.</div>
         </form>
 
         <form class="card form" id="tileTrainingDatasetForm">
@@ -157,11 +164,38 @@
           </label>
         </div>
         <div class="button-row form-actions-tight">
+          <button class="ghost big" type="button" id="applyLoraGpuDefaults">Apply GPU defaults</button>
           <button class="primary big" type="button" data-lora-mode="prepare">Prepare Run Files</button>
           <button class="danger big" type="button" data-lora-mode="run">Start Training</button>
           <button class="ghost big" type="button" data-open="output/training_runs">Open Runs Folder</button>
         </div>
+        <div id="loraGpuDefaultsHint" class="empty compact">GPU defaults are conservative and keep external trainer behavior opt-in.</div>
       </form>
+      <section class="card training-progress-card">
+        <div class="card-head">
+          <h3>Training Progress</h3>
+          <button class="mini" id="refreshLoraProgress" type="button">Refresh</button>
+        </div>
+        <label>Run folder
+          <input id="loraProgressPath" placeholder="output/training_runs/sakpix_sprite_lora" />
+        </label>
+        <canvas id="loraLossChart" width="640" height="180" aria-label="LoRA loss chart"></canvas>
+        <div id="loraProgressSummary" class="empty compact">Choose a run folder to inspect loss, samples, and checkpoints.</div>
+        <div id="loraSampleGallery" class="training-sample-gallery"></div>
+      </section>
+      <section class="card training-progress-card">
+        <div class="card-head">
+          <h3>LoRA A/B Compare Plan</h3>
+          <button class="mini" id="buildLoraComparePlan" type="button">Build plan</button>
+        </div>
+        <label>Prompt
+          <input id="loraComparePrompt" placeholder="same prompt for every LoRA variant" />
+        </label>
+        <label>LoRA filenames
+          <input id="loraCompareNames" placeholder="hero_a.safetensors, hero_b.safetensors" />
+        </label>
+        <div id="loraComparePlanResult" class="empty compact">Choose 2-4 trained LoRAs to generate matching variants, then open Compare Player with the resulting sprites.</div>
+      </section>
     </section>
 
     <section class="training-tab-panel" data-training-panel="tiles" role="tabpanel">
@@ -193,6 +227,35 @@
           Use one tile family per dataset when possible: terrain, dungeon walls, roofs, water/coast, bridges, or cliffs. This keeps the LoRA from blending unrelated stage materials.
         </div>
       </section>
+      <form class="card form tilemap-generator-form" id="tilemapGeneratorForm">
+        <div class="card-head">
+          <h3>Tilemap Generator</h3>
+        </div>
+        <label>Mode
+          <select name="mode">
+            <option value="autotile_16">16-tile autotile</option>
+            <option value="wang_16">16-tile Wang sheet</option>
+          </select>
+        </label>
+        <div class="row compact-fields">
+          <label>Base tile<input name="base" placeholder="input/tiles/grass.png" /></label>
+          <label>Border tile<input name="border" placeholder="input/tiles/path_edge.png" /></label>
+        </div>
+        <div class="row compact-fields">
+          <label>North<input name="north" placeholder="input/tiles/north.png" /></label>
+          <label>East<input name="east" placeholder="input/tiles/east.png" /></label>
+        </div>
+        <div class="row compact-fields">
+          <label>South<input name="south" placeholder="input/tiles/south.png" /></label>
+          <label>West<input name="west" placeholder="input/tiles/west.png" /></label>
+        </div>
+        <div class="row compact-fields">
+          <label>Tile size<input name="tile_size" type="number" min="0" value="0" /></label>
+          <label>Output<input name="output" value="output/tilesets/autotile_16.png" /></label>
+        </div>
+        <button class="mini primary quality-full-action" type="submit">Generate tilemap sheet</button>
+        <div class="empty compact">Writes PNG plus metadata for Godot, RPG Maker, and Tiled import.</div>
+      </form>
     </section>
 
     <section class="training-tab-panel" data-training-panel="path" role="tabpanel">

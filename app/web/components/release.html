@@ -24,10 +24,31 @@
           <div class="button-row"><button class="ghost" data-run="asset_dashboard">Build Asset Dashboard</button><button class="ghost" data-run="final_preflight">Build Preflight</button></div>
         </section>
         <section class="card marketplace-card">
-          <div class="card-head"><h3>Community Gallery</h3><button class="mini" id="refreshMarketplace" type="button">Refresh</button></div>
+          <div class="card-head">
+            <h3>Community Gallery</h3>
+            <div class="button-row compact-actions">
+              <button class="mini" id="marketplaceShareManifest" type="button">Share manifest</button>
+              <button class="mini" id="refreshMarketplace" type="button">Refresh</button>
+            </div>
+          </div>
           <div id="marketplaceList" class="marketplace-list">
             <div class="empty compact">No shared bundles found yet.</div>
           </div>
+          <textarea id="marketplaceShareResult" class="marketplace-share-result hidden" rows="8" readonly></textarea>
+        </section>
+        <section class="card plugin-sdk-card">
+          <div class="card-head">
+            <div>
+              <h3>Plugin SDK Starter</h3>
+              <p class="muted compact">Create local add-ons against the current SpriteForge plugin contract.</p>
+            </div>
+            <button class="mini" id="loadPluginSdkStarter" type="button">Load SDK starter</button>
+          </div>
+          <label>Plugin id
+            <input id="pluginSdkId" value="my_plugin" placeholder="my_plugin" />
+          </label>
+          <div id="pluginSdkSummary" class="plugin-sdk-summary empty compact">Load the SDK starter to see version, hooks, manifest, and Python scaffold.</div>
+          <textarea id="pluginSdkScaffold" class="plugin-sdk-scaffold hidden" rows="10" readonly></textarea>
         </section>
       </div>
     </section>

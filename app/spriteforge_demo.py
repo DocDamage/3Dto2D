@@ -9,8 +9,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from services.open_path_service import open_path as open_system_path
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent
 FRAMES = ROOT / "output" / "_demo_frames"
 OUT = ROOT / "output" / "demo_sprite_no_gpu"
 

@@ -128,6 +128,67 @@ def test_autotile_compilation(tmp_path):
     finally:
         services.tilemap_service.ROOT = old_root
 
+def test_wang_tile_generation_writes_sheet_and_metadata(tmp_path):
+    sources = {
+        "north.png": (220, 40, 40, 255),
+        "east.png": (40, 220, 40, 255),
+        "south.png": (40, 40, 220, 255),
+        "west.png": (220, 220, 40, 255),
+    }
+    for name, color in sources.items():
+        Image.new("RGBA", (16, 16), color).save(tmp_path / name)
+
+    import services.tilemap_service
+    old_root = services.tilemap_service.ROOT
+    try:
+        services.tilemap_service.ROOT = tmp_path
+        res = TilemapService.generate_wang_tiles(
+            "north.png",
+            "east.png",
+            "south.png",
+            "west.png",
+            "wang.png",
+            tile_size=16,
+        )
+
+        assert res["ok"]
+        assert res["tile_count"] == 16
+        assert (tmp_path / "wang.png").exists()
+        meta = json.loads((tmp_path / "wang.json").read_text(encoding="utf-8"))
+        assert meta["type"] == "wang_16"
+        assert meta["columns"] == 4
+        assert len(meta["rules"]) == 16
+        sheet = Image.open(tmp_path / "wang.png").convert("RGBA")
+        assert sheet.size == (64, 64)
+    finally:
+        services.tilemap_service.ROOT = old_root
+
+
+def test_tilemap_cli_parses_wang_mode():
+    from spriteforge_unified import build_parser
+
+    args = build_parser().parse_args([
+        "tilemap",
+        "--mode",
+        "wang_16",
+        "--north",
+        "n.png",
+        "--east",
+        "e.png",
+        "--south",
+        "s.png",
+        "--west",
+        "w.png",
+        "--output",
+        "out.png",
+        "--tile-size",
+        "32",
+    ])
+
+    assert args.mode == "wang_16"
+    assert args.north == "n.png"
+    assert args.tile_size == 32
+
 def test_plugin_hooks(tmp_path):
     # Write a test plugin dynamically
     plugins_dir = tmp_path / "plugins"
@@ -157,5 +218,53 @@ def on_qa_check(sprite_dir, report):
         assert report["score"] == 99.9
     finally:
         services.plugin_manager.ROOT = old_root
+        services.plugin_manager.PLUGINS_DIR = old_plugins
+
+
+def test_plugin_manifest_discovery_without_execution(tmp_path):
+    import services.plugin_manager
+
+    plugin_dir = tmp_path / "plugins" / "fancy_metric"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "spriteforge_plugin.json").write_text(json.dumps({
+        "id": "fancy_metric",
+        "name": "Fancy Metric",
+        "version": "1.2.3",
+        "author": "Test Lab",
+        "description": "Adds a custom QA signal.",
+        "tags": ["qa", "metric"],
+        "entrypoint": "plugin.py",
+        "hooks": ["on_qa_check", "unknown_future_hook"],
+    }), encoding="utf-8")
+    (plugin_dir / "plugin.py").write_text("raise RuntimeError('should not execute during discovery')\n", encoding="utf-8")
+
+    old_plugins = services.plugin_manager.PLUGINS_DIR
+    try:
+        services.plugin_manager.PLUGINS_DIR = tmp_path / "plugins"
+        rows = PluginManager.discover_plugins()
+
+        assert rows[0]["id"] == "fancy_metric"
+        assert rows[0]["sdk_version"] == "1.0"
+        assert rows[0]["known_hooks"] == ["on_qa_check"]
+        assert rows[0]["unknown_hooks"] == ["unknown_future_hook"]
+    finally:
+        services.plugin_manager.PLUGINS_DIR = old_plugins
+
+
+def test_plugin_discovery_includes_legacy_py_plugins(tmp_path):
+    import services.plugin_manager
+
+    plugins_dir = tmp_path / "plugins"
+    plugins_dir.mkdir()
+    (plugins_dir / "legacy_hook.py").write_text("def on_qa_check(report):\n    return report\n", encoding="utf-8")
+
+    old_plugins = services.plugin_manager.PLUGINS_DIR
+    try:
+        services.plugin_manager.PLUGINS_DIR = plugins_dir
+        rows = PluginManager.discover_plugins()
+
+        assert rows[0]["id"] == "legacy_hook"
+        assert rows[0]["entrypoint"] == "legacy_hook.py"
+    finally:
         services.plugin_manager.PLUGINS_DIR = old_plugins
         PluginManager._loaded = False

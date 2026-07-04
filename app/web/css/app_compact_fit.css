@@ -473,6 +473,31 @@
     overflow: hidden;
   }
 
+  .experiment-analytics {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .experiment-kpi-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .experiment-kpi-grid div,
+  .experiment-analytics-grid article,
+  .experiment-memory-grid article {
+    padding: 8px;
+  }
+
+  .experiment-kpi-grid b {
+    font-size: 18px;
+  }
+
+  .experiment-analytics-grid,
+  .experiment-memory-grid {
+    gap: 8px;
+  }
+
   .data-table {
     font-size: .74rem;
   }
@@ -673,11 +698,30 @@
     width: min(980px, calc(100vw - 16px)) !important;
   }
 
+  .archetype-selected-panel {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 9px;
+    margin-bottom: 8px;
+  }
+
+  .archetype-selected-portrait {
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+
+  .archetype-selected-copy > p:not(.eyebrow),
+  .archetype-selected-meta {
+    display: none;
+  }
+
   #archetypesGrid {
     gap: 8px !important;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
-    max-height: calc(100vh - 190px) !important;
-    overflow: hidden !important;
+    max-height: calc(100vh - 285px) !important;
+    overflow-y: auto !important;
   }
 
   .archetype-card {

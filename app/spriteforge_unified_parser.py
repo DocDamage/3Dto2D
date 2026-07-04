@@ -1,5 +1,8 @@
 import argparse
+import json
 import sys
+from pathlib import Path
+from services.generation_commands import add_sprite_polish_args
 from spriteforge_commands import (
     ROOT,
     run,
@@ -54,6 +57,35 @@ def cmd_autotile_dataset(args: argparse.Namespace) -> None:
         max_samples_per_source=args.max_samples_per_source,
         include_all=args.include_all,
     )
+
+def cmd_tilemap(args: argparse.Namespace) -> None:
+    from services.tilemap_service import TilemapService
+
+    if args.mode == "wang_16":
+        result = TilemapService.generate_wang_tiles(
+            args.north,
+            args.east,
+            args.south,
+            args.west,
+            args.output,
+            tile_size=args.tile_size,
+        )
+    else:
+        result = TilemapService.generate_16_autotiles(args.base, args.border, args.output)
+    print(json.dumps(result, indent=2))
+
+def cmd_remote_generate(args: argparse.Namespace) -> None:
+    server = args.server
+    if not server:
+        from services.cloud_hub_service import cloud_hub_status
+
+        hub = cloud_hub_status(prefer_id=args.cloud_node or "")
+        selected = hub.get("selected")
+        if not selected:
+            raise SystemExit("No enabled cloud generation node configured. Use --server or add one through /api/cloud/nodes.")
+        server = selected["url"]
+
+    return run([sys.executable, str(ROOT / "spriteforge_remote.py"), "generate", "--server", server, "--workflow", args.workflow, "--prompt", args.prompt, "--output-prefix", args.output_prefix, "--timeout", str(args.timeout), "--cell-size", args.cell_size, "--key-color", args.key_color, "--seed", str(args.seed)] + (["--negative", args.negative] if args.negative else []) + (["--reference-image", args.reference_image] if args.reference_image else []) + (["--width", str(args.width)] if args.width else []) + (["--height", str(args.height)] if args.height else []) + (["--frames", str(args.frames)] if args.frames else []) + (["--video-fps", str(args.video_fps)] if args.video_fps else []) + (["--output", args.output] if args.output else []) + (["--convert"] if args.convert else []) + (args.extra or []))
 
 def cmd_lora_train(args: argparse.Namespace) -> None:
     from services.feature_capability_service import resolve_runtime
@@ -164,6 +196,7 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument("--seed", type=int, default=-1)
         s.add_argument("--output-prefix", default=None)
         s.add_argument("--resolutions", default=None)
+        s.add_argument("--resolution-hierarchy", default=None)
         s.add_argument("--preview", action="store_true")
         s.add_argument("--style-image", default=None)
         s.add_argument("--batch-size", type=int, default=None, help="VRAM fallback hint for workflows with batch controls")
@@ -192,26 +225,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--qa-threshold-foot-drift", type=float, default=None)
     s.add_argument("--qa-threshold-center-drift", type=float, default=None)
     s.add_argument("--power-of-two", action="store_true", help="Pad final sheet to power-of-two dimensions")
-    s.add_argument("--matting-engine", choices=["chroma", "rembg", "birefnet", "pixel-art"], default=None)
-    s.add_argument("--alpha-refine", action="store_true")
-    s.add_argument("--alpha-refine-radius", type=int, default=None)
-    s.add_argument("--temporal-alpha-stabilize", action="store_true")
-    s.add_argument("--temporal-alpha-strength", type=float, default=None)
-    s.add_argument("--pixel-cleanup", action="store_true")
-    s.add_argument("--pixel-cleanup-colors", type=int, default=None)
-    s.add_argument("--pixel-cleanup-palette", default=None)
-    s.add_argument("--pixel-cleanup-dither", action="store_true")
-    s.add_argument("--pixel-cleanup-dither-mode", choices=["none", "floyd-steinberg", "bayer"], default=None)
-    s.add_argument("--pixel-snap-scale", type=int, default=None)
-    s.add_argument("--interpolate-fps", type=float, default=None)
-    s.add_argument("--interpolation-engine", choices=["blend", "flow", "bitmapflow"], default=None)
-    s.add_argument("--interpolation-skip-pixel-art", action="store_true")
-    s.add_argument("--interpolation-skip-impact-frames", action="store_true")
-    s.add_argument("--interpolation-skip-patterns", default=None)
-    s.add_argument("--generate-normal-maps", action="store_true")
-    s.add_argument("--normal-map-engine", choices=["height", "native-depth"], default=None)
-    s.add_argument("--pack-mode", choices=["grid", "maxrects"], default="grid")
-    s.add_argument("--segment-parts", default=None, help="Part segmentation click specifications, e.g. weapon:150,220,1;hair:200,100,1")
+    add_sprite_polish_args(s, defaults=False)
+    s.set_defaults(pack_mode="grid")
     s.add_argument("--lora-name", default=None, help="Filename of the LoRA model to load, e.g. wan2.2_pixel_animate.safetensors")
     s.add_argument("--output", default=None, help="Sprite output directory. Defaults to output/wan_sprite_<timestamp>.")
     s.add_argument("--native-only", action="store_true", help="Require native in-app backend only. Fail instead of using external ComfyUI runtime.")
@@ -295,6 +310,18 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--max-samples-per-source", default="32", help="Maximum cells kept from each source sheet; use 0 for no cap")
     s.add_argument("--include-all", action="store_true", help="Include prop/object sheets too, not just tile-like sheet names")
     s.set_defaults(func=cmd_autotile_dataset)
+
+    s = sub.add_parser("tilemap", help="Generate game-ready autotile or Wang tile sheets")
+    s.add_argument("--mode", choices=["autotile_16", "wang_16"], default="autotile_16")
+    s.add_argument("--base", default="", help="Base tile for autotile_16 mode")
+    s.add_argument("--border", default="", help="Border tile for autotile_16 mode")
+    s.add_argument("--north", default="", help="North material tile for wang_16 mode")
+    s.add_argument("--east", default="", help="East material tile for wang_16 mode")
+    s.add_argument("--south", default="", help="South material tile for wang_16 mode")
+    s.add_argument("--west", default="", help="West material tile for wang_16 mode")
+    s.add_argument("--tile-size", type=int, default=0)
+    s.add_argument("--output", default="output/tilesets/autotile_16.png")
+    s.set_defaults(func=cmd_tilemap)
 
     s = sub.add_parser("lora-train", help="Prepare or launch an SDXL/Flux LoRA trainer run from a SpriteForge training dataset")
     s.add_argument("--dataset", required=True, help="Training dataset folder created by training-dataset")
@@ -616,8 +643,30 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--copy-image", action="store_true")
     s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_pack_formats.py"), "export", "--sprite-dir", a.sprite_dir, "--format", a.format] + (["--output", a.output] if a.output else []) + (["--copy-image"] if a.copy_image else [])))
 
+    s = sub.add_parser("export-animation", help="Export APNG, animated WebP, or bitmap-backed Lottie animation")
+    s.add_argument("--sprite-dir", required=True)
+    s.add_argument("--format", required=True, choices=["apng", "webp", "lottie"])
+    s.add_argument("--output", default=None)
+    s.add_argument("--quality", type=int, default=85)
+    def _export_animation(a):
+        from services.animated_export_service import export_animation
+        result = export_animation(Path(a.sprite_dir), a.format, Path(a.output) if a.output else None, quality=a.quality)
+        print(json.dumps(result, indent=2))
+    s.set_defaults(func=_export_animation)
+
+    s = sub.add_parser("export-skeletal", help="Export segmented sprite parts as Spine/DragonBones-style JSON")
+    s.add_argument("--sprite-dir", required=True)
+    s.add_argument("--output", default=None)
+    s.add_argument("--name", default="")
+    def _export_skeletal(a):
+        from services.skeletal_export_service import export_skeletal_parts
+        result = export_skeletal_parts(Path(a.sprite_dir), Path(a.output) if a.output else None, name=a.name)
+        print(json.dumps(result, indent=2))
+    s.set_defaults(func=_export_skeletal)
+
     s = sub.add_parser("remote-generate", help="Submit to a remote ComfyUI server, download exact output, and optionally convert to sprite locally")
-    s.add_argument("--server", required=True)
+    s.add_argument("--server", default=None, help="Explicit ComfyUI server URL; overrides cloud hub node selection")
+    s.add_argument("--cloud-node", default="", help="Optional configured cloud hub node id to use when --server is omitted")
     s.add_argument("--workflow", required=True)
     s.add_argument("--prompt", required=True)
     s.add_argument("--negative", default=None)
@@ -634,7 +683,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--cell-size", default="512x512")
     s.add_argument("--key-color", default="auto")
     s.add_argument("extra", nargs=argparse.REMAINDER)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_remote.py"), "generate", "--server", a.server, "--workflow", a.workflow, "--prompt", a.prompt, "--output-prefix", a.output_prefix, "--timeout", str(a.timeout), "--cell-size", a.cell_size, "--key-color", a.key_color, "--seed", str(a.seed)] + (["--negative", a.negative] if a.negative else []) + (["--reference-image", a.reference_image] if a.reference_image else []) + (["--width", str(a.width)] if a.width else []) + (["--height", str(a.height)] if a.height else []) + (["--frames", str(a.frames)] if a.frames else []) + (["--video-fps", str(a.video_fps)] if a.video_fps else []) + (["--output", a.output] if a.output else []) + (["--convert"] if a.convert else []) + (a.extra or [])))
+    s.set_defaults(func=cmd_remote_generate)
 
     s = sub.add_parser("hardware-advisor", help="Read nvidia-smi and recommend local/cloud WAN and sprite defaults")
     s.add_argument("--apply", action="store_true", help="Back up config and apply recommended sprite defaults")

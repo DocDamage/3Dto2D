@@ -6,12 +6,14 @@ Uses pure Pillow and NumPy for fast, dependency-free processing.
 """
 from __future__ import annotations
 
+import logging
 import numpy as np
 from PIL import Image, ImageFilter
 
 try:
     import cv2
-except Exception:
+except Exception as exc:
+    logging.getLogger(__name__).debug("OpenCV unavailable for accelerated normal-map processing; Pillow fallback will be used: %s", exc)
     cv2 = None
 
 

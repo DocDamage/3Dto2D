@@ -1,0 +1,109 @@
+<section class="view" id="view-cloud_hub">
+  <div class="section-title">
+    <p class="eyebrow">Remote generation farm</p>
+    <h2>Cloud Generation Hub</h2>
+    <span>Register remote ComfyUI nodes, check health, and choose the node used when CLI remote generation omits an explicit server.</span>
+  </div>
+
+  <div class="cloud-hub-layout">
+    <section class="card cloud-hub-card">
+      <div class="card-head">
+        <h3>Configured nodes</h3>
+        <div class="button-row compact-actions">
+          <button class="mini" id="cloudHubRefresh" type="button">Refresh</button>
+          <button class="mini primary" id="cloudHubCheck" type="button">Check health</button>
+        </div>
+      </div>
+      <div id="cloudHubSelected" class="cloud-hub-selected empty compact">No cloud node selected yet.</div>
+      <div id="cloudHubNodes" class="cloud-hub-nodes empty compact">No configured nodes.</div>
+    </section>
+
+    <section class="card cloud-hub-card">
+      <div class="card-head">
+        <h3>Cloud image providers</h3>
+        <button class="mini" id="cloudImageProviderRefresh" type="button">Refresh keys</button>
+      </div>
+      <div id="cloudImageProviders" class="cloud-hub-providers empty compact">Provider readiness not checked yet.</div>
+      <p class="hint">Keys are read from local environment variables or ignored <code>.env</code> files. Secret values are never shown or written into project config.</p>
+    </section>
+
+    <section class="card cloud-hub-card">
+      <div class="card-head">
+        <h3>Cloud sprite plan</h3>
+        <button class="mini primary" id="cloudImagePlanPreview" type="button">Preview sprite plan</button>
+      </div>
+      <label>Prompt
+        <input id="cloudImagePlanPrompt" placeholder="clockwork knight idle" />
+      </label>
+      <div class="row">
+        <label>Provider
+          <select id="cloudImagePlanProvider">
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </label>
+        <label>Frames
+          <input id="cloudImagePlanFrames" class="short-number" type="number" min="1" value="1" />
+        </label>
+      </div>
+      <div class="row">
+        <label>Generation size
+          <input id="cloudImagePlanSize" value="1024x1024" />
+        </label>
+        <label>Cell size
+          <input id="cloudImagePlanCellSize" value="64x64" />
+        </label>
+      </div>
+      <div id="cloudImagePlanResult" class="cloud-hub-providers empty compact">Preview shows hardened prompts, alpha extraction, nearest-neighbor downscale, palette, and stitching steps.</div>
+    </section>
+
+    <section class="card cloud-hub-card">
+      <div class="card-head">
+        <h3>Queue distribution</h3>
+        <button class="mini primary" id="cloudQueuePlanPreview" type="button">Plan queue</button>
+      </div>
+      <label>Queued jobs
+        <textarea id="cloudQueueJobs" rows="5" placeholder="idle knight&#10;walk knight&#10;attack knight"></textarea>
+      </label>
+      <p class="hint">Dry-run only: this assigns queued prompts to available node slots without launching remote generation.</p>
+      <div id="cloudQueuePlanResult" class="cloud-hub-providers empty compact">Queue plan will show node assignments, rejected nodes, and unassigned jobs.</div>
+    </section>
+
+    <section class="card cloud-hub-card">
+      <h3>Add or update node</h3>
+      <label>Node id
+        <input id="cloudHubNodeId" placeholder="gpu-a" />
+      </label>
+      <label>Label
+        <input id="cloudHubNodeLabel" placeholder="RTX workstation" />
+      </label>
+      <label>ComfyUI URL
+        <input id="cloudHubNodeUrl" placeholder="http://192.168.1.50:8188" />
+      </label>
+      <div class="row">
+        <label>Priority
+          <input id="cloudHubNodePriority" class="short-number" type="number" value="100" />
+        </label>
+        <label>Max jobs
+          <input id="cloudHubNodeMaxJobs" class="short-number" type="number" min="1" value="1" />
+        </label>
+      </div>
+      <div class="row">
+        <label>Status
+          <select id="cloudHubNodeStatus">
+            <option value="ready">Ready</option>
+            <option value="busy">Busy</option>
+            <option value="draining">Draining</option>
+            <option value="offline">Offline</option>
+          </select>
+        </label>
+        <label>Capabilities
+          <input id="cloudHubNodeCapabilities" value="comfyui, remote_generate" />
+        </label>
+      </div>
+      <label class="switch"><input type="checkbox" id="cloudHubNodeEnabled" checked /><span></span>Enabled</label>
+      <button class="mini primary quality-full-action" id="cloudHubSave" type="button">Save node</button>
+      <p class="hint">Explicit <code>--server</code> still wins. The hub only selects a node when no server is passed.</p>
+    </section>
+  </div>
+</section>

@@ -7,6 +7,11 @@
   <link rel="icon" href="logo.svg" />
   <link rel="stylesheet" href="styles.css?v=rail-footer-fit" />
   <link rel="stylesheet" href="sprite_preview.css" />
+  <link rel="stylesheet" href="animation_player.css" />
+  <link rel="stylesheet" href="compare_player.css" />
+  <link rel="stylesheet" href="lighting_preview.css" />
+  <link rel="stylesheet" href="cloud_hub.css" />
+  <link rel="stylesheet" href="frame_editor.css" />
   <link rel="stylesheet" href="prompt_builder.css?v=generate-compact-fit2" />
   <link rel="stylesheet" href="seed_gallery.css" />
   <link rel="stylesheet" href="frame_review.css" />
@@ -40,7 +45,7 @@
         }
         const views = [
           'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
-          'packs', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
+          'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
           'ab_runs', 'library', 'qa_dashboard', 'training'
         ];
         await Promise.all(views.map(async (name) => {
@@ -103,6 +108,11 @@
       <button class="nav mode-detail" data-view="generate">Generate Sprite</button>
       <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
+      <button class="nav" data-view="animation_player">Animation Player</button>
+      <button class="nav" data-view="compare_player">Compare Player</button>
+      <button class="nav" data-view="lighting_preview">Lighting Preview</button>
+      <button class="nav mode-detail" data-view="cloud_hub">Cloud Hub</button>
+      <button class="nav mode-detail" data-view="frame_editor">Frame Editor</button>
       <button class="nav" data-view="training">Training Lab</button>
       <button class="nav mode-detail" data-view="packs">Packs & Atlas</button>
       <button class="nav" data-view="history">History</button>
@@ -215,6 +225,13 @@
     </section>
 
     <section class="view" id="view-packs"></section>
+
+    <section class="view" id="view-animation_player"></section>
+    <section class="view" id="view-compare_player"></section>
+    <section class="view" id="view-lighting_preview"></section>
+    <section class="view" id="view-cloud_hub"></section>
+
+    <section class="view" id="view-frame_editor"></section>
 
     <section class="view" id="view-training"></section>
 
@@ -358,6 +375,41 @@
         </div>
       </div>
 
+      <div class="archetype-selected-panel" id="archetypeSelectedPanel" aria-live="polite">
+        <div class="archetype-selected-portrait" id="archetypeSelectedPortrait">SF</div>
+        <div class="archetype-selected-copy">
+          <p class="eyebrow">Selected archetype</p>
+          <h3 id="archetypeSelectedName">Choose a visual card</h3>
+          <p id="archetypeSelectedDescription">Pick an archetype to preview the character prompt, style hint, actions, directions, and palette guidance before applying it to Generate.</p>
+          <div class="archetype-selected-meta" id="archetypeSelectedMeta"></div>
+        </div>
+        <button class="primary" id="applySelectedArchetypeBtn" type="button" disabled>Apply to Generate</button>
+      </div>
+
+      <div class="archetype-customize-panel" id="archetypeCustomizePanel" aria-label="Customize selected archetype before applying">
+        <div class="archetype-customize-head">
+          <div>
+            <p class="eyebrow">Customize before generation</p>
+            <h3>Fine-tune this archetype</h3>
+          </div>
+          <button class="mini" id="resetArchetypeCustomizeBtn" type="button">Reset from card</button>
+        </div>
+        <div class="archetype-customize-grid">
+          <label>Character prompt
+            <textarea id="archetypeCustomizeCharacter" rows="3" placeholder="Character prompt from selected archetype"></textarea>
+          </label>
+          <label>Style prompt
+            <textarea id="archetypeCustomizeStyle" rows="3" placeholder="Style prompt from selected archetype"></textarea>
+          </label>
+          <label>Actions
+            <input id="archetypeCustomizeActions" placeholder="idle,walk,attack_light" />
+          </label>
+          <label>Directions
+            <input id="archetypeCustomizeDirections" placeholder="front,right,back" />
+          </label>
+        </div>
+      </div>
+
       <!-- Archetypes Grid -->
       <div id="archetypesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; max-height: 55vh; overflow-y: auto; padding-right: 4px;">
         <!-- Archetype cards will be dynamically generated -->
@@ -383,6 +435,28 @@
 
   <div id="wizardContainer"></div>
   <div id="toast" class="toast"></div>
+  <div id="shortcutCheatSheet" class="shortcut-cheat-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="shortcutCheatSheetTitle">
+    <button class="shortcut-cheat-sheet-backdrop" type="button" data-shortcut-help-close aria-label="Close shortcut help"></button>
+    <section class="shortcut-cheat-sheet-card">
+      <div class="shortcut-cheat-sheet-head">
+        <div>
+          <p class="eyebrow">Keyboard-first workflow</p>
+          <h2 id="shortcutCheatSheetTitle">Shortcut cheat sheet</h2>
+        </div>
+        <button class="mini" type="button" data-shortcut-help-close>Close</button>
+      </div>
+      <div class="shortcut-cheat-sheet-grid">
+        <div><kbd>Alt</kbd><kbd>1-9</kbd><span>Navigate primary views</span></div>
+        <div><kbd>Space</kbd><span>Play or pause active animation preview</span></div>
+        <div><kbd>Left</kbd><kbd>Right</kbd><span>Step frames in Quality Lab or Animation Player</span></div>
+        <div><kbd>Ctrl</kbd><kbd>E</kbd><span>Export from the active workflow</span></div>
+        <div><kbd>Ctrl</kbd><kbd>Q</kbd><span>Run QA from Quality Lab</span></div>
+        <div><kbd>Ctrl</kbd><kbd>G</kbd><span>Generate with current settings</span></div>
+        <div><kbd>Ctrl</kbd><kbd>K</kbd><span>Open command palette</span></div>
+        <div><kbd>Esc</kbd><span>Close panels, previews, and shortcut help</span></div>
+      </div>
+    </section>
+  </div>
   <script>
     function openWizard() {
       if (typeof openWizard.impl === 'function') {
@@ -400,13 +474,19 @@
     window.viewComponentsLoaded.then(() => {
       if (window.location.protocol === 'file:') return;
 
-      const scripts = [
+      function spriteForgeScriptList() {
+        return [
         'js/globals.js?v=training-lora-launcher',
         'js/project.js',
         'js/gallery.js',
         'js/editor_history.js',
         'js/editor.js',
         'js/sprite_preview.js?v=generate-compact-fit2',
+        'js/animation_player.js',
+        'js/compare_player.js',
+        'js/lighting_preview.js',
+        'js/cloud_hub.js',
+        'js/frame_editor.js',
         'js/prompt_builder.js?v=generate-compact-fit2',
         'js/seed_gallery.js',
         'js/frame_review.js',
@@ -429,12 +509,19 @@
         'js/app_jobs.js?v=generate-compact-fit2',
         'js/app_forms.js?v=training-lora-launcher',
         'js/app_listings.js?v=generate-compact-fit2',
+        'js/wizard_templates.js',
+        'js/wizard_state.js',
+        'js/wizard_submit.js',
+        'js/wizard_ui.js',
         'js/wizard.js?v=wizard-reference-upload-buttons',
         'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
         'js/command_palette.js',
         'js/ux_enhancements.js?v=training-lora-launcher',
-        'js/app_main.js?v=quality-lab-compact'
-      ];
+          'js/app_main.js?v=quality-lab-compact'
+        ];
+      }
+
+      const scripts = spriteForgeScriptList();
 
       function loadNext(idx) {
         if (idx >= scripts.length) return;

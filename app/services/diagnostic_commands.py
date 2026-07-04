@@ -14,8 +14,7 @@ from services.shell_service import which, run, git_rev, capture
 from services.wan_generation_service import is_comfy_running, api_get, history_entry, output_files_from_history
 from services.model_install_service import model_manifest_path, model_manifest_files, workflow_resolve
 from services.comfy_workflow_service import validate_workflow_file
-
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import ROOT
 
 def cmd_status(args: argparse.Namespace) -> None:
     from spriteforge_commands import load_config

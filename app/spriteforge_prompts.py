@@ -18,8 +18,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
-
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
 
 DIRECTIONS = {
     "front": "front view, character facing camera",

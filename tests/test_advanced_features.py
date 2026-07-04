@@ -211,11 +211,34 @@ def test_palette_harmonizer_writes_report_and_remapped_sheets(tmp_path):
     report = harmonize_palette([idle, walk], colors=4, root=tmp_path)
 
     assert report["ok"] is True
+    assert report["schema"] == "spriteforge.palette_harmonization_report.v1"
     assert report["colors"] >= 2
+    assert len(report["palette_digest"]) == 64
+    assert report["source"]["sprite_count"] == 2
     assert (output / "_palette_harmonization" / "palette_harmonization.json").exists()
     assert (idle / "sheet_harmonized.png").exists()
     assert (walk / "sheet_harmonized.png").exists()
     assert report["sprites"][0]["harmonized_sheet_url"].startswith("/file/output/")
+    audit = json.loads((idle / "palette_lock_audit.json").read_text(encoding="utf-8"))
+    assert audit["schema"] == "spriteforge.palette_lock_audit.v1"
+    assert audit["enabled"] is True
+    assert audit["source"] == "palette_harmonizer"
+    assert len(audit["palette"]) <= 4
+    assert audit["palette_digest"] == report["palette_digest"]
+
+
+def test_project_palette_lock_normalizes_hex_colors():
+    from services.project_palette_service import normalize_palette_lock, palette_arg_from_lock
+
+    lock = normalize_palette_lock({
+        "enabled": True,
+        "colors": ["112233", "#445566", "bad", "#445566"],
+        "colors_limit": "4",
+    })
+
+    assert lock["enabled"] is True
+    assert lock["colors"] == ["#112233", "#445566"]
+    assert palette_arg_from_lock(lock) == "#112233,#445566"
 
 
 def test_audio_cue_manifest_upsert_and_remove(tmp_path):
@@ -223,7 +246,10 @@ def test_audio_cue_manifest_upsert_and_remove(tmp_path):
     sprite_dir.mkdir()
 
     manifest = upsert_audio_cue(sprite_dir, 3, "input/sfx/step.wav", "footstep")
+    assert manifest["engine_import"]["sync"] == "frame_index"
+    assert manifest["engine_import"]["fps"] == 12
     assert manifest["cues"][0]["frame_index"] == 3
+    assert manifest["cues"][0]["time_seconds"] == 0.25
     assert manifest["cues"][0]["audio_path"] == "input/sfx/step.wav"
 
     removed = remove_audio_cue(sprite_dir, 3)

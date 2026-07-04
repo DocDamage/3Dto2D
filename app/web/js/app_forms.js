@@ -120,6 +120,121 @@ function buildExistingSpritePayload() {
   };
 }
 
+let generatePromptPreviewTimer = null;
+
+function buildGeneratePromptPreview(data) {
+  const override = String(data.prompt || '').trim();
+  if (override) return override;
+  return [
+    data.character,
+    `${data.sprite_action || 'idle'} animation`,
+    `${data.direction || 'right'} direction`,
+    data.style,
+    data.extra_prompt,
+    'single full body 2D game sprite, locked camera, centered character, clean readable silhouette',
+  ].filter(Boolean).map(part => String(part).trim()).filter(Boolean).join(', ');
+}
+
+function renderGeneratePromptLint(result) {
+  const badge = $('#generatePromptQuality');
+  const list = $('#generatePromptLint');
+  if (badge) {
+    const score = Number(result.score ?? result.overall_score ?? 0);
+    badge.textContent = Number.isFinite(score) ? `quality ${Math.round(score)}` : 'quality check';
+    badge.className = 'prompt-quality-badge ' + (score >= 80 ? 'good' : score >= 55 ? 'warn' : 'bad');
+  }
+  if (!list) return;
+  clearNode(list);
+  const suggestions = result.suggestions || result.recommendations || result.warnings || [];
+  if (!suggestions.length) {
+    appendText(list, 'small', 'Prompt looks ready for a sprite generation pass.');
+    return;
+  }
+  suggestions.slice(0, 4).forEach(item => {
+    appendText(list, 'small', typeof item === 'string' ? item : (item.message || item.title || JSON.stringify(item)));
+  });
+}
+
+function generateReferencePreviewUrl(path) {
+  const value = String(path || '').trim();
+  if (!value || !/\.(png|jpe?g|webp|gif)$/i.test(value)) return '';
+  if (/^(https?:|\/file\/|data:image\/)/i.test(value)) return value;
+  if (/^[a-z]:[\\/]/i.test(value)) return '';
+  return '/file/' + value.replace(/^\.?[\\/]+/, '').replace(/\\/g, '/');
+}
+
+function refreshGenerateReferencePreview() {
+  const ref = String($('#generationReferenceImage')?.value || '').trim();
+  const style = String($('#generationStyleImage')?.value || '').trim();
+  const source = ref || style;
+  const img = $('#generateReferencePreviewImage');
+  const empty = $('#generateReferencePreviewEmpty');
+  const title = $('#generateReferencePreviewTitle');
+  const status = $('#generateReferencePreviewStatus');
+  const url = generateReferencePreviewUrl(source);
+  if (img) {
+    img.classList.toggle('hidden', !url);
+    if (url) img.src = url;
+    else img.removeAttribute('src');
+  }
+  if (empty) empty.classList.toggle('hidden', !!url);
+  if (title) title.textContent = ref ? 'Character reference ready' : (style ? 'Style reference ready' : 'No reference selected');
+  if (status) {
+    if (!source) status.textContent = 'Supports workspace PNG, JPG, WebP, and GIF paths.';
+    else if (url) status.textContent = source;
+    else status.textContent = 'Preview unavailable for absolute local paths; generation can still use the path.';
+  }
+}
+
+function refreshGeneratePromptPreview() {
+  const form = $('#generateForm');
+  if (!form) return;
+  const data = formData(form);
+  const prompt = buildGeneratePromptPreview(data);
+  const preview = $('#generatePromptPreview');
+  if (preview) preview.textContent = prompt || 'Prompt preview will appear here.';
+  clearTimeout(generatePromptPreviewTimer);
+  generatePromptPreviewTimer = setTimeout(async () => {
+    if (!prompt) return;
+    try {
+      const result = await api('/api/prompt/lint', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt,
+          negative: data.negative || '',
+          action: data.sprite_action || '',
+          full_payload: data,
+        }),
+      });
+      renderGeneratePromptLint(result);
+    } catch (err) {
+      const badge = $('#generatePromptQuality');
+      if (badge) {
+        badge.textContent = 'lint unavailable';
+        badge.className = 'prompt-quality-badge muted';
+      }
+    }
+    try {
+      const params = new URLSearchParams({
+        tier: data.tier || '',
+        profile: data.profile || '',
+        sprite_action: data.sprite_action || '',
+      });
+      const estimate = await api('/api/generation/estimate?' + params.toString());
+      const eta = estimate.eta || {};
+      const target = $('#generateEstimate');
+      if (target) {
+        target.textContent = eta.sample_count
+          ? `Runtime estimate: ${eta.label} from ${eta.sample_count} similar run${eta.sample_count === 1 ? '' : 's'}.`
+          : `Runtime estimate: ${eta.label || 'learning from first run'}.`;
+      }
+    } catch (err) {
+      const target = $('#generateEstimate');
+      if (target) target.textContent = 'Runtime estimate unavailable.';
+    }
+  }, 350);
+}
+
 function initFormBindings() {
   // Nav, jump, run, open binders
   $$('.nav').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
@@ -136,6 +251,16 @@ function initFormBindings() {
 
   // Generation form
   if ($('#generateForm')) $('#generateForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('generate_sprite', formData(e.currentTarget)); showView('logs'); });
+  if ($('#generateForm')) {
+    $('#generateForm').addEventListener('input', refreshGeneratePromptPreview);
+    $('#generateForm').addEventListener('change', refreshGeneratePromptPreview);
+    $('#generationReferenceImage')?.addEventListener('input', refreshGenerateReferencePreview);
+    $('#generationStyleImage')?.addEventListener('input', refreshGenerateReferencePreview);
+    $('#generationReferenceImage')?.addEventListener('change', refreshGenerateReferencePreview);
+    $('#generationStyleImage')?.addEventListener('change', refreshGenerateReferencePreview);
+    refreshGenerateReferencePreview();
+    refreshGeneratePromptPreview();
+  }
   if ($('#btnPreviewGenerate')) {
     $('#btnPreviewGenerate').addEventListener('click', () => {
       const data = formData($('#generateForm'));
@@ -172,14 +297,90 @@ function initFormBindings() {
   }));
   if ($('#packForm')) $('#packForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('character_pack', formData(e.currentTarget)); showView('logs'); });
   if ($('#atlasForm')) $('#atlasForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('atlas', formData(e.currentTarget)); showView('logs'); });
+  if ($('#animatedExportUseSelected')) $('#animatedExportUseSelected').addEventListener('click', () => {
+    const input = $('#animatedExportForm [name="path"]');
+    if (input && selectedSpriteDir) input.value = selectedSpriteDir;
+    else toast('Select a sprite output first.');
+  });
+  if ($('#animatedExportForm')) $('#animatedExportForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const result = $('#animatedExportResult');
+    const data = formData(e.currentTarget);
+    if (!data.path) {
+      toast('Enter a sprite folder to export.');
+      return;
+    }
+    if (result) result.textContent = 'Exporting animation...';
+    try {
+      const exported = await api('/api/sprite/export_animation', { method: 'POST', body: JSON.stringify(data) });
+      if (result) {
+        clearNode(result);
+        appendText(result, 'b', `${(exported.format || data.format || 'animation').toUpperCase()} export ready`);
+        appendText(result, 'code', exported.path || '');
+        if (exported.path) {
+          const link = document.createElement('a');
+          link.className = 'mini link-button';
+          link.href = '/file/' + exported.path;
+          link.textContent = 'Open export';
+          result.appendChild(link);
+        }
+      }
+      toast('Animated export ready.');
+    } catch (err) {
+      if (result) result.textContent = 'Animated export failed.';
+      toast(err.message || 'Animated export failed.');
+    }
+  });
+  if ($('#skeletalExportUseSelected')) $('#skeletalExportUseSelected').addEventListener('click', () => {
+    const input = $('#skeletalExportForm [name="path"]');
+    if (input && selectedSpriteDir) input.value = selectedSpriteDir;
+    else toast('Select a sprite output first.');
+  });
+  if ($('#skeletalExportForm')) $('#skeletalExportForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const result = $('#skeletalExportResult');
+    const data = formData(e.currentTarget);
+    if (!data.path) {
+      toast('Enter a sprite folder to export.');
+      return;
+    }
+    if (result) result.textContent = 'Exporting skeletal rig...';
+    try {
+      const exported = await api('/api/sprite/export_skeletal', { method: 'POST', body: JSON.stringify(data) });
+      if (result) {
+        clearNode(result);
+        appendText(result, 'b', 'Skeletal export ready');
+        const parts = Array.isArray(exported.parts) ? exported.parts : [];
+        appendText(result, 'small', `${parts.length} part${parts.length === 1 ? '' : 's'} · ${exported.segmentation?.method || 'segmentation provenance unavailable'}`);
+        ['spine_json', 'dragonbones_json', 'skeletal_manifest'].forEach(key => {
+          if (!exported[key]) return;
+          const link = document.createElement('a');
+          link.className = 'mini link-button';
+          link.href = '/file/' + exported[key];
+          link.textContent = key === 'spine_json' ? 'Open Spine JSON' : key === 'dragonbones_json' ? 'Open DragonBones JSON' : 'Open skeletal manifest';
+          result.appendChild(link);
+        });
+      }
+      toast('Skeletal export ready.');
+    } catch (err) {
+      if (result) result.textContent = 'Skeletal export failed.';
+      toast(err.message || 'Skeletal export failed.');
+    }
+  });
   if ($('#trainingDatasetForm')) $('#trainingDatasetForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('training_dataset', formData(e.currentTarget)); showView('logs'); });
+  initTrainingDatasetBuilder();
+  if ($('#previewTrainingDataset')) $('#previewTrainingDataset').addEventListener('click', previewTrainingDataset);
   if ($('#tileTrainingDatasetForm')) $('#tileTrainingDatasetForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('tile_training_dataset', formData(e.currentTarget)); showView('logs'); });
+  if ($('#tilemapGeneratorForm')) $('#tilemapGeneratorForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('tilemap', formData(e.currentTarget)); showView('logs'); });
   $$('[data-lora-mode]').forEach(btn=>btn.addEventListener('click',()=>{
     const form = $('#loraTrainingForm');
     if (!form) return;
     runAction('lora_training', { ...formData(form), mode: btn.dataset.loraMode || 'prepare' });
     showView('logs');
   }));
+  if ($('#refreshLoraProgress')) $('#refreshLoraProgress').addEventListener('click', refreshLoraProgress);
+  if ($('#buildLoraComparePlan')) $('#buildLoraComparePlan').addEventListener('click', buildLoraComparePlan);
+  if ($('#applyLoraGpuDefaults')) $('#applyLoraGpuDefaults').addEventListener('click', applyLoraGpuDefaults);
 
   // Release and queue forms
   if ($('#releaseForm')) $('#releaseForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('release_package', formData(e.currentTarget)); showView('logs'); });
@@ -221,6 +422,196 @@ function initFormBindings() {
   if($('#projectNameInput')) $('#projectNameInput').addEventListener('keydown', e => {
     if(e.key === 'Enter'){ e.preventDefault(); createProject(); }
   });
+}
+
+async function previewTrainingDataset() {
+  const form = $('#trainingDatasetForm');
+  const target = $('#trainingDatasetPreview');
+  if (!form) return;
+  const payload = formData(form);
+  if (!payload.source_dir) {
+    toast('Choose a purchased sprite folder first.');
+    return;
+  }
+  if (target) target.textContent = 'Previewing dataset without writing files...';
+  try {
+    const data = await api('/api/training-dataset/preview', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!target) return;
+    clearNode(target);
+    appendText(target, 'b', `${data.estimated_sample_count || 0} samples from ${data.source_image_count || 0} source image${data.source_image_count === 1 ? '' : 's'}`);
+    appendText(target, 'small', `Trigger ${data.trigger || 'n/a'} · cell ${data.cell_size || 'no slicing'} · read-only preview`);
+    const actionKeys = Object.keys(data.action_counts || {}).slice(0, 6);
+    if (actionKeys.length) appendText(target, 'small', `Actions: ${actionKeys.map(key => `${key} (${data.action_counts[key]})`).join(', ')}`);
+    (data.samples || []).slice(0, 5).forEach(sample => {
+      const row = document.createElement('div');
+      row.className = 'training-dataset-preview-row';
+      if (sample.thumbnail_data_uri) {
+        const img = document.createElement('img');
+        img.src = sample.thumbnail_data_uri;
+        img.alt = sample.source_name || 'dataset preview crop';
+        row.appendChild(img);
+      }
+      appendText(row, 'b', `${sample.source_name || 'source'} #${sample.frame_index}`);
+      appendText(row, 'span', sample.caption || '');
+      appendText(row, 'small', `${sample.size || ''}${sample.direction ? ' · ' + sample.direction : ''}`);
+      target.appendChild(row);
+    });
+    toast('Training dataset preview ready.');
+  } catch (err) {
+    if (target) target.textContent = err.message || 'Could not preview dataset.';
+    toast(err.message || 'Could not preview dataset.');
+  }
+}
+
+function initTrainingDatasetBuilder() {
+  const zone = $('#trainingDatasetDropzone');
+  const form = $('#trainingDatasetForm');
+  const hint = $('#trainingDatasetDropHint');
+  if (!zone || !form) return;
+  const source = form.querySelector('[name="source_dir"]');
+  const setHint = text => { if (hint) hint.textContent = text; };
+  const applyPath = text => {
+    const value = String(text || '').trim().replace(/^["']|["']$/g, '');
+    if (!value) return false;
+    if (source) source.value = value;
+    setHint(`Source folder set to ${value}`);
+    toast('Training dataset source folder set.');
+    return true;
+  };
+  ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, event => {
+    event.preventDefault();
+    zone.classList.add('drag');
+  }));
+  ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, event => {
+    event.preventDefault();
+    zone.classList.remove('drag');
+  }));
+  zone.addEventListener('drop', event => {
+    const textPath = event.dataTransfer?.getData('text/plain') || event.dataTransfer?.getData('text/uri-list') || '';
+    if (applyPath(textPath)) return;
+    const files = Array.from(event.dataTransfer?.files || []).filter(file => /\.(png|jpe?g|webp)$/i.test(file.name || ''));
+    if (files.length) setHint(`${files.length} image file${files.length === 1 ? '' : 's'} detected. Paste the parent folder path to build locally.`);
+  });
+  zone.addEventListener('paste', event => {
+    const textPath = event.clipboardData?.getData('text/plain') || '';
+    if (applyPath(textPath)) event.preventDefault();
+  });
+  zone.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && source) source.focus();
+  });
+}
+
+async function buildLoraComparePlan() {
+  const result = $('#loraComparePlanResult');
+  const prompt = $('#loraComparePrompt')?.value || '';
+  const loras = $('#loraCompareNames')?.value || '';
+  if (result) result.textContent = 'Building LoRA comparison plan...';
+  try {
+    const plan = await api('/api/lora/compare-plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt,
+        loras,
+        base_payload: formData($('#generateForm') || document.createElement('form'))
+      })
+    });
+    if (!result) return;
+    clearNode(result);
+    appendText(result, 'b', `${plan.variant_count} LoRA variant${plan.variant_count === 1 ? '' : 's'} planned`);
+    (plan.variants || []).forEach(variant => {
+      appendText(result, 'code', `${variant.slot}: ${variant.label} -> ${variant.payload.prompt}`);
+    });
+    if (plan.missing && plan.missing.length) {
+      appendText(result, 'small', `Missing registry entries: ${plan.missing.join(', ')}`);
+    }
+    appendText(result, 'small', plan.compare_player?.next_step || 'Generate variants, then open Compare Player.');
+  } catch (err) {
+    if (result) result.textContent = err.message || 'Could not build LoRA comparison plan.';
+    toast(err.message || 'Could not build LoRA comparison plan.');
+  }
+}
+
+async function applyLoraGpuDefaults() {
+  const form = $('#loraTrainingForm');
+  const hint = $('#loraGpuDefaultsHint');
+  if (!form) return;
+  const family = form.querySelector('[name="model_family"]')?.value || 'sdxl';
+  if (hint) hint.textContent = 'Reading GPU and calculating LoRA defaults...';
+  try {
+    const data = await api('/api/lora/recommended-defaults?model_family=' + encodeURIComponent(family));
+    const rec = data.recommendation || {};
+    [
+      ['resolution', rec.resolution],
+      ['max_train_steps', rec.max_train_steps],
+      ['learning_rate', rec.learning_rate],
+      ['network_dim', rec.network_dim],
+      ['repeats', data.repeats],
+      ['batch_size', rec.batch_size],
+    ].forEach(([name, value]) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      if (field && value !== undefined && value !== null) field.value = String(value);
+    });
+    if (hint) hint.textContent = `${data.tier}: ${rec.resolution}px, rank ${rec.network_dim}, ${rec.max_train_steps} steps, batch ${rec.batch_size}.`;
+    toast('Applied conservative LoRA GPU defaults.');
+  } catch (err) {
+    if (hint) hint.textContent = err.message || 'Could not apply GPU defaults.';
+    toast(err.message || 'Could not apply LoRA GPU defaults.');
+  }
+}
+
+async function refreshLoraProgress() {
+  const input = $('#loraProgressPath');
+  const summary = $('#loraProgressSummary');
+  const gallery = $('#loraSampleGallery');
+  const path = String(input?.value || '').trim();
+  if (!path) {
+    toast('Enter a training run folder.');
+    return;
+  }
+  try {
+    const data = await api('/api/lora/progress?path=' + encodeURIComponent(path));
+    if (summary) {
+      summary.textContent = `Step ${data.current_step || 0}${data.max_steps ? '/' + data.max_steps : ''} · loss ${data.last_loss ?? 'n/a'} · ${data.checkpoints.length} checkpoints`;
+    }
+    drawLoraLossChart(data.loss_points || []);
+    if (gallery) {
+      clearNode(gallery);
+      (data.samples || []).forEach(sample => {
+        const img = document.createElement('img');
+        img.src = sample.url + '?t=' + Date.now();
+        img.alt = sample.name;
+        gallery.appendChild(img);
+      });
+    }
+  } catch (err) {
+    if (summary) summary.textContent = err.message || 'Could not load training progress.';
+  }
+}
+
+function drawLoraLossChart(points) {
+  const canvas = $('#loraLossChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!points.length) return;
+  const losses = points.map(p => Number(p.loss)).filter(Number.isFinite);
+  const minLoss = Math.min(...losses);
+  const maxLoss = Math.max(...losses);
+  ctx.strokeStyle = '#74f0c0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((point, idx) => {
+    const x = (idx / Math.max(1, points.length - 1)) * canvas.width;
+    const norm = (Number(point.loss) - minLoss) / Math.max(0.0001, maxLoss - minLoss);
+    const y = canvas.height - 12 - norm * (canvas.height - 24);
+    if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
 }
 
 function initTrainingTabs() {

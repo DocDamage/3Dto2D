@@ -12,6 +12,16 @@ function setInputValue(input, value) {
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
   input.dispatchEvent(new Event('change', { bubbles: true }));
+  if ((input.id === 'generationReferenceImage' || input.id === 'generationStyleImage') && typeof refreshGenerateReferencePreview === 'function') {
+    refreshGenerateReferencePreview();
+  }
+  if (input.id === 'existingSpriteSource') {
+    const generateRef = $('#generationReferenceImage');
+    if (generateRef && !generateRef.value && typeof refreshGenerateReferencePreview === 'function') {
+      generateRef.value = value;
+      refreshGenerateReferencePreview();
+    }
+  }
 }
 
 function droppedText(event) {
@@ -39,17 +49,26 @@ function makeDropCard(id, label, input, accept) {
   const card = document.createElement('div');
   card.className = 'drop-target-card';
   card.id = id;
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('aria-label', `${label}: choose or drop an image`);
   card.innerHTML = `
     <input type="file" accept="${accept}" />
     <span>${label}</span>
     <button class="mini drop-target-button" type="button">Choose image</button>
-    <small>or drag and drop here</small>
+    <small>or drag and drop here. Preview updates after upload.</small>
   `;
   const fileInput = card.querySelector('input');
   const button = card.querySelector('button');
   button.addEventListener('click', () => fileInput.click());
   card.addEventListener('click', event => {
     if (event.target === card || event.target.tagName === 'SPAN' || event.target.tagName === 'SMALL') {
+      fileInput.click();
+    }
+  });
+  card.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
       fileInput.click();
     }
   });

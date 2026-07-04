@@ -11,9 +11,11 @@ sys.path.insert(0, str(ROOT / "app"))
 
 def test_job_lifecycle(tmp_path):
     from services.job_service import JobService
+    from services.websocket_service import ProgressEventHub
     import services.job_service
 
     temp_history = tmp_path / "job_history.json"
+    ProgressEventHub.reset()
 
     with patch("services.job_service.HISTORY_PATH", temp_history):
         # 1. Initially empty history
@@ -39,8 +41,16 @@ def test_job_lifecycle(tmp_path):
         history = JobService.get_history()
         assert len(history) == 1
         assert history[0]["phase"] == "failed"
+        assert history[0]["stage"] == "failed"
+        assert history[0]["stage_label"] == "Interrupted"
+        assert history[0]["stage_detail"] == "Server restarted while this job was running."
         assert history[0]["exit_code"] == -99
+        assert history[0]["progress"] == 100.0
         assert history[0]["finished_at"] is not None
+        recovery_events = [event for event in ProgressEventHub.recent() if event["type"] == "job.complete"]
+        assert recovery_events
+        assert recovery_events[-1]["payload"]["id"] == "test-uuid-123"
+        assert recovery_events[-1]["payload"]["stage"] == "failed"
 
         # 3. Start a new job and cancel it
         mock_proc = MagicMock()
@@ -93,6 +103,10 @@ def test_job_lifecycle(tmp_path):
                 c_job = next(j for j in hist if j["id"] == job_id)
                 assert c_job["phase"] == "cancelled"
                 assert c_job["exit_code"] == -1
+                complete_events = [event for event in ProgressEventHub.recent() if event["type"] == "job.complete"]
+                assert complete_events
+                assert complete_events[-1]["payload"]["id"] == job_id
+                assert complete_events[-1]["payload"]["stage"] == "cancelled"
 
 def test_job_history_retention(tmp_path):
     import services.job_service

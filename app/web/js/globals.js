@@ -272,6 +272,9 @@ function showView(name){
     if (typeof refreshQaDashboard === 'function') refreshQaDashboard();
   }
   if (name === 'ab_runs' && typeof refreshAbRuns === 'function') refreshAbRuns();
+  if (name === 'animation_player' && typeof refreshAnimationPlayerSprites === 'function') refreshAnimationPlayerSprites();
+  if (name === 'compare_player' && typeof refreshComparePlayerSprites === 'function') refreshComparePlayerSprites();
+  if (name === 'frame_editor' && typeof refreshFrameEditorSprites === 'function') refreshFrameEditorSprites();
 }
 
 // Hash routing — browser back/forward navigates between tabs

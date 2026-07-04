@@ -1,0 +1,53 @@
+<section class="view compare-player-view" id="view-compare_player">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Visual QA</p>
+      <h2>N-way Compare Player</h2>
+      <p class="description">Play 2-4 sprite variants in sync, inspect QA metadata, toggle pixel diff, and pick a winner.</p>
+    </div>
+    <div class="button-row">
+      <button class="mini" type="button" id="compareRefreshBtn">Refresh sprites</button>
+      <button class="mini" type="button" id="compareLoadSelectedBtn">Load selected</button>
+      <button class="mini primary" type="button" id="comparePickWinnerBtn">Pick winner</button>
+    </div>
+  </div>
+
+  <section class="compare-player-controls card">
+    <label>Variant A<select id="compareSpriteA"><option value="">Select sprite</option></select></label>
+    <label>Variant B<select id="compareSpriteB"><option value="">Select sprite</option></select></label>
+    <label>Variant C<select id="compareSpriteC"><option value="">Optional</option></select></label>
+    <label>Variant D<select id="compareSpriteD"><option value="">Optional</option></select></label>
+    <div class="button-row">
+      <button class="mini primary" type="button" id="comparePlayBtn">Play</button>
+      <button class="mini" type="button" id="comparePrevBtn">Prev</button>
+      <button class="mini" type="button" id="compareNextBtn">Next</button>
+    </div>
+    <label>Speed<input id="compareSpeedSlider" type="range" min="0.25" max="4" step="0.25" value="1" /><span id="compareSpeedLabel">1x</span></label>
+    <label class="switch"><input type="checkbox" id="compareDiffToggle" checked /><span></span>Diff overlay A/B</label>
+  </section>
+
+  <section class="compare-player-stage">
+    <div id="compareVariantGrid" class="compare-variant-grid"></div>
+    <article class="compare-diff-card card">
+      <div class="card-head"><h3>Pixel diff overlay</h3><span id="compareDiffStats">No diff yet</span></div>
+      <canvas id="compareDiffCanvas" width="256" height="256"></canvas>
+    </article>
+  </section>
+
+  <section class="compare-timeline card">
+    <div><b id="compareFrameLabel">Frame 1 / 1</b><span id="compareDurationLabel">0 ms</span></div>
+    <input id="compareFrameScrubber" type="range" min="0" max="0" value="0" step="1" />
+  </section>
+
+  <section class="compare-metrics-card card">
+    <div class="card-head"><h3>QA metrics comparison</h3><span id="compareMetricsStatus">Load variants to compare scores.</span></div>
+    <table class="compare-metrics-table">
+      <thead>
+        <tr><th>Variant</th><th>Frames</th><th>FPS</th><th>QA score</th><th>Loop RMSE</th><th>Foot drift</th><th>Decision</th></tr>
+      </thead>
+      <tbody id="compareMetricsBody">
+        <tr><td colspan="7">No variants loaded.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>

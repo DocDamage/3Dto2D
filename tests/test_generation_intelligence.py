@@ -56,6 +56,29 @@ def test_eta_uses_past_runs_with_same_model_profile_action(tmp_path, monkeypatch
     assert eta["label"] == "about 4m 30s"
 
 
+def test_generation_estimate_api_returns_eta(tmp_path, monkeypatch):
+    from spriteforge_web import app
+    from services import job_service as js_mod
+
+    monkeypatch.setattr(js_mod, "HISTORY_PATH", tmp_path / "jobs" / "job_history.json")
+    js_mod.HISTORY_PATH.parent.mkdir(parents=True)
+    js_mod.HISTORY_PATH.write_text(json.dumps([{
+        "started_at": "2026-07-04 10:00:00",
+        "finished_at": "2026-07-04 10:02:00",
+        "metadata": {"tier": "wan22_5b", "profile": "debug", "sprite_action": "idle"},
+    }]), encoding="utf-8")
+
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        response = client.get("/api/generation/estimate?tier=wan22_5b&profile=debug&sprite_action=idle")
+
+    payload = response.get_json()
+    assert response.status_code == 200
+    assert payload["ok"] is True
+    assert payload["eta"]["seconds"] == 120
+    assert payload["eta"]["sample_count"] == 1
+
+
 def test_qa_gate_summary_pass_warning_fail():
     from services.generation_intelligence import summarize_qa_gates
 

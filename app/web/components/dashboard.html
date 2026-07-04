@@ -7,6 +7,28 @@
 
   <div class="dashboard-tab-panels">
     <section class="dashboard-tab-panel active" role="tabpanel" data-dashboard-panel="overview">
+      <section class="dashboard-hero-stats" aria-label="Workspace hero stats">
+        <article class="card dashboard-stat-card">
+          <span>Total sprites</span>
+          <b id="dashboardStatSprites">0</b>
+          <small id="dashboardStatSpritesHint">No outputs loaded yet.</small>
+        </article>
+        <article class="card dashboard-stat-card">
+          <span>Average QA</span>
+          <b id="dashboardStatQa">n/a</b>
+          <small id="dashboardStatQaHint">Run QA to build a trend.</small>
+        </article>
+        <article class="card dashboard-stat-card">
+          <span>Active project</span>
+          <b id="dashboardStatProject">Global</b>
+          <small id="dashboardStatProjectHint">Using global workspace.</small>
+        </article>
+        <article class="card dashboard-stat-card">
+          <span>Disk free</span>
+          <b id="dashboardStatDisk">-</b>
+          <small id="dashboardStatDiskHint">Workspace storage.</small>
+        </article>
+      </section>
       <div class="quick-actions-grid dashboard-actions">
         <button class="card action-card glow dashboard-action-card" id="dashActionCreate" type="button">
           <span class="dashboard-action-icon">01</span>
@@ -39,6 +61,19 @@
         </div>
         <button class="primary" id="onboardingCtaBtn" type="button">Launch Wizard</button>
       </section>
+
+      <section class="card dashboard-architecture-card" id="architectureStatusCard">
+        <div class="card-head">
+          <div>
+            <p class="eyebrow">Architecture Guardrails</p>
+            <h3>Runtime structure status</h3>
+          </div>
+          <span class="badge muted" id="architectureStatusBadge">checking</span>
+        </div>
+        <div class="release-list" id="architectureStatusList">
+          <div class="empty compact">Architecture status will appear after the next refresh.</div>
+        </div>
+      </section>
     </section>
 
     <section class="dashboard-tab-panel" role="tabpanel" data-dashboard-panel="activity">
@@ -54,7 +89,10 @@
         <section class="card command-card dashboard-command-card">
           <div class="card-head">
             <h3>Live Activity</h3>
-            <button class="mini danger" id="cancelJob" type="button">Cancel job</button>
+            <div class="button-row compact-actions">
+              <button class="mini" id="refreshDashboardEvents" type="button">Refresh events</button>
+              <button class="mini danger" id="cancelJob" type="button">Cancel job</button>
+            </div>
           </div>
           <div class="job-line">
             <span id="job-title">Idle</span>
@@ -64,6 +102,9 @@
             <i id="progress-fill"></i>
           </div>
           <div id="job-time-state" class="dashboard-job-time"></div>
+          <div id="dashboardActivityFeed" class="dashboard-activity-feed">
+            <div class="empty compact">No recent progress events yet.</div>
+          </div>
           <pre class="terminal small" id="mini-log"></pre>
         </section>
       </div>

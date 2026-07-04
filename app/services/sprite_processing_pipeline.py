@@ -2,29 +2,34 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from PIL import Image
+import numpy as np
 
 from services.sprite_service import SpriteService
 from services.sprite_video_loader import FrameItem, ensure_dir, save_png_sequence
 from services.sprite_chroma_alpha import (
     guess_key_color_from_corners,
-    apply_chroma_key, apply_pixel_art_background_removal, try_rembg, try_birefnet, apply_pixeloe_pixelization,
+    apply_chroma_key, apply_pixel_art_background_removal, try_rembg, try_birefnet, try_depth_anything, apply_pixeloe_pixelization,
     fit_native_pixel_palette, apply_native_pixel_cleanup, add_outline, solidify_transparent_rgb
 )
 from services.sprite_alpha_tools import refine_alpha_edges
 from services.sprite_frame_norm import normalize_frames, apply_frame_sequence_ops
 from services.sprite_interpolation import interpolate_frames
 from services.sprite_temporal_matting import stabilize_temporal_alpha
+from services.sprite_temporal_smooth import stabilize_temporal_coherence
 from services.sprite_sheet_service import (
     pack_sheet, write_metadata, write_aseprite_json,
     make_preview_gif, make_contact_sheet,
     write_godot_notes, write_report
 )
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ProcessResult:
@@ -76,6 +81,36 @@ def parse_rgba(value: str) -> Tuple[int, int, int, int]:
         raise argparse.ArgumentTypeError("RGBA values must be between 0 and 255")
     return rgba
 
+
+def _resolution_scale(target: str, cell_size: Tuple[int, int]) -> Tuple[str, float]:
+    target = target.strip()
+    if target.endswith("x"):
+        return target, float(target[:-1])
+    if "x" in target.lower():
+        w_text, _h_text = target.lower().split("x", 1)
+        target_size = int(w_text)
+    else:
+        target_size = int(target)
+    return str(target_size), target_size / max(1, cell_size[0])
+
+
+def _silhouette_readability(frames: Sequence[FrameItem], alpha_threshold: int = 8) -> Dict[str, Any]:
+    coverages: List[float] = []
+    visible_pixels: List[int] = []
+    for item in frames:
+        alpha = item.image.convert("RGBA").getchannel("A")
+        arr = np.asarray(alpha)
+        visible = int((arr > alpha_threshold).sum())
+        visible_pixels.append(visible)
+        coverages.append(visible / max(1, arr.size))
+    min_visible = min(visible_pixels) if visible_pixels else 0
+    min_coverage = min(coverages) if coverages else 0.0
+    return {
+        "min_visible_pixels": min_visible,
+        "min_alpha_coverage": min_coverage,
+        "readable": min_visible >= 4 and min_coverage > 0.005,
+    }
+
 def process_common(
     frames: Sequence[FrameItem],
     output: Path,
@@ -113,6 +148,11 @@ def process_common(
     matting_engine: str = "chroma",
     temporal_alpha_stabilize: bool = False,
     temporal_alpha_strength: float = 0.55,
+    temporal_smooth: bool = False,
+    temporal_smooth_radius: int = 1,
+    temporal_smooth_color_strength: float = 0.35,
+    temporal_smooth_alpha_strength: float = 0.55,
+    temporal_smooth_histogram: bool = True,
     alpha_refine: bool = False,
     alpha_refine_radius: int = 1,
     pixelize: bool = False,
@@ -157,6 +197,13 @@ def process_common(
                 print(f"[Matting] BiRefNet unavailable ({exc}); falling back to native chroma keying.")
                 fallback_key = key_color if key_color is not None else guess_key_color_from_corners(img)
                 img = apply_chroma_key(img, fallback_key, key_tolerance, key_feather)
+        elif matting_engine == "depth-anything":
+            try:
+                img = try_depth_anything(img)
+            except RuntimeError as exc:
+                print(f"[Matting] Depth Anything unavailable ({exc}); falling back to native chroma keying.")
+                fallback_key = key_color if key_color is not None else guess_key_color_from_corners(img)
+                img = apply_chroma_key(img, fallback_key, key_tolerance, key_feather)
         elif matting_engine == "pixel-art":
             img = apply_pixel_art_background_removal(img, tolerance=key_tolerance, alpha_threshold=alpha_threshold)
         elif matting_engine == "rembg" or rembg:
@@ -182,6 +229,17 @@ def process_common(
 
     if temporal_alpha_stabilize:
         processed = stabilize_temporal_alpha(processed, strength=temporal_alpha_strength)
+
+    temporal_smooth_info: Dict[str, Any] = {"enabled": False}
+    if temporal_smooth:
+        processed, temporal_smooth_info = stabilize_temporal_coherence(
+            processed,
+            radius=temporal_smooth_radius,
+            color_strength=temporal_smooth_color_strength,
+            alpha_strength=temporal_smooth_alpha_strength,
+            alpha_threshold=alpha_threshold,
+            histogram_match=temporal_smooth_histogram,
+        )
 
     effective_pixel_dither_mode = str(pixel_cleanup_dither_mode or "none").lower().replace("_", "-")
     if pixel_cleanup_dither and effective_pixel_dither_mode == "none":
@@ -285,8 +343,8 @@ def process_common(
                         cy = int(pts[1])
                         clabel = int(pts[2]) if len(pts) > 2 else 1
                         clicks.append((cx, cy, clabel))
-                    except ValueError:
-                        pass
+                    except ValueError as exc:
+                        logger.warning("Ignoring invalid SAM2 click prompt %r for part %s: %s", click_group, part_name, exc)
             if clicks:
                 click_prompts[part_name] = clicks
 
@@ -316,6 +374,7 @@ def process_common(
         "alpha_refine_radius": alpha_refine_radius if alpha_refine else 0,
         "temporal_alpha_stabilize": bool(temporal_alpha_stabilize),
         "temporal_alpha_strength": temporal_alpha_strength if temporal_alpha_stabilize else 0,
+        "temporal_smooth": temporal_smooth_info,
         "pixel_cleanup": {
             "enabled": bool(pixel_cleanup),
             "colors": pixel_cleanup_colors if pixel_cleanup else 0,
@@ -414,21 +473,12 @@ def process_common(
         targets = [t.strip() for t in resolutions.split(",") if t.strip()]
         for target in targets:
             try:
-                if target.endswith("x"):
-                    scale_factor = float(target[:-1])
-                    suffix = target
-                else:
-                    target_size = int(target)
-                    scale_factor = target_size / final_cell[0]
-                    suffix = f"{target_size}"
+                suffix, scale_factor = _resolution_scale(target, final_cell)
 
                 new_w = int(round(sheet.width * scale_factor))
                 new_h = int(round(sheet.height * scale_factor))
-                try:
-                    from PIL import Image as PILImage
-                    resample_filter = PILImage.Resampling.LANCZOS
-                except AttributeError:
-                    resample_filter = Image.LANCZOS
+                pixel_art_scale = bool(pixel_art_active or pixel_cleanup or pixel_snap_scale > 1)
+                resample_filter = Image.Resampling.NEAREST if pixel_art_scale else Image.Resampling.LANCZOS
 
                 scaled_sheet = sheet.resize((new_w, new_h), resample_filter)
                 scaled_sheet_name = f"sheet_{suffix}.png"
@@ -448,11 +498,26 @@ def process_common(
                 scaled_spacing = int(round(spacing * scale_factor))
                 scaled_margin = int(round(margin * scale_factor))
                 scaled_extra = json.loads(json.dumps(extra)) if extra else {}
+                scaled_frames = [
+                    FrameItem(
+                        item.image.resize(scaled_cell, resample_filter),
+                        item.name,
+                        item.source_index,
+                    )
+                    for item in normalized
+                ]
+                scaled_extra["resolution_export"] = {
+                    "target": target,
+                    "scale_factor": scale_factor,
+                    "source_cell_size": list(final_cell),
+                    "resample": "nearest" if pixel_art_scale else "lanczos",
+                    "readability": _silhouette_readability(scaled_frames, alpha_threshold=alpha_threshold),
+                }
 
                 write_metadata(
                     output / f"sheet_{suffix}.json",
                     image_name=scaled_sheet_name,
-                    frames=normalized,
+                    frames=scaled_frames,
                     rects=scaled_rects,
                     cell_size=scaled_cell,
                     columns=cols,
@@ -530,11 +595,16 @@ def process_common_from_args(
         flip_y=args.flip_y,
         report=args.report,
         source_meta=source_meta,
-        resolutions=getattr(args, "resolutions", None),
+        resolutions=getattr(args, "resolution_hierarchy", None) or getattr(args, "resolutions", None),
         palette=SpriteService.parse_palette(getattr(args, "palette", None)),
         matting_engine=getattr(args, "matting_engine", "chroma"),
         temporal_alpha_stabilize=getattr(args, "temporal_alpha_stabilize", False),
         temporal_alpha_strength=getattr(args, "temporal_alpha_strength", 0.55),
+        temporal_smooth=getattr(args, "temporal_smooth", False),
+        temporal_smooth_radius=getattr(args, "temporal_smooth_radius", 1),
+        temporal_smooth_color_strength=getattr(args, "temporal_smooth_color_strength", 0.35),
+        temporal_smooth_alpha_strength=getattr(args, "temporal_smooth_alpha_strength", 0.55),
+        temporal_smooth_histogram=not getattr(args, "temporal_smooth_no_histogram", False),
         alpha_refine=getattr(args, "alpha_refine", False),
         alpha_refine_radius=getattr(args, "alpha_refine_radius", 1),
         pixelize=getattr(args, "pixelize", False),

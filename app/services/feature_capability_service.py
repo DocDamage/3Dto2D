@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from services.websocket_service import progress_transport_status
+
 def _default_runtime(row: Dict[str, Any]) -> str:
     configured = str(row.get("default_runtime") or "").strip().lower()
     if configured in {"native", "external"}:
@@ -21,6 +23,8 @@ def _runtime_payload(feature_id: str, runtime: str, row: Dict[str, Any]) -> Dict
         "external_ready": bool(row.get("external_ready")),
         "external_apps": list(row.get("external_apps") or []),
         "default_runtime": _default_runtime(row),
+        "selection_reason": str(row.get(f"{runtime}_reason") or row.get("selection_reason") or ""),
+        "opt_in_flags": list(row.get("opt_in_flags") or []),
         "notes": str(row.get("notes") or ""),
     }
 
@@ -59,6 +63,8 @@ FEATURES: Dict[str, Dict[str, Any]] = {
         "native_ready": False,
         "external_ready": True,
         "external_apps": ["ComfyUI"],
+        "external_reason": "WAN generation currently resolves to ComfyUI because native WAN parity is not implemented.",
+        "opt_in_flags": ["--native-only blocks this feature until native WAN generation ships"],
         "notes": "Current generation backend is external until native parity is implemented.",
     },
     "lora_training_prepare": {
@@ -74,7 +80,31 @@ FEATURES: Dict[str, Dict[str, Any]] = {
         "external_ready": True,
         "default_runtime": "external",
         "external_apps": ["kohya_ss or ai-toolkit"],
+        "external_reason": "External trainer remains the default for full LoRA training parity.",
+        "native_reason": "Use native-only run mode for in-app style-adapter training artifacts without external trainer folders.",
+        "opt_in_flags": ["--native-only", "--run"],
         "notes": "Native in-app style-adapter execution is available with --native-only --run; external trainer stacks remain optional.",
+    },
+    "cloud_image_generation": {
+        "label": "Cloud image sprite generation",
+        "native_ready": True,
+        "external_ready": True,
+        "default_runtime": "external",
+        "external_apps": ["OpenAI Images API", "Gemini/Imagen API"],
+        "external_reason": "Cloud APIs generate the high-resolution opaque source frames.",
+        "native_reason": "Local SpriteForge post-processing performs alpha extraction, downscale, palette cleanup, and sheet assembly.",
+        "opt_in_flags": ["provider=openai", "provider=gemini", "source_images for local-only processing"],
+        "notes": "Cloud providers create isolated source frames; SpriteForge performs prompt hardening, chroma alpha extraction, nearest-neighbor downscale, palette cleanup, and sheet assembly locally.",
+    },
+    "realtime_progress": {
+        "label": "Realtime progress events",
+        "native_ready": True,
+        "external_ready": True,
+        "default_runtime": "native",
+        "external_apps": ["ComfyUI websocket bridge (optional)"],
+        "native_reason": "Browser progress uses SpriteForge SSE as the primary transport.",
+        "opt_in_flags": ["ComfyUI websocket bridge is optional when remote generation is active"],
+        "notes": "Browser updates use native SSE; ComfyUI websocket events are bridged into the same progress hub when available.",
     },
 }
 
@@ -95,7 +125,15 @@ def capability_report() -> Dict[str, Any]:
             "notes": str(row.get("notes") or ""),
             "default_runtime": default_runtime,
             "runtime": runtime["runtime"],
+            "selection_reason": runtime.get("selection_reason", ""),
+            "opt_in_flags": runtime.get("opt_in_flags", []),
+            "runtime_modes": {
+                "native": bool(row.get("native_ready")),
+                "external": bool(row.get("external_ready")),
+            },
         }
+        if feature_id == "realtime_progress":
+            item["transport"] = progress_transport_status()
         entries.append(item)
         if item["native_ready"]:
             native_count += 1

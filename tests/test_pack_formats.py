@@ -109,3 +109,60 @@ def test_export_webp_anim(tmp_path):
     with Image.open(out_file) as img:
         assert img.format == "WEBP"
         assert img.size == (32, 32)
+
+
+def test_export_lottie_json(tmp_path):
+    from PIL import Image
+    from services.sprite_sheet_service import export_lottie_json
+    from services.sprite_video_loader import FrameItem
+
+    frames = [
+        FrameItem(image=Image.new("RGBA", (16, 16), (255, 0, 0, 255)), name="idle_0", source_index=0),
+        FrameItem(image=Image.new("RGBA", (16, 16), (0, 255, 0, 255)), name="idle_1", source_index=1),
+    ]
+    out_file = tmp_path / "anim.json"
+    export_lottie_json(frames, out_file, fps=12, name="hero_idle")
+
+    data = json.loads(out_file.read_text(encoding="utf-8"))
+    assert data["nm"] == "hero_idle"
+    assert data["fr"] == 12
+    assert data["op"] == 2
+    assert len(data["assets"]) == 2
+    assert len(data["layers"]) == 2
+    assert data["assets"][0]["p"].startswith("data:image/png;base64,")
+    assert data["layers"][1]["ip"] == 1
+
+
+def test_export_animation_service_lottie_from_sprite_dir(tmp_path):
+    from PIL import Image
+    from services.animated_export_service import export_animation
+
+    sprite_dir = tmp_path / "sprite"
+    frames_dir = sprite_dir / "frames_processed"
+    frames_dir.mkdir(parents=True)
+    Image.new("RGBA", (16, 16), (255, 0, 0, 255)).save(frames_dir / "frame_0000.png")
+    Image.new("RGBA", (16, 16), (0, 255, 0, 255)).save(frames_dir / "frame_0001.png")
+    (sprite_dir / "sheet.json").write_text(json.dumps({
+        "animation": "hero_idle",
+        "frame_count": 2,
+        "fps": 12,
+        "frame_width": 16,
+        "frame_height": 16,
+        "columns": 2,
+        "rows": 1,
+        "frames": [],
+    }), encoding="utf-8")
+
+    result = export_animation(sprite_dir, "lottie")
+
+    assert result["ok"] is True
+    assert result["format"] == "lottie"
+    assert Path(result["path"]).exists()
+    data = json.loads(Path(result["path"]).read_text(encoding="utf-8"))
+    assert data["meta"]["spriteforge"]["frame_count"] == 2
+
+
+def test_unified_export_animation_accepts_lottie():
+    args = build_unified_parser().parse_args(["export-animation", "--sprite-dir", "output/demo", "--format", "lottie"])
+
+    assert args.format == "lottie"

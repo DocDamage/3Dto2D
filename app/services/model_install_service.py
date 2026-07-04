@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import platform
 import shutil
@@ -19,8 +20,9 @@ except ImportError:
     from config_service import ConfigService  # type: ignore
     import comfy_workflow_service as wf_svc  # type: ignore
 
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent.parent
+logger = logging.getLogger(__name__)
 
 MODEL_TIER_ALIASES = {
     "safe": "wan21_safe",
@@ -142,7 +144,8 @@ def git_rev(path: Path) -> Optional[str]:
     try:
         p = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=str(path), capture_output=True, text=True, timeout=20)
         return (p.stdout or "").strip() if p.returncode == 0 else None
-    except Exception:
+    except Exception as exc:
+        logger.debug("Could not read git revision for %s: %s", path, exc)
         return None
 
 

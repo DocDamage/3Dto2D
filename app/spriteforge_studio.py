@@ -13,9 +13,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText  # In case it is used or needed
 
-from spriteforge_utils import load_json, save_json, app_python, PYTHON, get_app_version, apply_dark_theme
+from spriteforge_utils import ROOT, load_json, save_json, app_python, PYTHON, get_app_version, apply_dark_theme
 
-ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config" / "spriteforge_config.json"
 
 

@@ -13,6 +13,18 @@
   --danger: #dc4d70;
   --shadow: 0 12px 42px rgba(0, 0, 0, .5);
   --radius: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --font-ui: Inter, Segoe UI, Roboto, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --skeleton-base: rgba(255, 255, 255, .055);
+  --skeleton-sheen: rgba(255, 255, 255, .16);
 
   --color-success: var(--green);
   --color-warning: var(--yellow);
@@ -33,6 +45,8 @@ body.theme-light {
   --yellow: #a16207;
   --danger: #be123c;
   --shadow: 0 12px 42px rgba(15, 23, 42, .08);
+  --skeleton-base: rgba(15, 23, 42, .075);
+  --skeleton-sheen: rgba(15, 23, 42, .15);
 }
 
 * {
@@ -48,7 +62,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: var(--font-ui);
   overflow-x: hidden;
 }
 

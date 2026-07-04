@@ -1,0 +1,116 @@
+{
+  "schema": "spriteforge.css_architecture.v1",
+  "target_structure": [
+    "base.css",
+    "layout.css",
+    "components.css",
+    "views/*.css",
+    "accessibility.css",
+    "overrides/*.css"
+  ],
+  "debt_register": [
+    {
+      "id": "compact-fit-overrides",
+      "files": [
+        "css/topbar_compact.css",
+        "css/app_compact_fit.css",
+        "css/app_resizers.css"
+      ],
+      "risk": "Viewport-fit and compact topbar overrides intentionally load late and use high specificity until layout layers are fully flattened.",
+      "migration": "Move stable topbar/layout rules into layout.css, keep only emergency viewport/resize overrides in overrides/."
+    },
+    {
+      "id": "view-fragment-pairs",
+      "files": [
+        "css/guided_setup.css",
+        "css/guided_setup_extra.css",
+        "css/inspector_ab.css",
+        "css/inspector_ab_compare.css"
+      ],
+      "risk": "Feature CSS is split across historical companion files, which can hide duplicate selectors and media-query drift.",
+      "migration": "Merge companion files into view-scoped CSS modules after visual regression coverage is available."
+    },
+    {
+      "id": "component-modal-overlap",
+      "files": [
+        "css/components.css",
+        "css/components_recipes_modal.css"
+      ],
+      "risk": "Shared component rules and modal-specific rules still overlap in responsibility.",
+      "migration": "Promote reusable modal primitives into components.css and keep recipe-specific layout in a view file."
+    }
+  ],
+  "entrypoint_links": [
+    "styles.css",
+    "sprite_preview.css",
+    "animation_player.css",
+    "compare_player.css",
+    "lighting_preview.css",
+    "cloud_hub.css",
+    "frame_editor.css",
+    "prompt_builder.css",
+    "seed_gallery.css",
+    "frame_review.css",
+    "palette_harmonizer.css",
+    "theme.css",
+    "mobile_nav.css",
+    "drag_drop.css",
+    "audio_cues.css",
+    "state_machine.css",
+    "marketplace_gallery.css",
+    "scene_compositor.css",
+    "consistency_lock.css",
+    "css/ux_enhancements.css",
+    "css/topbar_compact.css",
+    "css/wizard.css"
+  ],
+  "cascade_order": [
+    {
+      "layer": "base",
+      "files": [
+        "css/base_variables.css"
+      ],
+      "purpose": "Design tokens, CSS custom properties, and global primitives."
+    },
+    {
+      "layer": "layout",
+      "files": [
+        "css/layout_rail.css"
+      ],
+      "purpose": "Application shell, rail, top-level layout, and navigation structure."
+    },
+    {
+      "layer": "components",
+      "files": [
+        "css/components.css",
+        "css/components_recipes_modal.css"
+      ],
+      "purpose": "Reusable cards, controls, tables, dashboards, modals, and shared UI patterns."
+    },
+    {
+      "layer": "views",
+      "files": [
+        "css/guided_setup.css",
+        "css/guided_setup_extra.css",
+        "css/inspector_ab.css",
+        "css/inspector_ab_compare.css"
+      ],
+      "purpose": "Feature and view-specific styling kept after shared components."
+    },
+    {
+      "layer": "accessibility",
+      "files": [
+        "css/accessibility.css"
+      ],
+      "purpose": "Reduced motion, focus visibility, and accessibility preferences."
+    },
+    {
+      "layer": "overrides",
+      "files": [
+        "css/app_compact_fit.css",
+        "css/app_resizers.css"
+      ],
+      "purpose": "Final responsive fit and resize safety overrides loaded last by design."
+    }
+  ]
+}

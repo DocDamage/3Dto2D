@@ -1,29 +1,27 @@
 import os
 import sys
+import logging
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Sequence
 
 from services.project_service import ProjectService
 from services.config_service import ConfigService
+from services.project_palette_service import palette_arg_from_lock, normalize_palette_lock
+from services.project_path_service import ProjectPaths
 from spriteforge_utils import (
     PYTHON, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES, AUDIO_SUFFIXES,
     safe_name
 )
 from services.web_path_proxy import ROOT, OUTPUT, INPUT, UPLOADS
 
+logger = logging.getLogger(__name__)
+
 def _is_relative_to(path: Path, base: Path) -> bool:
-    try:
-        path.resolve().relative_to(base.resolve())
-        return True
-    except ValueError:
-        return False
+    return ProjectPaths.is_relative_to(path, base)
 
 def rel(path: Path) -> str:
-    try:
-        return str(path.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
-    except Exception:
-        return str(path).replace("\\", "/")
+    return ProjectPaths.relative_display(path)
 
 
 
@@ -49,10 +47,7 @@ def _safe_preview_file(path: Path) -> bool:
 def _resolve_existing_file(value: str) -> Optional[Path]:
     if not value:
         return None
-    candidate = Path(value)
-    if not candidate.is_absolute():
-        candidate = ROOT / candidate
-    candidate = candidate.resolve()
+    candidate = ProjectPaths.resolve_root_path(value)
     return candidate if candidate.exists() and candidate.is_file() and _safe_preview_file(candidate) else None
 
 def _pixel_animate_workflow_path() -> Optional[str]:
@@ -79,6 +74,9 @@ def _sprite_polish_args(payload: Dict[str, Any]) -> List[str]:
         ("matting_engine", "--matting-engine"),
         ("alpha_refine_radius", "--alpha-refine-radius"),
         ("temporal_alpha_strength", "--temporal-alpha-strength"),
+        ("temporal_smooth_radius", "--temporal-smooth-radius"),
+        ("temporal_smooth_color_strength", "--temporal-smooth-color-strength"),
+        ("temporal_smooth_alpha_strength", "--temporal-smooth-alpha-strength"),
         ("pixel_cleanup_colors", "--pixel-cleanup-colors"),
         ("pixel_cleanup_palette", "--pixel-cleanup-palette"),
         ("pixel_cleanup_dither_mode", "--pixel-cleanup-dither-mode"),
@@ -88,6 +86,7 @@ def _sprite_polish_args(payload: Dict[str, Any]) -> List[str]:
         ("normal_map_engine", "--normal-map-engine"),
         ("pack_mode", "--pack-mode"),
         ("segment_parts", "--segment-parts"),
+        ("resolution_hierarchy", "--resolution-hierarchy"),
     ]:
         value = str(payload.get(key) if payload.get(key) is not None else "").strip()
         if value:
@@ -95,6 +94,8 @@ def _sprite_polish_args(payload: Dict[str, Any]) -> List[str]:
     for key, arg in [
         ("alpha_refine", "--alpha-refine"),
         ("temporal_alpha_stabilize", "--temporal-alpha-stabilize"),
+        ("temporal_smooth", "--temporal-smooth"),
+        ("temporal_smooth_no_histogram", "--temporal-smooth-no-histogram"),
         ("pixel_cleanup", "--pixel-cleanup"),
         ("pixel_cleanup_dither", "--pixel-cleanup-dither"),
         ("interpolation_skip_pixel_art", "--interpolation-skip-pixel-art"),
@@ -104,6 +105,34 @@ def _sprite_polish_args(payload: Dict[str, Any]) -> List[str]:
         if payload.get(key):
             args.append(arg)
     return args
+
+
+def _apply_project_palette_lock(payload: Dict[str, Any]) -> None:
+    if payload.get("pixel_cleanup_palette"):
+        return
+    if not payload.get("palette_project_lock") and not payload.get("palette_lock"):
+        return
+    lock = normalize_palette_lock(payload.get("palette_lock"))
+    if not lock.get("enabled"):
+        project_path = str(payload.get("project_path") or payload.get("active_project") or "").strip()
+        resolved = ProjectService.resolve_project_path(project_path) if project_path else None
+        if not resolved:
+            active = ProjectService.get_active_project()
+            resolved = ProjectService.resolve_project_path(str(active.get("path") or "")) if active else None
+        if resolved:
+            try:
+                import json
+                lock = normalize_palette_lock(json.loads(resolved.read_text(encoding="utf-8")).get("palette_lock"))
+            except Exception as exc:
+                logger.debug("Could not read project palette lock from %s: %s", resolved, exc)
+                lock = normalize_palette_lock({})
+    palette_arg = palette_arg_from_lock(lock)
+    if not palette_arg:
+        return
+    payload["pixel_cleanup"] = True
+    payload["pixel_cleanup_palette"] = palette_arg
+    if not payload.get("pixel_cleanup_colors"):
+        payload["pixel_cleanup_colors"] = str(lock.get("colors_limit") or len(lock.get("colors") or []) or 32)
 
 
 def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
@@ -262,6 +291,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             ("cell_size", "--cell-size"),
             ("key_color", "--key-color"),
             ("resolutions", "--resolutions"),
+            ("resolution_hierarchy", "--resolution-hierarchy"),
             ("qa_threshold_loop_rmse", "--qa-threshold-loop-rmse"),
             ("qa_threshold_foot_drift", "--qa-threshold-foot-drift"),
             ("qa_threshold_center_drift", "--qa-threshold-center-drift")
@@ -273,6 +303,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             cmd.append("--quality-check")
         if payload.get("power_of_two", False):
             cmd.append("--power-of-two")
+        _apply_project_palette_lock(payload)
         cmd += _sprite_polish_args(payload)
         return "Generate WAN sprite", cmd
     if action == "cloud_image_sprite":
@@ -379,6 +410,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             value = str(payload.get(key) or "").strip()
             if value:
                 extra += [arg, value]
+        _apply_project_palette_lock(payload)
         extra += _sprite_polish_args(payload)
         if payload.get("drop_loop_duplicate", True):
             extra.append("--drop-loop-duplicate")
@@ -488,6 +520,28 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         if not output:
             output = str(_project_artifact_path(project_meta, "exports", f"{name}_atlas")) if project_meta else f"output/{name}_atlas"
         return "Build multi-action atlas", [PYTHON, "spriteforge_unified.py", "atlas-build", "--sprites", *list(sprites), "--output", output, "--name", name]
+    if action == "tilemap":
+        mode = str(payload.get("mode") or "autotile_16").strip()
+        if mode not in {"autotile_16", "wang_16"}:
+            raise ValueError("Unsupported tilemap mode.")
+        output = str(payload.get("output") or "output/tilesets/autotile_16.png").strip()
+        cmd = [PYTHON, "spriteforge_unified.py", "tilemap", "--mode", mode, "--output", output]
+        if mode == "autotile_16":
+            base = str(payload.get("base") or "").strip()
+            border = str(payload.get("border") or "").strip()
+            if not base or not border:
+                raise ValueError("Base and border tiles are required for 16-tile autotile generation.")
+            cmd += ["--base", base, "--border", border]
+        else:
+            for key in ("north", "east", "south", "west"):
+                value = str(payload.get(key) or "").strip()
+                if not value:
+                    raise ValueError("North, east, south, and west tiles are required for Wang generation.")
+                cmd += [f"--{key}", value]
+            tile_size = str(payload.get("tile_size") or "").strip()
+            if tile_size and tile_size != "0":
+                cmd += ["--tile-size", tile_size]
+        return "Generate tilemap sheet", cmd
     if action == "release_package":
         sprites = payload.get("sprites") or payload.get("sprite_dir") or []
         if isinstance(sprites, str):

@@ -20,13 +20,16 @@ def test_wizard_component_allows_character_and_style_references():
 
 def test_wizard_js_forwards_references_to_generation_payload():
     js = (APP / "web" / "js" / "wizard.js").read_text(encoding="utf-8")
+    submit = (APP / "web" / "js" / "wizard_submit.js").read_text(encoding="utf-8")
+    templates = (APP / "web" / "js" / "wizard_templates.js").read_text(encoding="utf-8")
+    ui = (APP / "web" / "js" / "wizard_ui.js").read_text(encoding="utf-8")
 
     assert 'form.querySelector(\'[name="wiz_reference_image"]\')' in js
     assert 'form.querySelector(\'[name="wiz_style_image"]\')' in js
-    assert "reference_image: referenceImage" in js
-    assert "style_image: styleImage" in js
-    assert "Reference Image:" in js
-    assert "wizSummaryReferences" in js
+    assert "reference_image: context.referenceImage" in submit
+    assert "style_image: context.styleImage" in submit
+    assert "Reference Image:" in templates
+    assert "wizSummaryReferences" in ui
 
 
 def test_wizard_state_persists_reference_fields():

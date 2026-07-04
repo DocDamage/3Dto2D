@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import time
 from pathlib import Path
@@ -39,6 +40,7 @@ PROFILE_EXPLAINERS: Dict[str, Dict[str, str]] = {
         "risk_level": "low",
     },
 }
+logger = logging.getLogger(__name__)
 
 
 def _parse_stamp(value: Any) -> Optional[float]:
@@ -46,7 +48,8 @@ def _parse_stamp(value: Any) -> Optional[float]:
         return None
     try:
         return time.mktime(time.strptime(str(value), "%Y-%m-%d %H:%M:%S"))
-    except Exception:
+    except Exception as exc:
+        logger.debug("Could not parse timestamp %r: %s", value, exc)
         return None
 
 

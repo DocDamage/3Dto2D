@@ -18,9 +18,8 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from PIL import Image, ImageDraw
 
-from spriteforge_utils import safe_name
+from spriteforge_utils import ROOT, safe_name
 
-ROOT = Path(__file__).resolve().parent
 DEFAULT_ACTIONS = ["idle", "walk", "run", "attack_light", "attack_heavy", "hurt", "death"]
 DEFAULT_DIRECTIONS = ["right"]
 

@@ -18,8 +18,62 @@ from services.wan_generation_service import (
     wait_for_history,
     write_run_manifest,
 )
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent.parent
+SPRITE_POLISH_VALUE_ARGS = [
+    ("matting_engine", "--matting-engine", {"choices": ["chroma", "rembg", "birefnet", "depth-anything", "pixel-art"]}),
+    ("alpha_refine_radius", "--alpha-refine-radius", {"type": int}),
+    ("temporal_alpha_strength", "--temporal-alpha-strength", {"type": float}),
+    ("temporal_smooth_radius", "--temporal-smooth-radius", {"type": int}),
+    ("temporal_smooth_color_strength", "--temporal-smooth-color-strength", {"type": float}),
+    ("temporal_smooth_alpha_strength", "--temporal-smooth-alpha-strength", {"type": float}),
+    ("pixel_cleanup_colors", "--pixel-cleanup-colors", {"type": int}),
+    ("pixel_cleanup_palette", "--pixel-cleanup-palette", {}),
+    ("pixel_cleanup_dither_mode", "--pixel-cleanup-dither-mode", {"choices": ["none", "floyd-steinberg", "bayer"]}),
+    ("pixel_snap_scale", "--pixel-snap-scale", {"type": int}),
+    ("interpolate_fps", "--interpolate-fps", {"type": float}),
+    ("interpolation_engine", "--interpolation-engine", {"choices": ["blend", "flow", "bitmapflow", "rife"]}),
+    ("interpolation_skip_patterns", "--interpolation-skip-patterns", {}),
+    ("normal_map_engine", "--normal-map-engine", {"choices": ["height", "native-depth"]}),
+    ("pack_mode", "--pack-mode", {"choices": ["grid", "maxrects"]}),
+    ("segment_parts", "--segment-parts", {"help": "Part segmentation click specifications, e.g. weapon:150,220,1;hair:200,100,1"}),
+]
+
+SPRITE_POLISH_BOOL_ARGS = [
+    ("alpha_refine", "--alpha-refine"),
+    ("temporal_alpha_stabilize", "--temporal-alpha-stabilize"),
+    ("temporal_smooth", "--temporal-smooth"),
+    ("temporal_smooth_no_histogram", "--temporal-smooth-no-histogram"),
+    ("pixel_cleanup", "--pixel-cleanup"),
+    ("pixel_cleanup_dither", "--pixel-cleanup-dither"),
+    ("interpolation_skip_pixel_art", "--interpolation-skip-pixel-art"),
+    ("interpolation_skip_impact_frames", "--interpolation-skip-impact-frames"),
+    ("generate_normal_maps", "--generate-normal-maps"),
+]
+
+
+def add_sprite_polish_args(parser: argparse.ArgumentParser, *, defaults: bool = False) -> None:
+    value_defaults = {
+        "matting_engine": "chroma",
+        "alpha_refine_radius": 1,
+        "temporal_alpha_strength": 0.55,
+        "temporal_smooth_radius": 1,
+        "temporal_smooth_color_strength": 0.35,
+        "temporal_smooth_alpha_strength": 0.55,
+        "pixel_cleanup_colors": 24,
+        "pixel_cleanup_dither_mode": "none",
+        "pixel_snap_scale": 0,
+        "interpolation_engine": "blend",
+        "normal_map_engine": "height",
+        "pack_mode": "grid",
+    }
+    for attr, flag, kwargs in SPRITE_POLISH_VALUE_ARGS:
+        options = dict(kwargs)
+        options["dest"] = attr
+        options["default"] = value_defaults.get(attr) if defaults else None
+        parser.add_argument(flag, **options)
+    for attr, flag in SPRITE_POLISH_BOOL_ARGS:
+        parser.add_argument(flag, dest=attr, action="store_true")
 
 
 def _normalize_sprite_extra_args(extra: list[str] | None) -> list[str]:
@@ -31,32 +85,11 @@ def _normalize_sprite_extra_args(extra: list[str] | None) -> list[str]:
 
 def _sprite_extra_from_generate_args(args: argparse.Namespace) -> list[str]:
     extra: list[str] = []
-    for attr, flag in [
-        ("matting_engine", "--matting-engine"),
-        ("alpha_refine_radius", "--alpha-refine-radius"),
-        ("temporal_alpha_strength", "--temporal-alpha-strength"),
-        ("pixel_cleanup_colors", "--pixel-cleanup-colors"),
-        ("pixel_cleanup_palette", "--pixel-cleanup-palette"),
-        ("pixel_cleanup_dither_mode", "--pixel-cleanup-dither-mode"),
-        ("interpolate_fps", "--interpolate-fps"),
-        ("interpolation_engine", "--interpolation-engine"),
-        ("interpolation_skip_patterns", "--interpolation-skip-patterns"),
-        ("normal_map_engine", "--normal-map-engine"),
-        ("pack_mode", "--pack-mode"),
-        ("segment_parts", "--segment-parts"),
-    ]:
+    for attr, flag, _kwargs in SPRITE_POLISH_VALUE_ARGS:
         value = getattr(args, attr, None)
         if value not in (None, ""):
             extra += [flag, str(value)]
-    for attr, flag in [
-        ("alpha_refine", "--alpha-refine"),
-        ("temporal_alpha_stabilize", "--temporal-alpha-stabilize"),
-        ("pixel_cleanup", "--pixel-cleanup"),
-        ("pixel_cleanup_dither", "--pixel-cleanup-dither"),
-        ("interpolation_skip_pixel_art", "--interpolation-skip-pixel-art"),
-        ("interpolation_skip_impact_frames", "--interpolation-skip-impact-frames"),
-        ("generate_normal_maps", "--generate-normal-maps"),
-    ]:
+    for attr, flag in SPRITE_POLISH_BOOL_ARGS:
         if getattr(args, attr, False):
             extra.append(flag)
     return extra

@@ -6,6 +6,32 @@ from typing import Any, Dict
 from spriteforge_utils import load_json, save_json
 
 ALLOWED_STATUSES = {"unreviewed", "approved", "rejected", "needs_edit"}
+ALLOWED_FRAME_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+MAX_REVIEW_NOTE_LENGTH = 500
+
+
+def sanitize_review_note(note: str) -> str:
+    text = str(note or "").replace("\x00", "").strip()
+    text = text.replace("\\", "/")
+    while "../" in text:
+        text = text.replace("../", "")
+    return text[:MAX_REVIEW_NOTE_LENGTH]
+
+
+def sanitize_frame_filename(frame_name: str) -> str:
+    text = str(frame_name or "").replace("\x00", "").strip()
+    if not text:
+        raise ValueError("frame_name is required.")
+    normalized = text.replace("\\", "/")
+    name = Path(normalized).name
+    if name != normalized or name in {".", ".."} or ".." in name:
+        raise ValueError("frame_name must be a simple filename.")
+    suffix = Path(name).suffix.lower()
+    if suffix not in ALLOWED_FRAME_EXTENSIONS:
+        raise ValueError("frame_name must use a supported image extension.")
+    if any(ch in name for ch in '<>:"|?*'):
+        raise ValueError("frame_name contains unsupported characters.")
+    return name
 
 
 def update_frame_status(sprite_dir: Path, frame_index: int, status: str, note: str = "") -> Dict[str, Any]:
@@ -22,8 +48,9 @@ def update_frame_status(sprite_dir: Path, frame_index: int, status: str, note: s
     if not isinstance(frame, dict):
         raise ValueError("frame entry is not editable.")
     frame["review_status"] = status
-    if note:
-        frame["review_note"] = note
+    safe_note = sanitize_review_note(note)
+    if safe_note:
+        frame["review_note"] = safe_note
     elif "review_note" in frame and status == "approved":
         frame.pop("review_note", None)
     save_json(meta_path, meta)

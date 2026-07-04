@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+import logging
 import time
 import json
 from pathlib import Path
@@ -17,6 +18,7 @@ from web_helpers import (
 from spriteforge_utils import load_json, save_json
 
 routes_projects = Blueprint("routes_projects", __name__)
+logger = logging.getLogger(__name__)
 
 @routes_projects.route("/api/projects", methods=["GET"])
 def get_projects():

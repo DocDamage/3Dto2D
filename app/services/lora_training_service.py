@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -16,6 +17,7 @@ from services.trained_lora_registry_service import set_default_lora
 from spriteforge_utils import ROOT, safe_name
 
 DEFAULT_OUTPUT = ROOT / "output" / "training_runs"
+logger = logging.getLogger(__name__)
 
 TRAINER_DEFAULTS = {
     "kohya": ROOT / "vendor" / "kohya_ss",

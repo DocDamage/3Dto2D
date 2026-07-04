@@ -657,14 +657,18 @@ def pick_experiment_winner():
         note=str(body.get("note") or ""),
     ))
 
-@routes_misc.route("/api/experiments/clear", methods=["POST"])
+@routes_misc.route("/api/experiments/clear", methods=["GET", "POST"])
 def clear_experiments():
-    body = request.json or {}
+    body = request.get_json(silent=True) or {}
     keep_starred = bool(body.get("keep_starred", True))
+    query = request.args.to_dict(flat=False)
+    explicit_project_scope = bool(body.get("active_project") or query.get("project"))
     project_meta = (
         ProjectService.metadata_for_path(str(body.get("active_project") or ""))
-        or _project_meta_from_query(request.args.to_dict(flat=False))
+        or _project_meta_from_query(query)
     )
+    if explicit_project_scope and not project_meta:
+        return jsonify({"ok": False, "message": "Project scope could not be resolved"}), 400
     predicate = (lambda rec: ProjectService.item_matches_project(rec, project_meta)) if project_meta else None
     removed = ExperimentService.clear_history(keep_starred=keep_starred, predicate=predicate)
     return jsonify({"ok": True, "removed": removed})

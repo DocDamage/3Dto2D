@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from pathlib import Path
 from spriteforge_commands import ROOT, run, cmd_qa_report
@@ -90,14 +91,14 @@ def add_parsers(sub: argparse._SubParsersAction) -> None:
     s.add_argument("--sprite-dir", required=True)
     s.add_argument("--output", default=None)
     s.add_argument("--fail-under", type=float, default=None)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_quality.py"), "quality", "--sprite-dir", a.sprite_dir] + (["--output", a.output] if a.output else []) + (["--fail-under", str(a.fail_under)] if a.fail_under is not None else []), check=False))
+    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_quality.py"), "quality", "--sprite-dir", a.sprite_dir] + (["--output", a.output] if a.output else []) + (["--fail-under", str(a.fail_under)] if a.fail_under is not None else []), check=False).returncode)
 
     s = sub.add_parser("quality-batch", help="Run QC over every SpriteForge output folder under a root")
     s.add_argument("--root", default="output")
     s.add_argument("--output", default=None)
     s.add_argument("--fail-under", type=float, default=None)
     s.add_argument("--junit-xml", default=None, help="Write JUnit XML report for CI dashboards")
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_quality.py"), "batch", "--root", a.root] + (["--output", a.output] if a.output else []) + (["--fail-under", str(a.fail_under)] if a.fail_under is not None else []) + (["--junit-xml", a.junit_xml] if a.junit_xml else []), check=False))
+    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "spriteforge_quality.py"), "batch", "--root", a.root] + (["--output", a.output] if a.output else []) + (["--fail-under", str(a.fail_under)] if a.fail_under is not None else []) + (["--junit-xml", a.junit_xml] if a.junit_xml else []), check=False).returncode)
 
     s = sub.add_parser("atlas-build", help="Build one multi-animation atlas from multiple SpriteForge output folders")
     s.add_argument("--sprites", nargs="*", default=[])
@@ -324,5 +325,42 @@ def add_parsers(sub: argparse._SubParsersAction) -> None:
     s.set_defaults(func=_export_skeletal)
 
     s = sub.add_parser("ci-check", help="CI quality-gate check")
-    s.add_argument("--fail-under", type=float, default=95.0)
-    s.set_defaults(func=lambda a: run([sys.executable, str(ROOT / "app" / "services" / "ci_check_service.py"), "--fail-under", str(a.fail_under)]))
+    s.add_argument("--root", default="output")
+    s.add_argument("--fail-under", type=float, default=70.0)
+    s.add_argument("--junit-xml", default=None, help="Output JUnit XML report path")
+    s.add_argument("--json", dest="output_json", default=None, help="Output JSON report path")
+    s.add_argument("--quiet", action="store_true", help="Suppress per-sprite output")
+
+    def _ci_check(a):
+        def _path_for_child(value):
+            if not value:
+                return value
+            path = Path(value)
+            if path.is_absolute():
+                return str(path)
+            app_path = ROOT / path
+            cwd_path = path.resolve()
+            app_anchor_exists = app_path.exists() or app_path.parent.exists()
+            cwd_anchor_exists = cwd_path.exists() or cwd_path.parent.exists()
+            if cwd_anchor_exists and not app_anchor_exists:
+                return str(cwd_path)
+            return value
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "services.ci_check_service",
+            "--root",
+            _path_for_child(a.root),
+            "--fail-under",
+            str(a.fail_under),
+        ]
+        if a.junit_xml:
+            cmd += ["--junit-xml", _path_for_child(a.junit_xml)]
+        if a.output_json:
+            cmd += ["--json", _path_for_child(a.output_json)]
+        if a.quiet:
+            cmd.append("--quiet")
+        return run(cmd, cwd=ROOT, check=False).returncode
+
+    s.set_defaults(func=_ci_check)

@@ -49,6 +49,8 @@ def smooth_sequence(coords: List[float], window_size: int = 5) -> List[float]:
 
 
 def blend_loop_seam(frames: List[FrameRecord], blend_frames: int) -> List[FrameRecord]:
+    from spriteforge_qc import FrameRecord
+
     if blend_frames <= 0 or len(frames) <= blend_frames * 2:
         return frames
     out = list(frames)
@@ -78,7 +80,7 @@ def stabilize_frame(img: Image.Image, target_anchor: Tuple[float, float], bbox: 
 
 
 def deflicker_frames(frames: Sequence[FrameRecord]) -> List[FrameRecord]:
-    from spriteforge_qc import masked_mean_rgb
+    from spriteforge_qc import FrameRecord, masked_mean_rgb
     means = []
     for fr in frames:
         means.append(masked_mean_rgb(fr.image))
@@ -106,6 +108,8 @@ def drop_loop_duplicate(frames: List[FrameRecord], threshold: float = 1.25) -> L
 
 
 def pack_frames(frames: Sequence[FrameRecord], out_dir: Path, fps: float, animation: str) -> None:
+    from spriteforge_qc import ensure_dir
+
     ensure_dir(out_dir)
     if not frames:
         raise ValueError("No frames to pack")
@@ -142,6 +146,17 @@ def pack_frames(frames: Sequence[FrameRecord], out_dir: Path, fps: float, animat
 
 
 def cmd_autofix(args: argparse.Namespace) -> None:
+    from spriteforge_qc import (
+        FrameRecord,
+        alpha_bbox,
+        analyze_frames,
+        ensure_dir,
+        load_input,
+        load_sheet_frames,
+        make_contact_sheet,
+        write_html_report,
+    )
+
     src = Path(args.input).resolve()
     frames, meta = load_input(src)
     fps = float(args.fps or meta.get("fps", 12))
@@ -197,6 +212,8 @@ def cmd_autofix(args: argparse.Namespace) -> None:
 
 
 def cmd_compare(args: argparse.Namespace) -> None:
+    from spriteforge_qc import load_input
+
     a_path = Path(args.a).resolve()
     b_path = Path(args.b).resolve()
     a_frames, a_meta = load_input(a_path)

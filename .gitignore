@@ -4,6 +4,8 @@ __pycache__/
 .pytest_cache/
 
 # Virtual environments and local install markers
+.env
+app/.env
 .venv/
 app/.venv/
 app/.deps_installed_v12

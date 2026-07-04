@@ -275,6 +275,43 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             cmd.append("--power-of-two")
         cmd += _sprite_polish_args(payload)
         return "Generate WAN sprite", cmd
+    if action == "cloud_image_sprite":
+        prompt = str(payload.get("prompt") or payload.get("character") or "").strip()
+        if not prompt:
+            raise ValueError("No prompt entered for cloud image sprite generation.")
+        cmd = [PYTHON, "spriteforge_unified.py", "cloud-image-sprite", "--prompt", prompt]
+        for key, arg in [
+            ("provider", "--provider"),
+            ("model", "--model"),
+            ("size", "--size"),
+            ("cell_size", "--cell-size"),
+            ("key_color", "--key-color"),
+            ("palette_colors", "--palette-colors"),
+            ("columns", "--columns"),
+            ("fps", "--fps"),
+            ("animation", "--animation"),
+            ("constraints", "--constraints"),
+            ("negative", "--negative"),
+            ("output", "--output"),
+        ]:
+            value = str(payload.get(key) if payload.get(key) is not None else "").strip()
+            if value:
+                cmd += [arg, value]
+        source_images = payload.get("source_image") or payload.get("source_images") or []
+        if isinstance(source_images, str):
+            source_images = [s.strip() for s in source_images.splitlines() if s.strip()]
+        for source_image in source_images:
+            cmd += ["--source-image", str(source_image)]
+        frame_prompts = payload.get("frame_prompt") or payload.get("frame_prompts") or []
+        if isinstance(frame_prompts, str):
+            frame_prompts = [s.strip() for s in frame_prompts.splitlines() if s.strip()]
+        for frame_prompt in frame_prompts:
+            cmd += ["--frame-prompt", str(frame_prompt)]
+        if payload.get("frames"):
+            cmd += ["--frames", str(payload.get("frames"))]
+        if payload.get("no_palette_cleanup"):
+            cmd.append("--no-palette-cleanup")
+        return "Generate cloud image sprite", cmd
     if action == "animate_existing_sprite":
         source = str(payload.get("source_sprite") or payload.get("existing_sprite_source") or payload.get("reference_image") or "").strip()
         if not source:

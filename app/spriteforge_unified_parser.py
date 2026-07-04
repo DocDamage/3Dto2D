@@ -16,6 +16,7 @@ from spriteforge_commands import (
     cmd_generate_sprite,
     cmd_watch_output,
     cmd_convert_video,
+    cmd_cloud_image_sprite,
     cmd_download_wan_native,
     cmd_model_report,
     cmd_model_tiers,
@@ -235,6 +236,26 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--output", default=None)
     s.add_argument("extra", nargs=argparse.REMAINDER)
     s.set_defaults(func=cmd_convert_video)
+
+    s = sub.add_parser("cloud-image-sprite", help="Generate/process cloud image frames into an engine-ready spritesheet")
+    s.add_argument("--prompt", required=True)
+    s.add_argument("--provider", choices=["openai", "gemini"], default="openai")
+    s.add_argument("--model", default=None)
+    s.add_argument("--source-image", action="append", default=[], help="Use an existing cloud output PNG instead of calling an API.")
+    s.add_argument("--frame-prompt", action="append", default=[], help="Optional per-frame pose suffix.")
+    s.add_argument("--frames", type=int, default=1)
+    s.add_argument("--size", default="1024x1024")
+    s.add_argument("--cell-size", default="64x64")
+    s.add_argument("--key-color", default="#ff00ff")
+    s.add_argument("--palette-colors", type=int, default=24)
+    s.add_argument("--no-palette-cleanup", action="store_true")
+    s.add_argument("--columns", type=int, default=None)
+    s.add_argument("--fps", type=float, default=12.0)
+    s.add_argument("--animation", default="cloud_sprite")
+    s.add_argument("--constraints", default=None)
+    s.add_argument("--negative", default=None)
+    s.add_argument("--output", default=None)
+    s.set_defaults(func=cmd_cloud_image_sprite)
 
     s = sub.add_parser("download-wan-native", help="Download model files from a selected manifest")
     s.add_argument("--manifest", default="model_manifests/wan21_t2v_1_3b_native.json")

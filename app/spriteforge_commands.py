@@ -216,6 +216,7 @@ from services.generation_commands import (
     cmd_generate_sprite,
     cmd_watch_output,
     cmd_convert_video,
+    cmd_cloud_image_sprite,
 )
 from services.model_commands import (
     cmd_download_wan_native,
@@ -405,6 +406,26 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--output", default=None)
     sp.add_argument("--extra", nargs="*", default=None)
     sp.set_defaults(func=cmd_convert_video)
+
+    sp = sub.add_parser("cloud-image-sprite", help="Generate/process cloud image frames into an engine-ready spritesheet")
+    sp.add_argument("--prompt", required=True)
+    sp.add_argument("--provider", choices=["openai", "gemini"], default="openai")
+    sp.add_argument("--model", default=None)
+    sp.add_argument("--source-image", action="append", default=[], help="Use an existing cloud output PNG instead of calling an API.")
+    sp.add_argument("--frame-prompt", action="append", default=[], help="Optional per-frame pose suffix.")
+    sp.add_argument("--frames", type=int, default=1)
+    sp.add_argument("--size", default="1024x1024")
+    sp.add_argument("--cell-size", default="64x64")
+    sp.add_argument("--key-color", default="#ff00ff")
+    sp.add_argument("--palette-colors", type=int, default=24)
+    sp.add_argument("--no-palette-cleanup", action="store_true")
+    sp.add_argument("--columns", type=int, default=None)
+    sp.add_argument("--fps", type=float, default=12.0)
+    sp.add_argument("--animation", default="cloud_sprite")
+    sp.add_argument("--constraints", default=None)
+    sp.add_argument("--negative", default=None)
+    sp.add_argument("--output", default=None)
+    sp.set_defaults(func=cmd_cloud_image_sprite)
 
     sp = sub.add_parser("download-wan-native", help="Download WAN model files from a manifest")
     sp.add_argument("--manifest", default=None)

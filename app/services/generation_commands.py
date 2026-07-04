@@ -160,3 +160,28 @@ def cmd_convert_video(args: argparse.Namespace) -> None:
     cmd = build_sprite_args(input_video, output_dir.resolve(), cfg, _normalize_sprite_extra_args(getattr(args, "extra", None)))
     run(cmd)
     print(f"Converted to sprite: {output_dir}")
+
+
+def cmd_cloud_image_sprite(args: argparse.Namespace) -> None:
+    from services.cloud_image_generation_service import build_cloud_sprite_sheet, default_output_dir
+
+    output_dir = Path(args.output) if args.output else default_output_dir(args.prompt)
+    manifest = build_cloud_sprite_sheet(
+        prompt=args.prompt,
+        output_dir=output_dir,
+        provider=args.provider,
+        model=args.model,
+        source_images=args.source_image or [],
+        frame_count=args.frames,
+        frame_prompts=args.frame_prompt or [],
+        size=args.size,
+        cell_size=args.cell_size,
+        key_color=args.key_color,
+        palette_colors=None if args.no_palette_cleanup else args.palette_colors,
+        columns=args.columns,
+        fps=args.fps,
+        animation_name=args.animation,
+        constraints=args.constraints,
+        negative=args.negative,
+    )
+    print(f"Cloud image sprite output: {manifest['output_dir']}")

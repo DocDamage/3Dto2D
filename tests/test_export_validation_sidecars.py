@@ -334,3 +334,47 @@ def test_validate_export_fails_release_zip_with_restricted_member(tmp_path):
     restricted = [row for row in report["results"] if row["label"] == "Release zip excludes restricted/heavy files"]
     assert restricted and restricted[0]["ok"] is False
     assert "big_model.safetensors" in restricted[0]["detail"]
+
+
+def test_validate_export_checks_optional_animated_export_sidecar(tmp_path):
+    from spriteforge_engine_export import validate_export
+
+    sprite_dir = _make_sprite_dir(tmp_path)
+    animated_exports_dir = sprite_dir / "animated_exports"
+    animated_exports_dir.mkdir()
+    (animated_exports_dir / "idle.apng").write_bytes(b"PNG...")
+    
+    (animated_exports_dir / "idle.apng.manifest.json").write_text(
+        json.dumps(
+            {
+                "schema": "spriteforge.animated_export.v1",
+                "format": "apng",
+                "file": "idle.apng",
+                "frame_count": 2,
+                "engine_ready": {"godot": True, "web": True},
+                "format_capabilities": {
+                    "schema": "spriteforge.animated_export_format.v1",
+                    "format": "apng",
+                    "animated_raster": True,
+                    "runtime_asset": True,
+                    "metadata_asset": False,
+                    "transparent_animation": True,
+                    "engine_targets": {
+                        "godot": True,
+                        "unity": True,
+                        "web": True
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = validate_export(sprite_dir, return_dict=True)
+
+    assert report["ok"] is True
+    labels = {row["label"] for row in report["results"]}
+    assert "idle.apng.manifest.json schema present" in labels
+    assert "idle.apng.manifest.json referenced asset exists" in labels
+    assert "idle.apng.manifest.json format_capabilities contract valid" in labels
+

@@ -65,6 +65,16 @@ def test_export_animation_writes_engine_ready_manifest(tmp_path):
     assert manifest["engine_import"]["texture_filter"] == "nearest"
     assert manifest["engine_import"]["web"]["element_hint"] == "lottie-web"
     assert len(manifest["frames"]) == 3
+    
+    # Lottie format_capabilities checks
+    caps = manifest["format_capabilities"]
+    assert caps["schema"] == "spriteforge.animated_export_format.v1"
+    assert caps["format"] == "lottie"
+    assert caps["animated_raster"] is False
+    assert caps["runtime_asset"] is False
+    assert caps["metadata_asset"] is True
+    assert caps["transparent_animation"] is True
+    assert caps["engine_targets"] == {"godot": False, "unity": False, "web": True}
 
 
 def test_export_animation_manifest_preserves_retimed_frame_durations(tmp_path):
@@ -78,3 +88,13 @@ def test_export_animation_manifest_preserves_retimed_frame_durations(tmp_path):
     assert manifest["engine_import"]["godot"]["resource_type"] == "AnimatedTexture"
     assert manifest["duration_seconds"] == 0.617
     assert [frame["duration_ms"] for frame in manifest["frames"]] == [150, 300, 167]
+
+    # WebP format_capabilities checks
+    caps = manifest["format_capabilities"]
+    assert caps["schema"] == "spriteforge.animated_export_format.v1"
+    assert caps["format"] == "webp"
+    assert caps["animated_raster"] is True
+    assert caps["runtime_asset"] is True
+    assert caps["metadata_asset"] is False
+    assert caps["transparent_animation"] is True
+    assert caps["engine_targets"] == {"godot": True, "unity": True, "web": True}

@@ -58,6 +58,37 @@ def _validate_sidecar_manifest(path: Path, sprite_dir: Path, expected_frame_coun
         render_ok = rendering.get("schema") == "spriteforge.lighting_preview_render.v1" and rendering.get("texture_filter") == "nearest"
         results.append(_check(f"{path.name} lighting maps contract valid", maps_ok))
         results.append(_check(f"{path.name} lighting render contract valid", render_ok))
+    if schema == "spriteforge.animated_export.v1":
+        caps = manifest.get("format_capabilities")
+        if not caps or not isinstance(caps, dict):
+            results.append(_check(f"{path.name} format_capabilities present", False, "missing or not a dict"))
+        else:
+            fmt = manifest.get("format")
+            caps_schema = caps.get("schema")
+            caps_fmt = caps.get("format")
+            
+            schema_valid = caps_schema == "spriteforge.animated_export_format.v1"
+            fmt_valid = caps_fmt == fmt
+            
+            is_raster = fmt in {"apng", "webp"}
+            raster_valid = caps.get("animated_raster") is is_raster
+            runtime_valid = caps.get("runtime_asset") is is_raster
+            metadata_valid = caps.get("metadata_asset") is (not is_raster)
+            trans_valid = caps.get("transparent_animation") is True
+            
+            targets = caps.get("engine_targets") if isinstance(caps.get("engine_targets"), dict) else {}
+            targets_valid = (
+                targets.get("web") is True
+                and targets.get("godot") is is_raster
+                and targets.get("unity") is is_raster
+            )
+            
+            caps_ok = schema_valid and fmt_valid and raster_valid and runtime_valid and metadata_valid and trans_valid and targets_valid
+            results.append(_check(
+                f"{path.name} format_capabilities contract valid",
+                caps_ok,
+                f"schema={caps_schema} fmt={caps_fmt} targets={targets}"
+            ))
     return results
 
 

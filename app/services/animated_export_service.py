@@ -139,6 +139,20 @@ def export_animation(sprite_dir: Path, fmt: str, output: Optional[Path] = None, 
     frame_height = int(meta.get("frame_height") or (frames[0].image.height if frames else 0))
     manifest_path = out_path.with_suffix(f".{fmt}.manifest.json")
     timing_source = "sheet.json duration_ms" if any(duration != (int(round(1000.0 / fps)) if fps > 0 else 83) for duration in durations_ms) else "fps"
+    is_raster = fmt in {"apng", "webp"}
+    capabilities = {
+        "schema": "spriteforge.animated_export_format.v1",
+        "format": fmt,
+        "animated_raster": is_raster,
+        "runtime_asset": is_raster,
+        "metadata_asset": not is_raster,
+        "transparent_animation": True,
+        "engine_targets": {
+            "godot": is_raster,
+            "unity": is_raster,
+            "web": True
+        }
+    }
     manifest = {
         "schema": ANIMATED_EXPORT_SCHEMA,
         "format": fmt,
@@ -152,6 +166,7 @@ def export_animation(sprite_dir: Path, fmt: str, output: Optional[Path] = None, 
         "frame_width": frame_width,
         "frame_height": frame_height,
         "quality": quality if fmt == "webp" else None,
+        "format_capabilities": capabilities,
         "engine_ready": {
             "godot": fmt in {"apng", "webp"},
             "web": fmt in {"apng", "webp", "lottie"},

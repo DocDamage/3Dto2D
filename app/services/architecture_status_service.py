@@ -661,6 +661,7 @@ def _animated_exports_status() -> dict[str, Any]:
         "manifest_sidecar": "manifest_path.write_text" in service_source,
         "retimed_frame_manifest": "def _frame_durations_ms" in service_source and "sheet.json duration_ms" in service_source and '"timing_source": timing_source' in service_source,
         "engine_import_hints": "def _engine_import_hints" in service_source and '"texture_filter": "nearest"' in service_source and '"per_frame_duration_ms"' in service_source,
+        "format_capabilities_schema": "spriteforge.animated_export_format.v1" in service_source and "spriteforge.animated_export_format.v1" in validation_source,
         "audio_cue_export_validation": "def _validate_audio_cues_manifest" in validation_source and "audio_cues.json cue timing matches fps" in validation_source,
         "tilemap_export_validation": "def _validate_tilemap_manifest" in validation_source and "tilemap engine import targets present" in validation_source,
         "skeletal_export_validation": "def _validate_skeletal_manifest" in validation_source and "skeletal spine slot order matches manifest" in validation_source,

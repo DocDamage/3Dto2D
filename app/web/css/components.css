@@ -96,6 +96,14 @@ html.file-mode .file-mode-warning code {
   color: #aff9ff;
 }
 
+html.file-mode .aurora,
+html.file-mode .mobile-rail-toggle,
+html.file-mode .mobile-rail-backdrop,
+html.file-mode .rail,
+html.file-mode .shell {
+  display: none !important;
+}
+
 .glow {
   box-shadow: none;
   border: 1px solid rgba(255, 255, 255, .12);

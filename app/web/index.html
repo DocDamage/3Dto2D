@@ -27,6 +27,47 @@
   <link rel="stylesheet" href="css/ux_enhancements.css" />
   <link rel="stylesheet" href="css/topbar_compact.css?v=generate-existing-sprite" />
   <link rel="stylesheet" href="css/wizard.css?v=wizard-reference-upload-buttons" />
+  <style>
+    .file-mode-warning { display: none; }
+    html.file-mode body {
+      align-items: center;
+      background: radial-gradient(circle at top left, #1d3c54, #0b1020 52%, #070914);
+      color: #eaf7ff;
+      display: flex;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    html.file-mode .aurora,
+    html.file-mode .mobile-rail-toggle,
+    html.file-mode .mobile-rail-backdrop,
+    html.file-mode .rail,
+    html.file-mode .shell {
+      display: none !important;
+    }
+    html.file-mode .file-mode-warning {
+      background: rgba(14, 19, 35, .94);
+      border: 1px solid rgba(85, 241, 255, .3);
+      border-radius: 18px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+      display: grid;
+      gap: 10px;
+      line-height: 1.5;
+      max-width: 720px;
+      padding: 24px 28px;
+    }
+    html.file-mode .file-mode-warning strong {
+      font-size: 22px;
+    }
+    html.file-mode .file-mode-warning span {
+      color: #b9c9d8;
+    }
+    html.file-mode .file-mode-warning code {
+      color: #aff9ff;
+      font-weight: 700;
+    }
+  </style>
   <script>
     window.onSpriteForgeReady = (callback) => {
       if (document.readyState === 'loading') {
@@ -87,7 +128,7 @@
   <div class="mobile-rail-backdrop" id="mobileRailBackdrop"></div>
   <div class="file-mode-warning" role="status">
     <strong>SpriteForge needs the local server.</strong>
-    <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally or serve the <code>app</code> folder and open <code>http://127.0.0.1:&lt;port&gt;/web/index.html</code>.</span>
+    <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally, then open <code>http://127.0.0.1:&lt;port&gt;/</code>.</span>
   </div>
 
   <aside class="rail">

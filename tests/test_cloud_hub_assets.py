@@ -18,6 +18,9 @@ def test_cloud_hub_assets_are_wired():
     assert 'id="cloudHubNodes"' in component
     assert 'id="cloudImageProviders"' in component
     assert 'id="cloudImagePlanPreview"' in component
+    assert 'id="cloudImageGenerate"' in component
+    assert 'id="cloudImagePlanModel"' in component
+    assert 'id="cloudImagePlanSourceImages"' in component
     assert 'id="cloudImagePlanResult"' in component
     assert 'id="cloudQueuePlanPreview"' in component
     assert 'id="cloudQueuePlanResult"' in component
@@ -26,6 +29,8 @@ def test_cloud_hub_assets_are_wired():
     assert "/api/cloud/nodes" in script
     assert "/api/cloud/image-providers" in script
     assert "/api/cloud/image-generation-plan" in script
+    assert "runAction('cloud_image_sprite'" in script
+    assert "function generateCloudImageSprite" in script
     assert "/api/cloud/queue-plan" in script
     assert "renderCloudImagePlan" in script
     assert "renderCloudQueuePlan" in script

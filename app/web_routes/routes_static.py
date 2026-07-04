@@ -13,6 +13,13 @@ def serve_index():
 
 @routes_static.route("/web/<path:filename>")
 def serve_web(filename):
+    return _serve_web_asset(filename)
+
+@routes_static.route("/<path:filename>")
+def serve_root_web_asset(filename):
+    return _serve_web_asset(filename)
+
+def _serve_web_asset(filename):
     # Prevent directory traversal
     resolved = (WEB / filename).resolve()
     try:

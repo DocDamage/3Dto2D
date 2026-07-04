@@ -29,8 +29,11 @@
 
     <section class="card cloud-hub-card">
       <div class="card-head">
-        <h3>Cloud sprite plan</h3>
-        <button class="mini primary" id="cloudImagePlanPreview" type="button">Preview sprite plan</button>
+        <h3>Cloud sprite generator</h3>
+        <div class="button-row compact-actions">
+          <button class="mini" id="cloudImagePlanPreview" type="button">Preview plan</button>
+          <button class="mini primary" id="cloudImageGenerate" type="button">Generate cloud sprite</button>
+        </div>
       </div>
       <label>Prompt
         <input id="cloudImagePlanPrompt" placeholder="clockwork knight idle" />
@@ -54,6 +57,21 @@
           <input id="cloudImagePlanCellSize" value="64x64" />
         </label>
       </div>
+      <div class="row">
+        <label>Model
+          <input id="cloudImagePlanModel" placeholder="default for provider" />
+        </label>
+        <label>Palette colors
+          <input id="cloudImagePlanPaletteColors" class="short-number" type="number" min="2" value="32" />
+        </label>
+      </div>
+      <label>Output folder
+        <input id="cloudImagePlanOutput" placeholder="optional, e.g. output/cloud_knight" />
+      </label>
+      <label>Source images
+        <textarea id="cloudImagePlanSourceImages" rows="3" placeholder="Optional local image paths, one per line. If provided, SpriteForge skips cloud API calls and only runs local cleanup/stitching."></textarea>
+      </label>
+      <p class="hint">Generation is opt-in and runs through the normal task system. OpenAI/Gemini keys stay local; SpriteForge only stores output metadata.</p>
       <div id="cloudImagePlanResult" class="cloud-hub-providers empty compact">Preview shows hardened prompts, alpha extraction, nearest-neighbor downscale, palette, and stitching steps.</div>
     </section>
 

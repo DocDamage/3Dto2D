@@ -25,6 +25,8 @@ def test_index_uses_relative_assets_for_file_open_fallback():
     assert "fetch('components/' + name + '.html' + componentVersion)" in index
     assert "window.location.protocol === 'file:'" in index
     assert "file-mode-warning" in index
+    assert "html.file-mode .shell" in index
+    assert "http://127.0.0.1:&lt;port&gt;/" in index
     assert 'href="/web/styles.css' not in index
     assert "fetch('/web/components/" not in index
     assert "'/web/js/" not in index

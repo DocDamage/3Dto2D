@@ -44,3 +44,13 @@ def _app_python_files() -> list[Path]:
 def _phase_status(name: str, items: dict[str, dict[str, Any]]) -> dict[str, Any]:
     checks = {key: bool(value.get("ok")) for key, value in items.items()}
     return {"name": name, "ok": all(checks.values()), "checks": checks}
+
+
+def _read_parser_source() -> str:
+    content = (APP / "spriteforge_unified_parser.py").read_text(encoding="utf-8", errors="ignore")
+    cli_dir = APP / "cli"
+    if cli_dir.exists():
+        for path in sorted(cli_dir.glob("*.py")):
+            content += "\n" + path.read_text(encoding="utf-8", errors="ignore")
+    return content
+

@@ -4,6 +4,7 @@ from services.architecture_status.base import (
     APP,
     SERVICES,
     WEB,
+    _read_parser_source,
 )
 
 
@@ -22,7 +23,7 @@ def _pipeline_powerups_status() -> dict[str, Any]:
     frame_css = (WEB / "frame_editor.css").read_text(encoding="utf-8", errors="ignore")
     frame_repack_source = (SERVICES / "frame_repack_service.py").read_text(encoding="utf-8", errors="ignore")
     cmd_source = (SERVICES / "web_helpers_cmd.py").read_text(encoding="utf-8", errors="ignore")
-    parser_source = (APP / "spriteforge_unified_parser.py").read_text(encoding="utf-8", errors="ignore")
+    parser_source = _read_parser_source()
     checks = {
         "animation_player_view": "animation_player.css" in index_source and "js/animation_player.js" in index_source and "animation-player-view" in animation_component,
         "animation_player_controls": all(token in animation_component for token in ["animationPlayBtn", "animationSpeedSlider", "animationFrameScrubber", "animationOnionSlider"]),
@@ -177,7 +178,7 @@ def _experiment_analytics_status() -> dict[str, Any]:
 
 def _tilemap_status() -> dict[str, Any]:
     tilemap_source = (SERVICES / "tilemap_service.py").read_text(encoding="utf-8", errors="ignore")
-    parser_source = (APP / "spriteforge_unified_parser.py").read_text(encoding="utf-8", errors="ignore")
+    parser_source = _read_parser_source()
     cmd_source = (SERVICES / "web_helpers_cmd.py").read_text(encoding="utf-8", errors="ignore")
     training_source = (WEB / "components" / "training.html").read_text(encoding="utf-8", errors="ignore")
     forms_source = (WEB / "js" / "app_forms.js").read_text(encoding="utf-8", errors="ignore")
@@ -199,7 +200,7 @@ def _tilemap_status() -> dict[str, Any]:
 def _skeletal_export_status() -> dict[str, Any]:
     skeletal_source = (SERVICES / "skeletal_export_service.py").read_text(encoding="utf-8", errors="ignore")
     routes_source = (APP / "web_routes" / "routes_sprites.py").read_text(encoding="utf-8", errors="ignore")
-    parser_source = (APP / "spriteforge_unified_parser.py").read_text(encoding="utf-8", errors="ignore")
+    parser_source = _read_parser_source()
     forms_source = (WEB / "js" / "app_forms.js").read_text(encoding="utf-8", errors="ignore")
     checks = {
         "export_service": "def export_skeletal_parts" in skeletal_source,

@@ -5,6 +5,7 @@ from services.architecture_status.base import (
     SERVICES,
     WEB,
     REPO_ROOT,
+    _read_parser_source,
 )
 
 
@@ -177,7 +178,7 @@ def _cloud_hub_status() -> dict[str, Any]:
 
 def _cloud_image_generation_status() -> dict[str, Any]:
     cloud_image_source = (SERVICES / "cloud_image_generation_service.py").read_text(encoding="utf-8", errors="ignore")
-    parser_source = (APP / "spriteforge_unified_parser.py").read_text(encoding="utf-8", errors="ignore")
+    parser_source = _read_parser_source()
     cmd_source = (SERVICES / "web_helpers_cmd.py").read_text(encoding="utf-8", errors="ignore")
     checks = {
         "local_env_keys": "def resolve_api_key" in cloud_image_source and "provider_key_names" in cloud_image_source,

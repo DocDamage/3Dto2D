@@ -65,3 +65,15 @@ def test_capability_report_exposes_runtime_state():
     assert lora_entry["default_runtime"] == "external"
     assert "native_ready" in lora_entry
     assert "external_ready" in lora_entry
+
+
+def test_feature_registry_covers_current_runtime_consumers():
+    from services.feature_capability_service import FEATURES
+
+    expected = {
+        "video_to_sprite_conversion",
+        "wan_generation",
+        "lora_training_run",
+    }
+
+    assert expected <= set(FEATURES)

@@ -26,6 +26,9 @@ from services.web_helpers_listings import (
 )
 
 
+_VIDEO_CANDIDATE_CACHE: Dict[str, List[Path]] = {}
+
+
 # ── Helpers ─────────────────────────────────────────────
 
 def _resolve_sprite_output_dir(value: str) -> Path:
@@ -71,6 +74,36 @@ def _resolve_existing_file(value: str) -> Optional[Path]:
     candidate = candidate.resolve()
     return candidate if candidate.exists() and candidate.is_file() and _safe_preview_file(candidate) else None
 
+
+def _video_candidates() -> List[Path]:
+    roots = [_comfy_output_root(), INPUT, UPLOADS]
+    cache_key_parts: List[str] = []
+    for root in roots:
+        try:
+            stat = root.stat()
+            cache_key_parts.append(f"{root}:{stat.st_mtime_ns}:{stat.st_size}")
+        except OSError:
+            cache_key_parts.append(f"{root}:missing")
+    cache_key = "|".join(cache_key_parts)
+    cached = _VIDEO_CANDIDATE_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    candidates: List[Path] = []
+    for root in roots:
+        if not root.exists():
+            continue
+        try:
+            for file in root.rglob("*"):
+                if file.suffix.lower() in VIDEO_SUFFIXES:
+                    candidates.append(file)
+        except OSError:
+            continue
+
+    _VIDEO_CANDIDATE_CACHE.clear()
+    _VIDEO_CANDIDATE_CACHE[cache_key] = candidates
+    return candidates
+
 def _matching_experiment(sprite_rel: str) -> Optional[Dict[str, Any]]:
     wanted = sprite_rel.replace("\\", "/").strip("/")
     for rec in ExperimentService.get_history():
@@ -108,14 +141,7 @@ def _infer_source_video(sprite_dir: Path, meta: Dict[str, Any]) -> Optional[Path
         if cleaned:
             stems.append(cleaned)
 
-    roots = [_comfy_output_root(), INPUT, UPLOADS]
-    candidates: List[Path] = []
-    for root in roots:
-        if not root.exists():
-            continue
-        for file in root.rglob("*"):
-            if file.suffix.lower() in VIDEO_SUFFIXES:
-                candidates.append(file)
+    candidates = _video_candidates()
     for stem in stems:
         normalized = stem.lower()
         for file in candidates:
@@ -183,7 +209,7 @@ def sprite_outputs(limit: int = 60, project_meta: Optional[Dict[str, str]] = Non
                 }
                 if ProjectService.item_matches_project(row, project_meta):
                     rows.append(row)
-            except Exception:
+            except (OSError, json.JSONDecodeError):
                 continue
     rows.sort(key=lambda item: item["mtime"], reverse=True)
     return rows[:limit]
@@ -208,7 +234,7 @@ def sprite_preview_bundle(sprite_path: str) -> Dict[str, Any]:
             try:
                 qa_data = json.loads(p_path.read_text(encoding="utf-8"))
                 break
-            except Exception:
+            except (OSError, json.JSONDecodeError):
                 pass
     visual_json = sprite_dir / "visual_report" / "visual_report.json"
     visual_report = load_json(visual_json, {}) if visual_json.exists() else {}

@@ -218,7 +218,6 @@ async function refreshQualityLivePreview(path, options = {}) {
     return;
   }
 
-  if (!options.force && previewPath === qualityLivePreviewLastPath) return;
   qualityLivePreviewLastPath = previewPath;
   setQualityPreviewStatus('Loading preview for ' + previewPath + '...');
 

@@ -54,7 +54,7 @@ async function refreshAll() {
     if (spriteFolder && typeof window.refreshQualityLivePreview === 'function') {
       const qualityVisible = $('#view-quality')?.classList.contains('active') || localStorage.getItem('activeView') === 'quality';
       if (qualityVisible) {
-        window.refreshQualityLivePreview(spriteFolder, { force: !!activeJobRunning, silent: true, source: 'active' });
+        window.refreshQualityLivePreview(spriteFolder, { force: true, silent: true, source: 'active' });
       }
     }
     if (jobTransitionedToDone) {

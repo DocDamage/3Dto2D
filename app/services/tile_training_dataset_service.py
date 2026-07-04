@@ -60,7 +60,40 @@ def _is_tile_source(path: Path, source: Path, include_all: bool = False) -> bool
     if include_all:
         return True
     words = set(_tile_search_text(path, source).split())
-    return bool(words & TILE_KEYWORDS)
+    if words & TILE_KEYWORDS:
+        return True
+    try:
+        with Image.open(path) as img:
+            width, height = img.size
+            if width < 64 or height < 64:
+                return False
+            candidates = [128, 96, 64, 48, 32, 16]
+            for size in candidates:
+                if width % size == 0 and height % size == 0 and width // size >= 2 and height // size >= 2:
+                    cells = []
+                    for row in range(height // size):
+                        for col in range(width // size):
+                            cell = img.crop((col * size, row * size, (col + 1) * size, (row + 1) * size))
+                            if cell.getbbox() is not None:
+                                cells.append(cell.tobytes())
+                    if len(set(cells)) >= 2:
+                        return True
+            if width == height:
+                for cells in range(2, 13):
+                    if width % cells == 0:
+                        size = width // cells
+                        if 32 <= size <= 256 and cells >= 2:
+                            grid = []
+                            for row in range(cells):
+                                for col in range(cells):
+                                    cell = img.crop((col * size, row * size, (col + 1) * size, (row + 1) * size))
+                                    if cell.getbbox() is not None:
+                                        grid.append(cell.tobytes())
+                            if len(set(grid)) >= 2:
+                                return True
+    except OSError:
+        return False
+    return False
 
 
 def _theme_from_path(path: Path, source: Path) -> str:

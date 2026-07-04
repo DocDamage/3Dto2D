@@ -384,14 +384,16 @@ def get_experiments():
 
 @routes_misc.route("/api/experiments/analytics", methods=["GET"])
 def get_experiments_analytics():
-    project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
+    query = request.args.to_dict(flat=False)
+    project_meta = _project_meta_from_query(query) if "project" in query else None
     analytics = ExperimentService.analytics(_experiment_rows(project_meta))
     analytics["project_workspace"] = _project_workspace(project_meta)
     return jsonify(analytics)
 
 @routes_misc.route("/api/experiments/prompts", methods=["GET"])
 def get_experiment_prompts():
-    project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
+    query = request.args.to_dict(flat=False)
+    project_meta = _project_meta_from_query(query) if "project" in query else None
     try:
         limit = int(request.args.get("limit") or 40)
     except ValueError:
@@ -407,7 +409,8 @@ def get_experiment_prompts():
 
 @routes_misc.route("/api/experiments/winning-prompts", methods=["GET"])
 def get_experiment_winning_prompts():
-    project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
+    query = request.args.to_dict(flat=False)
+    project_meta = _project_meta_from_query(query) if "project" in query else None
     try:
         limit = int(request.args.get("limit") or 24)
     except ValueError:

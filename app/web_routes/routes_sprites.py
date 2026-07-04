@@ -41,9 +41,13 @@ def _resolve_workspace_output_dir(value: str) -> Path:
 @routes_sprites.route("/api/outputs", methods=["GET"])
 def get_outputs():
     project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
+    outputs = sprite_outputs(80, project_meta)
     return jsonify({
-        "outputs": sprite_outputs(80, project_meta),
-        "project_workspace": _project_workspace(project_meta)
+        "outputs": outputs,
+        "project_workspace": {
+            "active": project_meta,
+            "outputs": len(outputs),
+        },
     })
 
 @routes_sprites.route("/api/sprite/preview", methods=["GET"])

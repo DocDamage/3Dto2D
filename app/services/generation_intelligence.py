@@ -355,6 +355,19 @@ def cleanup_suggestions(root: Path) -> List[Dict[str, Any]]:
     if output.exists():
         for folder in output.iterdir():
             if folder.is_dir() and folder.name not in {"jobs", "packs", "temp"} and not (folder / "sheet.json").exists():
-                size = sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
+                size = 0
+                pending = [folder]
+                visited = 0
+                while pending and visited < 250:
+                    current = pending.pop()
+                    visited += 1
+                    try:
+                        for child in current.iterdir():
+                            if child.is_file():
+                                size += child.stat().st_size
+                            elif child.is_dir() and visited < 250:
+                                pending.append(child)
+                    except OSError:
+                        continue
                 suggestions.append({"category": "Failed / Incomplete Outputs", "path": str(folder), "size": size})
     return suggestions

@@ -196,8 +196,8 @@ def _border_depth_values(depth: np.ndarray) -> np.ndarray:
 def try_depth_anything(img: Image.Image) -> Image.Image:
     """Use optional Depth Anything depth estimation to build an alpha matte."""
     try:
-        import torch
         from transformers import AutoImageProcessor, AutoModelForDepthEstimation
+        import torch
     except Exception as exc:
         raise RuntimeError(
             "The depth-anything matting option requires optional transformers and torch packages. "

@@ -63,6 +63,7 @@ class ModelService:
 
     _summary_cache = None
     _summary_cache_time = 0.0
+    _summary_cache_signature = None
     _summary_cache_ttl = 60.0
     _disk_cache = None
     _disk_cache_time = 0.0
@@ -78,7 +79,13 @@ class ModelService:
     def get_summary(force_refresh: bool = False) -> Dict[str, Any]:
         import time
         now = time.time()
-        if not force_refresh and ModelService._summary_cache is not None and now - ModelService._summary_cache_time < ModelService._summary_cache_ttl:
+        signature = (id(ModelService.get_tiers_status), id(ConfigService.get_config))
+        if (
+            not force_refresh
+            and ModelService._summary_cache is not None
+            and ModelService._summary_cache_signature == signature
+            and now - ModelService._summary_cache_time < ModelService._summary_cache_ttl
+        ):
             return {**ModelService._summary_cache, "_cache": ModelService._cache_meta(ModelService._summary_cache_time, ModelService._summary_cache_ttl, True)}
 
         cfg = ConfigService.get_config()
@@ -105,6 +112,7 @@ class ModelService:
             "tiers": tiers,
         }
         ModelService._summary_cache = res
+        ModelService._summary_cache_signature = signature
         ModelService._summary_cache_time = now
         return {**res, "_cache": ModelService._cache_meta(now, ModelService._summary_cache_ttl, False)}
 
@@ -131,6 +139,7 @@ class ModelService:
     def reset_caches() -> None:
         ModelService._summary_cache = None
         ModelService._summary_cache_time = 0.0
+        ModelService._summary_cache_signature = None
         ModelService._disk_cache = None
         ModelService._disk_cache_time = 0.0
 

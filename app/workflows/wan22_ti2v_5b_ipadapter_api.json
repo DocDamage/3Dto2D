@@ -1,0 +1,165 @@
+{
+  "37": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "wan2.2_ti2v_5B_fp16.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "38": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    }
+  },
+  "39": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "wan2.2_vae.safetensors"
+    }
+  },
+  "55": {
+    "class_type": "Wan22ImageToVideoLatent",
+    "inputs": {
+      "vae": [
+        "39",
+        0
+      ],
+      "width": 832,
+      "height": 480,
+      "length": 33,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "38",
+        0
+      ],
+      "text": "single full body original game character walking cycle, professional appealing character design, heroic adult proportions, clear readable face, distinctive outfit, strong shape language, cohesive color palette, side view, locked orthographic camera, no zoom, centered, full body visible, plain bright green background, high quality 2D game sprite animation, crisp cel-shaded edges, clean silhouette"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "38",
+        0
+      ],
+      "text": "camera movement, zoom, cuts, close up, motion blur, changing outfit, changing identity, complex background, text, subtitles, watermark, deformed body, extra limbs, missing limbs, bad anatomy, childlike drawing, amateur doodle, crude sketch, scribbles, messy linework, ugly face, melted face, lumpy body, shapeless outfit, muddy colors"
+    }
+  },
+  "48": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "37",
+        0
+      ],
+      "shift": 8
+    }
+  },
+  "60": {
+    "class_type": "CLIPVisionLoader",
+    "inputs": {
+      "clip_name": "clip_vision_h.safetensors"
+    }
+  },
+  "61": {
+    "class_type": "IPAdapterModelLoader",
+    "inputs": {
+      "ipadapter_file": "ip-adapter_sdxl_vit_h.safetensors"
+    }
+  },
+  "63": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "spriteforge_reference.png",
+      "upload": "image"
+    }
+  },
+  "62": {
+    "class_type": "IPAdapterApply",
+    "inputs": {
+      "model": [
+        "48",
+        0
+      ],
+      "ipadapter": [
+        "61",
+        0
+      ],
+      "clip_vision": [
+        "60",
+        0
+      ],
+      "image": [
+        "63",
+        0
+      ],
+      "weight": 0.75
+    }
+  },
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "62",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "55",
+        0
+      ],
+      "seed": 1,
+      "steps": 20,
+      "cfg": 5,
+      "sampler_name": "uni_pc",
+      "scheduler": "simple",
+      "denoise": 1
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    }
+  },
+  "47": {
+    "class_type": "SaveWEBM",
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "filename_prefix": "SpriteForge/wan22_5b_sprite",
+      "codec": "vp9",
+      "fps": 12,
+      "crf": 32
+    }
+  },
+  "_spriteforge_template": {
+    "name": "wan22_ti2v_5b_ipadapter_api",
+    "source_docs": "https://docs.comfy.org/tutorials/video/wan/wan2_2",
+    "notes": "API workflow for Wan2.2 TI2V 5B with IP-Adapter nodes."
+  }
+}

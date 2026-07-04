@@ -8,7 +8,7 @@ function formatDuration(start, finish) {
   return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 }
 
-function updateHealthBar(s) {
+function updateHealthDots(s) {
   if (!s) return;
   const parseGpuMemoryGb = (value) => {
     if (value === null || value === undefined) return null;
@@ -36,6 +36,130 @@ function updateHealthBar(s) {
     if (s.job && s.job.exit_code !== null && s.job.exit_code !== 0) { errorDivider.classList.remove('hidden'); errorItem.classList.remove('hidden'); errorVal.textContent = s.job.title || 'Failed'; }
     else { errorDivider.classList.add('hidden'); errorItem.classList.add('hidden'); }
   }
+  renderDashboardHeroStats(s);
+  renderArchitectureStatus(s.architecture, s);
+}
+
+function renderDashboardHeroStats(s) {
+  const outputs = Array.isArray(s.outputs) ? s.outputs : [];
+  const workspace = s.project_workspace || {};
+  const qaScores = outputs
+    .map(item => Number(item.qa_score ?? item.quality_score ?? item.qa?.score ?? item.qa_report?.score))
+    .filter(score => Number.isFinite(score));
+  const avgQa = qaScores.length
+    ? Math.round(qaScores.reduce((total, score) => total + score, 0) / qaScores.length)
+    : null;
+  const projectName = workspace.active && workspace.active.project_name
+    ? workspace.active.project_name
+    : (activeProjectPath ? activeProjectPath.split(/[\\/]/).filter(Boolean).pop() : 'Global');
+
+  const sprites = $('#dashboardStatSprites');
+  const spritesHint = $('#dashboardStatSpritesHint');
+  const qa = $('#dashboardStatQa');
+  const qaHint = $('#dashboardStatQaHint');
+  const project = $('#dashboardStatProject');
+  const projectHint = $('#dashboardStatProjectHint');
+  const disk = $('#dashboardStatDisk');
+  const diskHint = $('#dashboardStatDiskHint');
+
+  if (sprites) sprites.textContent = String(outputs.length || workspace.outputs || 0);
+  if (spritesHint) spritesHint.textContent = outputs.length ? 'Recent loaded outputs.' : 'No outputs loaded yet.';
+  if (qa) qa.textContent = avgQa === null ? 'n/a' : `${avgQa}`;
+  if (qaHint) qaHint.textContent = qaScores.length ? `${qaScores.length} scored output${qaScores.length === 1 ? '' : 's'}.` : 'Run QA to build a trend.';
+  if (project) project.textContent = projectName || 'Global';
+  if (projectHint) projectHint.textContent = workspace.active ? 'Project workspace active.' : 'Using global workspace.';
+  if (disk) disk.textContent = s.disk && s.disk.free_gb !== undefined ? `${s.disk.free_gb} GB` : '-';
+  if (diskHint) diskHint.textContent = s.disk && s.disk.ok ? 'Enough space for generation.' : 'Check storage before long runs.';
+}
+
+function cacheFreshnessText(label, item) {
+  const cache = item && item._cache ? item._cache : null;
+  if (!cache) return `${label}: cache metadata unavailable`;
+  const source = cache.from_cache ? 'cached' : 'fresh';
+  const age = Number.isFinite(Number(cache.age_seconds)) ? `${Number(cache.age_seconds).toFixed(1)}s` : '?s';
+  return `${label}: ${source}, age ${age} / ${cache.ttl_seconds}s TTL`;
+}
+
+function renderArchitectureStatus(architecture, status) {
+  const badge = $('#architectureStatusBadge');
+  const list = $('#architectureStatusList');
+  if (!badge || !list) return;
+  if (!architecture) {
+    badge.textContent = 'unknown';
+    badge.className = 'badge muted';
+    return;
+  }
+  badge.textContent = architecture.ok ? 'green' : 'attention';
+  badge.className = `badge ${architecture.ok ? '' : 'danger'}`;
+  clearNode(list);
+
+  const manifests = architecture.manifests || {};
+  const guardrails = architecture.guardrails || {};
+  const backend = architecture.backend || {};
+  const performance = architecture.performance || {};
+  const designSystem = architecture.design_system || {};
+  const pipelinePowerups = architecture.pipeline_powerups || {};
+  const keyboardUx = architecture.keyboard_ux || {};
+  const dashboardGenerateUx = architecture.dashboard_generate_ux || {};
+  const security = architecture.security || {};
+  const tests = architecture.tests || {};
+  const easyMode = architecture.easy_mode || {};
+  const pluginSdk = architecture.plugin_sdk || {};
+  const cloudHub = architecture.cloud_hub || {};
+  const cloudImageGeneration = architecture.cloud_image_generation || {};
+  const qaAdvisor = architecture.qa_advisor || {};
+  const tilemap = architecture.tilemap || {};
+  const skeletalExport = architecture.skeletal_export || {};
+  const archetypes = architecture.archetypes || {};
+  const loraTraining = architecture.lora_training || {};
+  const sceneCompositor = architecture.scene_compositor || {};
+  const comparePlayer = architecture.compare_player || {};
+  const palettePipeline = architecture.palette_pipeline || {};
+  const animatedExports = architecture.animated_exports || {};
+  const lightingPreview = architecture.lighting_preview || {};
+  const experimentAnalytics = architecture.experiment_analytics || {};
+  const roadmapPhases = architecture.roadmap_phases || {};
+  const jobRunner = backend.job_runner || {};
+  const phaseSummary = roadmapPhases.phases
+    ? Object.keys(roadmapPhases.phases).map(key => `${key.replace('_', ' ').toUpperCase()}: ${roadmapPhases.phases[key].ok ? 'ok' : 'review'}`).join(' · ')
+    : 'phase summary unavailable';
+  const rows = [
+    `Services: ${manifests.services ? manifests.services.domains_count : 0} domains, ${manifests.services ? manifests.services.files_tracked : 0} files tracked`,
+    `CSS: ${manifests.css && manifests.css.layers ? manifests.css.layers.length : 0} cascade layers`,
+    `JS: ${manifests.js && manifests.js.layers ? manifests.js.layers.length : 0} loader layers (${manifests.js ? manifests.js.migration_target || 'tracked' : 'tracked'})`,
+    `Wizard split targets: ${manifests.wizard && manifests.wizard.split_targets ? manifests.wizard.split_targets.length : 0}`,
+    `Job runner boundary: ${jobRunner.ok ? 'ok' : 'needs review'}`,
+    `Status performance caches: ${performance.ok ? 'ok' : 'needs review'}`,
+    `Design system tokens: ${designSystem.ok ? 'ok' : 'needs review'}`,
+    `Core pipeline power-ups: ${pipelinePowerups.ok ? 'ok' : 'needs review'}`,
+    `Keyboard-first UX: ${keyboardUx.ok ? 'ok' : 'needs review'}`,
+    `Dashboard & Generate UX: ${dashboardGenerateUx.ok ? 'ok' : 'needs review'}`,
+    cacheFreshnessText('GPU status', status && status.gpu),
+    cacheFreshnessText('Model status', status && status.models),
+    cacheFreshnessText('Disk status', status && status.disk),
+    `Sprite route hardening: ${security.ok ? 'ok' : 'needs review'}`,
+    `Test suite fixtures: ${tests.ok ? 'ok' : 'needs review'}`,
+    `Easy Mode modernization: ${easyMode.ok ? 'ok' : 'needs review'}`,
+    `Plugin SDK readiness: ${pluginSdk.ok ? 'ok' : 'needs review'}`,
+    `Cloud Hub dispatch: ${cloudHub.ok ? 'ok' : 'needs review'}`,
+    `Cloud image generation: ${cloudImageGeneration.ok ? 'ok' : 'needs review'}`,
+    `QA Advisor learning: ${qaAdvisor.ok ? 'ok' : 'needs review'}`,
+    `Tilemap exports: ${tilemap.ok ? 'ok' : 'needs review'}`,
+    `Skeletal exports: ${skeletalExport.ok ? 'ok' : 'needs review'}`,
+    `Archetype cards: ${archetypes.ok ? 'ok' : 'needs review'}`,
+    `LoRA training UX: ${loraTraining.ok ? 'ok' : 'needs review'}`,
+    `Scene compositor: ${sceneCompositor.ok ? 'ok' : 'needs review'}`,
+    `N-way compare player: ${comparePlayer.ok ? 'ok' : 'needs review'}`,
+    `Palette pipeline: ${palettePipeline.ok ? 'ok' : 'needs review'}`,
+    `Animated exports: ${animatedExports.ok ? 'ok' : 'needs review'}`,
+    `Lighting preview exports: ${lightingPreview.ok ? 'ok' : 'needs review'}`,
+    `Experiment analytics: ${experimentAnalytics.ok ? 'ok' : 'needs review'}`,
+    `Roadmap phases: ${phaseSummary}`,
+    `ROOT guardrail: ${guardrails.canonical_root && guardrails.canonical_root.ok ? 'ok' : 'needs review'}`,
+    `Exception guardrail: ${guardrails.silent_service_exceptions && guardrails.silent_service_exceptions.ok ? 'ok' : 'needs review'}`,
+    `JS globals guardrail: ${guardrails.duplicate_js_top_level_functions && guardrails.duplicate_js_top_level_functions.ok ? 'ok' : 'needs review'}`
+  ];
+  rows.forEach(text => appendText(list, 'div', text, 'compact'));
 }
 
 function renderTaskCenter(s) {
@@ -54,6 +178,138 @@ function renderTaskCenter(s) {
       const sf = activeJob.metadata ? activeJob.metadata.sprite_folder : null; if (ib && sf) { ib.classList.remove('hidden'); ib.dataset.spriteFolder = sf; } else if (ib) ib.classList.add('hidden'); }
     else { if (ar) ar.classList.add('hidden'); if (ai) ai.classList.remove('hidden'); } }
   checkFailureRecovery(activeJob);
+}
+
+let dashboardActivityAfterSeq = 0;
+let dashboardActivityEvents = [];
+let dashboardActivitySource = null;
+let dashboardActivityFallbackTimer = null;
+let dashboardNotificationRequested = false;
+const dashboardNotifiedJobs = new Set();
+
+function dashboardEventSummary(event) {
+  const payload = event.payload || {};
+  const title = payload.title || payload.id || 'SpriteForge event';
+  const detail = payload.stage_detail || payload.stage_label || payload.stage || payload.phase || '';
+  const progress = payload.progress !== null && payload.progress !== undefined ? ` · ${Math.round(Number(payload.progress) || 0)}%` : '';
+  return `${title}${detail ? ' · ' + detail : ''}${progress}`;
+}
+
+function renderDashboardActivityFeed(events) {
+  const feed = $('#dashboardActivityFeed');
+  if (!feed) return;
+  clearNode(feed);
+  const rows = (events || []).slice(-8).reverse();
+  if (!rows.length) {
+    appendText(feed, 'div', 'No recent progress events yet.', 'empty compact');
+    return;
+  }
+  rows.forEach(event => {
+    const row = document.createElement('article');
+    row.className = 'dashboard-activity-event';
+    appendText(row, 'b', event.type || 'event');
+    appendText(row, 'span', dashboardEventSummary(event));
+    appendText(row, 'small', event.time || '');
+    feed.appendChild(row);
+  });
+}
+
+function renderDashboardActivitySkeleton() {
+  const feed = $('#dashboardActivityFeed');
+  if (!feed) return;
+  feed.innerHTML = `
+    <div class="skeleton-stack" aria-label="Loading activity feed">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-line medium"></div>
+      <div class="skeleton-line short"></div>
+    </div>
+  `;
+}
+
+async function refreshDashboardActivityFeed() {
+  const feed = $('#dashboardActivityFeed');
+  if (!feed) return;
+  try {
+    const data = await api(`/api/progress/events?after=${dashboardActivityAfterSeq}&limit=25`);
+    dashboardActivityAfterSeq = data.latest_seq || dashboardActivityAfterSeq;
+    dashboardActivityEvents = [...dashboardActivityEvents, ...(data.events || [])].slice(-40);
+    renderDashboardActivityFeed(dashboardActivityEvents);
+  } catch (err) {
+    console.error('Dashboard activity feed failed:', err);
+  }
+}
+
+function appendDashboardActivityEvents(events) {
+  const incoming = events || [];
+  if (!incoming.length) return;
+  dashboardActivityAfterSeq = incoming.reduce((seq, event) => Math.max(seq, Number(event.seq || 0)), dashboardActivityAfterSeq);
+  dashboardActivityEvents = [...dashboardActivityEvents, ...incoming].slice(-40);
+  renderDashboardActivityFeed(dashboardActivityEvents);
+  notifyDashboardCompletionEvents(incoming);
+}
+
+function notificationBodyForEvent(event) {
+  const payload = event.payload || {};
+  const detail = payload.stage_detail || payload.stage_label || payload.stage || '';
+  const exitText = payload.exit_code === 0 ? 'completed successfully' : 'needs attention';
+  return [detail, exitText].filter(Boolean).join(' · ');
+}
+
+function requestDashboardNotifications() {
+  if (!('Notification' in window) || dashboardNotificationRequested) return;
+  dashboardNotificationRequested = true;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+}
+
+function notifyDashboardCompletionEvents(events) {
+  (events || []).forEach(event => {
+    if (!['job.done', 'job.failed'].includes(event.type)) return;
+    const payload = event.payload || {};
+    const key = `${event.type}:${payload.id || event.seq || payload.title || 'job'}`;
+    if (dashboardNotifiedJobs.has(key)) return;
+    dashboardNotifiedJobs.add(key);
+    const title = event.type === 'job.done' ? 'SpriteForge job complete' : 'SpriteForge job failed';
+    const body = `${payload.title || 'Generation task'}${notificationBodyForEvent(event) ? ' · ' + notificationBodyForEvent(event) : ''}`;
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, tag: key });
+      return;
+    }
+    if (typeof toast === 'function') toast(`${title}: ${body}`);
+  });
+}
+
+function startDashboardActivityFeed() {
+  renderDashboardActivitySkeleton();
+  refreshDashboardActivityFeed();
+  if (!window.EventSource) {
+    dashboardActivityFallbackTimer = setInterval(refreshDashboardActivityFeed, 5000);
+    return;
+  }
+  if (dashboardActivitySource) dashboardActivitySource.close();
+  dashboardActivitySource = new EventSource('/api/progress/stream');
+  dashboardActivitySource.onmessage = event => {
+    try {
+      appendDashboardActivityEvents([JSON.parse(event.data)]);
+    } catch (err) {
+      console.error('Dashboard activity stream parse failed:', err);
+    }
+  };
+  ['job.progress', 'job.stage', 'job.done', 'job.failed'].forEach(type => {
+    dashboardActivitySource.addEventListener(type, event => {
+      try {
+        appendDashboardActivityEvents([JSON.parse(event.data)]);
+      } catch (err) {
+        console.error('Dashboard activity stream parse failed:', err);
+      }
+    });
+  });
+  dashboardActivitySource.onerror = () => {
+    if (!dashboardActivityFallbackTimer) {
+      dashboardActivityFallbackTimer = setInterval(refreshDashboardActivityFeed, 5000);
+    }
+  };
 }
 
 async function loadTasksHistory() {
@@ -98,12 +354,15 @@ function checkFailureRecovery(job) {
 
 async function renderProjectDashboard(s) {
   const hub = $('#projectDashboardHub');
+  const empty = $('#projectDashboardEmpty');
   if (!hub) return;
   if (!activeProjectPath) {
     hub.classList.add('hidden');
+    if (empty) empty.classList.remove('hidden');
     return;
   }
   hub.classList.remove('hidden');
+  if (empty) empty.classList.add('hidden');
 
   const drl = $('#dashReferencesList');
   const dql = $('#dashQueuesList');
@@ -204,6 +463,22 @@ function renderCleanupTable() {
 async function purgeSelectedCleanup() { const checked = $$('.cleanup-checkbox:checked').map(chk => chk.value); if (!checked.length) return; if (!confirm(`Delete ${checked.length} selected files?`)) return; try { toast(`Purging ${checked.length} files...`); const res = await api('/api/cleanup/purge', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ids: checked }) }); if (res.ok) { toast(`Deleted ${res.count} items, reclaimed ${res.reclaimed_mb} MB.`); await scanCleanup(); } else toast('Purge failed: ' + res.message); } catch(e) { toast('Purge error: ' + e.message); } }
 
 function initDashboardBindings() {
+  const activateDashboardTab = (tabName) => {
+    const target = tabName || 'overview';
+    $$('.dashboard-tab-btn').forEach(btn => {
+      const active = btn.dataset.dashboardTab === target;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    $$('.dashboard-tab-panel').forEach(panel => {
+      panel.classList.toggle('active', panel.dataset.dashboardPanel === target);
+    });
+  };
+
+  $$('.dashboard-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateDashboardTab(btn.dataset.dashboardTab));
+  });
+
   if ($('#healthLaunchComfyBtn')) $('#healthLaunchComfyBtn').addEventListener('click', async () => { try { await api('/api/launch_comfy', {method:'POST'}); toast('ComfyUI launch requested'); setTimeout(refreshAll, 1800); } catch(err) { toast(err.message); } });
   if ($('#health-item-error')) $('#health-item-error').addEventListener('click', () => showView('tasks'));
   if ($('#activeTaskCancelBtn')) $('#activeTaskCancelBtn').addEventListener('click', () => api('/api/cancel', {method:'POST'}).then(refreshAll));
@@ -220,4 +495,7 @@ function initDashboardBindings() {
   if ($('#dashActionReview')) $('#dashActionReview').addEventListener('click', () => { showView('quality'); });
   if ($('#dashActionExport')) $('#dashActionExport').addEventListener('click', () => { showView('release'); });
   if ($('#onboardingCtaBtn')) $('#onboardingCtaBtn').addEventListener('click', () => { if (typeof openWizard === 'function') openWizard(); });
+  if ($('#refreshDashboardEvents')) $('#refreshDashboardEvents').addEventListener('click', refreshDashboardActivityFeed);
+  document.addEventListener('click', requestDashboardNotifications, { once: true });
+  startDashboardActivityFeed();
 }

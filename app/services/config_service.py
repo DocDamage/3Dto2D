@@ -1,37 +1,16 @@
-import json
 from pathlib import Path
 from typing import Any, Dict
 
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import ROOT, load_json as _load_json, save_json as _save_json
+
 CONFIG_PATH = ROOT / "config" / "spriteforge_config.json"
 EASY_CONFIG_PATH = ROOT / "config" / "easy_mode.json"
 
 def load_json(path: Path, default: Any = None) -> Any:
-    try:
-        if path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        pass
-    return default or {}
+    return _load_json(path, default if default is not None else {})
 
 def save_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_suffix(".tmp")
-    try:
-        temp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        import os
-        os.replace(str(temp_path), str(path))
-    except Exception as e:
-        try:
-            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        except Exception:
-            raise e
-    finally:
-        if temp_path.exists():
-            try:
-                temp_path.unlink()
-            except Exception:
-                pass
+    _save_json(path, data)
 
 class ConfigService:
     @staticmethod
@@ -43,6 +22,15 @@ class ConfigService:
             import sys
             print(f"[WARN] Config validation warning: {err}", file=sys.stderr)
         return cfg
+
+    @staticmethod
+    def get_typed_config():
+        from services.config_model import SpriteForgeConfig
+        return SpriteForgeConfig.from_dict(ConfigService.get_config())
+
+    @staticmethod
+    def explain_effective_profile(profile: str = "auto") -> Dict[str, Any]:
+        return ConfigService.get_typed_config().effective_profile(profile)
 
     @staticmethod
     def save_config(data: Dict[str, Any]) -> None:

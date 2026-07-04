@@ -25,8 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 import spriteforge_prompts as prompts
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent
 DEFAULT_ACTIONS = ["idle", "walk", "run", "attack_light", "attack_heavy", "jump", "hurt", "death"]
 DEFAULT_VIEWS = ["right"]
 

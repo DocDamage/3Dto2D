@@ -35,7 +35,7 @@ from services.generation_intelligence import (
     safer_retry_payload,
     summarize_qa_gates,
 )
-from spriteforge_utils import load_json, save_json, app_python, PYTHON, safe_name
+from spriteforge_utils import ROOT, load_json, save_json, app_python, PYTHON, safe_name
 
 # Re-exports from split helper services
 from services.web_helpers_ab import (
@@ -87,7 +87,6 @@ def _is_relative_to(path: Path, base: Path) -> bool:
     except ValueError:
         return False
 
-ROOT = Path(__file__).resolve().parent
 PROJECTS = ROOT / "projects"
 WEB = ROOT / "web"
 OUTPUT = ROOT / "output"
@@ -171,6 +170,62 @@ DEFAULT_PRESETS = {
         "qa_threshold_loop_rmse": "18.0",
         "qa_threshold_foot_drift": "3.0",
         "qa_threshold_center_drift": "8.0"
+    },
+    "SakPix Trained Hero Knight": {
+        "character": "sakpix_style, single full body armored RPG hero knight, adult heroic proportions, sword and shield, strong readable silhouette, premium pixel art character, side-view and top-down friendly design",
+        "style": "trained SakPix pixel RPG character style, crisp 92x92-inspired details, cohesive limited palette, clean animation-ready silhouette, locked camera",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
+        "fps": "12",
+        "cell_size": "512x512",
+        "default_actions": "idle,walk,run,attack_light,attack_heavy,block,hurt,death",
+        "default_directions": "front,front_right,right,back_right,back,back_left,left,front_left",
+        "negative": "camera movement, zoom, cuts, rotation, photorealistic, soft blur, smeared pixels, background details, inconsistent armor, extra limbs, muddy colors",
+        "qa_threshold_loop_rmse": "16.0",
+        "qa_threshold_foot_drift": "2.5",
+        "qa_threshold_center_drift": "6.0"
+    },
+    "SakPix Trained Forest Ranger": {
+        "character": "sakpix_style, single full body woodland ranger, adult agile proportions, cloak, bow, quiver, leather gear, premium pixel art RPG character, readable silhouette",
+        "style": "trained SakPix side-view and top-down RPG sprite style, clean pixel clusters, natural woodland palette, crisp animation-ready edges, locked camera",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
+        "fps": "12",
+        "cell_size": "512x512",
+        "default_actions": "idle,walk,run,shoot,attack_light,dodge,hurt,death",
+        "default_directions": "front,front_right,right,back_right,back,back_left,left,front_left",
+        "negative": "camera movement, zoom, cuts, rotation, heavy armor, photorealistic, soft blur, smeared pixels, background details, muddy colors",
+        "qa_threshold_loop_rmse": "16.0",
+        "qa_threshold_foot_drift": "2.5",
+        "qa_threshold_center_drift": "6.0"
+    },
+    "SakPix Trained Arcane Caster": {
+        "character": "sakpix_style, single full body arcane caster, adult fantasy mage, robe, staff, readable spellcasting silhouette, premium pixel art RPG character",
+        "style": "trained SakPix magical RPG sprite style, crisp 92x92-inspired pixel detail, controlled glow accents, clean animation-ready silhouette, locked camera",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
+        "fps": "12",
+        "cell_size": "512x512",
+        "default_actions": "idle,walk,cast,attack_light,summon,hurt,death",
+        "default_directions": "front,front_right,right,back_right,back,back_left,left,front_left",
+        "negative": "camera movement, zoom, cuts, rotation, modern tech, photorealistic, soft blur, noisy glow, background details, extra limbs, muddy colors",
+        "qa_threshold_loop_rmse": "17.0",
+        "qa_threshold_foot_drift": "2.5",
+        "qa_threshold_center_drift": "6.5"
+    },
+    "SakPix Trained Town NPC": {
+        "character": "sakpix_style, single full body friendly town NPC, adult villager or merchant, simple fantasy outfit, readable small-scale silhouette, premium pixel art RPG character",
+        "style": "trained SakPix cozy town RPG sprite style, crisp top-down RPG readability, warm palette, clean idle and talk animation silhouette, locked camera",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
+        "fps": "12",
+        "cell_size": "512x512",
+        "default_actions": "idle,walk,talk,wave,cheer,hurt",
+        "default_directions": "front,front_right,right,back_right,back,back_left,left,front_left",
+        "negative": "camera movement, zoom, cuts, rotation, combat pose, oversized weapon, photorealistic, soft blur, background details, extra limbs, muddy colors",
+        "qa_threshold_loop_rmse": "17.0",
+        "qa_threshold_foot_drift": "2.5",
+        "qa_threshold_center_drift": "6.5"
     }
 }
 

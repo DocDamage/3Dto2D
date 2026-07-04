@@ -73,6 +73,32 @@ def test_marketplace_api_returns_gallery(monkeypatch, tmp_path):
     assert data["entries"][0]["bundle_url"] == "/file/output/releases/mage.spriteforge"
 
 
+def test_marketplace_import_and_share_manifest_apis(monkeypatch, tmp_path):
+    bundle = tmp_path / "output" / "releases" / "mage.spriteforge"
+    bundle.parent.mkdir(parents=True)
+    bundle.write_bytes(b"bundle")
+
+    routes_misc_mod = sys.modules["web_routes.routes_misc"]
+    monkeypatch.setattr(routes_misc_mod, "ROOT", tmp_path)
+
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        imported = client.post("/api/marketplace/import", json={
+            "entry": {"id": "mage", "bundle_url": "/file/output/releases/mage.spriteforge"}
+        }).get_json()
+        manifest = client.post("/api/marketplace/share-manifest", json={
+            "bundle_paths": ["output/releases/mage.spriteforge"],
+            "author": "Doc",
+        }).get_json()
+
+    assert imported["ok"] is True
+    assert imported["imported"] is True
+    assert manifest["ok"] is True
+    assert manifest["schema"] == "spriteforge_marketplace_share.v1"
+    assert manifest["entries"][0]["author"] == "Doc"
+    assert manifest["entries"][0]["share_checks"]["local_import_plan_ok"] is True
+
+
 def test_marketplace_gallery_merges_local_and_index(tmp_path):
     bundle = tmp_path / "output" / "releases" / "local.spriteforge"
     bundle.parent.mkdir(parents=True)

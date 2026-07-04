@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import random
 import shutil
@@ -14,6 +15,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from spriteforge_utils import ROOT
+
 try:
     from . import comfy_workflow_service as wf_svc
     from . import model_install_service as model_svc
@@ -24,9 +27,9 @@ except ImportError:
     import shell_service as shell  # type: ignore
 
 
-ROOT = Path(__file__).resolve().parent.parent
 VIDEO_EXTS = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+logger = logging.getLogger(__name__)
 
 
 def api_get(url: str, timeout: float = 5.0) -> Any:
@@ -34,7 +37,8 @@ def api_get(url: str, timeout: float = 5.0) -> Any:
         data = resp.read().decode("utf-8")
         try:
             return json.loads(data)
-        except Exception:
+        except Exception as exc:
+            logger.debug("ComfyUI response from %s was not JSON: %s", url, exc)
             return data
 
 
@@ -50,7 +54,8 @@ def is_comfy_running(cfg: dict) -> bool:
     try:
         api_get(cfg.base_url + "/system_stats", timeout=2.0)
         return True
-    except Exception:
+    except Exception as exc:
+        logger.debug("ComfyUI health check failed at %s: %s", cfg.base_url, exc)
         return False
 
 
@@ -80,6 +85,7 @@ def spriteforge_prompt_from_args(args: Any) -> Optional[Dict[str, Any]]:
             pose_guided=bool(getattr(args, "pose_action", None) or getattr(args, "posepack", None)),
         )
     except Exception as exc:
+        logger.warning("Could not build action prompt: %s", exc)
         print(f"Could not build action prompt: {exc}")
         return None
 
@@ -100,6 +106,7 @@ def maybe_create_posepack(args: Any) -> Optional[Path]:
         print(f"Posepack created: {out}")
         return out
     except Exception as exc:
+        logger.warning("Could not create posepack for action %s: %s", action, exc)
         print(f"Could not create posepack: {exc}")
         return None
 
@@ -171,6 +178,14 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
         patched_pose = wf_svc.patch_posepack_nodes(out, str(posepack_path))
         print(f"Posepack available: {posepack_path} (patched {patched_pose} workflow fields)")
 
+    lora_name = getattr(args, "lora_name", None)
+    if not lora_name and (mode == "pixel_animate" or getattr(args, "profile", None) == "pixel_animate"):
+        lora_name = "wan2.2_pixel_animate.safetensors"
+    patched_lora = 0
+    if lora_name:
+        patched_lora = wf_svc.patch_lora_nodes(out, lora_name)
+        print(f"LoRA available: {lora_name} (patched {patched_lora} workflow fields)")
+
     seed = int(args.seed)
     if seed < 0:
         seed = random.randint(1, 2**48 - 1)
@@ -187,8 +202,8 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
     try:
         _, sampling = wf_svc.node_inputs_by_id_or_class(out, "48", ["ModelSamplingSD3", "ModelSamplingAuraFlow", "ModelSamplingFlux"])
         wf_svc.set_input(sampling, ["shift"], float(args.shift or wd.get("shift", 8)))
-    except KeyError:
-        pass
+    except KeyError as exc:
+        logger.debug("Optional model sampling shift node was not present in WAN workflow: %s", exc)
 
     save_id, save = wf_svc.node_inputs_by_id_or_class(out, "47", ["SaveWEBM", "SaveVideo", "VHS_VideoCombine", "VideoCombine", "SaveAnimatedWEBP", "SaveImage"])
     prefix = args.output_prefix or wd.get("output_prefix", "SpriteForge/wan_sprite")
@@ -210,8 +225,10 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
         "reference_image": staged_reference,
         "posepack": str(posepack_path) if posepack_path else None,
         "pose_nodes_patched": patched_pose if posepack_path else 0,
+        "lora_name": lora_name,
+        "lora_nodes_patched": patched_lora,
         "save_node": save_id,
-        "workflow_patch_version": 11,
+        "workflow_patch_version": 12,
     }
     return out
 

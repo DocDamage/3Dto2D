@@ -59,7 +59,7 @@ def test_keyboard_shortcuts_module_loaded():
     index = (APP / "web" / "index.html").read_text(encoding="utf-8")
     script = (APP / "web" / "js" / "keyboard_shortcuts.js").read_text(encoding="utf-8")
 
-    assert "/web/js/keyboard_shortcuts.js" in index
+    assert "js/keyboard_shortcuts.js" in index
     for shortcut in ["'g'", "'q'", "'s'", "'arrowleft'", "'arrowright'"]:
         assert shortcut in script
     assert "shortcutTargetAllowsTyping" in script
@@ -70,8 +70,8 @@ def test_theme_toggle_assets_loaded():
     script = (APP / "web" / "js" / "theme_toggle.js").read_text(encoding="utf-8")
     css = (APP / "web" / "theme.css").read_text(encoding="utf-8")
 
-    assert "/web/theme.css" in index
-    assert "/web/js/theme_toggle.js" in index
+    assert "theme.css" in index
+    assert "js/theme_toggle.js" in index
     assert 'id="themeToggle"' in index
     assert "spriteforgeTheme" in script
     assert "theme-light" in css
@@ -82,8 +82,8 @@ def test_mobile_nav_assets_loaded():
     script = (APP / "web" / "js" / "mobile_nav.js").read_text(encoding="utf-8")
     css = (APP / "web" / "mobile_nav.css").read_text(encoding="utf-8")
 
-    assert "/web/mobile_nav.css" in index
-    assert "/web/js/mobile_nav.js" in index
+    assert "mobile_nav.css" in index
+    assert "js/mobile_nav.js" in index
     assert 'id="mobileRailToggle"' in index
     assert "mobile-rail-open" in script
     assert "@media (max-width: 760px)" in css
@@ -94,11 +94,20 @@ def test_drag_drop_assets_loaded():
     script = (APP / "web" / "js" / "drag_drop.js").read_text(encoding="utf-8")
     css = (APP / "web" / "drag_drop.css").read_text(encoding="utf-8")
 
-    assert "/web/drag_drop.css" in index
-    assert "/web/js/drag_drop.js" in index
+    assert "drag_drop.css" in index
+    assert "js/drag_drop.js" in index
+    assert "reference-upload-buttons" in index
     assert "referenceDropTarget" in script
+    assert "styleDropTarget" in script
+    assert "wizardReferenceDropTarget" in script
+    assert "wizardStyleDropTarget" in script
+    assert "Choose image" in script
+    assert "Preview updates after upload" in script
+    assert "refreshGenerateReferencePreview" in script
+    assert "installWizardDrops" in script
     assert "qualityDropTarget" in script
     assert ".drop-target-card" in css
+    assert ".drop-target-button" in css
 
 
 def test_power_of_two_web_option_forwarded():
@@ -126,6 +135,175 @@ def test_power_of_two_web_option_forwarded():
     assert parsed.power_of_two is True
     assert hasattr(parsed, "output")
     assert parsed.output is None
+
+
+def test_native_polish_web_options_forwarded():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+    from services.generation_commands import _normalize_sprite_extra_args
+
+    generate_html = (APP / "web" / "components" / "generate.html").read_text(encoding="utf-8")
+    convert_html = (APP / "web" / "components" / "convert.html").read_text(encoding="utf-8")
+
+    payload = {
+        "action": "generate_sprite",
+        "quality_check": False,
+        "matting_engine": "pixel-art",
+        "alpha_refine": True,
+        "temporal_alpha_stabilize": True,
+        "pixel_cleanup": True,
+        "palette_project_lock": True,
+        "pixel_cleanup_palette": "pico8",
+        "pixel_cleanup_dither_mode": "bayer",
+        "interpolate_fps": "24",
+        "interpolation_skip_pixel_art": True,
+        "interpolation_skip_impact_frames": True,
+        "generate_normal_maps": True,
+        "normal_map_engine": "native-depth",
+    }
+    _, generate_cmd = build_action_command(payload)
+    _, convert_cmd = build_action_command({**payload, "action": "convert_video", "input": "test.mp4"})
+
+    for flag in [
+        "--matting-engine",
+        "--alpha-refine",
+        "--temporal-alpha-stabilize",
+        "--pixel-cleanup",
+        "--pixel-cleanup-palette",
+        "--pixel-cleanup-dither-mode",
+        "--interpolate-fps",
+        "--interpolation-skip-pixel-art",
+        "--interpolation-skip-impact-frames",
+        "--generate-normal-maps",
+        "--normal-map-engine",
+    ]:
+        assert flag in generate_cmd
+        assert flag in convert_cmd
+
+    for field in [
+        'name="matting_engine"',
+        'value="depth-anything"',
+        'name="alpha_refine"',
+        'name="temporal_alpha_stabilize"',
+        'name="pixel_cleanup"',
+        'name="palette_project_lock"',
+        'name="pixel_cleanup_palette"',
+        'name="pixel_cleanup_dither_mode"',
+        'name="interpolate_fps"',
+        'name="interpolation_skip_pixel_art"',
+    ]:
+        assert field in generate_html
+        assert field in convert_html
+
+    parsed = build_parser().parse_args([
+        "generate-sprite",
+        "--matting-engine",
+        "depth-anything",
+        "--alpha-refine",
+        "--temporal-alpha-stabilize",
+        "--pixel-cleanup",
+        "--pixel-cleanup-palette",
+        "pico8",
+        "--pixel-cleanup-dither-mode",
+        "bayer",
+        "--interpolate-fps",
+        "24",
+        "--interpolation-skip-pixel-art",
+        "--interpolation-skip-impact-frames",
+        "--generate-normal-maps",
+        "--normal-map-engine",
+        "native-depth",
+    ])
+    assert parsed.matting_engine == "depth-anything"
+    assert parsed.alpha_refine is True
+    assert parsed.temporal_alpha_stabilize is True
+    assert parsed.pixel_cleanup is True
+    assert parsed.pixel_cleanup_palette == "pico8"
+    assert parsed.pixel_cleanup_dither_mode == "bayer"
+    assert parsed.interpolate_fps == 24
+    assert parsed.interpolation_skip_pixel_art is True
+    assert parsed.interpolation_skip_impact_frames is True
+    assert parsed.generate_normal_maps is True
+    assert parsed.normal_map_engine == "native-depth"
+
+    convert_parsed = build_parser().parse_args(["convert-video", "--input", "test.mp4", "--", "--pixel-cleanup"])
+    assert convert_parsed.extra == ["--", "--pixel-cleanup"]
+    assert _normalize_sprite_extra_args(convert_parsed.extra) == ["--pixel-cleanup"]
+
+
+def test_project_palette_lock_forwards_custom_palette():
+    from web_helpers import build_action_command
+
+    payload = {
+        "action": "generate_sprite",
+        "quality_check": False,
+        "palette_project_lock": True,
+        "palette_lock": {
+            "enabled": True,
+            "colors": ["#112233", "445566", "#AABBCC"],
+            "colors_limit": 3,
+            "source": "test",
+        },
+    }
+    _, cmd = build_action_command(payload)
+
+    assert "--pixel-cleanup" in cmd
+    assert "--pixel-cleanup-palette" in cmd
+    assert "#112233,#445566,#AABBCC" in cmd
+    assert "--pixel-cleanup-colors" in cmd
+    assert "3" in cmd
+
+
+def test_native_only_flags_are_parsed_and_forwarded():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+
+    _, generate_cmd = build_action_command({
+        "action": "generate_sprite",
+        "native_only": True,
+        "quality_check": False,
+    })
+    assert "--native-only" in generate_cmd
+
+    _, lora_cmd = build_action_command({
+        "action": "lora_training",
+        "dataset_dir": "output/training_datasets/test",
+        "native_only": True,
+        "mode": "run",
+    })
+    assert "--native-only" in lora_cmd
+    assert "--run" in lora_cmd
+
+    parsed_generate = build_parser().parse_args(["generate-sprite", "--native-only"])
+    assert parsed_generate.native_only is True
+
+    parsed_lora = build_parser().parse_args(["lora-train", "--dataset", "output/training_datasets/test", "--native-only"])
+    assert parsed_lora.native_only is True
+
+
+def test_generate_native_source_video_forwarding_and_parse():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+
+    _, cmd = build_action_command({
+        "action": "generate_sprite",
+        "native_only": True,
+        "native_source_video": "input/clip.mp4",
+        "quality_check": False,
+    })
+    assert "--native-only" in cmd
+    assert "--native-source-video" in cmd
+    idx = cmd.index("--native-source-video")
+    assert cmd[idx + 1] == "input/clip.mp4"
+
+    parsed = build_parser().parse_args([
+        "generate-sprite",
+        "--native-only",
+        "--native-source-video",
+        "input/clip.mp4",
+    ])
+    assert parsed.native_only is True
+    assert parsed.native_source_video == "input/clip.mp4"
 
 
 

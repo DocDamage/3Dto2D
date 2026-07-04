@@ -1,7 +1,9 @@
 import json
+import logging
 import os
 import sys
 import re
+import threading
 from pathlib import Path
 from typing import Any, Dict
 
@@ -17,6 +19,10 @@ ALLOWED_SUBDIRS = {"output", "input", "projects", "releases", "workflows", "exam
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 AUDIO_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".flac"}
+
+logger = logging.getLogger(__name__)
+_JSON_LOCKS_GUARD = threading.RLock()
+_JSON_LOCKS: Dict[str, threading.RLock] = {}
 
 def next_power_of_two(n: int) -> int:
     if n <= 1:
@@ -67,6 +73,7 @@ def is_release_excluded(path: Path, root_dir: Path) -> bool:
             if path.is_file() and path.stat().st_size > 10_000_000:  # > 10MB
                 return True
         except Exception:
+            logger.debug("Could not stat uploaded file while auditing exclusions: %s", path, exc_info=True)
             return True
 
     # 5. Heavy outputs/releases
@@ -78,6 +85,7 @@ def is_release_excluded(path: Path, root_dir: Path) -> bool:
         if path.is_file() and path.stat().st_size > 50_000_000:
             return True
     except Exception:
+        logger.debug("Could not inspect release exclusion candidate: %s", path, exc_info=True)
         pass
 
     return False
@@ -108,29 +116,48 @@ def app_python() -> str:
 
 PYTHON = app_python()
 
+def _json_lock_for(path: Path) -> threading.RLock:
+    key = str(path.resolve())
+    with _JSON_LOCKS_GUARD:
+        lock = _JSON_LOCKS.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _JSON_LOCKS[key] = lock
+        return lock
+
+
 def load_json(path: Path, default: Any = None) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+        with _json_lock_for(path):
+            if not path.exists():
+                return default
+            return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("Could not load JSON from %s: %s", path, exc)
         return default
 
 def save_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_suffix(".tmp")
-    try:
-        temp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        os.replace(str(temp_path), str(path))
-    except Exception as e:
+    lock = _json_lock_for(path)
+    temp_path = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    with lock:
         try:
-            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        except Exception:
-            raise e
-    finally:
-        if temp_path.exists():
+            temp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            os.replace(str(temp_path), str(path))
+        except Exception as exc:
+            logger.warning("Atomic JSON save failed for %s; falling back to direct write: %s", path, exc)
             try:
-                temp_path.unlink()
+                path.write_text(json.dumps(data, indent=2), encoding="utf-8")
             except Exception:
-                pass
+                logger.debug("Direct JSON fallback write failed for %s", path, exc_info=True)
+                logger.exception("Could not save JSON to %s", path)
+                raise
+        finally:
+            if temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except Exception:
+                    logger.debug("Could not remove temporary JSON file %s", temp_path, exc_info=True)
 
 write_json = save_json
 
@@ -140,6 +167,7 @@ def get_app_version() -> str:
         if version_file.exists():
             return version_file.read_text(encoding="utf-8").strip()
     except Exception:
+        logger.debug("Could not read VERSION.txt", exc_info=True)
         pass
     return "v12 Final Polish Edition"
 

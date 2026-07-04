@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response, stream_with_context
 import json
 import time
 import shutil
@@ -10,15 +10,26 @@ from services.comfy_service import ComfyService
 from services.model_service import ModelService
 from services.experiment_service import ExperimentService
 from services.seed_gallery_service import build_seed_gallery
-from services.marketplace_service import marketplace_gallery
+from services.marketplace_service import marketplace_gallery, import_marketplace_bundle, build_marketplace_share_manifest
+from services.plugin_manager import PluginManager, PLUGIN_SDK_VERSION, KNOWN_HOOKS, plugin_sdk_contract, plugin_scaffold
+from services.trained_lora_registry_service import plan_lora_comparison
+from services.lora_training_service import recommend_lora_training_defaults
+from services.database_service import DatabaseService
+from services.websocket_service import ProgressEventHub, progress_transport_status
 from services.project_service import ProjectService
+from services.cloud_hub_service import cloud_hub_status, upsert_cloud_node, remove_cloud_node, load_cloud_nodes, plan_cloud_queue_assignments
+from services.cloud_image_generation_service import cloud_image_provider_status, build_cloud_generation_plan
+from services.training_dataset_service import preview_training_dataset
+from services.architecture_status_service import architecture_status
 from services.advisor_service import advise as advisor_advise
 from services.generation_intelligence import (
     cleanup_suggestions, explain_model_profile, preflight_generation,
-    mark_review_decision, restore_review_decision, rerun_similar_payload
+    mark_review_decision, restore_review_decision, rerun_similar_payload,
+    estimate_job_eta
 )
 from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score
 from services.api_auth_service import get_session_token
+from services.feature_capability_service import capability_report
 from web_helpers import (
     ROOT, UPLOADS, OUTPUT, LOGS, PYTHON, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
     _project_meta_from_query, _project_workspace, _experiment_rows,
@@ -66,6 +77,8 @@ def get_status():
         "models": ModelService.get_summary(),
         "disk": ModelService.get_disk_summary(),
         "cleanup_suggestions": cleanup_suggestions(ROOT)[:8],
+        "feature_capabilities": capability_report(),
+        "architecture": architecture_status(),
         "next_step": next_step_status(),
         "outputs": sprite_outputs(24, project_meta),
         "project_workspace": _project_workspace(project_meta),
@@ -73,9 +86,148 @@ def get_status():
         "time": time.strftime("%H:%M:%S")
     })
 
+@routes_misc.route("/api/heartbeat", methods=["GET"])
+def get_heartbeat():
+    from services.job_service import JobService
+    active_job = JobService.get_active_job()
+    if active_job:
+        job_status = dict(active_job)
+        job_status["running"] = True
+    else:
+        history = JobService.get_history()
+        if history:
+            job_status = dict(history[0])
+            job_status["running"] = False
+        else:
+            job_status = {"running": False, "title": "Idle", "progress": 0.0, "exit_code": None, "logs": [], "started_at": None, "finished_at": None}
+
+    return jsonify({
+        "ok": True,
+        "comfy_url": ComfyService.get_url(),
+        "comfy_running": ComfyService.is_running(),
+        "job": job_status,
+        "time": time.strftime("%H:%M:%S"),
+    })
+
+@routes_misc.route("/api/features/capabilities", methods=["GET"])
+def get_feature_capabilities():
+    return jsonify({"ok": True, **capability_report()})
+
+@routes_misc.route("/api/plugins/sdk", methods=["GET"])
+def get_plugin_sdk():
+    plugin_id = str(request.args.get("id") or "my_plugin")
+    return jsonify({"ok": True, "contract": plugin_sdk_contract(), "scaffold": plugin_scaffold(plugin_id)})
+
+@routes_misc.route("/api/training-dataset/preview", methods=["POST"])
+def post_training_dataset_preview():
+    body = request.json or {}
+    source_dir = str(body.get("source_dir") or "").strip()
+    if not source_dir:
+        return jsonify({"ok": False, "message": "source_dir is required"}), 400
+    try:
+        return jsonify(preview_training_dataset(
+            source_dir,
+            trigger=str(body.get("trigger") or "sakpix_style"),
+            base_caption=str(body.get("base_caption") or "premium pixel art RPG character"),
+            cell_size=str(body.get("cell_size") or "").strip() or None,
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/architecture/status", methods=["GET"])
+def get_architecture_status():
+    return jsonify(architecture_status())
+
+@routes_misc.route("/api/cloud/nodes", methods=["GET"])
+def get_cloud_nodes():
+    check = str(request.args.get("check") or "").lower() in {"1", "true", "yes"}
+    prefer_id = str(request.args.get("prefer") or "")
+    return jsonify(cloud_hub_status(check=check, prefer_id=prefer_id))
+
+@routes_misc.route("/api/cloud/nodes", methods=["POST"])
+def save_cloud_node():
+    body = request.json or {}
+    if not str(body.get("url") or body.get("server") or "").strip():
+        return jsonify({"ok": False, "message": "Cloud node URL is required."}), 400
+    node = upsert_cloud_node(body)
+    return jsonify({"ok": True, "node": node, **cloud_hub_status(prefer_id=node["id"])})
+
+@routes_misc.route("/api/cloud/nodes/<node_id>", methods=["DELETE"])
+def delete_cloud_node(node_id):
+    removed = remove_cloud_node(node_id)
+    status = cloud_hub_status()
+    return jsonify({"ok": removed, "removed": removed, **status}), (200 if removed else 404)
+
+@routes_misc.route("/api/cloud/image-providers", methods=["GET"])
+def get_cloud_image_providers():
+    provider = str(request.args.get("provider") or "").strip() or None
+    return jsonify(cloud_image_provider_status(provider))
+
+@routes_misc.route("/api/cloud/image-generation-plan", methods=["POST"])
+def get_cloud_image_generation_plan():
+    body = request.json or {}
+    try:
+        return jsonify(build_cloud_generation_plan(
+            prompt=str(body.get("prompt") or ""),
+            provider=str(body.get("provider") or "openai"),
+            model=str(body.get("model") or "").strip() or None,
+            size=str(body.get("size") or "1024x1024"),
+            cell_size=str(body.get("cell_size") or "64x64"),
+            frame_count=int(body.get("frames") or body.get("frame_count") or 1),
+            frame_prompts=body.get("frame_prompts") if isinstance(body.get("frame_prompts"), list) else [],
+            source_images=body.get("source_images") if isinstance(body.get("source_images"), list) else [],
+            key_color=str(body.get("key_color") or "#ff00ff"),
+            palette_colors=None if body.get("no_palette_cleanup") else int(body.get("palette_colors") or 24),
+            constraints=str(body.get("constraints") or ""),
+            negative=str(body.get("negative") or ""),
+        ))
+    except (ValueError, RuntimeError) as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_misc.route("/api/cloud/queue-plan", methods=["POST"])
+def get_cloud_queue_plan():
+    body = request.json or {}
+    jobs = body.get("jobs") if isinstance(body.get("jobs"), list) else []
+    capability = str(body.get("capability") or "remote_generate")
+    prefer_id = str(body.get("prefer") or body.get("prefer_id") or "")
+    return jsonify(plan_cloud_queue_assignments(jobs, load_cloud_nodes(), capability=capability, prefer_id=prefer_id))
+
+@routes_misc.route("/api/lora/compare-plan", methods=["POST"])
+def get_lora_compare_plan():
+    body = request.json or {}
+    prompt = str(body.get("prompt") or "").strip()
+    loras = body.get("loras") or body.get("lora_names") or []
+    if isinstance(loras, str):
+        loras = [part.strip() for part in loras.split(",") if part.strip()]
+    try:
+        return jsonify(plan_lora_comparison(prompt, list(loras), base_payload=body.get("base_payload") if isinstance(body.get("base_payload"), dict) else {}))
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_misc.route("/api/lora/recommended-defaults", methods=["GET"])
+def get_lora_recommended_defaults():
+    family = str(request.args.get("model_family") or "sdxl")
+    vram = request.args.get("vram_gb")
+    if vram is None:
+        try:
+            gpu = ComfyService.get_gpu_info()
+            vram = gpu.get("vram_gb") if isinstance(gpu, dict) else None
+        except Exception:
+            vram = None
+    return jsonify(recommend_lora_training_defaults(vram, model_family=family))
+
 @routes_misc.route("/api/config", methods=["GET"])
 def get_config():
     return jsonify(ConfigService.get_config())
+
+@routes_misc.route("/api/config/effective-profile", methods=["GET"])
+def get_effective_config_profile():
+    profile = str(request.args.get("profile") or "auto").strip()
+    return jsonify({"ok": True, **ConfigService.explain_effective_profile(profile)})
 
 @routes_misc.route("/api/cleanup/scan", methods=["GET"])
 def scan_cleanup():
@@ -216,6 +368,12 @@ def get_preflight_generation():
         comfy_running=ComfyService.is_running(),
     ))
 
+@routes_misc.route("/api/generation/estimate", methods=["GET"])
+def get_generation_estimate():
+    payload = {k: v[0] for k, v in request.args.to_dict(flat=False).items() if v}
+    eta = estimate_job_eta(payload)
+    return jsonify({"ok": True, "eta": eta})
+
 @routes_misc.route("/api/experiments", methods=["GET"])
 def get_experiments():
     project_meta = _project_meta_from_query(request.args.to_dict(flat=False))
@@ -223,6 +381,43 @@ def get_experiments():
         "experiments": _experiment_rows(project_meta),
         "project_workspace": _project_workspace(project_meta)
     })
+
+@routes_misc.route("/api/experiments/analytics", methods=["GET"])
+def get_experiments_analytics():
+    query = request.args.to_dict(flat=False)
+    project_meta = _project_meta_from_query(query) if "project" in query else None
+    analytics = ExperimentService.analytics(_experiment_rows(project_meta))
+    analytics["project_workspace"] = _project_workspace(project_meta)
+    return jsonify(analytics)
+
+@routes_misc.route("/api/experiments/prompts", methods=["GET"])
+def get_experiment_prompts():
+    query = request.args.to_dict(flat=False)
+    project_meta = _project_meta_from_query(query) if "project" in query else None
+    try:
+        limit = int(request.args.get("limit") or 40)
+    except ValueError:
+        limit = 40
+    data = ExperimentService.search_prompts(
+        request.args.get("q") or "",
+        records=_experiment_rows(project_meta),
+        limit=limit,
+        starred_only=str(request.args.get("starred") or "").lower() in {"1", "true", "yes"},
+    )
+    data["project_workspace"] = _project_workspace(project_meta)
+    return jsonify(data)
+
+@routes_misc.route("/api/experiments/winning-prompts", methods=["GET"])
+def get_experiment_winning_prompts():
+    query = request.args.to_dict(flat=False)
+    project_meta = _project_meta_from_query(query) if "project" in query else None
+    try:
+        limit = int(request.args.get("limit") or 24)
+    except ValueError:
+        limit = 24
+    pack = ExperimentService.winning_prompt_pack(_experiment_rows(project_meta), limit=limit)
+    pack["project_workspace"] = _project_workspace(project_meta)
+    return jsonify({"ok": True, **pack})
 
 @routes_misc.route("/api/seeds/gallery", methods=["GET"])
 def get_seed_gallery():
@@ -239,6 +434,110 @@ def get_seed_gallery():
 @routes_misc.route("/api/marketplace/gallery", methods=["GET"])
 def get_marketplace_gallery():
     return jsonify({"ok": True, **marketplace_gallery(ROOT)})
+
+@routes_misc.route("/api/marketplace/import", methods=["POST"])
+def post_marketplace_import():
+    body = request.json or {}
+    entry = body.get("entry") if isinstance(body.get("entry"), dict) else body
+    return jsonify(import_marketplace_bundle(ROOT, entry))
+
+@routes_misc.route("/api/marketplace/share-manifest", methods=["POST"])
+def post_marketplace_share_manifest():
+    body = request.json or {}
+    bundle_paths = body.get("bundle_paths") if isinstance(body.get("bundle_paths"), list) else []
+    return jsonify({
+        "ok": True,
+        **build_marketplace_share_manifest(
+            ROOT,
+            bundle_paths=[str(path) for path in bundle_paths],
+            author=str(body.get("author") or "Local workspace"),
+            license_name=str(body.get("license") or ""),
+        ),
+    })
+
+@routes_misc.route("/api/plugins", methods=["GET"])
+def get_plugins():
+    return jsonify({
+        "ok": True,
+        "sdk_version": PLUGIN_SDK_VERSION,
+        "known_hooks": sorted(KNOWN_HOOKS),
+        "plugins": PluginManager.discover_plugins(),
+    })
+
+@routes_misc.route("/api/database/migrate", methods=["POST"])
+def migrate_database_records():
+    return jsonify(DatabaseService().migrate_default_json())
+
+@routes_misc.route("/api/database/search", methods=["GET"])
+def search_database_records():
+    query = str(request.args.get("q") or "").strip()
+    kind = str(request.args.get("kind") or "").strip()
+    try:
+        limit = max(1, min(200, int(request.args.get("limit") or 50)))
+    except ValueError:
+        limit = 50
+    rows = DatabaseService().search(query, kind=kind, limit=limit)
+    return jsonify({"ok": True, "kind": kind, "query": query, "count": len(rows), "records": rows})
+
+@routes_misc.route("/api/database/recent", methods=["GET"])
+def recent_database_records():
+    kind = str(request.args.get("kind") or "experiment").strip() or "experiment"
+    try:
+        limit = max(1, min(200, int(request.args.get("limit") or 50)))
+    except ValueError:
+        limit = 50
+    rows = DatabaseService().recent(kind, limit=limit)
+    return jsonify({"ok": True, "kind": kind, "count": len(rows), "records": rows})
+
+@routes_misc.route("/api/database/stats", methods=["GET"])
+def get_database_stats():
+    project_name = str(request.args.get("project_name") or request.args.get("project") or "").strip()
+    counts = DatabaseService().counts_by_kind(project_name=project_name)
+    return jsonify({"ok": True, "project_name": project_name, "counts": counts, "total": sum(counts.values())})
+
+@routes_misc.route("/api/database/health", methods=["GET"])
+def get_database_health():
+    return jsonify(DatabaseService().health())
+
+@routes_misc.route("/api/progress/events", methods=["GET"])
+def get_progress_events():
+    try:
+        after = int(request.args.get("after") or 0)
+    except ValueError:
+        after = 0
+    try:
+        limit = int(request.args.get("limit") or 50)
+    except ValueError:
+        limit = 50
+    events = ProgressEventHub.recent(after=after, limit=limit)
+    return jsonify({"ok": True, "events": events, "latest_seq": events[-1]["seq"] if events else after})
+
+@routes_misc.route("/api/progress/transport", methods=["GET"])
+def get_progress_transport():
+    return jsonify({"ok": True, **progress_transport_status()})
+
+@routes_misc.route("/api/progress/stream", methods=["GET"])
+def stream_progress_events():
+    def generate():
+        subscriber = ProgressEventHub.subscribe()
+        try:
+            for event in ProgressEventHub.recent(limit=25):
+                yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
+            last_heartbeat = time.time()
+            while True:
+                try:
+                    event = subscriber.get(timeout=10)
+                    yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
+                    last_heartbeat = time.time()
+                except Exception:
+                    now = time.time()
+                    if now - last_heartbeat >= 10:
+                        yield ": heartbeat\n\n"
+                        last_heartbeat = now
+        finally:
+            ProgressEventHub.unsubscribe(subscriber)
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 @routes_misc.route("/api/selftest", methods=["GET"])
 def get_self_test():
@@ -346,6 +645,17 @@ def star_experiment():
     starred = bool(body.get("starred"))
     found = ExperimentService.set_starred(run_id, starred)
     return jsonify({"ok": found})
+
+@routes_misc.route("/api/experiments/pick-winner", methods=["POST"])
+def pick_experiment_winner():
+    body = request.json or {}
+    compared = body.get("compared_sprites") if isinstance(body.get("compared_sprites"), list) else []
+    return jsonify(ExperimentService.pick_winner(
+        run_id=str(body.get("id") or body.get("experiment_id") or ""),
+        sprite_folder=str(body.get("sprite_folder") or body.get("path") or ""),
+        compared_sprites=[str(path) for path in compared],
+        note=str(body.get("note") or ""),
+    ))
 
 @routes_misc.route("/api/experiments/clear", methods=["POST"])
 def clear_experiments():

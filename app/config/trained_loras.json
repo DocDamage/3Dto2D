@@ -1,0 +1,51 @@
+{
+  "schema": "spriteforge.trained_loras.v1",
+  "defaults": {
+    "character_style": {
+      "role": "character_style",
+      "filename": "sakpix_8dir_sdxl_continue.safetensors",
+      "label": "SakPix 8-Direction Characters",
+      "trigger": "sakpix_style",
+      "base_model": "SDXL",
+      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\sakpix_8dir_sdxl_continue_20260703_080326\\sakpix_8dir_sdxl_continue.safetensors",
+      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\vendor\\ComfyUI\\models\\loras\\sakpix_8dir_sdxl_continue.safetensors",
+      "notes": "Continuation pass is the current default. Keep sakpix_8dir_sdxl.safetensors as fallback and do not stack both.",
+      "created_at": "2026-07-03 08:48:29"
+    },
+    "tile_style": {
+      "role": "tile_style",
+      "filename": "sakpix_tiles_sdxl.safetensors",
+      "label": "SakPix Stage Auto-Tiles",
+      "trigger": "sakpix_tiles",
+      "base_model": "SDXL",
+      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\sakpix_tiles_sdxl_20260703_084925\\sakpix_tiles_sdxl.safetensors",
+      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\vendor\\ComfyUI\\models\\loras\\sakpix_tiles_sdxl.safetensors",
+      "notes": "First auto-tile pass from SakPix stage tile sheets. Keep separate from the character LoRA.",
+      "created_at": "2026-07-03 09:43:00"
+    }
+  },
+  "loras": {
+    "sakpix_8dir_sdxl_continue.safetensors": {
+      "role": "character_style",
+      "filename": "sakpix_8dir_sdxl_continue.safetensors",
+      "label": "SakPix 8-Direction Characters",
+      "trigger": "sakpix_style",
+      "base_model": "SDXL",
+      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\sakpix_8dir_sdxl_continue_20260703_080326\\sakpix_8dir_sdxl_continue.safetensors",
+      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\vendor\\ComfyUI\\models\\loras\\sakpix_8dir_sdxl_continue.safetensors",
+      "notes": "Continuation pass is the current default. Keep sakpix_8dir_sdxl.safetensors as fallback and do not stack both.",
+      "created_at": "2026-07-03 08:48:29"
+    },
+    "sakpix_tiles_sdxl.safetensors": {
+      "role": "tile_style",
+      "filename": "sakpix_tiles_sdxl.safetensors",
+      "label": "SakPix Stage Auto-Tiles",
+      "trigger": "sakpix_tiles",
+      "base_model": "SDXL",
+      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\sakpix_tiles_sdxl_20260703_084925\\sakpix_tiles_sdxl.safetensors",
+      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\vendor\\ComfyUI\\models\\loras\\sakpix_tiles_sdxl.safetensors",
+      "notes": "First auto-tile pass from SakPix stage tile sheets. Keep separate from the character LoRA.",
+      "created_at": "2026-07-03 09:43:00"
+    }
+  }
+}

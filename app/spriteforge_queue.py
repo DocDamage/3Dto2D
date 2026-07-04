@@ -17,11 +17,10 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT, load_json, save_json, app_python
+
 JOBS = ROOT / "output" / "jobs"
 
-
-from spriteforge_utils import load_json, save_json, app_python
 
 write_json = save_json
 

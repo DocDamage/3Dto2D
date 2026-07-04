@@ -4,24 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SpriteForge Studio v12</title>
-  <link rel="icon" href="/web/logo.svg" />
-  <link rel="stylesheet" href="/web/styles.css?v=training-lora-launcher" />
-  <link rel="stylesheet" href="/web/sprite_preview.css" />
-  <link rel="stylesheet" href="/web/prompt_builder.css?v=generate-compact-fit2" />
-  <link rel="stylesheet" href="/web/seed_gallery.css" />
-  <link rel="stylesheet" href="/web/frame_review.css" />
-  <link rel="stylesheet" href="/web/palette_harmonizer.css" />
-  <link rel="stylesheet" href="/web/theme.css" />
-  <link rel="stylesheet" href="/web/mobile_nav.css" />
-  <link rel="stylesheet" href="/web/drag_drop.css?v=generate-existing-sprite" />
-  <link rel="stylesheet" href="/web/audio_cues.css" />
-  <link rel="stylesheet" href="/web/state_machine.css" />
-  <link rel="stylesheet" href="/web/marketplace_gallery.css" />
-  <link rel="stylesheet" href="/web/scene_compositor.css" />
-  <link rel="stylesheet" href="/web/consistency_lock.css?v=generate-existing-sprite" />
-  <link rel="stylesheet" href="/web/css/ux_enhancements.css" />
-  <link rel="stylesheet" href="/web/css/topbar_compact.css?v=generate-existing-sprite" />
-  <link rel="stylesheet" href="/web/css/wizard.css" />
+  <link rel="icon" href="logo.svg" />
+  <link rel="stylesheet" href="styles.css?v=rail-footer-fit" />
+  <link rel="stylesheet" href="sprite_preview.css" />
+  <link rel="stylesheet" href="animation_player.css" />
+  <link rel="stylesheet" href="compare_player.css" />
+  <link rel="stylesheet" href="lighting_preview.css" />
+  <link rel="stylesheet" href="cloud_hub.css" />
+  <link rel="stylesheet" href="frame_editor.css" />
+  <link rel="stylesheet" href="prompt_builder.css?v=generate-compact-fit2" />
+  <link rel="stylesheet" href="seed_gallery.css" />
+  <link rel="stylesheet" href="frame_review.css" />
+  <link rel="stylesheet" href="palette_harmonizer.css" />
+  <link rel="stylesheet" href="theme.css" />
+  <link rel="stylesheet" href="mobile_nav.css" />
+  <link rel="stylesheet" href="drag_drop.css?v=reference-upload-buttons" />
+  <link rel="stylesheet" href="audio_cues.css" />
+  <link rel="stylesheet" href="state_machine.css" />
+  <link rel="stylesheet" href="marketplace_gallery.css" />
+  <link rel="stylesheet" href="scene_compositor.css" />
+  <link rel="stylesheet" href="consistency_lock.css?v=generate-existing-sprite" />
+  <link rel="stylesheet" href="css/ux_enhancements.css" />
+  <link rel="stylesheet" href="css/topbar_compact.css?v=generate-existing-sprite" />
+  <link rel="stylesheet" href="css/wizard.css?v=wizard-reference-upload-buttons" />
   <script>
     window.onSpriteForgeReady = (callback) => {
       if (document.readyState === 'loading') {
@@ -33,33 +38,42 @@
 
     window.viewComponentsLoaded = new Promise((resolve) => {
       window.onSpriteForgeReady(async () => {
-      const views = [
-        'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
-        'packs', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
-        'ab_runs', 'library', 'qa_dashboard', 'training'
-      ];
-      await Promise.all(views.map(async (name) => {
-        const el = document.getElementById('view-' + name);
-        if (el) {
-          try {
-            const componentVersion = name === 'generate'
-              ? '?v=generate-existing-sprite'
-              : (name === 'training' ? '?v=training-lora-launcher' : '');
-            const res = await fetch('/web/components/' + name + '.html' + componentVersion);
-            if (res.ok) {
-              const html = await res.text();
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(html, 'text/html');
-              const newEl = doc.querySelector('section.view');
-              if (newEl) {
-                el.innerHTML = newEl.innerHTML;
-              }
-            }
-          } catch (e) {
-            console.error('Error loading view component ' + name, e);
-          }
+        if (window.location.protocol === 'file:') {
+          document.documentElement.classList.add('file-mode');
+          resolve();
+          return;
         }
-      }));
+        const views = [
+          'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
+          'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
+          'ab_runs', 'library', 'qa_dashboard', 'training'
+        ];
+        await Promise.all(views.map(async (name) => {
+          const el = document.getElementById('view-' + name);
+          if (el) {
+            try {
+              const componentVersion = name === 'generate'
+                ? '?v=generate-existing-sprite'
+                : (name === 'training'
+                  ? '?v=sakpix-training-polish'
+                  : (name === 'quality'
+                    ? '?v=quality-lab-compact'
+                    : (name === 'dashboard' ? '?v=dashboard-fit-no-window-resize' : '')));
+              const res = await fetch('components/' + name + '.html' + componentVersion);
+              if (res.ok) {
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newEl = doc.querySelector('section.view');
+                if (newEl) {
+                  el.innerHTML = newEl.innerHTML;
+                }
+              }
+            } catch (e) {
+              console.error('Error loading view component ' + name, e);
+            }
+          }
+        }));
         resolve();
       });
     });
@@ -71,10 +85,14 @@
   <div class="aurora aurora-three"></div>
   <button class="mobile-rail-toggle" id="mobileRailToggle" type="button" aria-label="Open navigation" aria-expanded="false"><span></span></button>
   <div class="mobile-rail-backdrop" id="mobileRailBackdrop"></div>
+  <div class="file-mode-warning" role="status">
+    <strong>SpriteForge needs the local server.</strong>
+    <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally or serve the <code>app</code> folder and open <code>http://127.0.0.1:&lt;port&gt;/web/index.html</code>.</span>
+  </div>
 
   <aside class="rail">
     <div class="brand">
-      <img src="/web/logo.svg" alt="" />
+      <img src="logo.svg" alt="" />
       <div>
         <strong>SpriteForge</strong>
         <span>Studio v12</span>
@@ -90,6 +108,11 @@
       <button class="nav mode-detail" data-view="generate">Generate Sprite</button>
       <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
+      <button class="nav" data-view="animation_player">Animation Player</button>
+      <button class="nav" data-view="compare_player">Compare Player</button>
+      <button class="nav" data-view="lighting_preview">Lighting Preview</button>
+      <button class="nav mode-detail" data-view="cloud_hub">Cloud Hub</button>
+      <button class="nav mode-detail" data-view="frame_editor">Frame Editor</button>
       <button class="nav" data-view="training">Training Lab</button>
       <button class="nav mode-detail" data-view="packs">Packs & Atlas</button>
       <button class="nav" data-view="history">History</button>
@@ -202,6 +225,13 @@
     </section>
 
     <section class="view" id="view-packs"></section>
+
+    <section class="view" id="view-animation_player"></section>
+    <section class="view" id="view-compare_player"></section>
+    <section class="view" id="view-lighting_preview"></section>
+    <section class="view" id="view-cloud_hub"></section>
+
+    <section class="view" id="view-frame_editor"></section>
 
     <section class="view" id="view-training"></section>
 
@@ -345,6 +375,41 @@
         </div>
       </div>
 
+      <div class="archetype-selected-panel" id="archetypeSelectedPanel" aria-live="polite">
+        <div class="archetype-selected-portrait" id="archetypeSelectedPortrait">SF</div>
+        <div class="archetype-selected-copy">
+          <p class="eyebrow">Selected archetype</p>
+          <h3 id="archetypeSelectedName">Choose a visual card</h3>
+          <p id="archetypeSelectedDescription">Pick an archetype to preview the character prompt, style hint, actions, directions, and palette guidance before applying it to Generate.</p>
+          <div class="archetype-selected-meta" id="archetypeSelectedMeta"></div>
+        </div>
+        <button class="primary" id="applySelectedArchetypeBtn" type="button" disabled>Apply to Generate</button>
+      </div>
+
+      <div class="archetype-customize-panel" id="archetypeCustomizePanel" aria-label="Customize selected archetype before applying">
+        <div class="archetype-customize-head">
+          <div>
+            <p class="eyebrow">Customize before generation</p>
+            <h3>Fine-tune this archetype</h3>
+          </div>
+          <button class="mini" id="resetArchetypeCustomizeBtn" type="button">Reset from card</button>
+        </div>
+        <div class="archetype-customize-grid">
+          <label>Character prompt
+            <textarea id="archetypeCustomizeCharacter" rows="3" placeholder="Character prompt from selected archetype"></textarea>
+          </label>
+          <label>Style prompt
+            <textarea id="archetypeCustomizeStyle" rows="3" placeholder="Style prompt from selected archetype"></textarea>
+          </label>
+          <label>Actions
+            <input id="archetypeCustomizeActions" placeholder="idle,walk,attack_light" />
+          </label>
+          <label>Directions
+            <input id="archetypeCustomizeDirections" placeholder="front,right,back" />
+          </label>
+        </div>
+      </div>
+
       <!-- Archetypes Grid -->
       <div id="archetypesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; max-height: 55vh; overflow-y: auto; padding-right: 4px;">
         <!-- Archetype cards will be dynamically generated -->
@@ -370,6 +435,28 @@
 
   <div id="wizardContainer"></div>
   <div id="toast" class="toast"></div>
+  <div id="shortcutCheatSheet" class="shortcut-cheat-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="shortcutCheatSheetTitle">
+    <button class="shortcut-cheat-sheet-backdrop" type="button" data-shortcut-help-close aria-label="Close shortcut help"></button>
+    <section class="shortcut-cheat-sheet-card">
+      <div class="shortcut-cheat-sheet-head">
+        <div>
+          <p class="eyebrow">Keyboard-first workflow</p>
+          <h2 id="shortcutCheatSheetTitle">Shortcut cheat sheet</h2>
+        </div>
+        <button class="mini" type="button" data-shortcut-help-close>Close</button>
+      </div>
+      <div class="shortcut-cheat-sheet-grid">
+        <div><kbd>Alt</kbd><kbd>1-9</kbd><span>Navigate primary views</span></div>
+        <div><kbd>Space</kbd><span>Play or pause active animation preview</span></div>
+        <div><kbd>Left</kbd><kbd>Right</kbd><span>Step frames in Quality Lab or Animation Player</span></div>
+        <div><kbd>Ctrl</kbd><kbd>E</kbd><span>Export from the active workflow</span></div>
+        <div><kbd>Ctrl</kbd><kbd>Q</kbd><span>Run QA from Quality Lab</span></div>
+        <div><kbd>Ctrl</kbd><kbd>G</kbd><span>Generate with current settings</span></div>
+        <div><kbd>Ctrl</kbd><kbd>K</kbd><span>Open command palette</span></div>
+        <div><kbd>Esc</kbd><span>Close panels, previews, and shortcut help</span></div>
+      </div>
+    </section>
+  </div>
   <script>
     function openWizard() {
       if (typeof openWizard.impl === 'function') {
@@ -385,41 +472,56 @@
     }
 
     window.viewComponentsLoaded.then(() => {
-      const scripts = [
-        '/web/js/globals.js?v=training-lora-launcher',
-        '/web/js/project.js',
-        '/web/js/gallery.js',
-        '/web/js/editor_history.js',
-        '/web/js/editor.js',
-        '/web/js/sprite_preview.js?v=generate-compact-fit2',
-        '/web/js/prompt_builder.js?v=generate-compact-fit2',
-        '/web/js/seed_gallery.js',
-        '/web/js/frame_review.js',
-        '/web/js/palette_harmonizer.js',
-        '/web/js/keyboard_shortcuts.js',
-        '/web/js/theme_toggle.js',
-        '/web/js/mobile_nav.js',
-        '/web/js/drag_drop.js?v=generate-existing-sprite',
-        '/web/js/audio_cues.js',
-        '/web/js/state_machine.js',
-        '/web/js/marketplace_gallery.js',
-        '/web/js/scene_compositor.js',
-        '/web/js/consistency_lock.js?v=generate-existing-sprite',
-        '/web/js/experiments.js',
-        '/web/js/qa.js',
-        '/web/js/app_views.js',
-        '/web/js/app_notifications.js',
-        '/web/js/app_presets.js',
-        '/web/js/app_status.js',
-        '/web/js/app_jobs.js?v=generate-compact-fit2',
-        '/web/js/app_forms.js?v=training-lora-launcher',
-        '/web/js/app_listings.js?v=generate-compact-fit2',
-        '/web/js/wizard.js?v=wizard-animations-perspectives',
-        '/web/js/app_dashboard.js',
-        '/web/js/command_palette.js',
-        '/web/js/ux_enhancements.js?v=training-lora-launcher',
-        '/web/js/app_main.js'
-      ];
+      if (window.location.protocol === 'file:') return;
+
+      function spriteForgeScriptList() {
+        return [
+        'js/globals.js?v=training-lora-launcher',
+        'js/project.js',
+        'js/gallery.js',
+        'js/editor_history.js',
+        'js/editor.js',
+        'js/sprite_preview.js?v=generate-compact-fit2',
+        'js/animation_player.js',
+        'js/compare_player.js',
+        'js/lighting_preview.js',
+        'js/cloud_hub.js',
+        'js/frame_editor.js',
+        'js/prompt_builder.js?v=generate-compact-fit2',
+        'js/seed_gallery.js',
+        'js/frame_review.js',
+        'js/palette_harmonizer.js',
+        'js/keyboard_shortcuts.js',
+        'js/theme_toggle.js',
+        'js/mobile_nav.js',
+        'js/drag_drop.js?v=reference-upload-buttons',
+        'js/audio_cues.js',
+        'js/state_machine.js',
+        'js/marketplace_gallery.js',
+        'js/scene_compositor.js',
+        'js/consistency_lock.js?v=generate-existing-sprite',
+        'js/experiments.js',
+        'js/qa.js?v=quality-lab-compact',
+        'js/app_views.js',
+        'js/app_notifications.js',
+        'js/app_presets.js?v=sakpix-training-polish',
+        'js/app_status.js',
+        'js/app_jobs.js?v=generate-compact-fit2',
+        'js/app_forms.js?v=training-lora-launcher',
+        'js/app_listings.js?v=generate-compact-fit2',
+        'js/wizard_templates.js',
+        'js/wizard_state.js',
+        'js/wizard_submit.js',
+        'js/wizard_ui.js',
+        'js/wizard.js?v=wizard-reference-upload-buttons',
+        'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
+        'js/command_palette.js',
+        'js/ux_enhancements.js?v=training-lora-launcher',
+          'js/app_main.js?v=quality-lab-compact'
+        ];
+      }
+
+      const scripts = spriteForgeScriptList();
 
       function loadNext(idx) {
         if (idx >= scripts.length) return;

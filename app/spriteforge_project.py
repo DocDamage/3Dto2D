@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
+
 DEFAULT_ACTIONS = ["idle", "walk", "run", "attack_light", "hurt"]
 DEFAULT_DIRECTIONS = ["right"]
 

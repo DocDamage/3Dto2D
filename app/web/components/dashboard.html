@@ -1,96 +1,150 @@
-<section class="view" id="view-dashboard">
-  
-  <!-- Quick Actions Grid -->
-  <div class="quick-actions-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-    <div class="card action-card glow" id="dashActionCreate" style="cursor: pointer; display: flex; flex-direction: column; gap: 12px; padding: 20px; transition: all 0.2s ease-in-out; border: 1px solid var(--line, rgba(255,255,255,0.08));">
-      <span style="font-size: 32px;">🎨</span>
-      <div>
-        <h3 style="margin: 0; font-size: 16px; color: #fff;">Create Sprite</h3>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--muted);">Step-by-step guided sprite creator wizard</p>
-      </div>
-    </div>
-    <div class="card action-card glow" id="dashActionReview" style="cursor: pointer; display: flex; flex-direction: column; gap: 12px; padding: 20px; transition: all 0.2s ease-in-out; border: 1px solid var(--line, rgba(255,255,255,0.08));">
-      <span style="font-size: 32px;">🔍</span>
-      <div>
-        <h3 style="margin: 0; font-size: 16px; color: #fff;">Review Results</h3>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--muted);">Inspect frame sequences and run QA audits</p>
-      </div>
-    </div>
-    <div class="card action-card glow" id="dashActionExport" style="cursor: pointer; display: flex; flex-direction: column; gap: 12px; padding: 20px; transition: all 0.2s ease-in-out; border: 1px solid var(--line, rgba(255,255,255,0.08));">
-      <span style="font-size: 32px;">🚀</span>
-      <div>
-        <h3 style="margin: 0; font-size: 16px; color: #fff;">Export &amp; Ship</h3>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--muted);">Package and export sprite sheets for game engines</p>
-      </div>
-    </div>
+<section class="view dashboard-view" id="view-dashboard">
+  <div class="dashboard-tabs" role="tablist" aria-label="Dashboard sections">
+    <button class="dashboard-tab-btn active" type="button" role="tab" aria-selected="true" data-dashboard-tab="overview">Overview</button>
+    <button class="dashboard-tab-btn" type="button" role="tab" aria-selected="false" data-dashboard-tab="activity">Activity</button>
+    <button class="dashboard-tab-btn" type="button" role="tab" aria-selected="false" data-dashboard-tab="workspace">Workspace</button>
   </div>
 
-  <!-- Getting Started Contextual Tips -->
-  <section class="card onboarding-card" id="wizOnboardingCard" style="margin-bottom: 24px; padding: 20px; background: rgba(0, 173, 181, 0.05); border: 1px solid rgba(0, 173, 181, 0.2); border-radius: 12px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 280px;">
-        <p class="eyebrow" style="color: var(--cyan, #00adb5); margin: 0 0 4px 0; font-size: 11px;">Getting Started</p>
-        <h3 style="margin: 0 0 6px 0; font-size: 16px; color: #fff;" id="onboardingTitle">Ready for your first sprite?</h3>
-        <p id="onboardingText" style="margin: 0; font-size: 13px; color: var(--muted, #a9b7d0); line-height: 1.5;">Click "Create Sprite" or launch the wizard below. We will guide you through character descriptions, action loops, and set up your ComfyUI generation automatically.</p>
+  <div class="dashboard-tab-panels">
+    <section class="dashboard-tab-panel active" role="tabpanel" data-dashboard-panel="overview">
+      <section class="dashboard-hero-stats" aria-label="Workspace hero stats">
+        <article class="card dashboard-stat-card">
+          <span>Total sprites</span>
+          <b id="dashboardStatSprites">0</b>
+          <small id="dashboardStatSpritesHint">No outputs loaded yet.</small>
+        </article>
+        <article class="card dashboard-stat-card">
+          <span>Average QA</span>
+          <b id="dashboardStatQa">n/a</b>
+          <small id="dashboardStatQaHint">Run QA to build a trend.</small>
+        </article>
+        <article class="card dashboard-stat-card">
+          <span>Active project</span>
+          <b id="dashboardStatProject">Global</b>
+          <small id="dashboardStatProjectHint">Using global workspace.</small>
+        </article>
+        <article class="card dashboard-stat-card">
+          <span>Disk free</span>
+          <b id="dashboardStatDisk">-</b>
+          <small id="dashboardStatDiskHint">Workspace storage.</small>
+        </article>
+      </section>
+      <div class="quick-actions-grid dashboard-actions">
+        <button class="card action-card glow dashboard-action-card" id="dashActionCreate" type="button">
+          <span class="dashboard-action-icon">01</span>
+          <span>
+            <b>Create Sprite</b>
+            <small>Guided character, action loop, and generation setup.</small>
+          </span>
+        </button>
+        <button class="card action-card glow dashboard-action-card" id="dashActionReview" type="button">
+          <span class="dashboard-action-icon">02</span>
+          <span>
+            <b>Review Results</b>
+            <small>Inspect frame sequences and run QA audits.</small>
+          </span>
+        </button>
+        <button class="card action-card glow dashboard-action-card" id="dashActionExport" type="button">
+          <span class="dashboard-action-icon">03</span>
+          <span>
+            <b>Export &amp; Ship</b>
+            <small>Package sprite sheets for game engines.</small>
+          </span>
+        </button>
       </div>
-      <button class="primary" id="onboardingCtaBtn" type="button" style="padding: 10px 20px; font-size: 13px; font-weight: bold; border-radius: 8px;">Launch Wizard</button>
-    </div>
-  </section>
 
-  <!-- Split: Recent Activity & Live Command -->
-  <div class="split">
-    <section class="card" style="flex: 1.2; display: flex; flex-direction: column;">
-      <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <h3 style="margin: 0;">Recent Sprites</h3>
-        <button class="mini" id="refreshOutputs">Refresh</button>
-      </div>
-      <div class="gallery" id="gallery">
-        <!-- Filled dynamically by app_dashboard.js -->
+      <section class="card onboarding-card" id="wizOnboardingCard">
+        <div class="dashboard-onboarding-copy">
+          <p class="eyebrow">Getting Started</p>
+          <h3 id="onboardingTitle">Ready for your first sprite?</h3>
+          <p id="onboardingText">Launch the wizard to add character descriptions, action loops, references, and generation settings in one flow.</p>
+        </div>
+        <button class="primary" id="onboardingCtaBtn" type="button">Launch Wizard</button>
+      </section>
+
+      <section class="card dashboard-architecture-card" id="architectureStatusCard">
+        <div class="card-head">
+          <div>
+            <p class="eyebrow">Architecture Guardrails</p>
+            <h3>Runtime structure status</h3>
+          </div>
+          <span class="badge muted" id="architectureStatusBadge">checking</span>
+        </div>
+        <div class="release-list" id="architectureStatusList">
+          <div class="empty compact">Architecture status will appear after the next refresh.</div>
+        </div>
+      </section>
+    </section>
+
+    <section class="dashboard-tab-panel" role="tabpanel" data-dashboard-panel="activity">
+      <div class="dashboard-activity-grid">
+        <section class="card dashboard-recent-card">
+          <div class="card-head">
+            <h3>Recent Sprites</h3>
+            <button class="mini" id="refreshOutputs" type="button">Refresh</button>
+          </div>
+          <div class="gallery" id="gallery"></div>
+        </section>
+
+        <section class="card command-card dashboard-command-card">
+          <div class="card-head">
+            <h3>Live Activity</h3>
+            <div class="button-row compact-actions">
+              <button class="mini" id="refreshDashboardEvents" type="button">Refresh events</button>
+              <button class="mini danger" id="cancelJob" type="button">Cancel job</button>
+            </div>
+          </div>
+          <div class="job-line">
+            <span id="job-title">Idle</span>
+            <span id="job-state" class="badge">ready</span>
+          </div>
+          <div class="progressbar">
+            <i id="progress-fill"></i>
+          </div>
+          <div id="job-time-state" class="dashboard-job-time"></div>
+          <div id="dashboardActivityFeed" class="dashboard-activity-feed">
+            <div class="empty compact">No recent progress events yet.</div>
+          </div>
+          <pre class="terminal small" id="mini-log"></pre>
+        </section>
       </div>
     </section>
 
-    <section class="card command-card" style="flex: 0.8; display: flex; flex-direction: column;">
-      <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <h3 style="margin: 0;">Live Activity</h3>
-        <button class="mini danger" id="cancelJob">Cancel job</button>
-      </div>
-      <div class="job-line" style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
-        <span id="job-title" style="font-weight: bold; color: #fff;">Idle</span>
-        <span id="job-state" class="badge">ready</span>
-      </div>
-      <div class="progressbar" style="height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
-        <i id="progress-fill" style="display: block; height: 100%; width: 0%; background: var(--cyan, #00adb5); transition: width 0.3s;"></i>
-      </div>
-      <div id="job-time-state" style="font-size: 11px; color: var(--muted); margin-bottom: 10px; font-weight: 500;"></div>
-      <pre class="terminal small" id="mini-log" style="flex: 1; min-height: 120px; font-family: monospace; font-size: 11px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--line, rgba(255,255,255,0.06)); overflow: auto; margin: 0;"></pre>
-    </section>
-  </div>
+    <section class="dashboard-tab-panel" role="tabpanel" data-dashboard-panel="workspace">
+      <section class="card dashboard-workspace-empty" id="projectDashboardEmpty">
+        <p class="eyebrow">Project Workspace</p>
+        <h3>No project workspace is active</h3>
+        <p>Select or create a project from the top bar to see references, queues, and release status here.</p>
+      </section>
 
-  <!-- Project Dashboard Hub -->
-  <div id="projectDashboardHub" class="hidden" style="margin-top: 24px;">
-    <h3 style="margin-bottom: 12px; font-size: 16px; letter-spacing: -0.02em; text-transform: uppercase; color: var(--muted);">Project Workspace Hub</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
-      <div class="card" style="padding: 16px;">
-        <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h3 style="margin: 0; font-size: 14px;">References</h3>
-          <button class="mini" data-jump="convert" type="button">Manage</button>
+      <div id="projectDashboardHub" class="hidden dashboard-workspace-hub">
+        <div class="dashboard-workspace-head">
+          <h3>Project Workspace Hub</h3>
         </div>
-        <div id="dashReferencesList" class="release-list"></div>
-      </div>
-      <div class="card" style="padding: 16px;">
-        <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h3 style="margin: 0; font-size: 14px;">Active Queues</h3>
-          <button class="mini" data-jump="queues" type="button">Manage</button>
+        <div class="dashboard-workspace-grid">
+          <section class="card dashboard-workspace-card">
+            <div class="card-head">
+              <h3>References</h3>
+              <button class="mini" data-jump="convert" type="button">Manage</button>
+            </div>
+            <div id="dashReferencesList" class="release-list"></div>
+          </section>
+          <section class="card dashboard-workspace-card">
+            <div class="card-head">
+              <h3>Active Queues</h3>
+              <button class="mini" data-jump="queues" type="button">Manage</button>
+            </div>
+            <div id="dashQueuesList" class="release-list"></div>
+          </section>
+          <section class="card dashboard-workspace-card">
+            <div class="card-head">
+              <h3>Releases</h3>
+              <button class="mini" data-jump="release" type="button">Manage</button>
+            </div>
+            <div id="dashReleasesList" class="release-list"></div>
+          </section>
         </div>
-        <div id="dashQueuesList" class="release-list"></div>
       </div>
-      <div class="card" style="padding: 16px;">
-        <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h3 style="margin: 0; font-size: 14px;">Releases</h3>
-          <button class="mini" data-jump="release" type="button">Manage</button>
-        </div>
-        <div id="dashReleasesList" class="release-list"></div>
-      </div>
-    </div>
+    </section>
   </div>
 </section>

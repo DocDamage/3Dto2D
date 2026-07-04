@@ -1,0 +1,43 @@
+<section class="view" id="view-lighting_preview">
+  <div class="section-title">
+    <p class="eyebrow">Normal map lab</p>
+    <h2>Lighting Preview</h2>
+    <span>Preview generated normal maps with a movable 2D point light before engine export.</span>
+  </div>
+
+  <div class="lighting-preview-layout">
+    <section class="card lighting-preview-stage">
+      <div class="card-head">
+        <h3>Live lit sprite</h3>
+        <div class="button-row compact-actions">
+          <button class="mini" id="lightingUseSelected" type="button">Use selected sprite</button>
+          <button class="mini primary" id="lightingLoad" type="button">Load maps</button>
+          <button class="mini" id="lightingExport" type="button">Export PNG</button>
+          <button class="mini" id="lightingExportGif" type="button">Export lit GIF</button>
+        </div>
+      </div>
+      <canvas id="lightingCanvas" width="512" height="512" aria-label="Lit sprite preview"></canvas>
+      <div id="lightingStatus" class="empty compact">Load a sprite folder that contains sheet.png and sheet_normal.png.</div>
+    </section>
+
+    <section class="card lighting-preview-controls">
+      <h3>Controls</h3>
+      <label>Sprite folder
+        <input id="lightingSpriteDir" placeholder="output/hero_idle" />
+      </label>
+      <div class="row">
+        <label>Light X<input id="lightingX" type="range" min="-1" max="1" step="0.01" value="0.35" /></label>
+        <label>Light Y<input id="lightingY" type="range" min="-1" max="1" step="0.01" value="-0.45" /></label>
+      </div>
+      <div class="row">
+        <label>Intensity<input id="lightingIntensity" type="range" min="0" max="2" step="0.01" value="1.15" /></label>
+        <label>Ambient<input id="lightingAmbient" type="range" min="0" max="1" step="0.01" value="0.35" /></label>
+      </div>
+      <div class="row">
+        <label>Specular<input id="lightingSpecular" type="range" min="0" max="2" step="0.01" value="0.35" /></label>
+        <label>Zoom<input id="lightingZoom" type="range" min="1" max="8" step="0.1" value="1" /></label>
+      </div>
+      <p class="hint">Drag on the canvas to move the light. The preview expects SpriteForge normal-map exports named <code>sheet_normal.png</code>.</p>
+    </section>
+  </div>
+</section>

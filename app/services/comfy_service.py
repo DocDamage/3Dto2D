@@ -1,4 +1,5 @@
 import os
+import logging
 import shutil
 import subprocess
 import sys
@@ -7,10 +8,15 @@ import urllib.parse
 from pathlib import Path
 from typing import Dict, Any, List
 from services.config_service import ConfigService
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent.parent
+logger = logging.getLogger(__name__)
 
 class ComfyService:
+    _running_cache = None
+    _running_cache_time = 0.0
+    _running_cache_ttl = 5.0
+
     @staticmethod
     def get_url() -> str:
         cfg = ConfigService.get_config()
@@ -19,39 +25,57 @@ class ComfyService:
         return f"http://{host}:{port}"
 
     @staticmethod
-    def is_running(timeout: float = 0.8) -> bool:
+    def is_running(timeout: float = 0.8, force_refresh: bool = False) -> bool:
+        import time
+        now = time.time()
+        if (
+            not force_refresh
+            and ComfyService._running_cache is not None
+            and now - ComfyService._running_cache_time < ComfyService._running_cache_ttl
+        ):
+            return bool(ComfyService._running_cache)
+
         url = ComfyService.get_url()
         try:
             with urllib.request.urlopen(url.rstrip("/") + "/system_stats", timeout=timeout) as r:
-                return 200 <= getattr(r, "status", 200) < 500
-        except Exception:
-            return False
+                res = 200 <= getattr(r, "status", 200) < 500
+        except Exception as exc:
+            logger.debug("ComfyUI health check failed for %s: %s", url, exc)
+            res = False
+        ComfyService._running_cache = res
+        ComfyService._running_cache_time = now
+        return res
 
     _gpu_info_cache = None
     _gpu_info_cache_time = 0.0
+    _gpu_info_cache_ttl = 60.0
 
     @staticmethod
-    def get_gpu_info() -> Dict[str, Any]:
-        import sys
+    def _cache_meta(cached_at: float, ttl: float, from_cache: bool) -> Dict[str, Any]:
         import time
-        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
+        age = max(0.0, time.time() - float(cached_at or 0.0)) if cached_at else 0.0
+        return {"from_cache": from_cache, "age_seconds": round(age, 3), "ttl_seconds": ttl}
+
+    @staticmethod
+    def get_gpu_info(force_refresh: bool = False) -> Dict[str, Any]:
+        import time
         now = time.time()
-        if not is_testing and ComfyService._gpu_info_cache is not None and now - ComfyService._gpu_info_cache_time < 60.0:
-            return ComfyService._gpu_info_cache
+        if not force_refresh and ComfyService._gpu_info_cache is not None and now - ComfyService._gpu_info_cache_time < ComfyService._gpu_info_cache_ttl:
+            return {**ComfyService._gpu_info_cache, "_cache": ComfyService._cache_meta(ComfyService._gpu_info_cache_time, ComfyService._gpu_info_cache_ttl, True)}
 
         exe = shutil.which("nvidia-smi")
         if not exe:
             res = {"ok": False, "label": "GPU unknown", "detail": "nvidia-smi not found", "vram_gb": None}
             ComfyService._gpu_info_cache = res
             ComfyService._gpu_info_cache_time = now
-            return res
+            return {**res, "_cache": ComfyService._cache_meta(now, ComfyService._gpu_info_cache_ttl, False)}
         try:
             p = subprocess.run([exe, "--query-gpu=name,memory.total,memory.free,driver_version", "--format=csv,noheader"], capture_output=True, text=True, timeout=10)
             if p.returncode != 0:
                 res = {"ok": False, "label": "GPU check failed", "detail": p.stderr.strip(), "vram_gb": None}
                 ComfyService._gpu_info_cache = res
                 ComfyService._gpu_info_cache_time = now
-                return res
+                return {**res, "_cache": ComfyService._cache_meta(now, ComfyService._gpu_info_cache_ttl, False)}
             line = p.stdout.strip().splitlines()[0] if p.stdout.strip() else ""
             parts = [p.strip() for p in line.split(",")]
             total_mb = None
@@ -70,12 +94,19 @@ class ComfyService:
             }
             ComfyService._gpu_info_cache = res
             ComfyService._gpu_info_cache_time = now
-            return res
+            return {**res, "_cache": ComfyService._cache_meta(now, ComfyService._gpu_info_cache_ttl, False)}
         except Exception as exc:
             res = {"ok": False, "label": "GPU check failed", "detail": str(exc), "vram_gb": None}
             ComfyService._gpu_info_cache = res
             ComfyService._gpu_info_cache_time = now
-            return res
+            return {**res, "_cache": ComfyService._cache_meta(now, ComfyService._gpu_info_cache_ttl, False)}
+
+    @staticmethod
+    def reset_caches() -> None:
+        ComfyService._running_cache = None
+        ComfyService._running_cache_time = 0.0
+        ComfyService._gpu_info_cache = None
+        ComfyService._gpu_info_cache_time = 0.0
 
     @staticmethod
     def launch() -> bool:
@@ -93,7 +124,8 @@ class ComfyService:
                 kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
             subprocess.Popen(cmd, **kwargs)
             return True
-        except Exception:
+        except Exception as exc:
+            logger.warning("Could not launch ComfyUI via %s: %s", cmd, exc)
             return False
 
     @staticmethod
@@ -108,7 +140,8 @@ class ComfyService:
         try:
             import websocket  # type: ignore
             from services.generation_intelligence import apply_comfy_ws_message
-        except Exception:
+        except Exception as exc:
+            logger.debug("ComfyUI websocket bridge import failed: %s", exc)
             with lock:
                 job.setdefault("logs", []).append(f"[{time.strftime('%H:%M:%S')}] ComfyUI websocket bridge unavailable; install websocket-client for exact WAN progress.")
             return
@@ -130,7 +163,8 @@ class ComfyService:
                 raw = ws.recv()
                 try:
                     message = json.loads(raw)
-                except Exception:
+                except Exception as exc:
+                    logger.debug("Ignoring malformed ComfyUI websocket message: %s", exc)
                     continue
                 with lock:
                     apply_comfy_ws_message(job, message)
@@ -144,6 +178,5 @@ class ComfyService:
         finally:
             try:
                 ws.close()  # type: ignore[name-defined]
-            except Exception:
-                pass
-
+            except Exception as exc:
+                logger.debug("Could not close ComfyUI websocket connection: %s", exc)

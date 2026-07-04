@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import platform
 import subprocess
 import sys
@@ -11,6 +12,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from spriteforge_utils import load_json, ROOT
+
+logger = logging.getLogger(__name__)
 
 
 def _get_hooks_config() -> Dict[str, Any]:
@@ -42,7 +45,8 @@ def send_discord_webhook(webhook_url: str, content: str, title: str = "SpriteFor
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             return 200 <= resp.status < 300
-    except Exception:
+    except Exception as exc:
+        logger.warning("Discord webhook notification failed: %s", exc)
         return False
 
 
@@ -58,7 +62,8 @@ def send_slack_webhook(webhook_url: str, text: str) -> bool:
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             return 200 <= resp.status < 300
-    except Exception:
+    except Exception as exc:
+        logger.warning("Slack webhook notification failed: %s", exc)
         return False
 
 
@@ -94,8 +99,8 @@ def send_system_notification(title: str, message: str) -> bool:
                 "notify-send", title, message
             ], capture_output=True, timeout=10)
             return True
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("System notification failed: %s", exc)
     return False
 
 

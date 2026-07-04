@@ -1,0 +1,41 @@
+{
+  "schema": "spriteforge_project_v1",
+  "name": "test_token_allowed",
+  "created_at": "2026-06-30T17:55:56",
+  "updated_at": "2026-07-04T09:30:25",
+  "character": "single full body original game character, professional appealing character design, heroic adult proportions, distinctive outfit, readable silhouette",
+  "style": "high quality 2D game sprite animation, polished concept-art quality, crisp cel-shaded edges, clean linework, readable silhouette",
+  "background": "plain bright green chroma key background, evenly lit, no shadows on background",
+  "profile": "rtx3060_12gb",
+  "mode": "t2v",
+  "actions": [
+    "idle",
+    "walk",
+    "run",
+    "attack_light",
+    "hurt"
+  ],
+  "directions": [
+    "right"
+  ],
+  "fps": 12,
+  "cell_size": "512x512",
+  "frames_by_action": {
+    "idle": 24,
+    "walk": 33,
+    "run": 25,
+    "attack_light": 24,
+    "attack_heavy": 32,
+    "cast": 32,
+    "jump": 24,
+    "hurt": 16,
+    "death": 40
+  },
+  "quality_gates": {
+    "max_foot_drift": 2.0,
+    "max_flicker": 1.0,
+    "loop_seam_threshold": 15.0,
+    "required_frame_count": null,
+    "alpha_cleanliness": 0.05
+  }
+}

@@ -3,6 +3,11 @@
   <div class="grid-2">
     
     <form class="card form" id="generateForm">
+      <input type="hidden" name="archetype_id" id="generateArchetypeId" value="" />
+      <input type="hidden" name="archetype_name" id="generateArchetypeName" value="" />
+      <input type="hidden" name="archetype_tags" id="generateArchetypeTags" value="" />
+      <input type="hidden" name="archetype_palette_hint" id="generateArchetypePaletteHint" value="" />
+      <input type="hidden" name="archetype_customized" id="generateArchetypeCustomized" value="" />
       
       <!-- Preset Manager & Smarter Defaults Row (Compact) -->
       <div class="preset-builder-card" style="padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
@@ -124,6 +129,16 @@
           <label style="width: 100%;">Style Reference Image (IP-Adapter)
             <input name="style_image" id="generationStyleImage" placeholder="Optional uploaded style reference image path" style="width: 100%;" />
           </label>
+          <div class="generate-reference-preview" id="generateReferencePreview">
+            <div class="generate-reference-tile checkerboard">
+              <img id="generateReferencePreviewImage" class="hidden" alt="Character reference preview" />
+              <span id="generateReferencePreviewEmpty">Drop or paste a reference image path to preview it here.</span>
+            </div>
+            <div class="generate-reference-meta">
+              <b id="generateReferencePreviewTitle">No reference selected</b>
+              <small id="generateReferencePreviewStatus">Supports workspace PNG, JPG, WebP, and GIF paths.</small>
+            </div>
+          </div>
         </div>
       </details>
 
@@ -174,6 +189,9 @@
           <label style="width: 100%;">Resolutions hierarchy (e.g. 0.5x,1x,2x)
             <input name="resolutions" placeholder="Optional. Example: 0.5x,1x,2x" style="width: 100%;" />
           </label>
+          <label style="width: 100%;">LoRA Model Name
+            <input name="lora_name" placeholder="Optional, e.g. wan2.2_pixel_animate.safetensors" style="width: 100%;" />
+          </label>
           <label style="width: 100%;">Optional full prompt override
             <textarea name="prompt" rows="3" placeholder="Leave empty to use automatic sprite prompt builder." style="width: 100%;"></textarea>
           </label>
@@ -209,6 +227,80 @@
         </div>
       </details>
 
+      <details class="collapsible-section" style="margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1);">
+        <summary style="cursor: pointer; font-weight: bold; font-size: 13px; color: var(--text);">Native Polish</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+          <div class="row">
+            <label>Matting
+              <select name="matting_engine">
+                <option value="chroma" selected>Chroma key</option>
+                <option value="pixel-art">Pixel-art hard edge</option>
+                <option value="birefnet">BiRefNet matting</option>
+                <option value="depth-anything">Depth Anything</option>
+                <option value="rembg">rembg</option>
+              </select>
+            </label>
+            <label>Interpolate FPS
+              <input name="interpolate_fps" placeholder="Optional, e.g. 24" />
+            </label>
+            <label>Interp. Engine
+              <select name="interpolation_engine">
+                <option value="blend" selected>Blend</option>
+                <option value="flow">OpenCV Flow</option>
+                <option value="bitmapflow">BitmapFlow</option>
+                <option value="rife">RIFE</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Packing Mode
+              <select name="pack_mode">
+                <option value="grid" selected>Grid</option>
+                <option value="maxrects">MaxRects</option>
+              </select>
+            </label>
+            <label style="flex: 2;">Segment Parts (clicks)
+              <input name="segment_parts" placeholder="e.g. weapon:150,220,1;hair:200,100,1" />
+            </label>
+            <label>Normal maps
+              <select name="normal_map_engine">
+                <option value="height" selected>Height</option>
+                <option value="native-depth">Native depth</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Pixel palette
+              <select name="pixel_cleanup_palette">
+                <option value="">Learned Oklab</option>
+                <option value="pico8">PICO-8</option>
+                <option value="gameboy">Game Boy</option>
+                <option value="nes">NES</option>
+              </select>
+            </label>
+            <label>Palette colors
+              <input name="pixel_cleanup_colors" value="24" />
+            </label>
+            <label>Dither
+              <select name="pixel_cleanup_dither_mode">
+                <option value="none" selected>None</option>
+                <option value="bayer">Bayer</option>
+                <option value="floyd-steinberg">Floyd-Steinberg</option>
+              </select>
+            </label>
+          </div>
+          <div class="switches">
+            <label class="switch"><input type="checkbox" name="alpha_refine" /><span></span>Alpha refine</label>
+            <label class="switch"><input type="checkbox" name="temporal_alpha_stabilize" /><span></span>Temporal alpha</label>
+            <label class="switch"><input type="checkbox" name="pixel_cleanup" /><span></span>Pixel cleanup</label>
+            <label class="switch"><input type="checkbox" name="palette_project_lock" /><span></span>Use project palette lock</label>
+            <label class="switch"><input type="checkbox" name="generate_normal_maps" /><span></span>Normal maps</label>
+            <label class="switch"><input type="checkbox" name="interpolation_skip_pixel_art" checked /><span></span>Hold pixel frames</label>
+            <label class="switch"><input type="checkbox" name="interpolation_skip_impact_frames" checked /><span></span>Hold impact frames</label>
+          </div>
+        </div>
+      </details>
+
       <div class="switches" style="margin-top: 12px;">
         <label class="switch"><input type="checkbox" name="start_comfy" checked /><span></span>Start ComfyUI if needed</label>
         <label class="switch"><input type="checkbox" name="quality_check" checked /><span></span>Run quality check after conversion</label>
@@ -216,6 +308,18 @@
       </div>
 
       <div class="callout hidden" id="advisor-result"></div>
+      <section class="prompt-preview-panel" id="generatePromptPreviewPanel">
+        <div class="prompt-preview-head">
+          <div>
+            <b>Final prompt preview</b>
+            <small>Updates as you edit generation fields.</small>
+          </div>
+          <span class="prompt-quality-badge muted" id="generatePromptQuality">checking</span>
+        </div>
+        <div class="generation-estimate" id="generateEstimate">Runtime estimate: learning from previous runs.</div>
+        <pre id="generatePromptPreview" class="prompt-preview-text">Prompt preview will appear here.</pre>
+        <div id="generatePromptLint" class="prompt-lint-list"></div>
+      </section>
       <div class="callout" id="modelProfileExplainer" style="margin-top: 12px;">
         <b id="modelProfileExplainerTitle">Model/profile</b>
         <span id="modelProfileExplainerBody">Checking selected generation profile...</span>

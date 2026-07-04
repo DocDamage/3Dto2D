@@ -1,5 +1,57 @@
 <section class="view" id="view-history">
       <div class="section-title"><p class="eyebrow">What worked?</p><h2>Experiment History</h2></div>
+      <section class="experiment-analytics card" id="experimentAnalyticsPanel">
+        <div class="card-head">
+          <div>
+            <h3>Experiment Analytics</h3>
+            <p class="muted compact">QA distribution, score trends, best seeds/profiles, and prompt memory from tracked runs.</p>
+          </div>
+          <div class="button-row compact-actions">
+            <button class="mini" id="exportWinningPrompts" type="button">Export winning prompts</button>
+            <button class="mini" id="refreshExperimentAnalytics" type="button">Refresh analytics</button>
+          </div>
+        </div>
+        <div class="experiment-kpi-grid">
+          <div><span>Total runs</span><b id="expMetricTotal">-</b></div>
+          <div><span>Scored</span><b id="expMetricScored">-</b></div>
+          <div><span>Average QA</span><b id="expMetricAverage">-</b></div>
+          <div><span>Pass rate</span><b id="expMetricPassRate">-</b></div>
+          <div><span>Starred</span><b id="expMetricStarred">-</b></div>
+        </div>
+        <div class="experiment-recommendations" id="expRecommendations" aria-live="polite"></div>
+        <div class="experiment-analytics-grid">
+          <article>
+            <h4>QA score distribution</h4>
+            <div id="expScoreDistribution" class="experiment-bars"></div>
+          </article>
+          <article>
+            <h4>Score over time</h4>
+            <div id="expScoreTrend" class="experiment-bars trend"></div>
+          </article>
+          <article>
+            <h4>Score by action</h4>
+            <div id="expActionScores" class="experiment-bars"></div>
+          </article>
+          <article>
+            <h4>Best profiles and seeds</h4>
+            <div id="expBestSettings" class="experiment-insight-list"></div>
+          </article>
+        </div>
+        <div class="experiment-memory-grid">
+          <article>
+            <h4>What worked</h4>
+            <div id="expBestRuns" class="experiment-best-runs"></div>
+          </article>
+          <article>
+            <div class="experiment-prompt-head">
+              <h4>Prompt history search</h4>
+              <input id="experimentPromptSearch" placeholder="Search prompts, actions, directions..." />
+            </div>
+            <div id="experimentPromptHistory" class="experiment-prompt-history"></div>
+          </article>
+        </div>
+        <div id="winningPromptPackResult" class="empty compact">Winning prompt packs prioritize pinned prompts, then the highest QA runs.</div>
+      </section>
       <div class="card table-card">
         <div class="card-head table-card-head">
           <h3>Generation runs</h3>

@@ -15,6 +15,45 @@
             <label>Cell size<input name="cell_size" value="512x512" /></label>
           </div>
           <label>Key color<input name="key_color" value="auto" /></label>
+          <details class="collapsible-section">
+            <summary>Native polish</summary>
+            <div class="row">
+              <label>Matting
+                <select name="matting_engine">
+                  <option value="chroma" selected>Chroma key</option>
+                  <option value="pixel-art">Pixel-art hard edge</option>
+                  <option value="birefnet">BiRefNet matting</option>
+                  <option value="depth-anything">Depth Anything</option>
+                  <option value="rembg">rembg</option>
+                </select>
+              </label>
+              <label>Interpolate FPS<input name="interpolate_fps" placeholder="Optional, e.g. 24" /></label>
+            </div>
+            <div class="row">
+              <label>Pixel palette
+                <select name="pixel_cleanup_palette">
+                  <option value="">Learned Oklab</option>
+                  <option value="pico8">PICO-8</option>
+                  <option value="gameboy">Game Boy</option>
+                  <option value="nes">NES</option>
+                </select>
+              </label>
+              <label>Dither
+                <select name="pixel_cleanup_dither_mode">
+                  <option value="none" selected>None</option>
+                  <option value="bayer">Bayer</option>
+                  <option value="floyd-steinberg">Floyd-Steinberg</option>
+                </select>
+              </label>
+            </div>
+            <div class="switches">
+              <label class="switch"><input type="checkbox" name="alpha_refine" /><span></span>Alpha refine</label>
+              <label class="switch"><input type="checkbox" name="temporal_alpha_stabilize" /><span></span>Temporal alpha</label>
+              <label class="switch"><input type="checkbox" name="pixel_cleanup" /><span></span>Pixel cleanup</label>
+              <label class="switch"><input type="checkbox" name="palette_project_lock" /><span></span>Use project palette lock</label>
+              <label class="switch"><input type="checkbox" name="interpolation_skip_pixel_art" checked /><span></span>Hold pixel frames</label>
+            </div>
+          </details>
           <div class="switches">
             <label class="switch"><input type="checkbox" name="drop_loop_duplicate" checked /><span></span>Drop loop duplicate</label>
             <label class="switch"><input type="checkbox" name="preview_gif" checked /><span></span>Preview GIF</label>

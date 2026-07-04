@@ -2,11 +2,12 @@ import os
 import json
 import shutil
 import zipfile
+import sys
 from pathlib import Path
 import pytest
+import numpy as np
 from PIL import Image
 
-import sys
 ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT / "app"
 sys.path.insert(0, str(APP))
@@ -15,6 +16,54 @@ from services.sprite_service import SpriteService
 from services.pose_estimation_service import PoseEstimationService
 from services.tilemap_service import TilemapService
 from services.plugin_manager import PluginManager
+
+
+def test_pose_estimation_native_fallback_without_mediapipe(tmp_path, monkeypatch):
+    try:
+        import cv2
+    except Exception:
+        pytest.skip("OpenCV unavailable in test environment")
+
+    import services.pose_estimation_service as pose_mod
+
+    original_root = pose_mod.ROOT
+    pose_mod.ROOT = tmp_path
+    monkeypatch.setitem(sys.modules, "mediapipe", None)
+
+    try:
+        video_path = tmp_path / "input.mp4"
+        writer = cv2.VideoWriter(
+            str(video_path),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            6.0,
+            (96, 96),
+        )
+        assert writer.isOpened(), "Failed to create test video"
+        for i in range(6):
+            frame = Image.new("RGB", (96, 96), (0, 220, 0))
+            x = 35 + i
+            for px in range(x, x + 18):
+                for py in range(20, 85):
+                    if 0 <= px < 96:
+                        frame.putpixel((px, py), (240, 240, 240))
+            bgr = cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR)
+            writer.write(bgr)
+        writer.release()
+
+        project_dir = tmp_path / "projects" / "demo_project"
+        project_dir.mkdir(parents=True, exist_ok=True)
+
+        result = PoseEstimationService.estimate_pose("input.mp4", "projects/demo_project", "walk")
+        assert result["ok"] is True
+        assert result.get("backend") == "native-opencv-fallback"
+
+        anchors = tmp_path / result["posepack_path"] / "anchors.json"
+        assert anchors.exists()
+        payload = json.loads(anchors.read_text(encoding="utf-8"))
+        assert payload.get("backend") == "native-opencv-fallback"
+        assert len(payload.get("frames") or []) > 0
+    finally:
+        pose_mod.ROOT = original_root
 
 def test_chroma_spill_suppression():
     # Create an image with transparent green fringe
@@ -79,6 +128,67 @@ def test_autotile_compilation(tmp_path):
     finally:
         services.tilemap_service.ROOT = old_root
 
+def test_wang_tile_generation_writes_sheet_and_metadata(tmp_path):
+    sources = {
+        "north.png": (220, 40, 40, 255),
+        "east.png": (40, 220, 40, 255),
+        "south.png": (40, 40, 220, 255),
+        "west.png": (220, 220, 40, 255),
+    }
+    for name, color in sources.items():
+        Image.new("RGBA", (16, 16), color).save(tmp_path / name)
+
+    import services.tilemap_service
+    old_root = services.tilemap_service.ROOT
+    try:
+        services.tilemap_service.ROOT = tmp_path
+        res = TilemapService.generate_wang_tiles(
+            "north.png",
+            "east.png",
+            "south.png",
+            "west.png",
+            "wang.png",
+            tile_size=16,
+        )
+
+        assert res["ok"]
+        assert res["tile_count"] == 16
+        assert (tmp_path / "wang.png").exists()
+        meta = json.loads((tmp_path / "wang.json").read_text(encoding="utf-8"))
+        assert meta["type"] == "wang_16"
+        assert meta["columns"] == 4
+        assert len(meta["rules"]) == 16
+        sheet = Image.open(tmp_path / "wang.png").convert("RGBA")
+        assert sheet.size == (64, 64)
+    finally:
+        services.tilemap_service.ROOT = old_root
+
+
+def test_tilemap_cli_parses_wang_mode():
+    from spriteforge_unified import build_parser
+
+    args = build_parser().parse_args([
+        "tilemap",
+        "--mode",
+        "wang_16",
+        "--north",
+        "n.png",
+        "--east",
+        "e.png",
+        "--south",
+        "s.png",
+        "--west",
+        "w.png",
+        "--output",
+        "out.png",
+        "--tile-size",
+        "32",
+    ])
+
+    assert args.mode == "wang_16"
+    assert args.north == "n.png"
+    assert args.tile_size == 32
+
 def test_plugin_hooks(tmp_path):
     # Write a test plugin dynamically
     plugins_dir = tmp_path / "plugins"
@@ -108,5 +218,53 @@ def on_qa_check(sprite_dir, report):
         assert report["score"] == 99.9
     finally:
         services.plugin_manager.ROOT = old_root
+        services.plugin_manager.PLUGINS_DIR = old_plugins
+
+
+def test_plugin_manifest_discovery_without_execution(tmp_path):
+    import services.plugin_manager
+
+    plugin_dir = tmp_path / "plugins" / "fancy_metric"
+    plugin_dir.mkdir(parents=True)
+    (plugin_dir / "spriteforge_plugin.json").write_text(json.dumps({
+        "id": "fancy_metric",
+        "name": "Fancy Metric",
+        "version": "1.2.3",
+        "author": "Test Lab",
+        "description": "Adds a custom QA signal.",
+        "tags": ["qa", "metric"],
+        "entrypoint": "plugin.py",
+        "hooks": ["on_qa_check", "unknown_future_hook"],
+    }), encoding="utf-8")
+    (plugin_dir / "plugin.py").write_text("raise RuntimeError('should not execute during discovery')\n", encoding="utf-8")
+
+    old_plugins = services.plugin_manager.PLUGINS_DIR
+    try:
+        services.plugin_manager.PLUGINS_DIR = tmp_path / "plugins"
+        rows = PluginManager.discover_plugins()
+
+        assert rows[0]["id"] == "fancy_metric"
+        assert rows[0]["sdk_version"] == "1.0"
+        assert rows[0]["known_hooks"] == ["on_qa_check"]
+        assert rows[0]["unknown_hooks"] == ["unknown_future_hook"]
+    finally:
+        services.plugin_manager.PLUGINS_DIR = old_plugins
+
+
+def test_plugin_discovery_includes_legacy_py_plugins(tmp_path):
+    import services.plugin_manager
+
+    plugins_dir = tmp_path / "plugins"
+    plugins_dir.mkdir()
+    (plugins_dir / "legacy_hook.py").write_text("def on_qa_check(report):\n    return report\n", encoding="utf-8")
+
+    old_plugins = services.plugin_manager.PLUGINS_DIR
+    try:
+        services.plugin_manager.PLUGINS_DIR = plugins_dir
+        rows = PluginManager.discover_plugins()
+
+        assert rows[0]["id"] == "legacy_hook"
+        assert rows[0]["entrypoint"] == "legacy_hook.py"
+    finally:
         services.plugin_manager.PLUGINS_DIR = old_plugins
         PluginManager._loaded = False

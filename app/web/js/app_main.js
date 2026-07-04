@@ -36,7 +36,7 @@ async function refreshAll() {
     if (typeof renderOutputs === 'function') renderOutputs(s.outputs);
     renderJob(s.job);
     updatePreflightChecklist(s);
-    if (typeof updateHealthBar === 'function') updateHealthBar(s);
+    if (typeof updateHealthDots === 'function') updateHealthDots(s);
     if (typeof updateHealthProgress === 'function') updateHealthProgress(s);
     renderTaskCenter(s);
 
@@ -51,6 +51,12 @@ async function refreshAll() {
     const jobTransitionedToDone = previousJobId && previousJobId === activeJobId && previousJobRunning && !activeJobRunning;
     const exitCode = activeJob ? activeJob.exit_code : null;
     const spriteFolder = activeJob && activeJob.metadata ? activeJob.metadata.sprite_folder : null;
+    if (spriteFolder && typeof window.refreshQualityLivePreview === 'function') {
+      const qualityVisible = $('#view-quality')?.classList.contains('active') || localStorage.getItem('activeView') === 'quality';
+      if (qualityVisible) {
+        window.refreshQualityLivePreview(spriteFolder, { force: true, silent: true, source: 'active' });
+      }
+    }
     if (jobTransitionedToDone) {
       if (exitCode === 0) {
         const duration = formatDuration(activeJob.started_at, activeJob.finished_at);
@@ -82,13 +88,31 @@ async function refreshAll() {
   } catch (e) { console.error(e); }
 }
 
+async function refreshHeartbeat() {
+  try {
+    const h = await api('/api/heartbeat');
+    const previous = window._latestStatus || {};
+    const s = { ...previous, ...h, job: h.job || previous.job || {} };
+    window._latestHeartbeat = h;
+    window._latestStatus = s;
+    setChip('#chip-comfy', h.comfy_running ? 'ok' : 'warn', 'ComfyUI: ' + (h.comfy_running ? 'online' : 'offline'));
+    if ($('#stat-comfy')) $('#stat-comfy').textContent = h.comfy_running ? 'Online' : 'Offline';
+    if ($('#stat-comfy-detail')) $('#stat-comfy-detail').textContent = h.comfy_url || '';
+    renderJob(s.job);
+    if (typeof updatePreflightChecklist === 'function' && s.models && s.disk && s.gpu) updatePreflightChecklist(s);
+    if (typeof updateHealthDots === 'function' && s.models && s.disk && s.gpu) updateHealthDots(s);
+    if (typeof updateHealthProgress === 'function' && s.models && s.disk && s.gpu) updateHealthProgress(s);
+    renderTaskCenter(s);
+  } catch (e) { console.error(e); }
+}
+
 let pollIntervalId = null;
 function updatePollingInterval() {
   if (pollIntervalId) {
     clearInterval(pollIntervalId);
   }
   const interval = window._sseActive ? 15000 : 3000;
-  pollIntervalId = setInterval(refreshAll, interval);
+  pollIntervalId = setInterval(refreshHeartbeat, interval);
 }
 
 async function initSpriteForgeApp() {

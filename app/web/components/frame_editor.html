@@ -1,0 +1,53 @@
+<section class="view frame-editor-view" id="view-frame_editor">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Timeline Tools</p>
+      <h2>Frame Editor</h2>
+      <p class="description">Reorder, delete, duplicate, hold, and retime sprite frames before rebuilding the sheet.</p>
+    </div>
+    <div class="button-row">
+      <button class="mini" type="button" id="frameEditorRefreshBtn">Refresh sprites</button>
+      <button class="mini" type="button" id="frameEditorResetBtn">Reset timeline</button>
+      <button class="mini primary" type="button" id="frameEditorRepackBtn">Re-pack sheet</button>
+    </div>
+  </div>
+
+  <section class="frame-editor-shell">
+    <aside class="frame-editor-sidebar card">
+      <label>Sprite output
+        <select id="frameEditorSpriteSelect">
+          <option value="">Select a sprite output</option>
+        </select>
+      </label>
+      <label>FPS
+        <input id="frameEditorFps" type="number" min="1" max="60" step="1" value="12" />
+      </label>
+      <div class="frame-editor-actions">
+        <button class="mini" type="button" id="frameEditorDeleteBtn">Delete selected</button>
+        <button class="mini" type="button" id="frameEditorDuplicateBtn">Duplicate selected</button>
+        <button class="mini" type="button" id="frameEditorHoldBtn">Hold selected</button>
+        <button class="mini" type="button" id="frameEditorMoveLeftBtn">Move left</button>
+        <button class="mini" type="button" id="frameEditorMoveRightBtn">Move right</button>
+      </div>
+      <div class="frame-editor-summary">
+        <div><b id="frameEditorCount">0</b><span>frames</span></div>
+        <div><b id="frameEditorSelected">-</b><span>selected (Shift-click multi)</span></div>
+      </div>
+    </aside>
+
+    <section class="frame-editor-main card">
+      <div id="frameEditorDropZone" class="frame-editor-timeline" aria-label="Editable frame timeline"></div>
+      <div class="frame-editor-detail">
+        <canvas id="frameEditorCanvas" width="128" height="128"></canvas>
+        <div>
+          <h3 id="frameEditorDetailTitle">No frame selected</h3>
+          <label>Duration override (ms)
+            <input id="frameEditorDuration" type="number" min="1" step="1" placeholder="auto" />
+          </label>
+          <small id="frameEditorDurationHint" class="frame-editor-duration-hint">Applies to the selected frame.</small>
+          <p id="frameEditorStatus" class="description">Select a sprite to begin editing.</p>
+        </div>
+      </div>
+    </section>
+  </section>
+</section>

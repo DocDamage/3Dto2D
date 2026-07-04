@@ -4,6 +4,7 @@ import argparse
 import datetime as dt
 import html
 import json
+import logging
 import os
 import platform
 import shutil
@@ -14,22 +15,23 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from spriteforge_utils import load_json, save_json, app_python
+from spriteforge_utils import ROOT, load_json, save_json, app_python
 from services.config_service import ConfigService
 from services.comfy_service import ComfyService
 from services.model_service import ModelService
 
-ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "output"
 PROJECTS = ROOT / "projects"
 RELEASES = ROOT / "releases"
 CONFIG = ROOT / "config" / "spriteforge_config.json"
 VIDEO_EXTS = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
+logger = logging.getLogger(__name__)
 
 def rel(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
-    except Exception:
+    except Exception as exc:
+        logger.debug("Could not render path %s relative to %s: %s", path, ROOT, exc)
         return str(path).replace("\\", "/")
 
 def safe_name(value: str) -> str:
@@ -42,6 +44,7 @@ def run_capture(cmd: Sequence[str], timeout: float = 30.0) -> Tuple[int, str]:
         p = subprocess.run(list(map(str, cmd)), cwd=str(ROOT), capture_output=True, text=True, timeout=timeout)
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except Exception as exc:
+        logger.warning("Command capture failed for %s: %s", cmd, exc)
         return 1, str(exc)
 
 def config() -> Dict[str, Any]:
@@ -260,7 +263,8 @@ def project_release_metadata(project: Optional[str]) -> Dict[str, str]:
     try:
         project_path = rel(manifest)
         project_root = rel(manifest.parent)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Could not derive project release metadata from %s: %s", manifest, exc)
         return {}
     return {
         "project_name": str(data.get("name") or manifest.parent.name),
@@ -310,22 +314,22 @@ def get_project_quality_gates(sprite_dir: Path) -> Dict[str, Any]:
                 data = json.loads(proj_manifest.read_text(encoding="utf-8"))
                 if "quality_gates" in data:
                     return data["quality_gates"]
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Could not read project quality gates from %s: %s", proj_manifest, exc)
                 
     try:
-        config_path = Path(__file__).resolve().parent.parent / "config" / "spriteforge_config.json"
+        config_path = ROOT / "config" / "spriteforge_config.json"
         if config_path.exists():
             config_data = json.loads(config_path.read_text(encoding="utf-8"))
             active_p = config_data.get("active_project")
             if active_p:
-                proj_path = (Path(__file__).resolve().parent.parent / active_p).resolve()
+                proj_path = (ROOT / active_p).resolve()
                 if proj_path.exists():
                     data = json.loads(proj_path.read_text(encoding="utf-8"))
                     if "quality_gates" in data:
                         return data["quality_gates"]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Could not read active project quality gates from %s: %s", config_path, exc)
         
     return {
         "max_foot_drift": 2.0,
@@ -422,7 +426,8 @@ def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
                                 arr = np.asarray(img.convert("RGBA"))
                                 alpha = arr[:, :, 3]
                                 cleanliness = float(((alpha > 0) & (alpha < 16)).sum() / max(1, alpha.size))
-                        except Exception:
+                        except Exception as exc:
+                            logger.debug("Could not compute alpha cleanliness for %s: %s", sheet_png, exc)
                             cleanliness = 0.0
                     else:
                         cleanliness = 0.0
@@ -453,8 +458,8 @@ def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
                 fh = meta.get("frame_height")
                 if fw and fh:
                     sizes.add((fw, fh))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Could not collect frame size from %s: %s", meta_file, exc)
     if len(sizes) > 1:
         warnings.append(f"Inconsistent frame sizes across sprites in this release: {list(sizes)}")
         

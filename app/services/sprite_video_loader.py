@@ -2,6 +2,7 @@
 """Video/frame loading, extraction, and inspection for sprite processing."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -10,7 +11,8 @@ from PIL import Image
 
 try:
     import cv2
-except Exception:
+except Exception as exc:
+    logging.getLogger(__name__).debug("OpenCV unavailable for video extraction; image-folder fallback paths remain available: %s", exc)
     cv2 = None
 
 from dataclasses import dataclass
@@ -135,8 +137,8 @@ def extract_video_frames(
             if cap is not None:
                 try:
                     cap.release()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logging.getLogger(__name__).debug("Could not release OpenCV video capture for %s: %s", input_path, exc)
     else:
         errors.append("OpenCV is not installed")
 

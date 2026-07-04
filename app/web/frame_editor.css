@@ -1,0 +1,156 @@
+.frame-editor-shell {
+  display: grid;
+  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.frame-editor-sidebar,
+.frame-editor-main {
+  border-radius: 8px;
+}
+
+.frame-editor-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.frame-editor-sidebar label,
+.frame-editor-detail label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.frame-editor-duration-hint {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.frame-editor-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.frame-editor-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.frame-editor-summary div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.frame-editor-summary b,
+.frame-editor-summary span {
+  display: block;
+}
+
+.frame-editor-summary span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.frame-editor-main {
+  display: grid;
+  gap: 16px;
+}
+
+.frame-editor-timeline {
+  min-height: 180px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-content: flex-start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.frame-editor-tile {
+  width: 82px;
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  cursor: grab;
+  position: relative;
+}
+
+.frame-editor-tile:active {
+  cursor: grabbing;
+}
+
+.frame-editor-tile.active {
+  border-color: var(--accent);
+  background: rgba(65, 190, 255, 0.15);
+  color: var(--text);
+}
+
+.frame-editor-tile.retimed {
+  border-color: rgba(245, 158, 11, 0.55);
+}
+
+.frame-editor-duration-badge {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 999px;
+  color: #fcd34d;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 5px;
+  position: absolute;
+  right: 5px;
+  top: 5px;
+}
+
+.frame-editor-tile img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.frame-editor-detail {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+#frameEditorCanvas {
+  width: 160px;
+  height: 160px;
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.25);
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.08) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+}
+
+@media (max-width: 900px) {
+  .frame-editor-shell,
+  .frame-editor-detail {
+    grid-template-columns: 1fr;
+  }
+}

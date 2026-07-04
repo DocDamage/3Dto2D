@@ -16,8 +16,8 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
-from spriteforge_utils import natural_key
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT, natural_key
+
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 
 def ensure_dir(path: Path) -> None:

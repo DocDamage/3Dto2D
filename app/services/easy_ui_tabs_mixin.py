@@ -7,14 +7,13 @@ from tkinter.scrolledtext import ScrolledText
 from pathlib import Path
 from typing import List, Optional
 
-from spriteforge_utils import load_json, save_json
+from spriteforge_utils import ROOT, load_json, save_json
 from services.easy_helpers import (
     resolve_root_path,
     short_path,
     open_path,
 )
 
-ROOT = Path(__file__).resolve().parent.parent
 DROP_VIDEOS_DIR = ROOT / "01_DROP_VIDEOS_HERE"
 IMAGE_EXTS = ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp")
 

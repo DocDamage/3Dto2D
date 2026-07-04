@@ -70,6 +70,81 @@ const GOAL_DEFAULTS = {
   }
 };
 
+const TILE_TRAINING_PRESETS = {
+  top_down_terrain: {
+    trigger: 'sakpix_tiles_terrain',
+    cell_size: 'auto',
+    max_samples_per_source: '32',
+    include_all: false,
+    base_caption: 'trained SakPix top-down terrain auto-tile, grass, dirt, stone path, edge and corner pieces',
+    manifest: 'Terrain preset: prioritizes floors, paths, cliffs, bridges, and ground sheets for a focused 16-tile auto-tile sheet.'
+  },
+  dungeon_edges: {
+    trigger: 'sakpix_tiles_dungeon',
+    cell_size: '128x128',
+    max_samples_per_source: '40',
+    include_all: false,
+    base_caption: 'trained SakPix dungeon tile set, stone floor, wall edge, corner, stair, shadowed top-down RPG tiles',
+    manifest: 'Dungeon preset: favors wall, floor, stair, edge, and corner sheets so generated tiles keep collision-friendly borders.'
+  },
+  town_roofs: {
+    trigger: 'sakpix_tiles_town',
+    cell_size: 'auto',
+    max_samples_per_source: '28',
+    include_all: true,
+    base_caption: 'trained SakPix town stage tile set, roof, wall, wood, stone path, cozy top-down RPG material tiles',
+    manifest: 'Town preset: includes broader structure and roof sheets because town packs often mix terrain, walls, roofs, and props.'
+  },
+  water_coast: {
+    trigger: 'sakpix_tiles_water',
+    cell_size: 'auto',
+    max_samples_per_source: '36',
+    include_all: false,
+    base_caption: 'trained SakPix water and coast auto-tile, shoreline edge, corner, bridge, animated-friendly top-down RPG tile',
+    manifest: 'Water preset: narrows captions around water, coast, bridge, edge, and corner cells for cleaner shoreline generations.'
+  }
+};
+
+function setTileTrainingField(form, name, value) {
+  const field = form?.querySelector(`[name="${name}"]`);
+  if (!field) return;
+  if (field.type === 'checkbox') {
+    field.checked = Boolean(value);
+  } else {
+    field.value = value;
+  }
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+  field.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function applyTileTrainingPreset(presetName) {
+  const preset = TILE_TRAINING_PRESETS[presetName];
+  const form = $('#tileTrainingDatasetForm');
+  if (!preset || !form) return;
+
+  setTileTrainingField(form, 'trigger', preset.trigger);
+  setTileTrainingField(form, 'cell_size', preset.cell_size);
+  setTileTrainingField(form, 'max_samples_per_source', preset.max_samples_per_source);
+  setTileTrainingField(form, 'include_all', preset.include_all);
+  setTileTrainingField(form, 'base_caption', preset.base_caption);
+
+  const manifest = $('#tileTrainingPreviewManifest');
+  if (manifest) {
+    clearNode(manifest);
+    const title = document.createElement('b');
+    title.textContent = '16-tile auto-tile sheet';
+    const body = document.createElement('span');
+    body.textContent = preset.manifest;
+    manifest.appendChild(title);
+    manifest.appendChild(body);
+  }
+
+  document.querySelectorAll('[data-tile-preset]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tilePreset === presetName);
+  });
+  toast(`Tile preset applied: ${presetName.replace(/_/g, ' ')}`);
+}
+
 function applyGoalDefaults(goalName) {
   const g = GOAL_DEFAULTS[goalName];
   if (!g) return;
@@ -90,6 +165,121 @@ function applyGoalDefaults(goalName) {
 
 let activeArchetypeTag = '';
 let currentArchetypes = [];
+let selectedArchetype = null;
+
+function archetypeInitials(arc) {
+  return String(arc.name || 'SF')
+    .split(/[\s/]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join('') || 'SF';
+}
+
+function archetypeGradient(arc) {
+  const tags = Array.isArray(arc.tags) ? arc.tags.join('|') : '';
+  const seed = `${arc.id || ''}|${arc.name || ''}|${tags}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+  const hue = Math.abs(hash) % 360;
+  return `linear-gradient(135deg, hsl(${hue} 78% 35% / .95), hsl(${(hue + 52) % 360} 80% 22% / .92))`;
+}
+
+function updateSelectedArchetypePanel(arc) {
+  selectedArchetype = arc || null;
+  const panel = $('#archetypeSelectedPanel');
+  const portrait = $('#archetypeSelectedPortrait');
+  const name = $('#archetypeSelectedName');
+  const description = $('#archetypeSelectedDescription');
+  const meta = $('#archetypeSelectedMeta');
+  const applyBtn = $('#applySelectedArchetypeBtn');
+  if (!panel || !portrait || !name || !description || !meta || !applyBtn) return;
+
+  clearNode(meta);
+  if (!arc) {
+    portrait.textContent = 'SF';
+    portrait.style.background = '';
+    name.textContent = 'Choose a visual card';
+    description.textContent = 'Pick an archetype to preview the character prompt, style hint, actions, directions, and palette guidance before applying it to Generate.';
+    applyBtn.disabled = true;
+    return;
+  }
+
+  portrait.textContent = archetypeInitials(arc);
+  portrait.style.background = archetypeGradient(arc);
+  name.textContent = arc.name || 'Untitled archetype';
+  description.textContent = arc.description || arc.character || 'No description provided.';
+  const chips = [
+    ['Actions', (arc.recommended_actions || []).join(', ') || 'custom'],
+    ['Directions', (arc.recommended_directions || []).join(', ') || 'custom'],
+    ['Palette', arc.palette_hint || 'project palette'],
+  ];
+  chips.forEach(([label, value]) => {
+    const chip = document.createElement('span');
+    const labelNode = document.createElement('b');
+    labelNode.textContent = label;
+    chip.appendChild(labelNode);
+    chip.append(` ${value}`);
+    meta.appendChild(chip);
+  });
+  applyBtn.disabled = false;
+  populateArchetypeCustomizePanel(arc);
+}
+
+function populateArchetypeCustomizePanel(arc) {
+  const panel = $('#archetypeCustomizePanel');
+  if (!panel) return;
+  const character = $('#archetypeCustomizeCharacter');
+  const style = $('#archetypeCustomizeStyle');
+  const actions = $('#archetypeCustomizeActions');
+  const directions = $('#archetypeCustomizeDirections');
+  if (!arc) {
+    if (character) character.value = '';
+    if (style) style.value = '';
+    if (actions) actions.value = '';
+    if (directions) directions.value = '';
+    return;
+  }
+  if (character) character.value = arc.character || '';
+  if (style) style.value = arc.style || '';
+  if (actions) actions.value = (arc.recommended_actions || []).join(',');
+  if (directions) directions.value = (arc.recommended_directions || []).join(',');
+}
+
+function archetypeCustomizeList(value) {
+  return String(value || '').split(',').map(item => item.trim()).filter(Boolean);
+}
+
+function customizedArchetypePayload(arc) {
+  if (!arc) return null;
+  const custom = {...arc};
+  const character = $('#archetypeCustomizeCharacter');
+  const style = $('#archetypeCustomizeStyle');
+  const actions = $('#archetypeCustomizeActions');
+  const directions = $('#archetypeCustomizeDirections');
+  if (character && character.value.trim()) custom.character = character.value.trim();
+  if (style && style.value.trim()) custom.style = style.value.trim();
+  const customActions = archetypeCustomizeList(actions?.value || '');
+  const customDirections = archetypeCustomizeList(directions?.value || '');
+  if (customActions.length) custom.recommended_actions = customActions;
+  if (customDirections.length) custom.recommended_directions = customDirections;
+  custom.customized = true;
+  return custom;
+}
+
+function setArchetypeProvenance(form, arc) {
+  const fields = {
+    archetype_id: arc.id || '',
+    archetype_name: arc.name || '',
+    archetype_tags: Array.isArray(arc.tags) ? arc.tags.join(',') : '',
+    archetype_palette_hint: arc.palette_hint || '',
+    archetype_customized: arc.customized ? 'true' : 'false'
+  };
+  Object.entries(fields).forEach(([name, value]) => {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (field) field.value = value;
+  });
+}
 
 async function loadArchetypes(search = '', tag = '') {
   try {
@@ -109,12 +299,27 @@ async function loadArchetypes(search = '', tag = '') {
     currentArchetypes.forEach(arc => {
       const card = document.createElement('article');
       card.className = 'archetype-card';
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', `Preview archetype ${arc.name || 'Untitled archetype'}`);
+      card.dataset.archetypeId = arc.id || arc.name || '';
+      card.style.setProperty('--archetype-glow', archetypeGradient(arc));
+
+      const portrait = document.createElement('div');
+      portrait.className = 'archetype-card-portrait';
+      portrait.style.background = archetypeGradient(arc);
+      portrait.textContent = archetypeInitials(arc);
+      card.appendChild(portrait);
       
       const head = document.createElement('div');
       head.className = 'archetype-card-head';
       const name = document.createElement('h4');
       name.textContent = arc.name;
       head.appendChild(name);
+      const family = document.createElement('span');
+      family.className = 'archetype-card-family';
+      family.textContent = (arc.tags || [])[0] || 'sprite';
+      head.appendChild(family);
       card.appendChild(head);
       
       const desc = document.createElement('p');
@@ -134,15 +339,45 @@ async function loadArchetypes(search = '', tag = '') {
       
       const actionsRow = document.createElement('div');
       actionsRow.className = 'archetype-card-actions';
-      actionsRow.innerHTML = `Actions: <code>${(arc.recommended_actions || []).length}</code>`;
+      const actionCount = document.createElement('span');
+      actionCount.append('Actions ');
+      appendText(actionCount, 'code', String((arc.recommended_actions || []).length));
+      const directionCount = document.createElement('span');
+      directionCount.append('Dirs ');
+      appendText(directionCount, 'code', String((arc.recommended_directions || []).length || 1));
+      const apply = document.createElement('button');
+      apply.className = 'mini primary archetype-apply-btn';
+      apply.type = 'button';
+      apply.textContent = 'Customize';
+      apply.addEventListener('click', (event) => {
+        event.stopPropagation();
+        updateSelectedArchetypePanel(arc);
+        document.querySelectorAll('.archetype-card.selected').forEach(el => el.classList.remove('selected'));
+        card.classList.add('selected');
+        $('#archetypeCustomizeCharacter')?.focus();
+      });
+      actionsRow.append(actionCount, directionCount, apply);
       card.appendChild(actionsRow);
       
       card.addEventListener('click', () => {
-        applyArchetype(arc);
+        updateSelectedArchetypePanel(arc);
+        document.querySelectorAll('.archetype-card.selected').forEach(el => el.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          updateSelectedArchetypePanel(arc);
+          document.querySelectorAll('.archetype-card.selected').forEach(el => el.classList.remove('selected'));
+          card.classList.add('selected');
+        }
       });
       
       grid.appendChild(card);
     });
+    updateSelectedArchetypePanel(currentArchetypes[0] || null);
+    const firstCard = grid.querySelector('.archetype-card');
+    if (firstCard) firstCard.classList.add('selected');
   } catch (e) {
     console.error('Failed to load archetypes:', e);
   }
@@ -151,6 +386,7 @@ async function loadArchetypes(search = '', tag = '') {
 function applyArchetype(arc) {
   const form = $('#generateForm');
   if (!form) return;
+  setArchetypeProvenance(form, arc);
   
   if (arc.character !== undefined && form.querySelector('[name="character"]')) {
     form.querySelector('[name="character"]').value = arc.character;
@@ -167,11 +403,22 @@ function applyArchetype(arc) {
   if (arc.recommended_directions && form.querySelector('[name="default_directions"]')) {
     form.querySelector('[name="default_directions"]').value = arc.recommended_directions.join(',');
   }
+  if (arc.recommended_actions && arc.recommended_actions.length && form.querySelector('[name="sprite_action"]')) {
+    form.querySelector('[name="sprite_action"]').value = arc.recommended_actions[0];
+  }
+  if (arc.recommended_directions && arc.recommended_directions.length && form.querySelector('[name="direction"]')) {
+    form.querySelector('[name="direction"]').value = arc.recommended_directions[0];
+  }
+  if (arc.palette_hint && form.querySelector('[name="pixel_cleanup"]')) {
+    form.querySelector('[name="pixel_cleanup"]').checked = true;
+  }
+  if (typeof refreshGeneratePromptPreview === 'function') refreshGeneratePromptPreview();
+  updateSelectedArchetypePanel(arc);
   
   const modal = $('#recipesModal');
   if (modal) modal.classList.add('hidden');
   
-  toast(`Applied archetype: ${arc.name}`);
+  toast(arc.customized ? `Applied customized archetype: ${arc.name}` : `Applied archetype: ${arc.name}`);
 }
 
 function renderArchetypeTags() {
@@ -179,7 +426,7 @@ function renderArchetypeTags() {
   if (!tagsContainer) return;
   clearNode(tagsContainer);
   
-  const commonTags = ['all', 'human', 'monster', 'magic', 'melee', 'ranged', 'cyberpunk', 'sci-fi', 'animal'];
+  const commonTags = ['all', 'sakpix', 'trained', 'human', 'npc', 'magic', 'melee', 'ranged', 'cyberpunk', 'sci-fi'];
   commonTags.forEach(tag => {
     const pill = document.createElement('div');
     pill.className = 'recipe-tag-pill' + (activeArchetypeTag === tag || (tag === 'all' && !activeArchetypeTag) ? ' active' : '');
@@ -330,6 +577,17 @@ function initPresetBindings() {
   if (backdrop && modal) {
     backdrop.addEventListener('click', () => modal.classList.add('hidden'));
   }
+
+  const applySelectedBtn = $('#applySelectedArchetypeBtn');
+  if (applySelectedBtn) {
+    applySelectedBtn.addEventListener('click', () => {
+      if (selectedArchetype) applyArchetype(customizedArchetypePayload(selectedArchetype));
+    });
+  }
+  const resetCustomizeBtn = $('#resetArchetypeCustomizeBtn');
+  if (resetCustomizeBtn) {
+    resetCustomizeBtn.addEventListener('click', () => populateArchetypeCustomizePanel(selectedArchetype));
+  }
   
   // Bind search input filter
   const searchInput = $('#recipeSearchInput');
@@ -421,6 +679,10 @@ function initPresetBindings() {
   if ($('#btnGoalIsometric')) $('#btnGoalIsometric').addEventListener('click', () => applyGoalDefaults('isometric'));
   if ($('#btnGoalLocalFast')) $('#btnGoalLocalFast').addEventListener('click', () => applyGoalDefaults('local_fast'));
   if ($('#btnGoalLocalQuality')) $('#btnGoalLocalQuality').addEventListener('click', () => applyGoalDefaults('local_quality'));
+
+  document.querySelectorAll('[data-tile-preset]').forEach(btn => {
+    btn.addEventListener('click', () => applyTileTrainingPreset(btn.dataset.tilePreset));
+  });
 }
 
 if (window.onSpriteForgeReady) {

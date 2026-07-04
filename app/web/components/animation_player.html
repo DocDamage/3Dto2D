@@ -1,0 +1,78 @@
+<section class="view animation-player-view" id="view-animation_player">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Sprite Playback</p>
+      <h2>Animation Player</h2>
+      <p class="description">Inspect sprite timing, onion skins, frame markers, and playback scale from sheet metadata.</p>
+    </div>
+    <div class="button-row">
+      <button class="mini" type="button" id="animationRefreshBtn">Refresh sprites</button>
+      <button class="mini" type="button" id="animationCopyFrameBtn">Copy frame</button>
+      <button class="mini primary" type="button" id="animationExportWebmBtn">Record WebM</button>
+      <span class="animation-export-status" id="animationExportStatus">Exports ready after a sprite is loaded.</span>
+    </div>
+  </div>
+
+  <section class="animation-player-shell">
+    <aside class="animation-player-sidebar card">
+      <label>Sprite output
+        <select id="animationSpriteSelect">
+          <option value="">Select a sprite output</option>
+        </select>
+      </label>
+      <div class="animation-meta-grid">
+        <div><b id="animationMetaFrames">-</b><span>frames</span></div>
+        <div><b id="animationMetaFps">-</b><span>fps</span></div>
+        <div><b id="animationMetaSize">-</b><span>cell</span></div>
+      </div>
+
+      <div class="animation-control-stack">
+        <div class="button-row">
+          <button class="mini" type="button" id="animationPrevBtn">Prev</button>
+          <button class="mini primary" type="button" id="animationPlayBtn">Play</button>
+          <button class="mini" type="button" id="animationNextBtn">Next</button>
+        </div>
+        <label>Speed
+          <input id="animationSpeedSlider" type="range" min="0.25" max="4" step="0.25" value="1" />
+          <span id="animationSpeedLabel">1x</span>
+        </label>
+        <label>Zoom
+          <input id="animationZoomSlider" type="range" min="1" max="12" step="0.5" value="4" />
+          <span id="animationZoomLabel">4x</span>
+        </label>
+        <label>Onion skins
+          <input id="animationOnionSlider" type="range" min="0" max="4" step="1" value="1" />
+          <span id="animationOnionLabel">1</span>
+        </label>
+        <label>Background
+          <select id="animationBackgroundSelect">
+            <option value="checker">Checkerboard</option>
+            <option value="dark">Dark solid</option>
+            <option value="light">Light solid</option>
+            <option value="magenta">Magenta key</option>
+            <option value="custom">Custom image</option>
+          </select>
+        </label>
+        <label class="animation-custom-bg-field hidden" id="animationCustomBackgroundField">Custom background path
+          <input id="animationCustomBackgroundInput" placeholder="output/backgrounds/test_room.png or /file/..." />
+        </label>
+        <label class="switch"><input type="checkbox" id="animationLoopToggle" checked /><span></span>Loop playback</label>
+      </div>
+    </aside>
+
+    <section class="animation-player-stage card">
+      <div class="animation-canvas-wrap checker" id="animationCanvasWrap">
+        <canvas id="animationCanvas" width="256" height="256"></canvas>
+      </div>
+      <div class="animation-timeline">
+        <div class="animation-frame-readout">
+          <b id="animationFrameLabel">Frame 1 / 1</b>
+          <span id="animationDurationLabel">0 ms</span>
+        </div>
+        <input id="animationFrameScrubber" type="range" min="0" max="0" value="0" step="1" />
+        <div id="animationHitFrameLegend" class="animation-hit-frame-legend hidden">Hit frames are highlighted on the timeline.</div>
+        <div id="animationTimelineTicks" class="animation-timeline-ticks"></div>
+      </div>
+    </section>
+  </section>
+</section>

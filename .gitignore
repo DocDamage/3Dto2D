@@ -4,6 +4,8 @@ __pycache__/
 .pytest_cache/
 
 # Virtual environments and local install markers
+.env
+app/.env
 .venv/
 app/.venv/
 app/.deps_installed_v12
@@ -11,12 +13,14 @@ app/.deps_installed_v12
 app/*.egg-info/
 
 # Local logs and generated outputs
+output/
 app/logs/
 app/output/
 app/releases/
 app/input/uploaded_videos/
 app/state/
 app/config/*.bak_*
+dist_release.zip
 
 
 # External dependencies and model payloads are installed/downloaded locally.

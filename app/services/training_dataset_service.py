@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import base64
 import json
 import time
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from PIL import Image
 
-from spriteforge_utils import IMAGE_SUFFIXES, safe_name
-
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import IMAGE_SUFFIXES, ROOT, safe_name
 DEFAULT_OUTPUT = ROOT / "output" / "training_datasets"
 
 ACTION_WORDS = {
@@ -142,6 +142,14 @@ For Wan2.2 animation LoRA training, use this dataset as source material after co
     (output_dir / "README_TRAINING_DATASET.md").write_text(notes, encoding="utf-8")
 
 
+def _thumbnail_data_uri(img: Image.Image, size: int = 96) -> str:
+    thumb = img.convert("RGBA").copy()
+    thumb.thumbnail((size, size), Image.Resampling.NEAREST)
+    buffer = BytesIO()
+    thumb.save(buffer, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
 def build_training_dataset(
     source_dir: Path | str,
     output_dir: Path | str,
@@ -212,6 +220,62 @@ def build_training_dataset(
     print(f"Training dataset: {out}")
     print(f"Samples: {len(samples)} from {len(source_images)} source images")
     return manifest
+
+
+def preview_training_dataset(
+    source_dir: Path | str,
+    trigger: str = "sakpix_style",
+    base_caption: str = "premium pixel art RPG character",
+    cell_width: Optional[int] = None,
+    cell_height: Optional[int] = None,
+    cell_size: Optional[str] = None,
+    limit: int = 12,
+) -> Dict[str, Any]:
+    source = Path(source_dir).resolve()
+    if not source.exists() or not source.is_dir():
+        raise FileNotFoundError(f"Source folder not found: {source}")
+
+    cw, ch = _parse_cell_size(cell_size, cell_width, cell_height)
+    source_images = _image_paths(source)
+    preview_samples: List[Dict[str, Any]] = []
+    sample_count = 0
+    action_counts: Dict[str, int] = {}
+    direction_counts: Dict[str, int] = {}
+
+    for source_image in source_images:
+        action, direction, tags = _infer_tags(source_image)
+        for frame_index, frame in _frames_from_image(source_image, cw, ch):
+            if _is_blank(frame):
+                continue
+            sample_count += 1
+            action_counts[action or "unknown"] = action_counts.get(action or "unknown", 0) + 1
+            direction_counts[direction or "unknown"] = direction_counts.get(direction or "unknown", 0) + 1
+            if len(preview_samples) < max(1, min(48, int(limit))):
+                preview_samples.append({
+                    "source": str(source_image),
+                    "source_name": source_image.name,
+                    "frame_index": frame_index,
+                    "size": f"{frame.width}x{frame.height}",
+                    "thumbnail_data_uri": _thumbnail_data_uri(frame),
+                    "caption": _caption(trigger, base_caption, action, direction, tags),
+                    "action": action,
+                    "direction": direction,
+                })
+
+    return {
+        "ok": True,
+        "schema": "spriteforge.training_dataset_preview.v1",
+        "source_dir": str(source),
+        "trigger": trigger,
+        "base_caption": base_caption,
+        "cell_size": f"{cw}x{ch}" if cw and ch else None,
+        "source_image_count": len(source_images),
+        "estimated_sample_count": sample_count,
+        "action_counts": action_counts,
+        "direction_counts": direction_counts,
+        "samples": preview_samples,
+        "write_performed": False,
+    }
 
 
 def default_output_dir(name: str = "sakpix_dataset") -> Path:

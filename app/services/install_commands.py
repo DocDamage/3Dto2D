@@ -11,8 +11,14 @@ from typing import List, Optional
 
 from services.shell_service import ensure_venv, git_clone_or_pull, install_requirements, run
 from services.model_install_service import manifests_for_install_tier
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent.parent
+WAN_VIDEO_CUSTOM_NODES = [
+    ("https://github.com/kijai/ComfyUI-WanVideoWrapper.git", "ComfyUI-WanVideoWrapper"),
+    ("https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git", "ComfyUI-VideoHelperSuite"),
+    ("https://github.com/cubiq/ComfyUI_IPAdapter_plus.git", "ComfyUI_IPAdapter_plus"),
+    ("https://github.com/talesofai/ComfyUI-Wan-VACE-Prep.git", "ComfyUI-Wan-VACE-Prep"),
+]
 
 def venv_python(venv: Path) -> Path:
     from spriteforge_commands import venv_python as _vp
@@ -163,10 +169,7 @@ def cmd_install_nodes(args: argparse.Namespace) -> None:
     cn = cfg.comfy_dir / "custom_nodes"
     cn.mkdir(parents=True, exist_ok=True)
     py = comfy_python(cfg)
-    nodes = [
-        ("https://github.com/kijai/ComfyUI-WanVideoWrapper.git", cn / "ComfyUI-WanVideoWrapper"),
-        ("https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git", cn / "ComfyUI-VideoHelperSuite"),
-    ]
+    nodes = [(url, cn / name) for url, name in WAN_VIDEO_CUSTOM_NODES]
     for url, dest in nodes:
         install_node(url, dest, py)
         if dest.name == "ComfyUI-WanVideoWrapper":

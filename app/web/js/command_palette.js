@@ -112,6 +112,20 @@
         meta.appendChild(confirmTag);
       }
 
+      if (cmd.risk_level) {
+        const riskTag = document.createElement('span');
+        riskTag.className = `cmd-risk-tag risk-${cmd.risk_level}`;
+        riskTag.textContent = cmd.risk_level;
+        meta.appendChild(riskTag);
+      }
+
+      if (cmd.shortcut) {
+        const shortcutTag = document.createElement('span');
+        shortcutTag.className = 'cmd-meta-tag';
+        shortcutTag.textContent = cmd.shortcut;
+        meta.appendChild(shortcutTag);
+      }
+
       item.appendChild(meta);
 
       // Click handler
@@ -150,7 +164,7 @@
     }
 
     if (cmd.requires_confirmation) {
-      const confirmRun = confirm(`Are you sure you want to run: "${cmd.label}"?\n\n${cmd.description}`);
+      const confirmRun = confirm(cmd.confirmation_message || `Are you sure you want to run: "${cmd.label}"?\n\n${cmd.description}`);
       if (!confirmRun) return;
     }
 
@@ -208,6 +222,7 @@
     const scored = allCommands.map(cmd => {
       const label = cmd.label.toLowerCase();
       const desc = (cmd.description || '').toLowerCase();
+      const haystack = [cmd.id, cmd.view, cmd.shortcut, cmd.endpoint].filter(Boolean).join(' ').toLowerCase();
       let score = 0;
       
       // Match weighting
@@ -215,12 +230,14 @@
       else if (label.startsWith(q)) score += 80;
       else if (label.includes(q)) score += 60;
       else if (desc.includes(q)) score += 40;
+      else if (haystack.includes(q)) score += 30;
       
       // Token matches
       let tokensMatched = 0;
       tokens.forEach(tok => {
         if (label.includes(tok)) { score += 20; tokensMatched++; }
         else if (desc.includes(tok)) { score += 10; tokensMatched++; }
+        else if (haystack.includes(tok)) { score += 8; tokensMatched++; }
       });
       
       return { cmd, score };

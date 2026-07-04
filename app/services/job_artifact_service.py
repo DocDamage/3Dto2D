@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 def command_sprite_folder(root: Path, cmd: List[str], started_at: str = "") -> str:
@@ -23,7 +26,8 @@ def _explicit_output_folder(root: Path, cmd: List[str]) -> str:
                 if path.is_absolute():
                     return str(path.relative_to(root)).replace("\\", "/")
                 return str(out_val).replace("\\", "/")
-    except Exception:
+    except Exception as exc:
+        logger.warning("Could not resolve explicit sprite output from command %s: %s", cmd, exc)
         return ""
     return ""
 
@@ -37,5 +41,6 @@ def _newest_sheet_folder(root: Path, started_at: str) -> str:
             default=None,
         )
         return str(candidate.parent.relative_to(root)).replace("\\", "/") if candidate else ""
-    except Exception:
+    except Exception as exc:
+        logger.warning("Could not find newest sprite sheet folder under %s: %s", root, exc)
         return ""

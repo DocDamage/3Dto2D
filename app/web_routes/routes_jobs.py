@@ -16,8 +16,11 @@ from web_helpers import (
     _list_packs, _list_releases, _list_quality_reports, _list_references,
     _project_asset_counts, _project_workspace, _experiment_rows
 )
+from services.lora_training_progress_service import summarize_lora_training_progress
 
 routes_jobs = Blueprint("routes_jobs", __name__)
+
+ARCHETYPE_PROVENANCE_SCHEMA = "spriteforge.archetype_generation_provenance.v1"
 
 
 def _job_status_payload(job, running: bool):
@@ -26,6 +29,28 @@ def _job_status_payload(job, running: bool):
     job_status = dict(job)
     job_status["running"] = running
     return update_job_timing(job_status)
+
+
+def _archetype_generation_provenance(payload: dict) -> dict | None:
+    archetype_id = str(payload.get("archetype_id") or "").strip()
+    archetype_name = str(payload.get("archetype_name") or "").strip()
+    if not archetype_id and not archetype_name:
+        return None
+    tags = [
+        tag.strip()
+        for tag in str(payload.get("archetype_tags") or "").split(",")
+        if tag.strip()
+    ]
+    customized_raw = str(payload.get("archetype_customized") or "").strip().lower()
+    return {
+        "schema": ARCHETYPE_PROVENANCE_SCHEMA,
+        "id": archetype_id,
+        "name": archetype_name,
+        "tags": tags,
+        "palette_hint": str(payload.get("archetype_palette_hint") or "").strip(),
+        "customized": customized_raw in {"1", "true", "yes", "on"},
+        "source": "generate_view_visual_card",
+    }
 
 
 @routes_jobs.route("/api/job", methods=["GET"])
@@ -192,9 +217,16 @@ def run_action():
                 "existing_sprite_name", "existing_sprite_actions", "existing_sprite_directions",
                 "dataset_dir", "model_family", "trainer", "base_model", "trainer_dir",
                 "resolution", "max_train_steps", "learning_rate", "network_dim", "repeats",
+                "max_samples_per_source", "include_all",
+                "pack_mode", "segment_parts", "lora_name", "interpolation_engine"
             ]
             if payload.get(key) is not None
         }
+        archetype_provenance = _archetype_generation_provenance(payload)
+        if archetype_provenance:
+            metadata["archetype"] = archetype_provenance
+            metadata["archetype_id"] = archetype_provenance["id"]
+            metadata["archetype_name"] = archetype_provenance["name"]
         if action == "generate_sprite":
             metadata["eta"] = estimate_job_eta(metadata)
             metadata["preflight"] = preflight_generation(
@@ -260,6 +292,18 @@ def retry_safe_job():
     ok, job_id_or_err = JobService.start_job(title, cmd, metadata=retry_payload)
     active = JobService.get_job(job_id_or_err) if ok else None
     return jsonify({"ok": ok, "message": "Safer retry started." if ok else job_id_or_err, "job": active, "payload": retry_payload}), (200 if ok else 409)
+
+@routes_jobs.route("/api/lora/progress", methods=["GET"])
+def get_lora_progress():
+    run_path = str(request.args.get("path") or "").strip()
+    if not run_path:
+        return jsonify({"ok": False, "message": "path is required"}), 400
+    try:
+        return jsonify(summarize_lora_training_progress(run_path, root=ROOT))
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
 
 @routes_jobs.route("/api/launch_comfy", methods=["POST"])
 def launch_comfy():

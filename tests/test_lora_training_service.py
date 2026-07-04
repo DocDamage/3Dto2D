@@ -89,6 +89,21 @@ def test_lora_training_run_prepares_kohya_sdxl_files(tmp_path):
     assert (output / "README_LORA_TRAINING.md").exists()
 
 
+def test_lora_training_recommends_vram_safe_defaults():
+    from services.lora_training_service import recommend_lora_training_defaults
+
+    low = recommend_lora_training_defaults(8, "sdxl")
+    high = recommend_lora_training_defaults(24, "flux")
+
+    assert low["schema"] == "spriteforge.lora_training_defaults.v1"
+    assert low["tier"] == "sdxl_low_vram"
+    assert low["recommendation"]["resolution"] == 512
+    assert low["recommendation"]["network_dim"] == 8
+    assert high["tier"] == "flux_high_vram"
+    assert high["recommendation"]["resolution"] == 1024
+    assert high["recommendation"]["batch_size"] == 1
+
+
 def test_lora_training_run_prepares_flux_ai_toolkit_files(tmp_path):
     from services.lora_training_service import build_lora_training_run
 
@@ -120,6 +135,48 @@ def test_lora_training_run_prepares_flux_ai_toolkit_files(tmp_path):
     assert "name: sakpix_flux" in config
     assert "model_family: flux" in config
     assert str((dataset / "images").resolve()).replace("\\", "\\\\") in config
+
+
+def test_lora_training_run_external_run_executes_without_native_only_when_trainer_available(tmp_path, monkeypatch):
+    from services.lora_training_service import build_lora_training_run
+
+    dataset = _write_dataset(tmp_path)
+    output = tmp_path / "runs" / "external_run"
+    trainer_root = tmp_path / "kohya_ss"
+    trainer_script_root = trainer_root / "sd-scripts"
+    trainer_script_root.mkdir(parents=True)
+    (trainer_script_root / "sdxl_train_network.py").write_text("print('ok')", encoding="utf-8")
+    python_dir = trainer_root / ".venv" / "Scripts"
+    python_dir.mkdir(parents=True)
+    (python_dir / "python.exe").write_text("", encoding="utf-8")
+    calls = []
+
+    def fake_run(command, cwd=None, env=None, check=False):
+        calls.append({"command": list(command), "cwd": str(cwd or "")})
+        class Result:
+            returncode = 0
+        return Result()
+
+    monkeypatch.setattr("services.lora_training_service.subprocess.run", fake_run)
+
+    result = build_lora_training_run(
+        dataset_dir=dataset,
+        output_dir=output,
+        name="external_run",
+        model_family="sdxl",
+        trainer="kohya",
+        trainer_dir=trainer_root,
+        base_model="stabilityai/stable-diffusion-xl-base-1.0",
+        trigger="sakpix_style",
+        mode="run",
+        native_only=False,
+    )
+
+    assert result["runtime_backend"] == "external"
+    assert result["native_only"] is False
+    assert result["train_command"][0].endswith("python.exe") or result["train_command"][0].endswith("python")
+    assert result["train_command"][1:3] == ["sdxl_train_network.py", "--config_file"]
+    assert calls, "Expected external training command execution path to be hit."
 
 
 def test_lora_training_run_uses_nested_kohya_sd_scripts_workdir(tmp_path):
@@ -203,3 +260,54 @@ def test_lora_training_action_builds_unified_command(tmp_path):
         "C:/tools/kohya_ss",
         "--run",
     ]
+
+
+def test_lora_training_native_run_executes_without_external_trainer(tmp_path):
+    from services.lora_training_service import build_lora_training_run
+    from services.trained_lora_registry_service import load_registry
+
+    dataset = _write_dataset(tmp_path)
+    output = tmp_path / "runs" / "native_run"
+    registry = tmp_path / "trained_loras.json"
+
+    result = build_lora_training_run(
+        dataset_dir=dataset,
+        output_dir=output,
+        name="native_run",
+        model_family="sdxl",
+        trainer="kohya",
+        trainer_dir=tmp_path / "missing_external_trainer",
+        base_model="stabilityai/stable-diffusion-xl-base-1.0",
+        trigger="sakpix_style",
+        mode="run",
+        native_only=True,
+        registry_path=registry,
+    )
+
+    assert result["runtime_backend"] == "native"
+    native_artifact = Path(result["native_artifact"])
+    assert native_artifact.exists()
+
+    artifact_data = json.loads(native_artifact.read_text(encoding="utf-8"))
+    assert artifact_data["schema"] == "spriteforge.native_lora.v1"
+    assert artifact_data["trigger"] == "sakpix_style"
+    assert artifact_data["sample_count"] == 1
+    assert artifact_data["resolution"] == 768
+    assert artifact_data["style_metadata"]["base_caption"] == "premium pixel art RPG character"
+    assert artifact_data["dataset_provenance"]["dataset_dir"] == str(dataset.resolve())
+
+    run_manifest = json.loads((output / "training_run.json").read_text(encoding="utf-8"))
+    assert run_manifest["runtime_backend"] == "native"
+    assert run_manifest["native_only"] is True
+
+    registry_data = load_registry(registry_path=registry)
+    assert registry_data["defaults"]["character_style"]["filename"] == native_artifact.name
+    metadata = registry_data["defaults"]["character_style"]["metadata"]
+    assert metadata["schema"] == "spriteforge.trained_lora_metadata.v1"
+    assert metadata["runtime_backend"] == "native"
+    assert metadata["resolution"] == 768
+    assert metadata["sample_count"] == 1
+    assert metadata["style_metadata"]["base_caption"] == "premium pixel art RPG character"
+    assert metadata["dataset_provenance"]["dataset_dir"] == str(dataset.resolve())
+    assert metadata["token_profile"]
+    assert metadata["palette_profile"]

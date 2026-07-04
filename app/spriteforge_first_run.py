@@ -15,9 +15,8 @@ from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 import tkinter as tk
 
-from spriteforge_utils import get_app_version, apply_dark_theme
+from spriteforge_utils import ROOT, get_app_version, apply_dark_theme
 
-ROOT = Path(__file__).resolve().parent
 PY = str((ROOT / ".venv" / "Scripts" / "python.exe") if os.name == "nt" else (ROOT / ".venv" / "bin" / "python"))
 if not Path(PY).exists():
     PY = sys.executable

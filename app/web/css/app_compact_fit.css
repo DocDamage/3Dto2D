@@ -1,0 +1,991 @@
+/* App-wide compact fit layer.
+   Goal: keep normal desktop workflows inside the viewport and make scrolling a last resort. */
+
+@media (min-width: 761px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .rail {
+    bottom: 8px;
+    gap: 3px;
+    left: 8px;
+    overflow: hidden;
+    padding: 10px;
+    position: fixed !important;
+    top: 8px;
+    width: 256px;
+  }
+
+  .brand {
+    margin-bottom: 2px;
+    padding-bottom: 5px;
+  }
+
+  .brand img {
+    height: 28px;
+    width: 28px;
+  }
+
+  .brand strong {
+    font-size: 14px;
+  }
+
+  .brand span,
+  .rail-card {
+    display: none;
+  }
+
+  .nav-group-heading {
+    font-size: 9px;
+    padding: 5px 10px 1px;
+  }
+
+  .nav {
+    border-radius: 7px;
+    font-size: 12px;
+    gap: 8px;
+    height: 29px;
+    padding: 0 9px;
+  }
+
+  .nav-create-sprite-btn {
+    height: 32px;
+    margin-bottom: 5px;
+  }
+
+  .rail-footer {
+    gap: 5px;
+    padding-top: 6px;
+  }
+
+  .rail-footer .mode-toggle-container {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .rail-footer .mode-buttons {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+  }
+
+  .mode-btn {
+    height: 24px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .shell {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin-left: 282px;
+    margin-top: 0 !important;
+    max-width: none;
+    overflow: hidden;
+    padding: 8px 14px 12px;
+    width: calc(100vw - 282px);
+  }
+
+  body.rail-collapsed .shell {
+    margin-left: 84px !important;
+    width: calc(100vw - 84px);
+  }
+
+  .topbar {
+    flex: 0 0 auto;
+    gap: 8px !important;
+    margin-bottom: 6px !important;
+    padding: 4px 0 6px !important;
+  }
+
+  .topbar h1,
+  .topbar-title-row h1 {
+    font-size: 18px !important;
+  }
+
+  .topbar-controls,
+  .status-row,
+  .project-strip {
+    gap: 5px !important;
+  }
+
+  .chip {
+    border-radius: 8px;
+    font-size: 10px;
+    line-height: 1.1;
+    padding: 4px 7px;
+  }
+
+  .project-strip input,
+  .project-strip select {
+    height: 25px !important;
+  }
+
+  .global-task-progress {
+    flex: 0 0 auto;
+    gap: 7px;
+    grid-template-columns: minmax(140px, 1fr) minmax(100px, 260px) 40px;
+    margin: 0 0 6px;
+    padding: 6px 8px;
+  }
+
+  .global-task-copy b {
+    font-size: 12px;
+  }
+
+  .global-task-copy span,
+  #globalProgressPct {
+    font-size: 10px;
+  }
+
+  .view.active,
+  .subview-pane.active {
+    max-height: calc(100vh - 112px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #view-tasks-parent.view.active,
+  #view-quality-parent.view.active {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #view-training.view.active {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #view-training .training-tabs {
+    flex: 0 0 auto;
+    gap: 5px;
+    margin-bottom: 7px;
+    overflow: hidden;
+  }
+
+  #view-training .training-tab-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  #view-training .training-tab-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #view-training .training-tab-panel.active {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  #view-training .training-primary-grid,
+  #view-training .training-run-grid {
+    margin-top: 0;
+  }
+
+  #view-training .training-lora-form {
+    max-width: none;
+  }
+
+  #view-dashboard.view.active {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #view-dashboard .dashboard-tabs {
+    flex: 0 0 auto;
+    gap: 5px;
+    margin-bottom: 7px;
+    overflow: hidden;
+  }
+
+  #view-dashboard .dashboard-tab-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  #view-dashboard .dashboard-tab-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #view-dashboard .dashboard-tab-panel.active {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  #view-dashboard .quick-actions-grid,
+  #view-dashboard .dashboard-actions,
+  #view-dashboard .dashboard-workspace-grid {
+    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  }
+
+  #view-dashboard .dashboard-action-card {
+    border-radius: 9px;
+    gap: 8px;
+    min-height: 0;
+    padding: 10px;
+  }
+
+  #view-dashboard .dashboard-action-card b {
+    font-size: 13px;
+  }
+
+  #view-dashboard .dashboard-action-card small {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  #view-dashboard .dashboard-action-icon {
+    height: 26px;
+    width: 26px;
+  }
+
+  #view-dashboard .onboarding-card {
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px;
+  }
+
+  #view-dashboard .dashboard-onboarding-copy h3 {
+    font-size: 14px;
+    margin-bottom: 3px;
+  }
+
+  #view-dashboard .dashboard-onboarding-copy p:not(.eyebrow) {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  #view-dashboard .dashboard-activity-grid {
+    gap: 8px;
+    grid-template-columns: minmax(0, 1.18fr) minmax(260px, .82fr);
+    height: 100%;
+    min-height: 0;
+  }
+
+  #view-dashboard .dashboard-recent-card,
+  #view-dashboard .dashboard-command-card,
+  #view-dashboard .dashboard-workspace-card {
+    min-height: 0;
+  }
+
+  #view-dashboard .gallery,
+  #view-dashboard .release-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  #view-dashboard #mini-log {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 80px;
+    overflow: auto;
+  }
+
+  #view-dashboard .dashboard-workspace-hub {
+    height: 100%;
+    min-height: 0;
+  }
+
+  #view-dashboard .dashboard-workspace-grid {
+    height: calc(100% - 28px);
+    min-height: 0;
+  }
+
+  #view-dashboard .dashboard-workspace-empty {
+    max-width: none;
+  }
+
+  .subview-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .view-tabs {
+    flex: 0 0 auto;
+    gap: 4px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+
+  .view-tab-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .section-title {
+    align-items: baseline;
+    display: flex;
+    gap: 8px;
+    margin: 0 0 6px;
+  }
+
+  .section-title h2 {
+    font-size: 22px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    margin-bottom: 0;
+  }
+
+  .card {
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .card-head {
+    margin-bottom: 7px;
+  }
+
+  .card h3 {
+    font-size: 15px;
+  }
+
+  .grid-2,
+  .split,
+  .bento {
+    gap: 8px;
+  }
+
+  .bento {
+    margin: 6px 0;
+  }
+
+  .stat-card b {
+    font-size: 18px;
+    margin: 3px 0 1px;
+  }
+
+  .hero {
+    min-height: 160px;
+  }
+
+  .hero h2 {
+    font-size: 28px;
+    margin: 6px 0;
+  }
+
+  .hero p {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .form,
+  .guided-fields {
+    gap: 8px;
+  }
+
+  .form label,
+  .guided-fields label {
+    gap: 4px;
+    font-size: 11px;
+    letter-spacing: .06em;
+  }
+
+  .form input,
+  .form textarea,
+  .form select,
+  .guided-fields input,
+  .guided-fields textarea,
+  .guided-fields select {
+    border-radius: 8px;
+    font-size: 13px;
+    padding: 7px 9px;
+  }
+
+  .button-row,
+  .hero-actions {
+    gap: 6px;
+    margin-top: 7px;
+  }
+
+  .primary,
+  .ghost,
+  .danger {
+    border-radius: 8px;
+    padding: 8px 12px;
+  }
+
+  .primary.big,
+  .danger.big {
+    height: 38px;
+  }
+
+  .mini {
+    border-radius: 7px;
+    padding: 5px 7px;
+  }
+
+  .dropzone {
+    min-height: 96px;
+    padding: 10px;
+  }
+
+  .drop-icon {
+    height: 34px;
+    width: 34px;
+  }
+
+  .terminal {
+    max-height: min(34vh, 240px);
+    min-height: 0;
+    overflow: hidden;
+    padding: 8px;
+  }
+
+  .terminal.small,
+  #activeTaskTerminal {
+    max-height: 130px;
+    min-height: 78px;
+  }
+
+  .table-card-head {
+    padding: 8px 10px;
+  }
+
+  .table-scroll {
+    max-height: min(38vh, 320px);
+    overflow: hidden;
+  }
+
+  .experiment-analytics {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .experiment-kpi-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .experiment-kpi-grid div,
+  .experiment-analytics-grid article,
+  .experiment-memory-grid article {
+    padding: 8px;
+  }
+
+  .experiment-kpi-grid b {
+    font-size: 18px;
+  }
+
+  .experiment-analytics-grid,
+  .experiment-memory-grid {
+    gap: 8px;
+  }
+
+  .data-table {
+    font-size: .74rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 4px 6px;
+  }
+
+  .empty-cell {
+    padding: 12px !important;
+  }
+
+  .release-list,
+  .queue-list,
+  .marketplace-grid,
+  .library-layout .release-list {
+    max-height: min(36vh, 320px);
+    overflow: hidden;
+  }
+
+  .release-item,
+  .queue-item,
+  .library-card {
+    border-radius: 8px;
+    gap: 4px;
+    padding: 7px 8px;
+  }
+
+  .setup-grid {
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+
+  .setup-card,
+  .setup-card.primary-install {
+    border-radius: 10px;
+    min-height: 84px;
+    padding: 10px;
+  }
+
+  .setup-card span {
+    height: 28px;
+    width: 28px;
+  }
+
+  .setup-card b {
+    font-size: 13px;
+    margin: 6px 0 2px;
+  }
+
+  .setup-card small {
+    line-height: 1.25;
+  }
+
+  .guide-shell {
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .guide-main {
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .guide-intro h2 {
+    font-size: 28px;
+  }
+
+  .guide-intro p {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .choice-grid,
+  .guide-steps {
+    gap: 7px;
+  }
+
+  .guide-step {
+    height: 46px;
+    padding: 0 9px;
+  }
+
+  .choice-card span {
+    min-height: 78px;
+    padding: 10px;
+  }
+
+  .quality-workbench,
+  .quality-left-rail,
+  .quality-right-stage {
+    min-height: 0;
+  }
+
+  #view-quality.subview-pane.active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+  }
+
+  #view-quality .section-title {
+    flex: 0 0 auto;
+  }
+
+  #view-quality .quality-workbench {
+    flex: 1 1 auto;
+    height: auto;
+    max-height: none;
+  }
+
+  #view-quality .quality-left-rail,
+  #view-quality .quality-right-stage {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  #view-quality .quality-live-preview {
+    max-height: none;
+    min-height: 0;
+  }
+
+  #view-quality .quality-live-preview-grid {
+    gap: 6px;
+  }
+
+  #view-quality .quality-preview-media {
+    min-height: 0;
+    max-height: min(14vh, 96px);
+  }
+
+  #view-quality .quality-right-stage .inspector-card,
+  #view-quality .quality-right-stage .inspector-stage,
+  #view-quality .quality-right-stage .inspector-canvas-container {
+    min-height: 0 !important;
+  }
+
+  #view-quality .quality-right-stage .inspector-card {
+    height: 100%;
+  }
+
+  #view-quality .quality-right-stage .inspector-canvas-container {
+    max-height: min(18vh, 124px);
+  }
+
+  #view-quality .frame-control {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .result-modal,
+  .wizard-modal {
+    padding: 8px;
+  }
+
+  .result-dialog {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 16px);
+    overflow: hidden;
+    padding: 10px;
+  }
+
+  .result-dialog-head {
+    margin-bottom: 8px;
+  }
+
+  .result-dialog-head h2 {
+    font-size: 19px;
+  }
+
+  .result-media-grid {
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .result-panel-head {
+    min-height: 34px;
+    padding: 7px 9px;
+  }
+
+  .result-media-frame {
+    height: min(40vh, 340px);
+    min-height: 150px;
+    overflow: hidden;
+  }
+
+  .result-actions {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  #recipesModal .result-dialog {
+    width: min(980px, calc(100vw - 16px)) !important;
+  }
+
+  .archetype-selected-panel {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 9px;
+    margin-bottom: 8px;
+  }
+
+  .archetype-selected-portrait {
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+
+  .archetype-selected-copy > p:not(.eyebrow),
+  .archetype-selected-meta {
+    display: none;
+  }
+
+  #archetypesGrid {
+    gap: 8px !important;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+    max-height: calc(100vh - 285px) !important;
+    overflow-y: auto !important;
+  }
+
+  .archetype-card {
+    border-radius: 8px;
+    gap: 6px;
+    padding: 9px;
+  }
+
+  .archetype-card p {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .command-palette-dialog {
+    margin: 0 auto;
+  }
+
+  .command-palette-results-style,
+  .recipe-suggestions {
+    max-height: min(42vh, 240px);
+    overflow: hidden;
+  }
+
+  .notification-drawer {
+    height: 100vh !important;
+  }
+
+  #notificationList {
+    height: calc(100vh - 58px) !important;
+    overflow: hidden !important;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 760px) {
+  .topbar > div:first-child {
+    display: none !important;
+  }
+
+  .shell {
+    padding-top: 6px;
+  }
+
+  .global-task-progress.idle,
+  .global-task-progress.done {
+    display: none;
+  }
+
+  .section-title h2 {
+    font-size: 20px;
+  }
+
+  .view.active,
+  .subview-pane.active {
+    max-height: calc(100vh - 76px);
+  }
+
+  #view-quality .quality-right-stage {
+    grid-template-rows: minmax(96px, .8fr) minmax(118px, 1fr);
+  }
+
+  #view-quality .quality-live-preview .description,
+  #view-quality .quality-right-stage .inspector-card .description {
+    display: none;
+  }
+
+  #view-dashboard .dashboard-action-card small,
+  #view-dashboard .dashboard-onboarding-copy p:not(.eyebrow) {
+    display: none;
+  }
+
+  #view-dashboard .onboarding-card {
+    align-items: center;
+  }
+
+  .wizard-header-title p,
+  .wizard-step-indicator span.indicator-label,
+  .guide-intro p,
+  .rail-footer .mode-label {
+    display: none !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1080px) {
+  .rail {
+    width: 68px;
+  }
+
+  .rail .brand div,
+  .rail .nav-label,
+  .rail .nav-group-heading,
+  .rail .rail-footer {
+    display: none !important;
+  }
+
+  .nav,
+  .nav-create-sprite-btn {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .shell {
+    margin-left: 92px;
+    width: calc(100vw - 92px);
+  }
+
+  #view-quality .quality-workbench {
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 761px) {
+  .wizard-container {
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    max-width: min(1120px, calc(100vw - 16px));
+  }
+
+  .wizard-header,
+  .wizard-footer {
+    padding: 10px 14px;
+  }
+
+  .wizard-stepper {
+    padding: 8px 28px;
+  }
+
+  .wizard-step-indicator {
+    gap: 3px;
+  }
+
+  .wizard-step-indicator .indicator-num {
+    height: 24px;
+    width: 24px;
+  }
+
+  .wizard-step-indicator:not(:last-child)::after {
+    top: 11px;
+  }
+
+  .wizard-body {
+    flex: 1 1 auto;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 12px;
+  }
+
+  .wizard-split-layout,
+  .wizard-summary-section {
+    gap: 12px;
+  }
+
+  .wizard-fields,
+  .wizard-reference-fields,
+  .wizard-preview-panel,
+  .wizard-animation-side,
+  .wizard-summary-card,
+  .wizard-preflight-list {
+    gap: 7px;
+  }
+
+  .wizard-fields input,
+  .wizard-fields select,
+  .wizard-fields textarea {
+    padding: 7px 9px;
+  }
+
+  .wizard-fields textarea {
+    max-height: 80px;
+  }
+
+  .wizard-reference-fields,
+  .wizard-preview-panel,
+  .wizard-action-group,
+  .wizard-direction-panel,
+  .wizard-cells-grid-visualizer,
+  .wizard-summary-card,
+  .wizard-preflight-container {
+    padding: 8px;
+  }
+
+  .wizard-preview-card,
+  .wiz-grid-container {
+    max-height: 120px;
+    overflow: hidden;
+  }
+
+  .wizard-step-heading {
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .wizard-step-heading h3 {
+    margin-bottom: 2px;
+  }
+
+  .wizard-step-heading p {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .wizard-pack-meter {
+    padding: 7px 9px;
+  }
+
+  .wizard-pack-meter b {
+    font-size: 18px;
+  }
+
+  .wizard-animation-layout {
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    margin-bottom: 8px;
+  }
+
+  .wizard-toolbar {
+    gap: 5px;
+    margin-bottom: 7px;
+  }
+
+  .wizard-action-groups {
+    gap: 8px;
+  }
+
+  .wizard-action-group {
+    gap: 5px;
+  }
+
+  .wizard-action-checkbox,
+  .wizard-direction-checkbox {
+    border-radius: 7px;
+    font-size: 11px;
+    min-height: 28px;
+    padding: 5px 7px;
+  }
+
+  .wizard-direction-grid,
+  .wizard-perspective-grid,
+  .wizard-sheet-stats {
+    gap: 5px;
+  }
+
+  .wizard-sheet-stats div {
+    padding: 7px 5px;
+  }
+
+  .wizard-summary-item {
+    padding-bottom: 4px;
+  }
+}
+
+@media (max-width: 760px) {
+  .shell,
+  .rail,
+  .wizard-body,
+  .result-dialog,
+  .table-scroll,
+  .release-list,
+  .queue-list {
+    overflow: visible;
+  }
+}

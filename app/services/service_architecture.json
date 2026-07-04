@@ -1,0 +1,117 @@
+{
+  "schema": "spriteforge.service_architecture.v1",
+  "domains": [
+    {
+      "name": "configuration",
+      "files": [
+        "config_model.py",
+        "config_service.py",
+        "schema_validation_service.py",
+        "startup_self_test_service.py"
+      ]
+    },
+    {
+      "name": "jobs-and-progress",
+      "files": [
+        "job_service.py",
+        "job_output_parser.py",
+        "job_artifact_service.py",
+        "websocket_service.py",
+        "oom_recovery_service.py"
+      ]
+    },
+    {
+      "name": "generation-runtime",
+      "files": [
+        "generation_commands.py",
+        "generation_intelligence.py",
+        "wan_generation_service.py",
+        "comfy_service.py",
+        "comfy_workflow_service.py",
+        "feature_capability_service.py"
+      ]
+    },
+    {
+      "name": "sprite-processing",
+      "files": [
+        "sprite_video_loader.py",
+        "sprite_processing_pipeline.py",
+        "sprite_chroma_alpha.py",
+        "sprite_alpha_tools.py",
+        "sprite_interpolation.py",
+        "sprite_temporal_smooth.py",
+        "sprite_temporal_matting.py",
+        "sprite_normal_map.py",
+        "sprite_sheet_service.py",
+        "sprite_qc_commands.py",
+        "sprite_service.py"
+      ]
+    },
+    {
+      "name": "project-assets",
+      "files": [
+        "project_service.py",
+        "project_palette_service.py",
+        "project_path_service.py",
+        "frame_repack_service.py",
+        "frame_status_service.py",
+        "audio_cue_service.py",
+        "preview_manifest_service.py",
+        "scene_compositor_service.py",
+        "state_machine_service.py",
+        "tilemap_service.py"
+      ]
+    },
+    {
+      "name": "training",
+      "files": [
+        "training_dataset_service.py",
+        "tile_training_dataset_service.py",
+        "lora_training_service.py",
+        "lora_training_progress_service.py",
+        "trained_lora_registry_service.py"
+      ]
+    },
+    {
+      "name": "exports-and-release",
+      "files": [
+        "animated_export_service.py",
+        "export_service.py",
+        "export_validation_service.py",
+        "final_service.py",
+        "godot_export_service.py",
+        "unity_export_service.py",
+        "unreal_export_service.py",
+        "skeletal_export_service.py"
+      ]
+    },
+    {
+      "name": "web-boundary",
+      "files": [
+        "web_helpers_cmd.py",
+        "web_helpers_library.py",
+        "web_helpers_listings.py",
+        "web_helpers_sprite_preview.py",
+        "web_helpers_versions.py",
+        "web_helpers_workspace.py",
+        "web_path_proxy.py",
+        "api_auth_service.py",
+        "rate_limit_service.py"
+      ]
+    },
+    {
+      "name": "infrastructure",
+      "files": [
+        "database_service.py",
+        "logging_service.py",
+        "notification_service.py",
+        "shell_service.py",
+        "open_path_service.py",
+        "plugin_manager.py",
+        "marketplace_service.py",
+        "cloud_hub_service.py",
+        "cloud_image_generation_service.py"
+      ]
+    }
+  ]
+}

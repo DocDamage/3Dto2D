@@ -186,10 +186,24 @@
       "note": "Reference image mode uses Wan 2.1 I2V 14B; prefer cloud or heavy offload."
     },
     "vace": {
-      "api_workflow": "workflows/user_exported_vace_reference_api.json",
+      "api_workflow": "workflows/wan21_vace_reference_api.json",
       "model": "wan2.1_vace_14B_fp16.safetensors",
-      "local_ok": false,
-      "note": "Placeholder: export a VACE API workflow from ComfyUI and point --workflow to it."
+      "local_ok": true,
+      "note": "VACE editing mode; edit videos/animations using mask guides."
+    },
+    "pixel_animate": {
+      "api_workflow": "workflows/wan22_ti2v_5b_pixel_animate_api.json",
+      "model": "wan2.2_ti2v_5B_fp16.safetensors",
+      "text_encoder": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "vae": "wan2.2_vae.safetensors",
+      "width": 832,
+      "height": 480,
+      "frames": 33,
+      "steps": 20,
+      "cfg": 5,
+      "shift": 8,
+      "local_ok": true,
+      "note": "Wan 2.2 Pixel Animate LoRA mode; loads the pixel-animate LoRA for direct retro generation."
     },
     "custom": {},
     "ti2v22": {
@@ -266,13 +280,13 @@
     "last_recommendation": {
       "tier": "wan22_5b",
       "profile": "wan22_5b_3060_best",
-      "wan_path": "Use Wan 2.2 TI2V 5B locally for best character quality. Treat I2V/VACE/14B as cloud jobs.",
+      "wan_path": "Use Wan 2.2 TI2V 5B locally for the best character quality your 12GB card can reasonably handle. Treat I2V/VACE/14B as cloud jobs.",
       "sprite_defaults": {
         "cell_size": "512x512",
         "fps": 12,
         "frames": 33
       }
     },
-    "last_applied_at": "2026-06-26 17:50:31"
+    "last_applied_at": "2026-07-03 15:51:51"
   }
 }

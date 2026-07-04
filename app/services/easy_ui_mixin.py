@@ -1,24 +1,26 @@
 from __future__ import annotations
 
 import json
+import logging
 import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 from pathlib import Path
 from typing import Callable, Optional
 
-from spriteforge_utils import load_json
+from spriteforge_utils import ROOT, load_json
 from services.easy_helpers import (
     resolve_root_path,
     short_path,
     open_path,
+    parse_progress_percent,
 )
 
-ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config" / "spriteforge_config.json"
 PRESETS_PATH = ROOT / "config" / "easy_presets.json"
 DROP_VIDEOS_DIR = ROOT / "01_DROP_VIDEOS_HERE"
 IMAGE_EXTS = ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp")
+logger = logging.getLogger(__name__)
 
 class EasyUiMixin:
     def _build_ui(self) -> None:
@@ -36,6 +38,8 @@ class EasyUiMixin:
         right_header.grid(row=0, column=1, rowspan=2, sticky="e")
         self.busy_label = ttk.Label(right_header, text="Ready", anchor="e")
         self.busy_label.pack(side="top", anchor="e")
+        self.progress_label = ttk.Label(right_header, text="Progress: idle", anchor="e")
+        self.progress_label.pack(side="top", anchor="e")
         self.progress_bar = ttk.Progressbar(right_header, orient="horizontal", mode="determinate", length=200)
         self.progress_bar.pack(side="top", fill="x", pady=(4, 0))
 
@@ -89,12 +93,14 @@ class EasyUiMixin:
 
         quick = self.section(tab, "Normal user path", 0, 0, 2, "ew")
         ttk.Label(quick, text="Use these buttons from left to right. The first full setup downloads large model files.").grid(row=0, column=0, columnspan=6, sticky="w", pady=(0, 8))
+        ttk.Label(quick, text="Easy Mode modernization: Option A active - polished Tkinter shell with progress, preview, and Web Studio handoff.").grid(row=3, column=0, columnspan=6, sticky="w", pady=(4, 0))
         ttk.Button(quick, text="1. Set Up Everything", command=self.setup_everything).grid(row=1, column=0, sticky="ew", padx=4, pady=4)
         ttk.Button(quick, text="2. Run Health Check", command=self.run_doctor).grid(row=1, column=1, sticky="ew", padx=4, pady=4)
         ttk.Button(quick, text="3. Make Sprite", command=lambda: self.notebook.select(self.make_sprite_tab_ref)).grid(row=1, column=2, sticky="ew", padx=4, pady=4)
         ttk.Button(quick, text="Convert Existing Video", command=lambda: self.notebook.select(self.convert_tab_ref)).grid(row=1, column=3, sticky="ew", padx=4, pady=4)
         ttk.Button(quick, text="QA / Export", command=lambda: self.notebook.select(self.qa_tab_ref)).grid(row=1, column=4, sticky="ew", padx=4, pady=4)
         ttk.Button(quick, text="Open Outputs", command=lambda: open_path(ROOT / "output")).grid(row=1, column=5, sticky="ew", padx=4, pady=4)
+        ttk.Button(quick, text="Open Web Studio", command=self.open_web_studio).grid(row=2, column=0, columnspan=6, sticky="ew", padx=4, pady=(8, 4))
         for i in range(6):
             quick.columnconfigure(i, weight=1)
 
@@ -116,6 +122,12 @@ class EasyUiMixin:
         sb = ttk.Scrollbar(recent, orient="vertical", command=self.recent_list.yview)
         sb.grid(row=0, column=1, sticky="ns")
         self.recent_list.configure(yscrollcommand=sb.set)
+
+        self.recent_preview_label = ttk.Label(recent, text="Select an output to preview", anchor="center")
+        self.recent_preview_label.grid(row=0, column=2, sticky="nsew", padx=(10, 0))
+        self.recent_preview_caption = ttk.Label(recent, text="preview.gif or sheet.png", anchor="center")
+        self.recent_preview_caption.grid(row=1, column=2, sticky="ew", padx=(10, 0), pady=(8, 0))
+        recent.columnconfigure(2, weight=0)
         
         btns = ttk.Frame(recent)
         btns.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
@@ -141,7 +153,8 @@ class EasyUiMixin:
         ttk.Button(health, text="Hardware Advisor", command=self.hardware_advisor).grid(row=1, column=0, sticky="ew", pady=4)
         ttk.Button(health, text="Launch ComfyUI", command=self.launch_comfy).grid(row=2, column=0, sticky="ew", pady=4)
         ttk.Button(health, text="Open ComfyUI Browser", command=self.open_comfy).grid(row=3, column=0, sticky="ew", pady=4)
-        ttk.Button(health, text="Safe Update", command=self.safe_update).grid(row=4, column=0, sticky="ew", pady=4)
+        ttk.Button(health, text="Open Web Studio", command=self.open_web_studio).grid(row=4, column=0, sticky="ew", pady=4)
+        ttk.Button(health, text="Safe Update", command=self.safe_update).grid(row=5, column=0, sticky="ew", pady=4)
         health.columnconfigure(0, weight=1)
 
         paths = self.section(tab, "Folders", 1, 0, 2, "ew")
@@ -193,11 +206,7 @@ class EasyUiMixin:
         self.log_queue.put(text)
 
     def _pump_log(self) -> None:
-        import re
         import queue
-        progress_pat1 = re.compile(r'(\d+)%\s*\|')
-        progress_pat2 = re.compile(r'(?:[Ss]tep|[Ss]teps)?\s*(\d+)\s*/\s*(\d+)')
-        progress_pat3 = re.compile(r'(\d+)\s*of\s*(\d+)')
 
         while True:
             try:
@@ -208,40 +217,31 @@ class EasyUiMixin:
             self.log_text.see(tk.END)
             
             for line in text.splitlines():
-                pct = None
-                m1 = progress_pat1.search(line)
-                if m1:
-                    try:
-                        pct = float(m1.group(1))
-                    except ValueError:
-                        pass
-                else:
-                    m2 = progress_pat2.search(line)
-                    if m2:
-                        try:
-                            curr = int(m2.group(1))
-                            total = int(m2.group(2))
-                            if total > 0 and curr <= total:
-                                pct = (curr / total) * 100.0
-                        except ValueError:
-                            pass
-                    else:
-                        m3 = progress_pat3.search(line)
-                        if m3:
-                            try:
-                                curr = int(m3.group(1))
-                                total = int(m3.group(2))
-                                if total > 0 and curr <= total:
-                                    pct = (curr / total) * 100.0
-                            except ValueError:
-                                pass
+                pct = parse_progress_percent(line)
                 if pct is not None:
+                    try:
+                        self.progress_bar.stop()
+                    except Exception as exc:
+                        logger.debug("Could not stop Easy Mode progress bar before progress update: %s", exc)
+                    self.progress_bar["mode"] = "determinate"
                     self.progress_bar["value"] = pct
+                    if hasattr(self, "progress_label"):
+                        self.progress_label.config(text=f"Progress: {pct:.0f}%")
                     
         self.after(100, self._pump_log)
 
     def set_busy(self, busy: bool, label: str = "") -> None:
         self.busy_label.config(text=("Running: " + label if busy else "Ready"))
+        if hasattr(self, "progress_label"):
+            self.progress_label.config(text=("Progress: starting..." if busy else "Progress: idle"))
+        if busy:
+            self.progress_bar["mode"] = "indeterminate"
+            self.progress_bar.start(12)
+        else:
+            try:
+                self.progress_bar.stop()
+            except Exception as exc:
+                logger.debug("Could not stop Easy Mode progress bar while setting busy state: %s", exc)
+            self.progress_bar["mode"] = "determinate"
         if not busy:
             self.progress_bar["value"] = 0
-

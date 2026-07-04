@@ -9,7 +9,10 @@ def test_scene_compositor_assets_are_loaded():
     index = (APP / "web" / "index.html").read_text(encoding="utf-8")
     script = (APP / "web" / "js" / "scene_compositor.js").read_text(encoding="utf-8")
 
-    assert "/web/scene_compositor.css" in index
-    assert "/web/js/scene_compositor.js" in index
+    assert "scene_compositor.css" in index
+    assert "js/scene_compositor.js" in index
     assert "/api/scene_compositor/preview" in script
     assert "sceneCompositorCanvas" in script
+    assert "sceneCompositorBackgroundImage" in script
+    assert "background_image" in script
+    assert "backgroundImage" in script

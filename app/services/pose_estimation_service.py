@@ -2,14 +2,219 @@ import os
 import time
 import json
 import math
+import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 from PIL import Image, ImageDraw
+from spriteforge_utils import ROOT
 
-ROOT = Path(__file__).resolve().parent.parent
+logger = logging.getLogger(__name__)
 
 class PoseEstimationService:
+    @staticmethod
+    def _largest_component_mask(mask):
+        try:
+            import cv2
+            import numpy as np
+        except Exception as exc:
+            logger.warning("OpenCV/numpy unavailable for largest pose component mask; using original mask: %s", exc)
+            return mask
+        if mask is None or mask.size == 0:
+            return mask
+        num, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        if num <= 1:
+            return mask
+        best_idx = 1
+        best_area = int(stats[1, cv2.CC_STAT_AREA])
+        for idx in range(2, num):
+            area = int(stats[idx, cv2.CC_STAT_AREA])
+            if area > best_area:
+                best_idx = idx
+                best_area = area
+        out = np.zeros_like(mask)
+        out[labels == best_idx] = 255
+        return out
+
+    @staticmethod
+    def _native_subject_mask(cv_bgr):
+        """Build a coarse foreground mask without external ML dependencies."""
+        try:
+            import cv2
+            import numpy as np
+        except Exception as exc:
+            logger.warning("OpenCV/numpy unavailable for native subject mask: %s", exc)
+            return None
+
+        h, w = cv_bgr.shape[:2]
+        if h < 2 or w < 2:
+            return None
+
+        border = np.concatenate([
+            cv_bgr[0, :, :],
+            cv_bgr[h - 1, :, :],
+            cv_bgr[1:h - 1, 0, :],
+            cv_bgr[1:h - 1, w - 1, :],
+        ], axis=0)
+        bg_color = np.median(border.astype(np.float32), axis=0)
+
+        diff = np.linalg.norm(cv_bgr.astype(np.float32) - bg_color[None, None, :], axis=2)
+        mask = (diff > 32.0).astype(np.uint8) * 255
+
+        kernel = np.ones((5, 5), dtype=np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+        if int(mask.sum() // 255) < max(32, (h * w) // 200):
+            gray = cv2.cvtColor(cv_bgr, cv2.COLOR_BGR2GRAY)
+            _thr, alt = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            alt = cv2.morphologyEx(alt, cv2.MORPH_OPEN, kernel)
+            alt = cv2.morphologyEx(alt, cv2.MORPH_CLOSE, kernel)
+            if int(alt.sum() // 255) > int(mask.sum() // 255):
+                mask = alt
+
+        mask = PoseEstimationService._largest_component_mask(mask)
+        return mask
+
+    @staticmethod
+    def _draw_native_pose(mask, canvas, w, h):
+        """Draw a deterministic stick pose from silhouette bounds."""
+        try:
+            import cv2
+            import numpy as np
+        except Exception as exc:
+            logger.warning("OpenCV/numpy unavailable for native pose drawing; using fallback anchors: %s", exc)
+            return {
+                "anchor_x": w / 2.0,
+                "anchor_y": float(h),
+                "left_heel_y": float(h),
+                "right_heel_y": float(h),
+            }
+
+        draw = ImageDraw.Draw(canvas)
+        ys, xs = np.where(mask > 0)
+        if len(xs) < 8:
+            return {
+                "anchor_x": w / 2.0,
+                "anchor_y": float(h),
+                "left_heel_y": float(h),
+                "right_heel_y": float(h),
+            }
+
+        x0, x1 = int(xs.min()), int(xs.max())
+        y0, y1 = int(ys.min()), int(ys.max())
+        bw = max(1, x1 - x0 + 1)
+        bh = max(1, y1 - y0 + 1)
+
+        cx = x0 + bw // 2
+        shoulder_y = y0 + int(0.22 * bh)
+        hip_y = y0 + int(0.56 * bh)
+        knee_y = y0 + int(0.78 * bh)
+        foot_y = y1
+
+        shoulder_dx = max(6, int(0.18 * bw))
+        hip_dx = max(4, int(0.10 * bw))
+        hand_y = y0 + int(0.48 * bh)
+        elbow_y = y0 + int(0.37 * bh)
+
+        pts = {
+            "head": (cx, y0 + int(0.10 * bh)),
+            "neck": (cx, y0 + int(0.18 * bh)),
+            "l_shoulder": (cx - shoulder_dx, shoulder_y),
+            "r_shoulder": (cx + shoulder_dx, shoulder_y),
+            "l_hip": (cx - hip_dx, hip_y),
+            "r_hip": (cx + hip_dx, hip_y),
+            "l_knee": (cx - hip_dx, knee_y),
+            "r_knee": (cx + hip_dx, knee_y),
+            "l_ankle": (cx - hip_dx, foot_y),
+            "r_ankle": (cx + hip_dx, foot_y),
+            "l_elbow": (cx - shoulder_dx - max(3, bw // 20), elbow_y),
+            "r_elbow": (cx + shoulder_dx + max(3, bw // 20), elbow_y),
+            "l_wrist": (cx - shoulder_dx - max(5, bw // 14), hand_y),
+            "r_wrist": (cx + shoulder_dx + max(5, bw // 14), hand_y),
+        }
+
+        lines = [
+            ((0, 0, 255), "l_shoulder", "r_shoulder"),
+            ((0, 0, 255), "l_shoulder", "l_hip"),
+            ((0, 0, 255), "r_shoulder", "r_hip"),
+            ((0, 0, 255), "l_hip", "r_hip"),
+            ((0, 255, 0), "l_shoulder", "l_elbow"),
+            ((0, 255, 0), "l_elbow", "l_wrist"),
+            ((255, 0, 0), "r_shoulder", "r_elbow"),
+            ((255, 0, 0), "r_elbow", "r_wrist"),
+            ((255, 255, 0), "l_hip", "l_knee"),
+            ((255, 255, 0), "l_knee", "l_ankle"),
+            ((255, 0, 255), "r_hip", "r_knee"),
+            ((255, 0, 255), "r_knee", "r_ankle"),
+            ((255, 255, 255), "neck", "head"),
+        ]
+
+        for color, a, b in lines:
+            draw.line([pts[a], pts[b]], fill=color, width=4)
+        for p in pts.values():
+            draw.ellipse([(p[0] - 3, p[1] - 3), (p[0] + 3, p[1] + 3)], fill=(255, 255, 255))
+
+        return {
+            "anchor_x": float((pts["l_ankle"][0] + pts["r_ankle"][0]) / 2.0),
+            "anchor_y": float(max(pts["l_ankle"][1], pts["r_ankle"][1])),
+            "left_heel_y": float(pts["l_ankle"][1]),
+            "right_heel_y": float(pts["r_ankle"][1]),
+        }
+
+    @staticmethod
+    def _estimate_pose_native(frames_dir: Path, frames_extracted: int, pose_pack_dir: Path, w: int, h: int, action_name: str):
+        import cv2
+
+        anchor_data = []
+        for idx in range(frames_extracted):
+            frame_path = frames_dir / f"frame_{idx:04d}.png"
+            cv_img = cv2.imread(str(frame_path))
+            if cv_img is None:
+                continue
+            mask = PoseEstimationService._native_subject_mask(cv_img)
+            pose_canvas = Image.new("RGB", (w, h), (0, 0, 0))
+            if mask is not None:
+                anchor = PoseEstimationService._draw_native_pose(mask, pose_canvas, w, h)
+            else:
+                anchor = {
+                    "anchor_x": w / 2.0,
+                    "anchor_y": float(h),
+                    "left_heel_y": float(h),
+                    "right_heel_y": float(h),
+                }
+            anchor_data.append({"frame": idx, **anchor})
+            pose_canvas.save(pose_pack_dir / f"frame_{idx:04d}.png")
+
+        if not anchor_data:
+            for idx in range(frames_extracted):
+                pose_canvas = Image.new("RGB", (w, h), (0, 0, 0))
+                pose_canvas.save(pose_pack_dir / f"frame_{idx:04d}.png")
+                anchor_data.append({
+                    "frame": idx,
+                    "anchor_x": w / 2.0,
+                    "anchor_y": float(h),
+                    "left_heel_y": float(h),
+                    "right_heel_y": float(h),
+                })
+
+        anchor_file = pose_pack_dir / "anchors.json"
+        anchor_file.write_text(json.dumps({
+            "action": action_name,
+            "width": w,
+            "height": h,
+            "backend": "native-opencv-fallback",
+            "frames": anchor_data,
+        }, indent=2), encoding="utf-8")
+
+        return {
+            "ok": True,
+            "message": f"Generated {len(anchor_data)} pose guidelines using the native fallback estimator.",
+            "frames_count": len(anchor_data),
+            "posepack_path": str(pose_pack_dir.relative_to(ROOT)).replace("\\", "/"),
+            "backend": "native-opencv-fallback",
+        }
+
     @staticmethod
     def estimate_pose(video_path: str, project_dir: str, action_name: str) -> Dict[str, Any]:
         """Extract frames from video and run MediaPipe pose estimation to build a posepack."""
@@ -66,12 +271,18 @@ class PoseEstimationService:
         try:
             import mediapipe as mp
         except ImportError:
-            # Clean up raw frames
-            shutil.rmtree(temp_frames_dir, ignore_errors=True)
-            return {
-                "ok": False,
-                "message": "MediaPipe is not installed. Run 'pip install mediapipe' to enable automatic rotoscoping and pose estimation."
-            }
+            try:
+                result = PoseEstimationService._estimate_pose_native(
+                    temp_frames_dir,
+                    frames_extracted,
+                    pose_pack_dir,
+                    w,
+                    h,
+                    action_name,
+                )
+                return result
+            finally:
+                shutil.rmtree(temp_frames_dir, ignore_errors=True)
             
         # Initialize MediaPipe Pose
         mp_pose = mp.solutions.pose
@@ -169,6 +380,7 @@ class PoseEstimationService:
             "action": action_name,
             "width": w,
             "height": h,
+            "backend": "mediapipe",
             "frames": anchor_data
         }, indent=2), encoding="utf-8")
         
@@ -176,5 +388,6 @@ class PoseEstimationService:
             "ok": True,
             "message": f"Successfully generated {frames_extracted} pose guidelines.",
             "frames_count": frames_extracted,
-            "posepack_path": str(pose_pack_dir.relative_to(ROOT)).replace("\\", "/")
+            "posepack_path": str(pose_pack_dir.relative_to(ROOT)).replace("\\", "/"),
+            "backend": "mediapipe",
         }

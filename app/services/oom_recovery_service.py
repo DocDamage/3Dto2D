@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -23,7 +26,8 @@ def _set_arg(cmd: List[str], flag: str, value: str) -> None:
 def _scale_size(value: str) -> str:
     try:
         w, h = map(int, value.lower().split("x", 1))
-    except Exception:
+    except Exception as exc:
+        logger.warning("Could not scale invalid size %r for VRAM fallback: %s", value, exc)
         return value
     return f"{max(128, w // 2)}x{max(128, h // 2)}"
 

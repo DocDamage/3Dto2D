@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import hashlib
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 from PIL import Image
 
 RGB = Tuple[int, int, int]
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -23,6 +26,11 @@ def _hex(rgb: RGB) -> str:
     return "#%02X%02X%02X" % rgb
 
 
+def _palette_digest(palette: Sequence[RGB]) -> str:
+    payload = ",".join(_hex(rgb) for rgb in palette)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def _distance(a: RGB, b: RGB) -> float:
     return sum((a[i] - b[i]) ** 2 for i in range(3)) ** 0.5
 
@@ -34,8 +42,8 @@ def _sheet_path(sprite_dir: Path) -> Path:
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             image_name = str(meta.get("image") or image_name)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Could not read sprite sheet metadata from %s: %s", meta_path, exc)
     path = sprite_dir / image_name
     if not path.exists():
         path = sprite_dir / "sheet.png"
@@ -153,12 +161,14 @@ def harmonize_palette(
     unified = _pick_unified_palette(sprite_palettes, limit)
     if not unified:
         raise ValueError("No visible pixels found in the selected sprite sheets.")
+    palette_hex = [_hex(rgb) for rgb in unified]
+    palette_digest = _palette_digest(unified)
 
     report_dir = resolved_dirs[0].parent / "_palette_harmonization"
     report_dir.mkdir(parents=True, exist_ok=True)
     palette_path = report_dir / "palette.json"
     report_path = report_dir / "palette_harmonization.json"
-    palette_path.write_text(json.dumps([_hex(rgb) for rgb in unified], indent=2), encoding="utf-8")
+    palette_path.write_text(json.dumps(palette_hex, indent=2), encoding="utf-8")
 
     sprites: List[Dict[str, Any]] = []
     for sprite in sprite_palettes:
@@ -168,12 +178,37 @@ def harmonize_palette(
             _write_harmonized_sheet(sprite.sheet_path, out_path, unified)
             metrics["harmonized_sheet"] = str(out_path)
             metrics["harmonized_sheet_url"] = _report_url(root_path, out_path)
+            audit = {
+                "schema": "spriteforge.palette_lock_audit.v1",
+                "enabled": True,
+                "source": "palette_harmonizer",
+                "palette": palette_hex,
+                "palette_digest": palette_digest,
+                "palette_file": str(palette_path),
+                "source_sheet": str(sprite.sheet_path),
+                "harmonized_sheet": str(out_path),
+                "distinct_colors_before": metrics["distinct_colors"],
+                "shared_top_colors": metrics["shared_top_colors"],
+                "average_palette_drift": metrics["average_palette_drift"],
+                "max_palette_drift": metrics["max_palette_drift"],
+            }
+            audit_path = sprite.sprite_dir / "palette_lock_audit.json"
+            audit_path.write_text(json.dumps(audit, indent=2), encoding="utf-8")
+            metrics["palette_lock_audit"] = str(audit_path)
+            metrics["palette_lock_audit_url"] = _report_url(root_path, audit_path)
         sprites.append(metrics)
 
     report = {
         "ok": True,
+        "schema": "spriteforge.palette_harmonization_report.v1",
         "colors": len(unified),
-        "palette": [_hex(rgb) for rgb in unified],
+        "palette": palette_hex,
+        "palette_digest": palette_digest,
+        "source": {
+            "sprite_count": len(sprite_palettes),
+            "requested_color_limit": limit,
+            "selection": "median-cut quantized merged visible sheet pixels",
+        },
         "palette_file": str(palette_path),
         "palette_url": _report_url(root_path, palette_path),
         "report_file": str(report_path),

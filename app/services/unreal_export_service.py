@@ -55,6 +55,10 @@ def copy_base_assets(sprite_dir: Path, dest: Path, meta: Dict[str, Any]) -> None
     preview = sprite_dir / "preview.gif"
     if preview.exists():
         shutil.copy2(preview, dest / "preview.gif")
+    for suffix in ["normal", "specular", "ao"]:
+        map_file = sprite_dir / f"sheet_{suffix}.png"
+        if map_file.exists():
+            shutil.copy2(map_file, dest / f"sheet_{suffix}.png")
 
 
 def _sprite_name(meta: Dict[str, Any], sprite_dir: Path, name: Optional[str], convention: str, clip_name: Optional[str]) -> str:

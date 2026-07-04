@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -23,16 +24,18 @@ from services.easy_helpers import (
     pycmd,
     nvidia_summary,
     load_thumbnail,
+    load_sprite_preview,
+    web_studio_url,
 )
-from spriteforge_utils import load_json, save_json
+from spriteforge_utils import ROOT, load_json, save_json
 from spriteforge_utils import PYTHON
 
-ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config" / "spriteforge_config.json"
 EASY_CONFIG_PATH = ROOT / "config" / "easy_mode.json"
 DROP_VIDEOS_DIR = ROOT / "01_DROP_VIDEOS_HERE"
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v"}
 IMAGE_EXTS = ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp")
+logger = logging.getLogger(__name__)
 
 class EasyActionsMixin:
     def pycmd(self, *args: str) -> List[str]:
@@ -43,8 +46,8 @@ class EasyActionsMixin:
         for k, var in self.vars.items():
             try:
                 data[k] = var.get()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Could not read Easy Mode variable %s while saving settings: %s", k, exc)
         save_json(EASY_CONFIG_PATH, data)
         self.easy = data
 
@@ -97,6 +100,11 @@ class EasyActionsMixin:
             self._thumb_cache = {}
         return load_thumbnail(folder, self._thumb_cache)
 
+    def load_sprite_preview(self, folder: Path) -> Optional[Any]:
+        if not hasattr(self, "_preview_cache"):
+            self._preview_cache = {}
+        return load_sprite_preview(folder, self._preview_cache)
+
     def refresh_outputs(self) -> None:
         outputs = find_recent_sprite_outputs()
         self.recent_outputs = outputs
@@ -117,6 +125,16 @@ class EasyActionsMixin:
         p = Path(sel[0])
         self.selected_sprite_dir = p
         self.sprite_dir_var.set(str(p))
+        if hasattr(self, "recent_preview_label"):
+            photo = self.load_sprite_preview(p)
+            if photo:
+                self.recent_preview_label.configure(image=photo, text="")
+                self.recent_preview_label.image = photo
+            else:
+                self.recent_preview_label.configure(image="", text="No preview available")
+                self.recent_preview_label.image = None
+        if hasattr(self, "recent_preview_caption"):
+            self.recent_preview_caption.configure(text=short_path(p))
 
     def setup_everything(self) -> None:
         self.save_easy_settings()
@@ -157,6 +175,11 @@ class EasyActionsMixin:
 
     def open_comfy(self) -> None:
         self.runner.run("Open ComfyUI Browser", self.pycmd("spriteforge_unified.py", "open-comfy"))
+
+    def open_web_studio(self) -> None:
+        url = web_studio_url()
+        self.log(f"Opening SpriteForge Web Studio at {url}\n")
+        self.runner.run("Open Web Studio", self.pycmd("spriteforge_unified.py", "web"))
 
     def create_shortcut(self) -> None:
         bat = ROOT / "Create_Desktop_Shortcut.bat"

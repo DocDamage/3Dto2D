@@ -2,6 +2,7 @@
 """Low-level shell utilities: subprocess wrappers, git helpers, venv management."""
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import subprocess
@@ -9,6 +10,8 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def print_cmd(cmd: Sequence[str], cwd: Optional[Path] = None) -> None:
@@ -30,6 +33,7 @@ def capture(cmd: Sequence[str], cwd: Optional[Path] = None, timeout: float = 20.
         p = subprocess.run(list(map(str, cmd)), cwd=str(cwd) if cwd else None, capture_output=True, text=True, timeout=timeout)
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except Exception as exc:
+        logger.warning("Command capture failed for %s: %s", cmd, exc)
         return 1, str(exc)
 
 
@@ -44,8 +48,8 @@ def python_launcher(prefer: str = "3.12") -> List[str]:
             try:
                 subprocess.run(cmd, capture_output=True, text=True, check=True)
                 return ["py"] + ([f"-{ver}"] if ver else [])
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Python launcher candidate %s failed: %s", cmd, exc)
     return [sys.executable]
 
 

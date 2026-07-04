@@ -1,12 +1,14 @@
 import re
 import math
+import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, Union
 import numpy as np
 from PIL import Image, ImageChops, ImageFilter
 try:
     import cv2  # type: ignore
-except Exception:  # pragma: no cover - optional acceleration
+except Exception as exc:  # pragma: no cover - optional acceleration
+    logging.getLogger(__name__).debug("OpenCV unavailable for sprite service acceleration: %s", exc)
     cv2 = None
 
 __all__ = ["SpriteService"]
@@ -406,8 +408,8 @@ class SpriteService:
                     colors.append((int(item[0:2], 16), int(item[2:4], 16), int(item[4:6], 16)))
             if colors:
                 return colors
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger(__name__).debug("Could not parse custom palette %r: %s", name_or_list, exc)
         return None
 
     @staticmethod

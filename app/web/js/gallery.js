@@ -34,12 +34,24 @@ function renderOutputs(outputs){
     const card = document.createElement('article');
     card.className = 'sprite-card';
     card.dataset.path = o.path || '';
-    const imgUrl = o.preview_url || o.sheet_url || '';
-    if (imgUrl) {
+    const sheetUrl = o.sheet_url || o.preview_url || '';
+    const hoverUrl = o.preview_url && o.preview_url !== sheetUrl ? o.preview_url : '';
+    if (sheetUrl) {
+      const media = document.createElement('div');
+      media.className = 'sprite-card-media';
       const img = document.createElement('img');
-      img.src = `${imgUrl}?t=${Date.now()}`;
+      img.src = `${sheetUrl}?t=${Date.now()}`;
       img.alt = o.name || '';
-      card.appendChild(img);
+      media.appendChild(img);
+      if (hoverUrl) {
+        const hover = document.createElement('img');
+        hover.className = 'sprite-card-hover-preview';
+        hover.src = `${hoverUrl}?t=${Date.now()}`;
+        hover.alt = `${o.name || 'sprite'} animated preview`;
+        hover.loading = 'lazy';
+        media.appendChild(hover);
+      }
+      card.appendChild(media);
     } else {
       appendText(card, 'div', 'No preview', 'placeholder');
     }
@@ -69,6 +81,7 @@ function renderOutputs(outputs){
     }
     showView('quality');
     toast('Selected '+selectedSpriteDir);
+    if (typeof refreshQualityLivePreview === 'function') refreshQualityLivePreview(selectedSpriteDir, { force: true });
     loadSpriteDetails(selectedSpriteDir);
   }));
   $$('[data-preview-path]', g).forEach(btn=>btn.addEventListener('click', e=>{

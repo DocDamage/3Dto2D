@@ -18,7 +18,7 @@ import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
 
 
 def copy_if(path: Optional[str], dest: Path) -> Optional[str]:

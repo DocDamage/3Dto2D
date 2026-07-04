@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_THRESHOLDS = {
@@ -49,7 +52,8 @@ def _load_json(path: Path) -> Dict[str, Any]:
         if path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))
             return data if isinstance(data, dict) else {}
-    except Exception:
+    except Exception as exc:
+        logger.warning("Could not load QA threshold JSON from %s: %s", path, exc)
         return {}
     return {}
 

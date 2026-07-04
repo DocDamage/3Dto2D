@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import re
 import time
 from pathlib import Path
@@ -18,6 +19,8 @@ from services.web_helpers_library import (
     _is_relative_to, rel, safe_name,
     VIDEO_SUFFIXES, IMAGE_SUFFIXES, AUDIO_SUFFIXES,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ── Queue listing ──────────────────────────────────────
@@ -48,8 +51,8 @@ def _get_failed_reason(log_path_str: Optional[str]) -> Optional[str]:
                 line = line.strip()
                 if line:
                     return line
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Could not read failed queue reason from %s: %s", log_path_str, exc)
     return None
 
 def _queue_progress(counts: Dict[str, int], total: int) -> Dict[str, Any]:
@@ -93,8 +96,8 @@ def _queue_job_progress(job: Dict[str, Any]) -> Dict[str, Any]:
                     if curr and total and int(total) > 0:
                         percent = max(percent, min(99.0, (int(curr) / int(total)) * 100.0))
                         break
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not parse queue progress from %s: %s", log_value, exc)
     elif status in {"interrupted", "cancelled"}:
         percent = 0.0
     else:
@@ -127,7 +130,8 @@ def _list_queues(project_meta: Optional[Dict[str, str]] = None) -> List[Dict[str
             }
             if ProjectService.item_matches_project(row, project_meta):
                 results.append(row)
-        except Exception:
+        except Exception as exc:
+            logger.debug("Skipping queue file %s because it could not be listed: %s", qfile, exc)
             continue
     return results
 
@@ -169,7 +173,8 @@ def _list_releases(project_meta: Optional[Dict[str, str]] = None, limit: int = 4
                 }
                 if ProjectService.item_matches_project(row, project_meta):
                     results.append(row)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Skipping release manifest %s because it could not be listed: %s", manifest, exc)
                 continue
     results.sort(key=lambda item: item["mtime"], reverse=True)
     return results[:limit]
@@ -213,7 +218,8 @@ def _list_packs(project_meta: Optional[Dict[str, str]] = None, limit: int = 40) 
                 }
                 if ProjectService.item_matches_project(row, project_meta):
                     results.append(row)
-            except Exception:
+            except Exception as exc:
+                logger.debug("Skipping pack manifest %s because it could not be listed: %s", manifest, exc)
                 continue
     results.sort(key=lambda item: item["mtime"], reverse=True)
     return results[:limit]
@@ -277,7 +283,8 @@ def _list_quality_reports(project_meta: Optional[Dict[str, str]] = None, limit: 
                     }
                     if ProjectService.item_matches_project(row, project_meta):
                         results.append(row)
-                except Exception:
+                except Exception as exc:
+                    logger.debug("Skipping quality report %s because it could not be listed: %s", report, exc)
                     continue
     results.sort(key=lambda item: item["mtime"], reverse=True)
     return results[:limit]

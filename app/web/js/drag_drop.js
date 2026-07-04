@@ -12,6 +12,16 @@ function setInputValue(input, value) {
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
   input.dispatchEvent(new Event('change', { bubbles: true }));
+  if ((input.id === 'generationReferenceImage' || input.id === 'generationStyleImage') && typeof refreshGenerateReferencePreview === 'function') {
+    refreshGenerateReferencePreview();
+  }
+  if (input.id === 'existingSpriteSource') {
+    const generateRef = $('#generationReferenceImage');
+    if (generateRef && !generateRef.value && typeof refreshGenerateReferencePreview === 'function') {
+      generateRef.value = value;
+      refreshGenerateReferencePreview();
+    }
+  }
 }
 
 function droppedText(event) {
@@ -36,11 +46,32 @@ function bindDropTarget(target, onDrop) {
 }
 
 function makeDropCard(id, label, input, accept) {
-  const card = document.createElement('label');
+  const card = document.createElement('div');
   card.className = 'drop-target-card';
   card.id = id;
-  card.innerHTML = `<input type="file" accept="${accept}" /><span>${label}</span>`;
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('aria-label', `${label}: choose or drop an image`);
+  card.innerHTML = `
+    <input type="file" accept="${accept}" />
+    <span>${label}</span>
+    <button class="mini drop-target-button" type="button">Choose image</button>
+    <small>or drag and drop here. Preview updates after upload.</small>
+  `;
   const fileInput = card.querySelector('input');
+  const button = card.querySelector('button');
+  button.addEventListener('click', () => fileInput.click());
+  card.addEventListener('click', event => {
+    if (event.target === card || event.target.tagName === 'SPAN' || event.target.tagName === 'SMALL') {
+      fileInput.click();
+    }
+  });
+  card.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      fileInput.click();
+    }
+  });
   fileInput.addEventListener('change', async () => {
     try {
       const file = fileInput.files?.[0];
@@ -79,6 +110,18 @@ function installGenerateDrops() {
   styleInput.closest('label')?.insertAdjacentElement('afterend', row);
 }
 
+function installWizardDrops() {
+  const refInput = $('#wizReferenceImage');
+  const styleInput = $('#wizStyleImage');
+  if (!refInput || !styleInput || $('#wizardDropTargets')) return;
+  const row = document.createElement('div');
+  row.id = 'wizardDropTargets';
+  row.className = 'drop-target-row wizard-drop-target-row';
+  row.appendChild(makeDropCard('wizardReferenceDropTarget', 'Character reference image', refInput, 'image/*'));
+  row.appendChild(makeDropCard('wizardStyleDropTarget', 'Style reference image', styleInput, 'image/*'));
+  styleInput.closest('label')?.insertAdjacentElement('afterend', row);
+}
+
 function installExistingSpriteDrop() {
   const sourceInput = $('#existingSpriteSource');
   if (!sourceInput || $('#existingSpriteDropTarget')) return;
@@ -95,8 +138,11 @@ function installQualityDrops() {
 
 function installDragDropEverywhere() {
   installGenerateDrops();
+  installWizardDrops();
   installExistingSpriteDrop();
   installQualityDrops();
 }
 
+window.installDragDropEverywhere = installDragDropEverywhere;
+window.installWizardDrops = installWizardDrops;
 installDragDropEverywhere();

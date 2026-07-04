@@ -4,144 +4,301 @@
     <h2>Training Lab</h2>
   </div>
 
-  <div class="grid-2 training-primary-grid">
-    <form class="card form" id="trainingDatasetForm">
-      <div class="card-head">
-        <h3>Build Training Dataset</h3>
-      </div>
-      <label>Purchased sprite folder
-        <input name="source_dir" placeholder="C:\Users\dferr\Downloads\SakPix characters" />
-      </label>
-      <div class="row">
-        <label>Trigger token
-          <input name="trigger" value="sakpix_style" />
-        </label>
-        <label>Cell size
-          <select name="cell_size">
-            <option value="">No slicing</option>
-            <option value="92x92" selected>92x92</option>
-            <option value="128x128">128x128</option>
-            <option value="64x64">64x64</option>
-            <option value="32x32">32x32</option>
-          </select>
-        </label>
-      </div>
-      <label>Base caption
-        <input name="base_caption" value="premium pixel art RPG character" />
-      </label>
-      <label>Output dataset folder
-        <input name="output" placeholder="Optional. Defaults to app/output/training_datasets/..." />
-      </label>
-      <div class="button-row form-actions-tight">
-        <button class="primary big" type="submit">Build Dataset</button>
-        <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
-      </div>
-    </form>
-
-    <form class="card form" id="loraTrainingForm">
-      <div class="card-head">
-        <h3>LoRA Training Run</h3>
-      </div>
-      <label>Training dataset folder
-        <input name="dataset_dir" placeholder="app/output/training_datasets/sakpix_dataset_..." />
-      </label>
-      <div class="row">
-        <label>Model family
-          <select name="model_family">
-            <option value="sdxl" selected>SDXL</option>
-            <option value="flux">Flux</option>
-          </select>
-        </label>
-        <label>Trainer
-          <select name="trainer">
-            <option value="auto" selected>Auto</option>
-            <option value="kohya">Kohya SDXL</option>
-            <option value="ai_toolkit">AI Toolkit Flux</option>
-          </select>
-        </label>
-      </div>
-      <label>Base model
-        <input name="base_model" placeholder="C:\models\sdxl-base.safetensors or black-forest-labs/FLUX.1-dev" />
-      </label>
-      <label>Trainer folder
-        <input name="trainer_dir" placeholder="Optional. Defaults to app/vendor/kohya_ss or app/vendor/ai-toolkit" />
-      </label>
-      <div class="row">
-        <label>Run name
-          <input name="name" value="sakpix_sprite_lora" />
-        </label>
-        <label>Trigger token
-          <input name="trigger" value="sakpix_style" />
-        </label>
-      </div>
-      <div class="row">
-        <label>Resolution
-          <select name="resolution">
-            <option value="512">512</option>
-            <option value="768" selected>768</option>
-            <option value="1024">1024</option>
-          </select>
-        </label>
-        <label>Steps
-          <input name="max_train_steps" value="1200" />
-        </label>
-      </div>
-      <div class="row">
-        <label>Learning rate
-          <input name="learning_rate" value="1e-4" />
-        </label>
-        <label>LoRA rank
-          <input name="network_dim" value="16" />
-        </label>
-      </div>
-      <div class="row">
-        <label>Repeats
-          <input name="repeats" value="10" />
-        </label>
-        <label>Output run folder
-          <input name="output" placeholder="Optional. Defaults to app/output/training_runs/..." />
-        </label>
-      </div>
-      <div class="button-row form-actions-tight">
-        <button class="primary big" type="button" data-lora-mode="prepare">Prepare Run Files</button>
-        <button class="danger big" type="button" data-lora-mode="run">Start Training</button>
-        <button class="ghost big" type="button" data-open="output/training_runs">Open Runs Folder</button>
-      </div>
-    </form>
+  <div class="training-tabs" role="tablist" aria-label="Training Lab sections">
+    <button class="training-tab-btn active" type="button" role="tab" aria-selected="true" data-training-tab="datasets">Datasets</button>
+    <button class="training-tab-btn" type="button" role="tab" aria-selected="false" data-training-tab="lora">LoRA Run</button>
+    <button class="training-tab-btn" type="button" role="tab" aria-selected="false" data-training-tab="tiles">Tile Sets</button>
+    <button class="training-tab-btn" type="button" role="tab" aria-selected="false" data-training-tab="path">Training Path</button>
   </div>
 
-  <div class="grid-2 training-run-grid">
-    <section class="card">
-      <div class="card-head">
-        <h3>What This Creates</h3>
-      </div>
-      <div class="recipe">
-        <div><span>01</span><b>Scan</b><small>PNG/JPG/WebP assets from your owned folder</small></div>
-        <div><span>02</span><b>Slice</b><small>Optional grid slicing for 92x92 or 128x128 sheets</small></div>
-        <div><span>03</span><b>Caption</b><small>Trigger token, action, direction, style, transparency</small></div>
-        <div><span>04</span><b>Palette</b><small>Shared color summary for matching future generations</small></div>
-        <div><span>05</span><b>Manifest</b><small>Train-ready image/caption pairs and notes</small></div>
-      </div>
-      <div class="callout">
-        Start with an SDXL or Flux style LoRA for new static characters. Use Wan2.2 animation LoRA training later only after the static style dataset looks clean.
-      </div>
-      <div class="callout">
-        For the SakPix RPG packs, use <b>92x92</b> for most collections and <b>128x128</b> for packs that say 128x128.
+  <div class="training-tab-panels">
+    <section class="training-tab-panel active" data-training-panel="datasets" role="tabpanel">
+      <div class="grid-2 training-primary-grid">
+        <form class="card form" id="trainingDatasetForm">
+          <div class="card-head">
+            <h3>Build Training Dataset</h3>
+          </div>
+          <div id="trainingDatasetDropzone" class="training-dataset-dropzone" tabindex="0" role="button" aria-label="Drop or paste a sprite folder path">
+            <b>Drop or paste your owned sprite folder path</b>
+            <span>Use PNG/JPG/WebP sprites or sheets. File drops show a quick visual count; folder paths fill the source field for the local builder.</span>
+            <small id="trainingDatasetDropHint">Tip: copy a folder path from Explorer, click here, then paste.</small>
+          </div>
+          <label>Purchased sprite folder
+            <input name="source_dir" placeholder="C:\Users\dferr\Downloads\SakPix characters" />
+          </label>
+          <div class="row">
+            <label>Trigger token
+              <input name="trigger" value="sakpix_style" />
+            </label>
+            <label>Cell size
+              <select name="cell_size">
+                <option value="">No slicing</option>
+                <option value="92x92" selected>92x92</option>
+                <option value="128x128">128x128</option>
+                <option value="64x64">64x64</option>
+                <option value="32x32">32x32</option>
+              </select>
+            </label>
+          </div>
+          <label>Base caption
+            <input name="base_caption" value="premium pixel art RPG character" />
+          </label>
+          <label>Output dataset folder
+            <input name="output" placeholder="Optional. Defaults to app/output/training_datasets/..." />
+          </label>
+          <div class="button-row form-actions-tight">
+            <button class="ghost big" type="button" id="previewTrainingDataset">Preview Dataset</button>
+            <button class="primary big" type="submit">Build Dataset</button>
+            <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
+          </div>
+          <div id="trainingDatasetPreview" class="training-dataset-preview empty compact">Preview estimates sample count, captions, actions, directions, and cell slicing before writing files.</div>
+        </form>
+
+        <form class="card form" id="tileTrainingDatasetForm">
+          <div class="card-head">
+            <h3>Auto-Tile Dataset</h3>
+          </div>
+          <label>Purchased tile-set folder
+            <input name="source_dir" placeholder="G:\All 2D Assets Stay Here\SakPix\Stage Assets" />
+          </label>
+          <div class="row">
+            <label>Trigger token
+              <input name="trigger" value="sakpix_tiles" />
+            </label>
+            <label>Cell size
+              <select name="cell_size">
+                <option value="auto" selected>Auto detect</option>
+                <option value="128x128">128x128</option>
+                <option value="209x209">209x209</option>
+                <option value="64x64">64x64</option>
+                <option value="32x32">32x32</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Samples per sheet
+              <input name="max_samples_per_source" value="32" />
+            </label>
+            <label class="checkbox-line">
+              <input type="checkbox" name="include_all" />
+              Include prop/object sheets
+            </label>
+          </div>
+          <label>Base caption
+            <input name="base_caption" value="premium top-down pixel art tileset" />
+          </label>
+          <label>Output dataset folder
+            <input name="output" placeholder="Optional. Defaults to app/output/training_datasets/..." />
+          </label>
+          <div class="button-row form-actions-tight">
+            <button class="primary big" type="submit">Build Auto-Tile Dataset</button>
+            <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
+          </div>
+        </form>
       </div>
     </section>
 
-    <section class="card">
-      <div class="card-head">
-        <h3>Training Path</h3>
-      </div>
-      <div class="recipe">
-        <div><span>A</span><b>Prepare</b><small>Writes trainer config, manifest, and Windows launch script</small></div>
-        <div><span>B</span><b>Inspect</b><small>Check base model, trainer folder, rank, repeats, and step count</small></div>
-        <div><span>C</span><b>Train</b><small>Runs the external trainer only when Start Training is clicked</small></div>
-        <div><span>D</span><b>Use</b><small>Drop the resulting .safetensors into your image model workflow</small></div>
-      </div>
-      <div class="callout">
-        SDXL uses Kohya-style configs. Flux uses an AI Toolkit starter config. Prepare is quick; Start Training can run for a long time.
+    <section class="training-tab-panel" data-training-panel="lora" role="tabpanel">
+      <form class="card form training-lora-form" id="loraTrainingForm">
+        <div class="card-head">
+          <h3>LoRA Training Run</h3>
+        </div>
+        <label>Training dataset folder
+          <input name="dataset_dir" placeholder="app/output/training_datasets/sakpix_dataset_..." />
+        </label>
+        <div class="row">
+          <label>Model family
+            <select name="model_family">
+              <option value="sdxl" selected>SDXL</option>
+              <option value="flux">Flux</option>
+            </select>
+          </label>
+          <label>Trainer
+            <select name="trainer">
+              <option value="auto" selected>Auto</option>
+              <option value="kohya">Kohya SDXL</option>
+              <option value="ai_toolkit">AI Toolkit Flux</option>
+            </select>
+          </label>
+        </div>
+        <label>Base model
+          <input name="base_model" placeholder="C:\models\sdxl-base.safetensors or black-forest-labs/FLUX.1-dev" />
+        </label>
+        <label>Trainer folder
+          <input name="trainer_dir" placeholder="Optional. Defaults to app/vendor/kohya_ss or app/vendor/ai-toolkit" />
+        </label>
+        <div class="row">
+          <label>Run name
+            <input name="name" value="sakpix_sprite_lora" />
+          </label>
+          <label>Trigger token
+            <input name="trigger" value="sakpix_style" />
+          </label>
+        </div>
+        <div class="row">
+          <label>Resolution
+            <select name="resolution">
+              <option value="512">512</option>
+              <option value="768" selected>768</option>
+              <option value="1024">1024</option>
+            </select>
+          </label>
+          <label>Steps
+            <input name="max_train_steps" value="1200" />
+          </label>
+        </div>
+        <div class="row">
+          <label>Learning rate
+            <input name="learning_rate" value="1e-4" />
+          </label>
+          <label>LoRA rank
+            <input name="network_dim" value="16" />
+          </label>
+        </div>
+        <div class="row">
+          <label>Repeats
+            <input name="repeats" value="10" />
+          </label>
+          <label>Output run folder
+            <input name="output" placeholder="Optional. Defaults to app/output/training_runs/..." />
+          </label>
+        </div>
+        <div class="button-row form-actions-tight">
+          <button class="ghost big" type="button" id="applyLoraGpuDefaults">Apply GPU defaults</button>
+          <button class="primary big" type="button" data-lora-mode="prepare">Prepare Run Files</button>
+          <button class="danger big" type="button" data-lora-mode="run">Start Training</button>
+          <button class="ghost big" type="button" data-open="output/training_runs">Open Runs Folder</button>
+        </div>
+        <div id="loraGpuDefaultsHint" class="empty compact">GPU defaults are conservative and keep external trainer behavior opt-in.</div>
+      </form>
+      <section class="card training-progress-card">
+        <div class="card-head">
+          <h3>Training Progress</h3>
+          <button class="mini" id="refreshLoraProgress" type="button">Refresh</button>
+        </div>
+        <label>Run folder
+          <input id="loraProgressPath" placeholder="output/training_runs/sakpix_sprite_lora" />
+        </label>
+        <canvas id="loraLossChart" width="640" height="180" aria-label="LoRA loss chart"></canvas>
+        <div id="loraProgressSummary" class="empty compact">Choose a run folder to inspect loss, samples, and checkpoints.</div>
+        <div id="loraSampleGallery" class="training-sample-gallery"></div>
+      </section>
+      <section class="card training-progress-card">
+        <div class="card-head">
+          <h3>LoRA A/B Compare Plan</h3>
+          <button class="mini" id="buildLoraComparePlan" type="button">Build plan</button>
+        </div>
+        <label>Prompt
+          <input id="loraComparePrompt" placeholder="same prompt for every LoRA variant" />
+        </label>
+        <label>LoRA filenames
+          <input id="loraCompareNames" placeholder="hero_a.safetensors, hero_b.safetensors" />
+        </label>
+        <div id="loraComparePlanResult" class="empty compact">Choose 2-4 trained LoRAs to generate matching variants, then open Compare Player with the resulting sprites.</div>
+      </section>
+    </section>
+
+    <section class="training-tab-panel" data-training-panel="tiles" role="tabpanel">
+      <section class="card tile-training-reference">
+        <div class="card-head">
+          <h3>Tile-Set Representation</h3>
+        </div>
+        <div class="tile-preset-strip" aria-label="Tile training presets">
+          <button class="mini" type="button" data-tile-preset="top_down_terrain">Terrain</button>
+          <button class="mini" type="button" data-tile-preset="dungeon_edges">Dungeon edges</button>
+          <button class="mini" type="button" data-tile-preset="town_roofs">Town roofs</button>
+          <button class="mini" type="button" data-tile-preset="water_coast">Water coast</button>
+        </div>
+        <div class="tile-set-reference-grid" aria-label="Auto-tile layout preview">
+          <div class="tile-cell grass center">Center</div>
+          <div class="tile-cell grass edge top">Top edge</div>
+          <div class="tile-cell grass edge right">Right edge</div>
+          <div class="tile-cell grass corner">Corner</div>
+          <div class="tile-cell stone center">Floor</div>
+          <div class="tile-cell stone edge left">Wall edge</div>
+          <div class="tile-cell water center">Water</div>
+          <div class="tile-cell water edge top">Coast</div>
+        </div>
+        <div class="tile-training-manifest" id="tileTrainingPreviewManifest">
+          <b>16-tile auto-tile sheet</b>
+          <span>Filtered terrain sheets become sampled cells with theme/material captions, palette notes, and train-ready sidecars.</span>
+        </div>
+        <div class="callout">
+          Use one tile family per dataset when possible: terrain, dungeon walls, roofs, water/coast, bridges, or cliffs. This keeps the LoRA from blending unrelated stage materials.
+        </div>
+      </section>
+      <form class="card form tilemap-generator-form" id="tilemapGeneratorForm">
+        <div class="card-head">
+          <h3>Tilemap Generator</h3>
+        </div>
+        <label>Mode
+          <select name="mode">
+            <option value="autotile_16">16-tile autotile</option>
+            <option value="wang_16">16-tile Wang sheet</option>
+          </select>
+        </label>
+        <div class="row compact-fields">
+          <label>Base tile<input name="base" placeholder="input/tiles/grass.png" /></label>
+          <label>Border tile<input name="border" placeholder="input/tiles/path_edge.png" /></label>
+        </div>
+        <div class="row compact-fields">
+          <label>North<input name="north" placeholder="input/tiles/north.png" /></label>
+          <label>East<input name="east" placeholder="input/tiles/east.png" /></label>
+        </div>
+        <div class="row compact-fields">
+          <label>South<input name="south" placeholder="input/tiles/south.png" /></label>
+          <label>West<input name="west" placeholder="input/tiles/west.png" /></label>
+        </div>
+        <div class="row compact-fields">
+          <label>Tile size<input name="tile_size" type="number" min="0" value="0" /></label>
+          <label>Output<input name="output" value="output/tilesets/autotile_16.png" /></label>
+        </div>
+        <button class="mini primary quality-full-action" type="submit">Generate tilemap sheet</button>
+        <div class="empty compact">Writes PNG plus metadata for Godot, RPG Maker, and Tiled import.</div>
+      </form>
+    </section>
+
+    <section class="training-tab-panel" data-training-panel="path" role="tabpanel">
+      <div class="grid-2 training-run-grid">
+        <section class="card">
+          <div class="card-head">
+            <h3>What This Creates</h3>
+          </div>
+          <div class="recipe">
+            <div><span>01</span><b>Scan</b><small>PNG/JPG/WebP assets from your owned folder</small></div>
+            <div><span>02</span><b>Slice</b><small>Optional grid slicing for 92x92 or 128x128 sheets</small></div>
+            <div><span>03</span><b>Caption</b><small>Trigger token, action, direction, style, transparency</small></div>
+            <div><span>04</span><b>Palette</b><small>Shared color summary for matching future generations</small></div>
+            <div><span>05</span><b>Manifest</b><small>Train-ready image/caption pairs and notes</small></div>
+          </div>
+          <div class="callout">
+            Start with an SDXL or Flux style LoRA for new static characters. Use Wan2.2 animation LoRA training later only after the static style dataset looks clean.
+          </div>
+          <div class="callout">
+            For the SakPix RPG packs, use <b>92x92</b> for most collections and <b>128x128</b> for packs that say 128x128.
+          </div>
+          <div class="callout">
+            Current character style default: <b>sakpix_8dir_sdxl_continue.safetensors</b>. Keep the first pass as backup; do not stack both.
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h3>Training Path</h3>
+          </div>
+          <div class="recipe">
+            <div><span>A</span><b>Prepare</b><small>Writes trainer config, manifest, and Windows launch script</small></div>
+            <div><span>B</span><b>Inspect</b><small>Check base model, trainer folder, rank, repeats, and step count</small></div>
+            <div><span>C</span><b>Train</b><small>Runs the external trainer only when Start Training is clicked</small></div>
+            <div><span>D</span><b>Use</b><small>Drop the resulting .safetensors into your image model workflow</small></div>
+          </div>
+          <div class="callout">
+            SDXL uses Kohya-style configs. Flux uses an AI Toolkit starter config. Prepare is quick; Start Training can run for a long time.
+          </div>
+          <div class="callout">
+            Auto-tile datasets filter toward terrain, floor, wall, path, water, roof, bridge, edge, and corner sheets first. Use Include prop/object sheets only for a broader environment LoRA.
+          </div>
+        </section>
       </div>
     </section>
   </div>

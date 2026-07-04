@@ -114,12 +114,31 @@ def cmd_release(args: argparse.Namespace) -> None:
     save_json(outroot / "preflight" / "preflight.json", preflight)
     from services.final_service import render_preflight_html
     (outroot / "preflight" / "preflight.html").write_text(render_preflight_html(preflight), encoding="utf-8")
+    handoff = {
+        "schema": "spriteforge.release_handoff.v1",
+        "quality_gate": gate,
+        "strict_mode": bool(getattr(args, "strict", False)),
+        "preflight": {
+            "json": "preflight/preflight.json",
+            "html": "preflight/preflight.html",
+            "generated_at": preflight.get("generated_at", ""),
+            "next_step": (preflight.get("checks") or {}).get("next_step", {}),
+        },
+        "engine_import": {
+            "notes_dir": "engine",
+            "godot": "Use each sprite sheet.json columns/rows for hframes/vframes and keep texture filtering nearest.",
+            "unity": "Import sheet.png as Sprite Mode Multiple, slice by frame_width x frame_height, and build clips at sheet.json fps.",
+        },
+        "sprites_dir": "sprites",
+        "zip_exclusion_policy": "SpriteForge excludes restricted/heavy files from release zips via is_release_excluded.",
+    }
     manifest = {
         "schema": "spriteforge_release_v12",
         "name": name,
         "created_at": created,
         "sprite_count": len(records),
         "sprites": records,
+        "handoff": handoff,
         "root": str(ROOT.resolve()),
         **project_release_metadata(args.project),
     }
@@ -131,6 +150,12 @@ def cmd_release(args: argparse.Namespace) -> None:
             zip_path.unlink()
         from spriteforge_utils import is_release_excluded, audit_dir_exclusions
         violations = audit_dir_exclusions(outroot)
+        manifest["handoff"]["zip"] = {
+            "path": rel(zip_path),
+            "excluded_count": len(violations),
+            "excluded_paths": violations,
+        }
+        save_json(outroot / "manifest.json", manifest)
         if violations:
             print(f"AUDIT WARNING: Excluding {len(violations)} restricted/heavy files from release zip: {violations}", file=sys.stderr)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:

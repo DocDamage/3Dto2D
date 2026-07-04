@@ -2,24 +2,34 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from PIL import Image
+import numpy as np
 
 from services.sprite_service import SpriteService
 from services.sprite_video_loader import FrameItem, ensure_dir, save_png_sequence
 from services.sprite_chroma_alpha import (
-    apply_chroma_key, try_rembg, add_outline, solidify_transparent_rgb
+    guess_key_color_from_corners,
+    apply_chroma_key, apply_pixel_art_background_removal, try_rembg, try_birefnet, try_depth_anything, apply_pixeloe_pixelization,
+    fit_native_pixel_palette, apply_native_pixel_cleanup, add_outline, solidify_transparent_rgb
 )
+from services.sprite_alpha_tools import refine_alpha_edges
 from services.sprite_frame_norm import normalize_frames, apply_frame_sequence_ops
+from services.sprite_interpolation import interpolate_frames
+from services.sprite_temporal_matting import stabilize_temporal_alpha
+from services.sprite_temporal_smooth import stabilize_temporal_coherence
 from services.sprite_sheet_service import (
     pack_sheet, write_metadata, write_aseprite_json,
     make_preview_gif, make_contact_sheet,
     write_godot_notes, write_report
 )
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ProcessResult:
@@ -71,6 +81,36 @@ def parse_rgba(value: str) -> Tuple[int, int, int, int]:
         raise argparse.ArgumentTypeError("RGBA values must be between 0 and 255")
     return rgba
 
+
+def _resolution_scale(target: str, cell_size: Tuple[int, int]) -> Tuple[str, float]:
+    target = target.strip()
+    if target.endswith("x"):
+        return target, float(target[:-1])
+    if "x" in target.lower():
+        w_text, _h_text = target.lower().split("x", 1)
+        target_size = int(w_text)
+    else:
+        target_size = int(target)
+    return str(target_size), target_size / max(1, cell_size[0])
+
+
+def _silhouette_readability(frames: Sequence[FrameItem], alpha_threshold: int = 8) -> Dict[str, Any]:
+    coverages: List[float] = []
+    visible_pixels: List[int] = []
+    for item in frames:
+        alpha = item.image.convert("RGBA").getchannel("A")
+        arr = np.asarray(alpha)
+        visible = int((arr > alpha_threshold).sum())
+        visible_pixels.append(visible)
+        coverages.append(visible / max(1, arr.size))
+    min_visible = min(visible_pixels) if visible_pixels else 0
+    min_coverage = min(coverages) if coverages else 0.0
+    return {
+        "min_visible_pixels": min_visible,
+        "min_alpha_coverage": min_coverage,
+        "readable": min_visible >= 4 and min_coverage > 0.005,
+    }
+
 def process_common(
     frames: Sequence[FrameItem],
     output: Path,
@@ -105,6 +145,33 @@ def process_common(
     source_meta: Optional[Dict[str, Any]] = None,
     resolutions: Optional[str] = None,
     palette: Optional[List[Tuple[int, int, int]]] = None,
+    matting_engine: str = "chroma",
+    temporal_alpha_stabilize: bool = False,
+    temporal_alpha_strength: float = 0.55,
+    temporal_smooth: bool = False,
+    temporal_smooth_radius: int = 1,
+    temporal_smooth_color_strength: float = 0.35,
+    temporal_smooth_alpha_strength: float = 0.55,
+    temporal_smooth_histogram: bool = True,
+    alpha_refine: bool = False,
+    alpha_refine_radius: int = 1,
+    pixelize: bool = False,
+    pixelize_scale: int = 4,
+    pixel_cleanup: bool = False,
+    pixel_cleanup_colors: int = 24,
+    pixel_cleanup_dither: bool = False,
+    pixel_cleanup_dither_mode: str = "none",
+    pixel_cleanup_palette: Optional[str] = None,
+    generate_normal_maps: bool = False,
+    normal_map_engine: str = "height",
+    interpolate_fps: Optional[float] = None,
+    interpolation_engine: str = "blend",
+    interpolation_skip_pixel_art: bool = False,
+    interpolation_skip_impact_frames: bool = False,
+    interpolation_skip_patterns: Optional[str] = None,
+    pack_mode: str = "grid",
+    segment_parts: Optional[str] = None,
+    pixel_snap_scale: int = 0,
 ) -> ProcessResult:
     ensure_dir(output)
 
@@ -122,13 +189,123 @@ def process_common(
     processed: List[FrameItem] = []
     for item in working:
         img = item.image.convert("RGBA")
+        if matting_engine == "birefnet":
+            try:
+                img = try_birefnet(img)
+            except RuntimeError as exc:
+                # Keep birefnet selectable, but degrade gracefully to native chroma keying.
+                print(f"[Matting] BiRefNet unavailable ({exc}); falling back to native chroma keying.")
+                fallback_key = key_color if key_color is not None else guess_key_color_from_corners(img)
+                img = apply_chroma_key(img, fallback_key, key_tolerance, key_feather)
+        elif matting_engine == "depth-anything":
+            try:
+                img = try_depth_anything(img)
+            except RuntimeError as exc:
+                print(f"[Matting] Depth Anything unavailable ({exc}); falling back to native chroma keying.")
+                fallback_key = key_color if key_color is not None else guess_key_color_from_corners(img)
+                img = apply_chroma_key(img, fallback_key, key_tolerance, key_feather)
+        elif matting_engine == "pixel-art":
+            img = apply_pixel_art_background_removal(img, tolerance=key_tolerance, alpha_threshold=alpha_threshold)
+        elif matting_engine == "rembg" or rembg:
+            try:
+                img = try_rembg(img)
+            except RuntimeError as exc:
+                print(f"[Matting] rembg unavailable ({exc}); falling back to native chroma keying.")
+                fallback_key = key_color if key_color is not None else guess_key_color_from_corners(img)
+                img = apply_chroma_key(img, fallback_key, key_tolerance, key_feather)
+
         if key_color is not None:
             img = apply_chroma_key(img, key_color, key_tolerance, key_feather)
-        if rembg:
-            img = try_rembg(img)
+
+        if alpha_refine:
+            img = refine_alpha_edges(img, radius=alpha_refine_radius)
+
+        if pixelize:
+            img = apply_pixeloe_pixelization(img, pixel_size=pixelize_scale)
+
         if outline_width > 0:
             img = add_outline(img, outline_width, outline_color)
         processed.append(FrameItem(img, item.name, item.source_index))
+
+    if temporal_alpha_stabilize:
+        processed = stabilize_temporal_alpha(processed, strength=temporal_alpha_strength)
+
+    temporal_smooth_info: Dict[str, Any] = {"enabled": False}
+    if temporal_smooth:
+        processed, temporal_smooth_info = stabilize_temporal_coherence(
+            processed,
+            radius=temporal_smooth_radius,
+            color_strength=temporal_smooth_color_strength,
+            alpha_strength=temporal_smooth_alpha_strength,
+            alpha_threshold=alpha_threshold,
+            histogram_match=temporal_smooth_histogram,
+        )
+
+    effective_pixel_dither_mode = str(pixel_cleanup_dither_mode or "none").lower().replace("_", "-")
+    if pixel_cleanup_dither and effective_pixel_dither_mode == "none":
+        effective_pixel_dither_mode = "floyd-steinberg"
+
+    if pixel_cleanup:
+        parsed_palette = SpriteService.parse_palette(pixel_cleanup_palette or "")
+        if parsed_palette:
+            native_palette = parsed_palette
+            palette_source = pixel_cleanup_palette
+        else:
+            native_palette = fit_native_pixel_palette(
+                [item.image for item in processed],
+                colors=pixel_cleanup_colors,
+                alpha_threshold=alpha_threshold,
+            )
+            palette_source = "learned-oklab"
+        processed = [
+            FrameItem(
+                apply_native_pixel_cleanup(
+                    item.image,
+                    colors=pixel_cleanup_colors,
+                    alpha_threshold=alpha_threshold,
+                    dither=pixel_cleanup_dither,
+                    dither_mode=effective_pixel_dither_mode,
+                    palette=native_palette,
+                ),
+                item.name,
+                item.source_index,
+            )
+            for item in processed
+        ]
+
+    if pixel_snap_scale > 1:
+        from services.sprite_pixel_snapper import SpritePixelSnapper
+        processed = [
+            FrameItem(
+                SpritePixelSnapper.snap_pixels_to_grid(
+                    item.image,
+                    scale=pixel_snap_scale,
+                    alpha_threshold=alpha_threshold
+                ),
+                item.name,
+                item.source_index
+            )
+            for item in processed
+        ]
+
+    pixel_art_active = bool(pixelize or pixel_cleanup or pixel_snap_scale > 1 or matting_engine == "pixel-art")
+    hold_patterns = []
+    if interpolation_skip_impact_frames:
+        from services.sprite_interpolation import DEFAULT_IMPACT_PATTERNS
+
+        hold_patterns.extend(DEFAULT_IMPACT_PATTERNS)
+    if interpolation_skip_patterns:
+        hold_patterns.extend([part.strip() for part in interpolation_skip_patterns.split(",") if part.strip()])
+
+    processed, output_fps, interpolation_info = interpolate_frames(
+        processed,
+        fps,
+        interpolate_fps,
+        engine=interpolation_engine,
+        hold_all_transitions=bool(interpolation_skip_pixel_art and pixel_art_active),
+        hold_name_patterns=hold_patterns,
+    )
+    fps = output_fps
 
     normalized, final_cell, normalize_info = normalize_frames(
         processed,
@@ -149,7 +326,40 @@ def process_common(
     if save_processed_frames:
         save_png_sequence(normalized, output / "frames_processed")
 
-    sheet, cols, rows, rects = pack_sheet(normalized, columns, spacing, margin, power_of_two)
+    if segment_parts:
+        from services.sprite_sam2_service import SpriteSAM2Service
+        click_prompts = {}
+        for part_spec in segment_parts.split(";"):
+            if not part_spec.strip() or ":" not in part_spec:
+                continue
+            part_name, clicks_str = part_spec.split(":", 1)
+            part_name = part_name.strip()
+            clicks = []
+            for click_group in clicks_str.split("|"):
+                pts = [p.strip() for p in click_group.split(",") if p.strip()]
+                if len(pts) >= 2:
+                    try:
+                        cx = int(pts[0])
+                        cy = int(pts[1])
+                        clabel = int(pts[2]) if len(pts) > 2 else 1
+                        clicks.append((cx, cy, clabel))
+                    except ValueError as exc:
+                        logger.warning("Ignoring invalid SAM2 click prompt %r for part %s: %s", click_group, part_name, exc)
+            if clicks:
+                click_prompts[part_name] = clicks
+
+        if click_prompts:
+            print(f"[SAM2] Running part segmentation for parts: {list(click_prompts.keys())}")
+            part_frames_dict = SpriteSAM2Service.segment_parts(normalized, click_prompts)
+            for part_name, part_frames in part_frames_dict.items():
+                part_dir = output / f"part_{part_name}"
+                save_png_sequence(part_frames, part_dir)
+                print(f"[SAM2] Saved segmented part '{part_name}' to: {part_dir}")
+                part_sheet, _, _, _ = pack_sheet(part_frames, columns, spacing, margin, power_of_two, pack_mode=pack_mode)
+                part_sheet.save(output / f"sheet_{part_name}.png")
+                print(f"[SAM2] Saved spritesheet for '{part_name}' to: {output / f'sheet_{part_name}.png'}")
+
+    sheet, cols, rows, rects = pack_sheet(normalized, columns, spacing, margin, power_of_two, pack_mode=pack_mode)
     sheet_path = output / "sheet.png"
     sheet.save(sheet_path)
 
@@ -160,6 +370,23 @@ def process_common(
         "solidify": solidify,
         "outline_width": outline_width,
         "power_of_two": power_of_two,
+        "alpha_refine": bool(alpha_refine),
+        "alpha_refine_radius": alpha_refine_radius if alpha_refine else 0,
+        "temporal_alpha_stabilize": bool(temporal_alpha_stabilize),
+        "temporal_alpha_strength": temporal_alpha_strength if temporal_alpha_stabilize else 0,
+        "temporal_smooth": temporal_smooth_info,
+        "pixel_cleanup": {
+            "enabled": bool(pixel_cleanup),
+            "colors": pixel_cleanup_colors if pixel_cleanup else 0,
+            "dither": bool(pixel_cleanup and effective_pixel_dither_mode != "none"),
+            "dither_mode": effective_pixel_dither_mode if pixel_cleanup else "none",
+            "palette": palette_source if pixel_cleanup else None,
+        },
+        "normal_map_engine": normal_map_engine if generate_normal_maps else None,
+        "matting_engine": matting_engine,
+        "interpolation": interpolation_info,
+        "pack_mode": pack_mode,
+        "segment_parts": segment_parts,
     }
 
     metadata_path = output / "sheet.json"
@@ -188,6 +415,38 @@ def process_common(
         animation_name=animation_name,
     )
 
+    if generate_normal_maps:
+        from services.sprite_normal_map import SpriteNormalMapService
+        normal_frames = []
+        specular_frames = []
+        ao_frames = []
+        height_frames = []
+        for item in normalized:
+            norm_img, spec_img, ao_img = SpriteNormalMapService.generate_maps(item.image, engine=normal_map_engine)
+            height_img = SpriteNormalMapService.generate_height_map(item.image, engine=normal_map_engine)
+            normal_frames.append(FrameItem(norm_img, f"{item.name}_normal", item.source_index))
+            specular_frames.append(FrameItem(spec_img, f"{item.name}_specular", item.source_index))
+            ao_frames.append(FrameItem(ao_img, f"{item.name}_ao", item.source_index))
+            height_frames.append(FrameItem(height_img, f"{item.name}_height", item.source_index))
+
+        normal_sheet, _, _, _ = pack_sheet(normal_frames, cols, spacing, margin, power_of_two)
+        normal_sheet.save(output / "sheet_normal.png")
+
+        specular_sheet, _, _, _ = pack_sheet(specular_frames, cols, spacing, margin, power_of_two)
+        specular_sheet.save(output / "sheet_specular.png")
+
+        ao_sheet, _, _, _ = pack_sheet(ao_frames, cols, spacing, margin, power_of_two)
+        ao_sheet.save(output / "sheet_ao.png")
+
+        height_sheet, _, _, _ = pack_sheet(height_frames, cols, spacing, margin, power_of_two)
+        height_sheet.save(output / "sheet_height.png")
+
+        if save_processed_frames:
+            save_png_sequence(normal_frames, output / "frames_normal")
+            save_png_sequence(specular_frames, output / "frames_specular")
+            save_png_sequence(ao_frames, output / "frames_ao")
+            save_png_sequence(height_frames, output / "frames_height")
+
     if preview_gif:
         make_preview_gif(normalized, output / "preview.gif", fps)
 
@@ -214,21 +473,12 @@ def process_common(
         targets = [t.strip() for t in resolutions.split(",") if t.strip()]
         for target in targets:
             try:
-                if target.endswith("x"):
-                    scale_factor = float(target[:-1])
-                    suffix = target
-                else:
-                    target_size = int(target)
-                    scale_factor = target_size / final_cell[0]
-                    suffix = f"{target_size}"
+                suffix, scale_factor = _resolution_scale(target, final_cell)
 
                 new_w = int(round(sheet.width * scale_factor))
                 new_h = int(round(sheet.height * scale_factor))
-                try:
-                    from PIL import Image as PILImage
-                    resample_filter = PILImage.Resampling.LANCZOS
-                except AttributeError:
-                    resample_filter = Image.LANCZOS
+                pixel_art_scale = bool(pixel_art_active or pixel_cleanup or pixel_snap_scale > 1)
+                resample_filter = Image.Resampling.NEAREST if pixel_art_scale else Image.Resampling.LANCZOS
 
                 scaled_sheet = sheet.resize((new_w, new_h), resample_filter)
                 scaled_sheet_name = f"sheet_{suffix}.png"
@@ -248,11 +498,26 @@ def process_common(
                 scaled_spacing = int(round(spacing * scale_factor))
                 scaled_margin = int(round(margin * scale_factor))
                 scaled_extra = json.loads(json.dumps(extra)) if extra else {}
+                scaled_frames = [
+                    FrameItem(
+                        item.image.resize(scaled_cell, resample_filter),
+                        item.name,
+                        item.source_index,
+                    )
+                    for item in normalized
+                ]
+                scaled_extra["resolution_export"] = {
+                    "target": target,
+                    "scale_factor": scale_factor,
+                    "source_cell_size": list(final_cell),
+                    "resample": "nearest" if pixel_art_scale else "lanczos",
+                    "readability": _silhouette_readability(scaled_frames, alpha_threshold=alpha_threshold),
+                }
 
                 write_metadata(
                     output / f"sheet_{suffix}.json",
                     image_name=scaled_sheet_name,
-                    frames=normalized,
+                    frames=scaled_frames,
                     rects=scaled_rects,
                     cell_size=scaled_cell,
                     columns=cols,
@@ -330,6 +595,33 @@ def process_common_from_args(
         flip_y=args.flip_y,
         report=args.report,
         source_meta=source_meta,
-        resolutions=getattr(args, "resolutions", None),
+        resolutions=getattr(args, "resolution_hierarchy", None) or getattr(args, "resolutions", None),
         palette=SpriteService.parse_palette(getattr(args, "palette", None)),
+        matting_engine=getattr(args, "matting_engine", "chroma"),
+        temporal_alpha_stabilize=getattr(args, "temporal_alpha_stabilize", False),
+        temporal_alpha_strength=getattr(args, "temporal_alpha_strength", 0.55),
+        temporal_smooth=getattr(args, "temporal_smooth", False),
+        temporal_smooth_radius=getattr(args, "temporal_smooth_radius", 1),
+        temporal_smooth_color_strength=getattr(args, "temporal_smooth_color_strength", 0.35),
+        temporal_smooth_alpha_strength=getattr(args, "temporal_smooth_alpha_strength", 0.55),
+        temporal_smooth_histogram=not getattr(args, "temporal_smooth_no_histogram", False),
+        alpha_refine=getattr(args, "alpha_refine", False),
+        alpha_refine_radius=getattr(args, "alpha_refine_radius", 1),
+        pixelize=getattr(args, "pixelize", False),
+        pixelize_scale=getattr(args, "pixelize_scale", 4),
+        pixel_cleanup=getattr(args, "pixel_cleanup", False),
+        pixel_cleanup_colors=getattr(args, "pixel_cleanup_colors", 24),
+        pixel_cleanup_dither=getattr(args, "pixel_cleanup_dither", False),
+        pixel_cleanup_dither_mode=getattr(args, "pixel_cleanup_dither_mode", "none"),
+        pixel_cleanup_palette=getattr(args, "pixel_cleanup_palette", None),
+        generate_normal_maps=getattr(args, "generate_normal_maps", False),
+        normal_map_engine=getattr(args, "normal_map_engine", "height"),
+        interpolate_fps=getattr(args, "interpolate_fps", None),
+        interpolation_engine=getattr(args, "interpolation_engine", "blend"),
+        interpolation_skip_pixel_art=getattr(args, "interpolation_skip_pixel_art", False),
+        interpolation_skip_impact_frames=getattr(args, "interpolation_skip_impact_frames", False),
+        interpolation_skip_patterns=getattr(args, "interpolation_skip_patterns", None),
+        pack_mode=getattr(args, "pack_mode", "grid"),
+        segment_parts=getattr(args, "segment_parts", None),
+        pixel_snap_scale=getattr(args, "pixel_snap_scale", 0),
     )

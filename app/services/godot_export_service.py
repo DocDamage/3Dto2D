@@ -1,9 +1,12 @@
 from __future__ import annotations
 import json
+import logging
 import re
 import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 def safe_name(name: str) -> str:
     name = re.sub(r"[^A-Za-z0-9_]+", "_", name.strip())
@@ -27,6 +30,10 @@ def copy_base_assets(sprite_dir: Path, dest: Path, meta: Dict) -> Path:
     preview = sprite_dir / "preview.gif"
     if preview.exists():
         shutil.copy2(preview, dest / "preview.gif")
+    for suffix in ["normal", "specular", "ao"]:
+        map_file = sprite_dir / f"sheet_{suffix}.png"
+        if map_file.exists():
+            shutil.copy2(map_file, dest / f"sheet_{suffix}.png")
     return dest / "sheet.png"
 
 def godot_res_path(project: Optional[Path], dest: Path, res_path: Optional[str], sprite_name: str, filename: str = "sheet.png") -> str:
@@ -39,8 +46,8 @@ def godot_res_path(project: Optional[Path], dest: Path, res_path: Optional[str],
         try:
             rel = dest.relative_to(project).as_posix()
             return "res://" + rel + "/" + filename
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("Godot export destination %s is outside project %s: %s", dest, project, exc)
     return f"res://assets/sprites/{sprite_name}/{filename}"
 
 def godot_sprite2d_script(fps: float, frame_count: int, cols: int, rows: int, loop: bool = True) -> str:

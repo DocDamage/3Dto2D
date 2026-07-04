@@ -2,8 +2,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any, List
 from services.config_service import ConfigService, load_json
-
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import ROOT
 
 class ModelService:
     @staticmethod
@@ -64,17 +63,30 @@ class ModelService:
 
     _summary_cache = None
     _summary_cache_time = 0.0
+    _summary_cache_signature = None
+    _summary_cache_ttl = 60.0
     _disk_cache = None
     _disk_cache_time = 0.0
+    _disk_cache_ttl = 60.0
 
     @staticmethod
-    def get_summary() -> Dict[str, Any]:
-        import sys
+    def _cache_meta(cached_at: float, ttl: float, from_cache: bool) -> Dict[str, Any]:
         import time
-        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
+        age = max(0.0, time.time() - float(cached_at or 0.0)) if cached_at else 0.0
+        return {"from_cache": from_cache, "age_seconds": round(age, 3), "ttl_seconds": ttl}
+
+    @staticmethod
+    def get_summary(force_refresh: bool = False) -> Dict[str, Any]:
+        import time
         now = time.time()
-        if not is_testing and ModelService._summary_cache is not None and now - ModelService._summary_cache_time < 10.0:
-            return ModelService._summary_cache
+        signature = (id(ModelService.get_tiers_status), id(ConfigService.get_config))
+        if (
+            not force_refresh
+            and ModelService._summary_cache is not None
+            and ModelService._summary_cache_signature == signature
+            and now - ModelService._summary_cache_time < ModelService._summary_cache_ttl
+        ):
+            return {**ModelService._summary_cache, "_cache": ModelService._cache_meta(ModelService._summary_cache_time, ModelService._summary_cache_ttl, True)}
 
         cfg = ConfigService.get_config()
         tiers = ModelService.get_tiers_status()
@@ -100,17 +112,16 @@ class ModelService:
             "tiers": tiers,
         }
         ModelService._summary_cache = res
+        ModelService._summary_cache_signature = signature
         ModelService._summary_cache_time = now
-        return res
+        return {**res, "_cache": ModelService._cache_meta(now, ModelService._summary_cache_ttl, False)}
 
     @staticmethod
-    def get_disk_summary() -> Dict[str, Any]:
-        import sys
+    def get_disk_summary(force_refresh: bool = False) -> Dict[str, Any]:
         import time
-        is_testing = "pytest" in sys.modules or "unittest" in sys.modules
         now = time.time()
-        if not is_testing and ModelService._disk_cache is not None and now - ModelService._disk_cache_time < 15.0:
-            return ModelService._disk_cache
+        if not force_refresh and ModelService._disk_cache is not None and now - ModelService._disk_cache_time < ModelService._disk_cache_ttl:
+            return {**ModelService._disk_cache, "_cache": ModelService._cache_meta(ModelService._disk_cache_time, ModelService._disk_cache_ttl, True)}
 
         total, used, free = shutil.disk_usage(ROOT)
         free_gb = round(free / (1024**3), 1)
@@ -122,7 +133,15 @@ class ModelService:
         }
         ModelService._disk_cache = res
         ModelService._disk_cache_time = now
-        return res
+        return {**res, "_cache": ModelService._cache_meta(now, ModelService._disk_cache_ttl, False)}
+
+    @staticmethod
+    def reset_caches() -> None:
+        ModelService._summary_cache = None
+        ModelService._summary_cache_time = 0.0
+        ModelService._summary_cache_signature = None
+        ModelService._disk_cache = None
+        ModelService._disk_cache_time = 0.0
 
     @staticmethod
     def get_addons_status() -> Dict[str, Any]:

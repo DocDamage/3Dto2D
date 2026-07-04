@@ -1,0 +1,299 @@
+/* Bounded panel resizers.
+   Cards and work surfaces can be resized; app windows and tab viewports cannot. */
+
+textarea {
+  resize: none !important;
+}
+
+@media (min-width: 761px) {
+  :root {
+    --resize-card-min-w: 220px;
+    --resize-card-min-h: 128px;
+    --resize-pane-min-w: 220px;
+    --resize-pane-min-h: 118px;
+  }
+
+  .card,
+  .quality-left-rail,
+  .quality-right-stage,
+  .quality-live-preview,
+  .inspector-card,
+  .terminal,
+  .table-scroll,
+  .release-list,
+  .queue-list,
+  .marketplace-grid,
+  .prompt-builder,
+  .consistency-lock-panel,
+  .audio-cue-panel,
+  .seed-gallery,
+  .state-machine-card,
+  .scene-compositor-card,
+  .model-addons-panel {
+    box-sizing: border-box;
+    container-type: inline-size;
+    max-block-size: min(72vh, 720px);
+    max-height: min(72vh, 720px);
+    max-inline-size: min(100%, calc(100vw - 24px));
+    max-width: min(100%, calc(100vw - 24px));
+    min-block-size: min(var(--resize-card-min-h), 100%);
+    min-height: min(var(--resize-card-min-h), 100%);
+    min-inline-size: min(var(--resize-card-min-w), 100%);
+    min-width: min(var(--resize-card-min-w), 100%);
+    overflow: hidden;
+    overscroll-behavior: contain;
+    position: relative;
+    resize: both;
+    scrollbar-gutter: stable;
+  }
+
+  .terminal,
+  .table-scroll,
+  .release-list,
+  .queue-list,
+  .marketplace-grid,
+  .palette-editor-panel textarea {
+    max-block-size: 100%;
+    max-height: 100%;
+    min-block-size: min(132px, 100%);
+    min-height: min(132px, 100%);
+    resize: vertical !important;
+  }
+
+  .table-scroll,
+  .release-list,
+  .queue-list,
+  .marketplace-grid {
+    overflow: auto;
+  }
+
+  .quality-left-rail,
+  .quality-right-stage {
+    max-block-size: 100%;
+    max-height: 100%;
+    max-inline-size: 100%;
+    max-width: 100%;
+  }
+
+  .quality-live-preview,
+  .inspector-card {
+    max-block-size: 100%;
+    max-height: 100% !important;
+    max-inline-size: 100%;
+    max-width: 100%;
+    min-block-size: min(118px, 100%);
+    min-height: min(118px, 100%) !important;
+    min-inline-size: min(260px, 100%);
+    min-width: min(260px, 100%);
+  }
+
+  #view-quality .quality-right-stage .inspector-card {
+    min-height: min(118px, 100%) !important;
+  }
+
+  #view-training .training-tab-panel.active {
+    max-block-size: none;
+    max-height: none;
+    min-block-size: 0;
+    min-height: 0;
+    min-inline-size: 0;
+    min-width: 0;
+    overflow-y: auto;
+    resize: none !important;
+  }
+
+  #view-training .training-tab-panel.active .card {
+    height: 100%;
+    max-block-size: 100%;
+    max-height: 100%;
+    max-inline-size: 100%;
+    max-width: 100%;
+    overflow: auto;
+  }
+
+  #view-training .training-tab-panel.active > .grid-2,
+  #view-training .training-tab-panel.active > .training-primary-grid,
+  #view-training .training-tab-panel.active > .training-run-grid {
+    align-items: stretch;
+    height: 100%;
+    min-height: 0;
+  }
+
+  #view-tasks.subview-pane.active,
+  #view-history.view.active,
+  #view-cleanup.view.active {
+    min-height: 0;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-gutter: stable;
+  }
+
+  #view-tasks-parent .subview-container > #view-tasks.subview-pane.active {
+    height: 100%;
+    max-block-size: 100%;
+    max-height: 100%;
+  }
+
+  #view-tasks.subview-pane.active .card,
+  #view-history.view.active .card,
+  #view-cleanup.view.active .card {
+    max-inline-size: 100%;
+    max-width: 100%;
+  }
+
+  .training-tab-panel.active,
+  .result-dialog,
+  .wizard-container,
+  .command-palette-dialog,
+  .notification-drawer,
+  .wizard-preview-card,
+  .wizard-summary-card,
+  .wizard-direction-panel,
+  .drop-target-card {
+    resize: none !important;
+  }
+
+  .training-tab-panel.active::after,
+  .result-dialog::after,
+  .wizard-container::after,
+  .command-palette-dialog::after,
+  .notification-drawer::after,
+  .wizard-preview-card::after,
+  .wizard-summary-card::after,
+  .wizard-direction-panel::after,
+  .drop-target-card::after {
+    content: none !important;
+  }
+
+  .result-dialog,
+  .wizard-container,
+  .command-palette-dialog,
+  .notification-drawer {
+    box-sizing: border-box;
+    max-block-size: calc(100vh - 16px);
+    max-height: calc(100vh - 16px) !important;
+    max-inline-size: calc(100vw - 16px);
+    max-width: calc(100vw - 16px) !important;
+    min-block-size: min(320px, calc(100vh - 24px));
+    min-height: min(320px, calc(100vh - 24px)) !important;
+    min-inline-size: min(420px, calc(100vw - 24px));
+    min-width: min(420px, calc(100vw - 24px)) !important;
+    overflow: hidden !important;
+  }
+
+  .wizard-container,
+  .result-dialog {
+    height: clamp(min(320px, calc(100vh - 24px)), 86vh, calc(100vh - 16px));
+    width: clamp(min(420px, calc(100vw - 24px)), 86vw, calc(100vw - 16px));
+  }
+
+  .command-palette-dialog {
+    width: clamp(min(360px, calc(100vw - 24px)), 58vw, calc(100vw - 16px));
+  }
+
+  .notification-drawer {
+    min-inline-size: min(300px, calc(100vw - 16px));
+    width: clamp(min(300px, calc(100vw - 16px)), 34vw, calc(100vw - 16px));
+  }
+
+  .wizard-body,
+  .result-media-grid,
+  .result-media-panel,
+  .quality-live-preview-grid,
+  .inspector-layout,
+  .training-tab-panels,
+  .training-tab-panel.active {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .wizard-container .wizard-body {
+    overflow: auto !important;
+  }
+
+  @container (max-width: 520px) {
+    .row,
+    .grid-2,
+    .split,
+    .result-media-grid,
+    .quality-live-preview-grid,
+    .wizard-split-layout,
+    .wizard-reference-grid,
+    .wizard-summary-section {
+      grid-template-columns: 1fr !important;
+    }
+
+    .card-head,
+    .compact-head,
+    .result-dialog-head,
+    .result-panel-head,
+    .model-addon-title {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .button-row,
+    .hero-actions,
+    .quality-panel-actions,
+    .result-actions,
+    .model-addon-actions {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .primary,
+    .ghost,
+    .danger,
+    .mini {
+      justify-content: center;
+      width: 100%;
+    }
+
+    .quality-preview-media,
+    .result-media-frame,
+    .inspector-canvas-container {
+      max-height: min(34vh, 220px);
+      min-height: 96px;
+    }
+  }
+
+  @container (max-width: 360px) {
+    .section-title,
+    .card-head,
+    .compact-head {
+      gap: 4px;
+    }
+
+    .section-title h2,
+    .card h3,
+    .compact-head h3 {
+      font-size: 14px !important;
+    }
+
+    .description,
+    .callout,
+    .recipe small {
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .tile-set-reference-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 760px) {
+  .quality-left-rail,
+  .quality-right-stage,
+  .quality-live-preview,
+  .inspector-card,
+  .terminal,
+  .table-scroll,
+  .release-list,
+  .queue-list,
+  .marketplace-grid,
+  .training-tab-panel.active {
+    resize: none;
+  }
+}

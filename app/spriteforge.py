@@ -113,6 +113,13 @@ def cmd_inspect(args: argparse.Namespace) -> None:
         Path(args.output).write_text(text, encoding="utf-8")
 
 
+def cmd_dual_alpha(args: argparse.Namespace) -> None:
+    from services.sprite_alpha_tools import save_dual_background_alpha
+
+    save_dual_background_alpha(Path(args.black), Path(args.white), Path(args.output))
+    print(f"Dual-background alpha saved: {args.output}")
+
+
 def cmd_batch(args: argparse.Namespace) -> None:
     config_path = Path(args.config)
     data = json.loads(config_path.read_text(encoding="utf-8"))
@@ -206,6 +213,7 @@ def cmd_watch(args: argparse.Namespace) -> None:
 def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--output", required=True, help="Output folder")
     p.add_argument("--resolutions", default=None, help="Multi-resolution targets, comma separated. Example: 0.5x,1x,2x or 32,64,128")
+    p.add_argument("--resolution-hierarchy", default=None, help="Alias for --resolutions. Example: 128,64,32")
     p.add_argument("--fps", type=float, default=12.0, help="Output animation FPS")
     p.add_argument("--cell-size", default=None, help="Final cell size, for example 512x512. Auto if omitted.")
     p.add_argument("--columns", type=int, default=None, help="Number of spritesheet columns. Auto if omitted.")
@@ -216,6 +224,33 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--key-tolerance", type=float, default=45.0, help="Chroma key tolerance")
     p.add_argument("--key-feather", type=float, default=25.0, help="Soft edge width for chroma key")
     p.add_argument("--rembg", action="store_true", help="Optional AI background removal. Requires rembg + onnxruntime.")
+    p.add_argument("--matting-engine", choices=["chroma", "rembg", "birefnet", "depth-anything", "pixel-art"], default="chroma", help="Matting engine to use for background removal")
+    p.add_argument("--temporal-alpha-stabilize", action="store_true", help="Native motion-aware alpha smoothing across frames")
+    p.add_argument("--temporal-alpha-strength", type=float, default=0.55, help="Temporal alpha smoothing strength from 0 to 0.95")
+    p.add_argument("--temporal-smooth", action="store_true", help="Reduce frame-to-frame RGB flicker and alpha-edge jitter")
+    p.add_argument("--temporal-smooth-radius", type=int, default=1, help="Sliding window radius for temporal smoothing")
+    p.add_argument("--temporal-smooth-color-strength", type=float, default=0.35, help="RGB temporal smoothing strength from 0 to 0.95")
+    p.add_argument("--temporal-smooth-alpha-strength", type=float, default=0.55, help="Alpha temporal smoothing strength from 0 to 0.95")
+    p.add_argument("--temporal-smooth-no-histogram", action="store_true", help="Disable histogram matching before temporal smoothing")
+    p.add_argument("--alpha-refine", action="store_true", help="Refine matte edges after background removal with the native edge-aware alpha pass.")
+    p.add_argument("--alpha-refine-radius", type=int, default=1, help="Alpha refinement radius in pixels")
+    p.add_argument("--pixelize", action="store_true", help="Enable retro pixelization")
+    p.add_argument("--pixelize-scale", type=int, default=4, help="Scale/pixel size for pixelization")
+    p.add_argument("--pixel-snap-scale", type=int, default=0, help="Scale/pixel size for pixel-art grid snapping. 0 disables.")
+    p.add_argument("--pixel-cleanup", action="store_true", help="Native Oklab palette cleanup for AI pixel art")
+    p.add_argument("--pixel-cleanup-colors", type=int, default=24, help="Palette size for native pixel cleanup")
+    p.add_argument("--pixel-cleanup-palette", default=None, help="Optional palette for native cleanup: pico8, gameboy, nes, or hex colors")
+    p.add_argument("--pixel-cleanup-dither", action="store_true", help="Apply Floyd-Steinberg dithering during native pixel cleanup")
+    p.add_argument("--pixel-cleanup-dither-mode", choices=["none", "floyd-steinberg", "bayer"], default="none", help="Native pixel cleanup dithering mode")
+    p.add_argument("--interpolate-fps", type=float, default=None, help="Interpolate animation up to this FPS after matting/pixel cleanup")
+    p.add_argument("--interpolation-engine", choices=["blend", "flow", "bitmapflow", "rife"], default="blend", help="Native interpolation engine")
+    p.add_argument("--pack-mode", choices=["grid", "maxrects"], default="grid", help="Packing mode: grid alignment or MaxRects tight packing")
+    p.add_argument("--segment-parts", default=None, help="Part segmentation click specifications, e.g. weapon:150,220,1;hair:200,100,1")
+    p.add_argument("--interpolation-skip-pixel-art", action="store_true", help="Hold source frames instead of blending when pixel-art cleanup/pixelize is active")
+    p.add_argument("--interpolation-skip-impact-frames", action="store_true", help="Hold transitions touching impact/contact/smear frame names")
+    p.add_argument("--interpolation-skip-patterns", default=None, help="Comma-separated frame-name patterns whose transitions should be held")
+    p.add_argument("--generate-normal-maps", action="store_true", help="Generate 2D normal, specular, and AO maps")
+    p.add_argument("--normal-map-engine", choices=["height", "native-depth"], default="height", help="Native normal-map engine")
     p.add_argument("--crop-mode", choices=["global", "per-frame", "none"], default="global", help="Canvas crop mode")
     p.add_argument("--pad", type=int, default=16, help="Padding around detected subject")
     p.add_argument("--alpha-threshold", type=int, default=8, help="Alpha threshold for subject bounds")
@@ -260,6 +295,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_inspect.add_argument("--input", required=True, help="Video file or image frame folder")
     p_inspect.add_argument("--output", default=None, help="Optional JSON output path")
     p_inspect.set_defaults(func=cmd_inspect)
+
+    p_dual = sub.add_parser("dual-alpha", help="Extract RGBA from matching black-background and white-background renders")
+    p_dual.add_argument("--black", required=True, help="Render on black background")
+    p_dual.add_argument("--white", required=True, help="Render on white background")
+    p_dual.add_argument("--output", required=True, help="Output RGBA PNG")
+    p_dual.set_defaults(func=cmd_dual_alpha)
 
     p_batch = sub.add_parser("batch", help="Process multiple jobs from a JSON config")
     p_batch.add_argument("--config", required=True, help="Batch config JSON")

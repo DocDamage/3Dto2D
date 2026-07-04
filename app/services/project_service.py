@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from services.logging_service import get_logger
-from spriteforge_utils import safe_name
+from services.project_palette_service import DEFAULT_PALETTE_LOCK, normalize_palette_lock
+from spriteforge_utils import ROOT, safe_name
 
-ROOT = Path(__file__).resolve().parent.parent
 PROJECTS_DIR = ROOT / "projects"
 STATE_PATH = ROOT / "output" / "projects" / "project_state.json"
 DEFAULT_ACTIONS = ["idle", "walk", "run", "attack_light", "hurt"]
@@ -42,6 +42,7 @@ class ProjectService:
 
     @staticmethod
     def _summary(path: Path, data: Dict[str, Any]) -> Dict[str, Any]:
+        palette_lock = normalize_palette_lock(data.get("palette_lock"))
         return {
             "name": data.get("name", path.parent.name),
             "path": str(path.relative_to(ROOT)).replace("\\", "/"),
@@ -52,6 +53,7 @@ class ProjectService:
             "directions": data.get("directions", []),
             "created_at": data.get("created_at", ""),
             "updated_at": data.get("updated_at", ""),
+            "palette_lock": palette_lock,
         }
 
     @staticmethod
@@ -216,7 +218,8 @@ class ProjectService:
                         "loop_seam_threshold": 15.0,
                         "required_frame_count": None,
                         "alpha_cleanliness": 0.05
-                    }
+                    },
+                    "palette_lock": dict(DEFAULT_PALETTE_LOCK),
                 }
             manifest.write_text(json.dumps(data, indent=2), encoding="utf-8")
             return ProjectService.set_active_project(str(manifest)) or ProjectService._summary(manifest, data)

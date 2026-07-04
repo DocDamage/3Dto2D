@@ -10,18 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from spriteforge_qc import (
-    FrameRecord,
-    ensure_dir,
-    alpha_bbox,
-    load_input,
-    load_sheet_frames,
-    analyze_frames,
-    make_contact_sheet,
-    write_html_report,
-)
-
-ROOT = Path(__file__).resolve().parent.parent
+from spriteforge_utils import ROOT
 
 def rmse(a: Image.Image, b: Image.Image) -> float:
     if a.size != b.size:
@@ -234,3 +223,15 @@ def cmd_compare(args: argparse.Namespace) -> None:
     (out_dir / "compare_report.html").write_text(f"<!doctype html><html><body><h1>SpriteForge Compare</h1><pre>{json.dumps(metrics, indent=2)}</pre><table border='1'><tr><th>Frame</th><th>RMSE</th></tr>{frame_rows}</table></body></html>", encoding="utf-8")
     print(f"Compare report: {out_dir / 'compare_report.html'}")
     print(json.dumps(metrics, indent=2))
+
+
+from spriteforge_qc import (
+    FrameRecord,
+    ensure_dir,
+    alpha_bbox,
+    load_input,
+    load_sheet_frames,
+    analyze_frames,
+    make_contact_sheet,
+    write_html_report,
+)

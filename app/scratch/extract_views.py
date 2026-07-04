@@ -1,8 +1,12 @@
 import os
 import re
 from pathlib import Path
+import sys
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from spriteforge_utils import ROOT
+
 INDEX_PATH = ROOT / "web" / "index.html"
 COMPONENTS_DIR = ROOT / "web" / "components"
 

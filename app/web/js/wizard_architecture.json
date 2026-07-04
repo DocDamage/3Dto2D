@@ -1,0 +1,64 @@
+{
+  "schema": "spriteforge.wizard_architecture.v1",
+  "current_entry": "js/wizard.js",
+  "target_split": [
+    {
+      "file": "js/wizard_templates.js",
+      "owns": [
+        "window.SpriteForgeWizardTemplates",
+        "WIZARD_TEMPLATES",
+        "PERSPECTIVE_PROMPTS",
+        "applyTemplateDefaults"
+      ]
+    },
+    {
+      "file": "js/wizard_state.js",
+      "owns": [
+        "window.SpriteForgeWizardStateConfig",
+        "STORAGE_KEY",
+        "saveWizardState",
+        "loadWizardState",
+        "getSelectedActions",
+        "getSelectedDirections",
+        "getSelectedPerspective",
+        "setSelectedActions",
+        "setSelectedDirections",
+        "setSelectedPerspective"
+      ]
+    },
+    {
+      "file": "js/wizard_ui.js",
+      "owns": [
+        "window.SpriteForgeWizardUi",
+        "renderWizardStep",
+        "initWizard",
+        "setStep",
+        "handleNextStep",
+        "validateStep",
+        "updatePromptPreview",
+        "updateVisualizerGrid",
+        "buildSummaryPage",
+        "openWizard",
+        "closeWizard",
+        "loadWizardHtml",
+        "exposeWizardGlobals"
+      ]
+    },
+    {
+      "file": "js/wizard_submit.js",
+      "owns": [
+        "window.SpriteForgeWizardSubmit",
+        "recommendWizardProfile",
+        "buildWizardGenerationPlan",
+        "submitWizard",
+        "runPreflightCheck",
+        "skipToAdvanced"
+      ]
+    }
+  ],
+  "global_contracts": [
+    "window.openWizard",
+    "window.closeWizard",
+    "window.installWizardDrops"
+  ]
+}

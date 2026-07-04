@@ -60,6 +60,7 @@ def parse_args():
     p.add_argument("--samples", type=int, default=32, help="Render samples where applicable")
     p.add_argument("--add-light", action="store_true", help="Add simple sun and area light if the scene is dark/no lights")
     p.add_argument("--fit-padding", type=float, default=1.25, help="Auto ortho scale multiplier")
+    p.add_argument("--dual-background-alpha", action="store_true", help="Render black/white background passes and recover transparent PNG frames natively")
     return p.parse_args(argv)
 
 
@@ -221,6 +222,77 @@ def configure_camera(direction: str, ortho_scale: Optional[float], camera_distan
     return cam
 
 
+def set_world_background(color: Tuple[float, float, float]):
+    scene = bpy.context.scene
+    world = scene.world
+    if world is None:
+        world = bpy.data.worlds.new("SpriteForge_World")
+        scene.world = world
+    world.color = color
+    return world
+
+
+def render_animation_to(output: Path, prefix: str):
+    output.mkdir(parents=True, exist_ok=True)
+    bpy.context.scene.render.filepath = str(output / prefix)
+    bpy.ops.render.render(animation=True)
+
+
+def combine_dual_alpha_folder(black_dir: Path, white_dir: Path, output: Path):
+    app_root = Path(__file__).resolve().parent
+    if str(app_root) not in sys.path:
+        sys.path.insert(0, str(app_root))
+
+    try:
+        from PIL import Image
+        from services.sprite_alpha_tools import extract_dual_background_alpha
+    except Exception as exc:
+        raise RuntimeError(
+            "Dual-background alpha combine needs SpriteForge's Pillow-based alpha tools. "
+            "Run this renderer from the SpriteForge app environment."
+        ) from exc
+
+    black_files = sorted(black_dir.glob("*.png"))
+    white_files = sorted(white_dir.glob("*.png"))
+    if len(black_files) != len(white_files):
+        raise RuntimeError(f"Dual-background pass mismatch: {len(black_files)} black frames, {len(white_files)} white frames")
+
+    output.mkdir(parents=True, exist_ok=True)
+    for black_path, white_path in zip(black_files, white_files):
+        if black_path.name != white_path.name:
+            raise RuntimeError(f"Dual-background frame mismatch: {black_path.name} vs {white_path.name}")
+        rgba = extract_dual_background_alpha(Image.open(black_path), Image.open(white_path))
+        rgba.save(output / black_path.name)
+
+
+def render_dual_background_alpha(output: Path, prefix: str):
+    scene = bpy.context.scene
+    original_filepath = scene.render.filepath
+    original_transparent = getattr(scene.render, "film_transparent", False)
+    original_world = scene.world
+    original_world_color = tuple(original_world.color) if original_world is not None else None
+
+    black_dir = output / "_dual_black"
+    white_dir = output / "_dual_white"
+    try:
+        scene.render.film_transparent = False
+        set_world_background((0.0, 0.0, 0.0))
+        render_animation_to(black_dir, prefix)
+        set_world_background((1.0, 1.0, 1.0))
+        render_animation_to(white_dir, prefix)
+        combine_dual_alpha_folder(black_dir, white_dir, output)
+    finally:
+        scene.render.filepath = original_filepath
+        try:
+            scene.render.film_transparent = original_transparent
+        except Exception:
+            pass
+        if original_world is not None:
+            scene.world = original_world
+            if original_world_color is not None:
+                original_world.color = original_world_color
+
+
 def render_one(output: Path, prefix: str, direction: str, args, action_name: Optional[str]):
     scene = bpy.context.scene
     action_range = apply_action(action_name)
@@ -237,9 +309,6 @@ def render_one(output: Path, prefix: str, direction: str, args, action_name: Opt
 
     configure_camera(direction, args.ortho_scale, args.camera_distance, args.fit_padding)
 
-    output.mkdir(parents=True, exist_ok=True)
-    scene.render.filepath = str(output / prefix)
-
     print("SpriteForge Blender render")
     print(f"Output: {output}")
     print(f"Action: {action_name or 'current'}")
@@ -248,7 +317,11 @@ def render_one(output: Path, prefix: str, direction: str, args, action_name: Opt
     print(f"Resolution: {args.resolution}x{args.resolution}")
     print(f"Ortho scale: {bpy.context.scene.camera.data.ortho_scale:.4f}")
 
-    bpy.ops.render.render(animation=True)
+    if args.dual_background_alpha:
+        print("Alpha: dual background black/white recovery")
+        render_dual_background_alpha(output, prefix)
+    else:
+        render_animation_to(output, prefix)
 
 
 def main():

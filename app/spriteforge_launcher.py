@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 import datetime as dt
 
-ROOT = Path(__file__).resolve().parent
+from spriteforge_utils import ROOT
 
 def get_log_path() -> Path:
     logs_dir = ROOT / "logs"

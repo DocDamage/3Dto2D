@@ -8,6 +8,7 @@
   min-height: 76px;
   display: grid;
   place-items: center;
+  gap: 6px;
   padding: 10px;
   border: 1.5px dashed rgba(85, 241, 255, 0.28);
   border-radius: 10px;
@@ -32,6 +33,23 @@
 .drop-target-card span {
   color: var(--text);
   font-size: 13px;
+}
+
+.drop-target-card small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.drop-target-button {
+  min-height: 28px;
+  padding: 5px 10px;
+}
+
+.wizard-drop-target-row {
+  margin-top: -2px;
 }
 
 @media (max-width: 620px) {

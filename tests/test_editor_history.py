@@ -8,8 +8,8 @@ APP = ROOT / "app"
 def test_editor_history_module_loaded_before_editor():
     index = (APP / "web" / "index.html").read_text(encoding="utf-8")
 
-    history_pos = index.index("/web/js/editor_history.js")
-    editor_pos = index.index("/web/js/editor.js")
+    history_pos = index.index("js/editor_history.js")
+    editor_pos = index.index("js/editor.js")
     assert history_pos < editor_pos
 
 

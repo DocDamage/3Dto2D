@@ -242,6 +242,13 @@ def test_release_manifests(tmp_path):
     )
     assert manifest["schema"] == "spriteforge_release_v12"
     assert manifest["name"] == "test_release"
+    assert manifest["handoff"]["schema"] == "spriteforge.release_handoff.v1"
+    assert manifest["handoff"]["quality_gate"]["ok"] is False
+    assert manifest["handoff"]["quality_gate"]["errors"]
+    assert manifest["handoff"]["preflight"]["json"] == "preflight/preflight.json"
+    assert manifest["handoff"]["engine_import"]["notes_dir"] == "engine"
+    assert manifest["handoff"]["zip"]["path"].endswith("release_output.zip")
+    assert manifest["handoff"]["zip"]["excluded_count"] == 0
 
     zip_file_path = out_dir.with_suffix(".zip")
     assert zip_file_path.exists()

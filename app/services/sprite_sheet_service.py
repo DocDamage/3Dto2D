@@ -2,6 +2,8 @@
 """Sheet packing, metadata writing, preview GIF/contact sheet, Godot/report output."""
 from __future__ import annotations
 
+import base64
+from io import BytesIO
 import json
 import math
 from pathlib import Path
@@ -22,6 +24,7 @@ __all__ = [
     "write_report",
     "export_apng",
     "export_webp_anim",
+    "export_lottie_json",
 ]
 
 
@@ -31,9 +34,38 @@ def pack_sheet(
     spacing: int,
     margin: int,
     power_of_two: bool,
+    pack_mode: str = "grid",
 ) -> Tuple[Image.Image, int, int, List[Dict[str, int]]]:
     if not frames:
         raise RuntimeError("No frames to pack.")
+
+    if pack_mode == "maxrects":
+        from services.sprite_bin_packer import SpriteBinPackerService
+        rectangles = [(f.image.width, f.image.height, i) for i, f in enumerate(frames)]
+        res = SpriteBinPackerService.pack(rectangles, max_width=4096, pack_mode="maxrects", spacing=spacing, margin=margin)
+        
+        sheet_w = res["width"]
+        sheet_h = res["height"]
+        sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
+        
+        rects = [{} for _ in range(len(frames))]
+        for (x, y), idx in res["positions"]:
+            orig_frame = frames[idx]
+            sheet.alpha_composite(orig_frame.image.convert("RGBA"), (x, y))
+            rects[idx] = {"x": x, "y": y, "w": orig_frame.image.width, "h": orig_frame.image.height}
+            
+        cols = columns if columns is not None else int(math.ceil(math.sqrt(len(frames))))
+        rows = int(math.ceil(len(frames) / cols))
+        
+        if power_of_two:
+            new_w = next_power_of_two(sheet.width)
+            new_h = next_power_of_two(sheet.height)
+            if (new_w, new_h) != sheet.size:
+                padded = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 0))
+                padded.alpha_composite(sheet, (0, 0))
+                sheet = padded
+        return sheet, cols, rows, rects
+
     cell_w, cell_h = frames[0].image.size
     n = len(frames)
     if columns is None:
@@ -139,12 +171,13 @@ def write_aseprite_json(
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
-def make_preview_gif(frames: Sequence[FrameItem], path: Path, fps: float) -> None:
+def make_preview_gif(frames: Sequence[FrameItem], path: Path, fps: float, durations_ms: Optional[Sequence[int]] = None) -> None:
     if not frames:
         return
     duration = int(round(1000.0 / fps)) if fps > 0 else 83
+    durations = [max(1, int(value)) for value in durations_ms] if durations_ms else duration
     imgs = [f.image.convert("RGBA") for f in frames]
-    imgs[0].save(path, save_all=True, append_images=imgs[1:], duration=duration, loop=0, disposal=2)
+    imgs[0].save(path, save_all=True, append_images=imgs[1:], duration=durations, loop=0, disposal=2)
 
 
 def make_contact_sheet(frames: Sequence[FrameItem], path: Path, columns: Optional[int] = None, label: bool = True) -> None:
@@ -215,6 +248,76 @@ def export_webp_anim(frames: Sequence[FrameItem], path: Path, fps: float, qualit
         quality=quality,
         method=4,
     )
+
+
+def export_lottie_json(frames: Sequence[FrameItem], path: Path, fps: float, name: str = "sprite_animation") -> None:
+    """Export frames as a bitmap-backed Lottie JSON animation.
+
+    Lottie is vector-first, but this representation is useful for web previews,
+    design handoff, and engine pipelines that accept image-sequence layers.
+    Each sprite frame is embedded as a PNG data URI and shown for one timeline
+    frame, preserving transparency and exact pixel colors.
+    """
+    if not frames:
+        return
+    frame_rate = float(fps) if fps and fps > 0 else 12.0
+    width, height = frames[0].image.size
+    assets: List[Dict[str, Any]] = []
+    layers: List[Dict[str, Any]] = []
+    for i, item in enumerate(frames):
+        buffer = BytesIO()
+        item.image.convert("RGBA").save(buffer, format="PNG")
+        data_uri = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+        asset_id = f"image_{i:04d}"
+        assets.append({
+            "id": asset_id,
+            "w": int(item.image.width),
+            "h": int(item.image.height),
+            "u": "",
+            "p": data_uri,
+            "e": 1,
+        })
+        layers.append({
+            "ddd": 0,
+            "ind": i + 1,
+            "ty": 2,
+            "nm": item.name or f"frame_{i:04d}",
+            "refId": asset_id,
+            "sr": 1,
+            "ks": {
+                "o": {"a": 0, "k": 100},
+                "r": {"a": 0, "k": 0},
+                "p": {"a": 0, "k": [width / 2, height / 2, 0]},
+                "a": {"a": 0, "k": [item.image.width / 2, item.image.height / 2, 0]},
+                "s": {"a": 0, "k": [100, 100, 100]},
+            },
+            "ao": 0,
+            "ip": i,
+            "op": i + 1,
+            "st": 0,
+            "bm": 0,
+        })
+    data = {
+        "v": "5.7.4",
+        "fr": frame_rate,
+        "ip": 0,
+        "op": len(frames),
+        "w": int(width),
+        "h": int(height),
+        "nm": name,
+        "ddd": 0,
+        "assets": assets,
+        "layers": layers,
+        "meta": {
+            "g": "SpriteForge Studio",
+            "spriteforge": {
+                "format": "bitmap_sequence",
+                "frame_count": len(frames),
+                "fps": frame_rate,
+            },
+        },
+    }
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def write_report(path: Path, sheet_name: str, output_dir: Path, frame_count: int, fps: float,

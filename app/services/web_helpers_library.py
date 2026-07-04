@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -15,6 +16,8 @@ from spriteforge_utils import (
 )
 from services.web_path_proxy import ROOT, OUTPUT, INPUT, UPLOADS
 
+logger = logging.getLogger(__name__)
+
 def _is_relative_to(path: Path, base: Path) -> bool:
     try:
         path.resolve().relative_to(base.resolve())
@@ -25,7 +28,8 @@ def _is_relative_to(path: Path, base: Path) -> bool:
 def rel(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
-    except Exception:
+    except Exception as exc:
+        logger.debug("Could not render path %s relative to %s: %s", path, ROOT, exc)
         return str(path).replace("\\", "/")
 
 
@@ -116,7 +120,8 @@ def _list_references(project_meta: Optional[Dict[str, str]] = None, limit: int =
                 "project_path": project_meta.get("project_path", "") if project_meta else "",
                 "project_root": project_meta.get("project_root", "") if project_meta else "",
             })
-        except Exception:
+        except Exception as exc:
+            logger.debug("Skipping reference asset %s: %s", path, exc)
             continue
     return results[:limit]
 
@@ -147,7 +152,8 @@ def _list_planning_assets(project_meta: Optional[Dict[str, str]] = None, limit: 
                     "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
                     "mtime": mtime,
                 })
-            except Exception:
+            except Exception as exc:
+                logger.debug("Skipping planning prompt %s: %s", path, exc)
                 continue
 
     posepacks: List[Dict[str, Any]] = []
@@ -169,7 +175,8 @@ def _list_planning_assets(project_meta: Optional[Dict[str, str]] = None, limit: 
                     "modified": dt.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
                     "mtime": mtime,
                 })
-            except Exception:
+            except Exception as exc:
+                logger.debug("Skipping planning posepack %s: %s", path, exc)
                 continue
 
     return {"prompts": prompts[:limit], "posepacks": posepacks[:limit]}

@@ -1,6 +1,7 @@
 import json
 import base64
 import shutil
+import datetime as dt
 from io import BytesIO
 from pathlib import Path
 from PIL import Image
@@ -66,11 +67,22 @@ class PixelInpaintService:
             # In a real environment, we'd make a POST to Stability/OpenAI edit endpoints
             result_img = base_img.copy()
 
+        stamp = dt.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+
         # Save backup of the original asset.png if not present
         orig_png = asset_dir / "asset.png"
         backup_png = asset_dir / "asset_before_inpaint.png"
         if orig_png.exists() and not backup_png.exists():
             shutil.copy(orig_png, backup_png)
+
+        versions_dir = asset_dir / "versions"
+        versions_dir.mkdir(parents=True, exist_ok=True)
+        original_version_path = versions_dir / f"before_inpaint_{stamp}.png"
+        if orig_png.exists():
+            shutil.copy(orig_png, original_version_path)
+
+        mask_path = versions_dir / f"inpaint_mask_{stamp}.png"
+        mask_img.save(mask_path)
 
         # Load metadata to fetch normalization parameters
         meta_path = asset_dir / "pixel_asset.json"
@@ -97,6 +109,8 @@ class PixelInpaintService:
 
         # Save normalized image
         normalized_img.save(orig_png)
+        result_path = versions_dir / f"inpaint_result_{stamp}.png"
+        normalized_img.save(result_path)
 
         # Re-extract palette colors
         colors_list = []
@@ -108,15 +122,37 @@ class PixelInpaintService:
                     colors_list.append(hex_color)
 
         # Update metadata JSON sidecar
+        meta_data.setdefault("palette", {})
         meta_data["palette"]["colors"] = colors_list[:max_colors]
+        meta_data.setdefault("qa", {})
         meta_data["qa"]["color_count"] = len(colors_list)
         meta_data["qa"]["alpha_ok"] = True
         meta_data["qa"]["blur_score"] = 0.00 # perfectly sharp normalized image
+        meta_data.setdefault("outputs", {})["png"] = PixelInpaintService._rel(orig_png)
+        meta_data["outputs"]["preview"] = PixelInpaintService._rel(orig_png)
 
         # Track that it was edited via inpainting
+        created_at = dt.datetime.utcnow().isoformat() + "Z"
+        original_rel = PixelInpaintService._rel(original_version_path)
+        mask_rel = PixelInpaintService._rel(mask_path)
+        result_rel = PixelInpaintService._rel(result_path)
+        meta_data.setdefault("versions", []).append({
+            "path": original_rel,
+            "label": f"before inpaint: {prompt}",
+            "created_at": created_at,
+        })
         meta_data["inpaint_history"] = meta_data.get("inpaint_history", [])
         meta_data["inpaint_history"].append({
+            "created_at": created_at,
             "prompt": prompt,
+            "provider": payload.get("provider", "local_mock"),
+            "fallback_provider": payload.get("fallback_provider", ""),
+            "mock": bool(mock),
+            "variant_count": int(payload.get("variant_count") or 1),
+            "original_path": original_rel,
+            "mask_path": mask_rel,
+            "result_path": result_rel,
+            "output_path": PixelInpaintService._rel(orig_png),
             "colors_count": len(colors_list)
         })
 
@@ -135,3 +171,11 @@ class PixelInpaintService:
             encoded += "=" * (4 - missing_padding)
         data = base64.b64decode(encoded)
         return Image.open(BytesIO(data)).convert("RGBA")
+
+    @staticmethod
+    def _rel(path: Path) -> str:
+        try:
+            from spriteforge_utils import ROOT
+            return str(path.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
+        except ValueError:
+            return str(path).replace("\\", "/")

@@ -748,6 +748,13 @@ def test_inpaint_service_mock(tmp_path):
     assert result["asset"]["qa"]["color_count"] > 0
     # Confirm it added custom inpaint_history tracking field
     assert len(result["asset"]["inpaint_history"]) == 1
+    inpaint_entry = result["asset"]["inpaint_history"][0]
+    assert inpaint_entry["prompt"] == "change to blue hood"
+    assert inpaint_entry["variant_count"] == 1
+    assert inpaint_entry["original_path"]
+    assert inpaint_entry["mask_path"]
+    assert inpaint_entry["result_path"]
+    assert result["asset"]["versions"][0]["label"].startswith("before inpaint")
 
 def test_inpaint_endpoint(client):
     # 1. Generate an asset
@@ -777,6 +784,9 @@ def test_inpaint_endpoint(client):
         "image_data": base_data,
         "mask_data": mask_data,
         "prompt": "make it gold color",
+        "provider": "local_mock",
+        "fallback_provider": "",
+        "variant_count": 3,
         "mock": True
     }
 
@@ -790,6 +800,13 @@ def test_inpaint_endpoint(client):
     data_inpaint = json.loads(res_inpaint.data.decode("utf-8"))
     assert data_inpaint["ok"] is True
     assert len(data_inpaint["asset"]["inpaint_history"]) > 0
+    latest = data_inpaint["asset"]["inpaint_history"][-1]
+    assert latest["variant_count"] == 3
+    assert latest["provider"] == "local_mock"
+    assert latest["original_path"].endswith(".png")
+    assert latest["mask_path"].endswith(".png")
+    assert latest["result_path"].endswith(".png")
+    assert data_inpaint["asset"]["versions"][-1]["label"].startswith("before inpaint")
 
 def test_part_apply_variants_and_accept_endpoint(client):
     response = client.post(
@@ -1330,6 +1347,11 @@ def test_pixel_studio_polish_ui_assets():
     assert 'id="btnEditorImport"' in html
     assert 'id="btnEditorExport"' in html
     assert 'id="btnEditorVersion"' in html
+    assert 'id="pixelInpaintMaskOpacity"' in html
+    assert 'id="pixelInpaintVariantCount"' in html
+    assert 'id="btnEditorCompareInpaint"' in html
+    assert "latestInpaintEntry" in js
+    assert "variant_count" in js
     assert "drawEditorLine" in js
     assert "drawEditorRectangle" in js
     assert "/api/pixel-assets/edit/save" in js

@@ -103,7 +103,7 @@ Common Pixel Studio workflows:
 - **Directions** builds 1, 4, or 8-direction character sheets and consistency scores.
 - **Tileset** creates top-down, side-scroller, or isometric tile roles with seam checks.
 - **Edit** opens the browser pixel editor with pencil, eraser, fill, picker, line, rectangle, selection, move, import PNG, export PNG, save edits, and save version controls.
-- **Inpaint** applies a masked edit workflow while preserving pixel metadata. If the selected provider does not support masked edits, is missing a key, or is capable but not wired through the current Pixel Studio adapter, the provider plan explains the fallback before running.
+- **Inpaint** applies a masked edit workflow while preserving pixel metadata. Use mask opacity to inspect the painted area, set a requested variant count for capable adapters, and hold **Before** to compare against the saved pre-inpaint image. If the selected provider does not support masked edits, is missing a key, or is capable but not wired through the current Pixel Studio adapter, the provider plan explains the fallback before running. The asset sidecar records the original image, mask, result, prompt, provider, fallback, and version entry.
 - **Apply outfit / part** generates multiple non-destructive armor, clothing, weapon, hat, or accessory variants for the selected sprite, then applies only the accepted variant as a versioned edit.
 - **Animate** generates a spritesheet and GIF preview from a selected asset.
 - **Animation Transfer** applies an existing sheet layout to a new prompt/style.

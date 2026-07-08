@@ -24,6 +24,8 @@
   let editorPreviewState = null;
   let editorSelection = null;
   let editorMovedSelection = null;
+  let inpaintCompareSnapshot = null;
+  let inpaintCompareToken = 0;
 
   // Animation player states (Phase 9 & 10)
   let activeAnimation = null;
@@ -340,6 +342,9 @@
     const btnCancel = $('#btnEditorCancel');
     const btnSave = $('#btnEditorSave');
     const btnRunInpaint = $('#btnEditorRunInpaint');
+    const btnCompareInpaint = $('#btnEditorCompareInpaint');
+    const inpaintMaskOpacity = $('#pixelInpaintMaskOpacity');
+    const inpaintVariantCount = $('#pixelInpaintVariantCount');
 
     if (inspectorEditBtn) {
       inspectorEditBtn.addEventListener('click', () => {
@@ -377,6 +382,10 @@
         canvas.height = h;
         maskCanvas.width = w;
         maskCanvas.height = h;
+        inpaintCompareSnapshot = null;
+        if (inpaintMaskOpacity) {
+          maskCanvas.style.opacity = inpaintMaskOpacity.value || '0.8';
+        }
 
         const img = new Image();
         img.onload = function () {
@@ -432,6 +441,12 @@
     if (btnSelect) btnSelect.addEventListener('click', () => setEditorTool('select'));
     if (btnMove) btnMove.addEventListener('click', () => setEditorTool('move'));
     if (btnMask) btnMask.addEventListener('click', () => setEditorTool('mask'));
+
+    if (inpaintMaskOpacity) {
+      inpaintMaskOpacity.addEventListener('input', () => {
+        maskCanvas.style.opacity = inpaintMaskOpacity.value || '0.8';
+      });
+    }
 
     // Paint event listeners (bound to top canvas or mask overlay)
     canvas.addEventListener('mousedown', (e) => {
@@ -752,6 +767,61 @@
       });
     }
 
+    async function drawPathToEditorCanvas(relativePath, shouldDraw) {
+      if (!relativePath) return;
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = function () {
+          if (shouldDraw && !shouldDraw()) {
+            resolve();
+            return;
+          }
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = '/file/' + relativePath + '?t=' + Date.now();
+      });
+    }
+
+    function latestInpaintEntry() {
+      if (!activeAsset || !Array.isArray(activeAsset.inpaint_history) || activeAsset.inpaint_history.length === 0) {
+        return null;
+      }
+      return activeAsset.inpaint_history[activeAsset.inpaint_history.length - 1];
+    }
+
+    if (btnCompareInpaint) {
+      const showBefore = async () => {
+        const latest = latestInpaintEntry();
+        if (!latest || !latest.original_path) {
+          toast('No pre-inpaint image has been saved for this asset yet.');
+          return;
+        }
+        inpaintCompareSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const token = ++inpaintCompareToken;
+        btnCompareInpaint.classList.add('active');
+        await drawPathToEditorCanvas(latest.original_path, () => token === inpaintCompareToken && Boolean(inpaintCompareSnapshot));
+      };
+      const restoreAfter = () => {
+        inpaintCompareToken += 1;
+        if (inpaintCompareSnapshot) {
+          ctx.putImageData(inpaintCompareSnapshot, 0, 0);
+          inpaintCompareSnapshot = null;
+        }
+        btnCompareInpaint.classList.remove('active');
+      };
+      btnCompareInpaint.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        showBefore().catch(err => showPixelFailure(err.message));
+      });
+      btnCompareInpaint.addEventListener('pointerup', restoreAfter);
+      btnCompareInpaint.addEventListener('pointerleave', restoreAfter);
+      btnCompareInpaint.addEventListener('blur', restoreAfter);
+    }
+
     // Run AI inpaint trigger (Phase 8)
     if (btnRunInpaint) {
       btnRunInpaint.addEventListener('click', async () => {
@@ -765,6 +835,7 @@
 
         const dataUrl = canvas.toDataURL("image/png");
         const maskUrl = maskCanvas.toDataURL("image/png");
+        const variantCountVal = Math.max(1, Math.min(6, parseInt((inpaintVariantCount && inpaintVariantCount.value) || '1', 10) || 1));
 
         toast("Running AI Edit inpainting...");
 
@@ -788,12 +859,14 @@
               prompt: promptVal,
               provider: providerPlan.provider,
               fallback_provider: providerPlan.fallback_provider,
+              variant_count: variantCountVal,
               mock: providerPlan.mock_recommended
             })
           });
 
           if (res.ok) {
             toast("AI Inpainting completed!");
+            activeAsset = res.asset || activeAsset;
             
             // Draw returned result onto canvas
             const img = new Image();
@@ -808,6 +881,7 @@
               // Clear mask canvas
               maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
               $('#pixelInpaintPrompt').value = '';
+              inpaintCompareSnapshot = null;
             };
             img.src = '/file/' + res.asset.outputs.png + '?t=' + Date.now();
           } else {

@@ -22,6 +22,7 @@ DEFAULT_OUTPUT = ROOT / "output" / "lpc_parts"
 DEFAULT_LPC_SOURCE = ROOT / "input" / "lpc_assets" / "Universal-LPC-Spritesheet-Character-Generator"
 LPC_PRESETS_PATH = ROOT / "config" / "lpc_presets.json"
 LPC_CATALOG_VERSION = 2
+REPO_ROOT = ROOT.parent
 
 LPC_ACTION_ALIASES = {
     "backslash": "back_slash",
@@ -84,6 +85,27 @@ LPC_LAYER_ORDER = [
     "weapon",
     "tools",
 ]
+
+
+def _resolve_lpc_source(source_dir: Path | str) -> Path:
+    raw = str(source_dir or "").strip()
+    if not raw:
+        return DEFAULT_LPC_SOURCE.resolve()
+    candidate = Path(raw).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+
+    app_relative = (ROOT / candidate).resolve()
+    if app_relative.exists():
+        return app_relative
+
+    repo_relative = (REPO_ROOT / candidate).resolve()
+    if repo_relative.exists():
+        return repo_relative
+
+    # Prefer app-relative paths for missing optional LPC payloads so the error
+    # points at the documented local asset location.
+    return app_relative
 
 
 def _canonical_category(category: str) -> str:
@@ -211,7 +233,7 @@ def _caption(trigger: str, part: Dict[str, Any]) -> str:
 
 
 def _load_or_scan_catalog(source_dir: Path | str) -> Dict[str, Any]:
-    source = Path(source_dir).resolve()
+    source = _resolve_lpc_source(source_dir)
     catalog_path = DEFAULT_OUTPUT / "catalog.json"
     if catalog_path.exists():
         try:
@@ -1099,7 +1121,7 @@ def scan_lpc_parts(
     thumbnail_limit: int = 24,
     max_files: int = 0,
 ) -> Dict[str, Any]:
-    source = Path(source_dir).resolve()
+    source = _resolve_lpc_source(source_dir)
     spritesheets = _spritesheets_root(source)
     out = Path(output_dir).resolve() if output_dir else DEFAULT_OUTPUT
     out.mkdir(parents=True, exist_ok=True)

@@ -405,6 +405,32 @@ def test_training_lab_exposes_lpc_parts_controls():
     assert "runAction('lora_training'" in js
 
 
+def test_lpc_source_paths_accept_app_and_repo_relative_forms(tmp_path, monkeypatch):
+    from services import lpc_parts_service
+
+    app_root = tmp_path / "app"
+    repo_root = tmp_path
+    source = app_root / "input" / "lpc_assets" / "Universal-LPC-Spritesheet-Character-Generator"
+    _write_lpc_sheet(source / "dist" / "spritesheets" / "feet" / "shoes" / "female" / "idle.png")
+
+    monkeypatch.setattr(lpc_parts_service, "ROOT", app_root)
+    monkeypatch.setattr(lpc_parts_service, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(lpc_parts_service, "DEFAULT_OUTPUT", tmp_path / "output" / "lpc_parts")
+    monkeypatch.setattr(lpc_parts_service, "DEFAULT_LPC_SOURCE", source)
+
+    app_relative = lpc_parts_service.lpc_catalog_options(
+        "input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator",
+        categories=["feet"],
+    )
+    repo_relative = lpc_parts_service.lpc_catalog_options(
+        "app/input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator",
+        categories=["feet"],
+    )
+
+    assert app_relative["options"]["feet"]
+    assert repo_relative["options"]["feet"]
+
+
 def test_dedicated_lpc_tab_is_wired():
     html = (APP / "web" / "components" / "lpc.html").read_text(encoding="utf-8")
     index = (APP / "web" / "index.html").read_text(encoding="utf-8")
@@ -430,7 +456,7 @@ def test_dedicated_lpc_tab_is_wired():
     assert 'id="view-lpc"' in index
     assert "'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc'" in index
     assert "lpc: 'LPC'" in ux
-    assert "'guide', 'training', 'generate', 'lpc', 'convert'" in ux
+    assert "'guide', 'training', 'generate', 'lpc', 'pixel_studio', 'convert'" in ux
     assert "async function loadDedicatedLpcPickers" in js
     assert "function dedicatedLpcSetZoom" in js
     assert "async function composeDedicatedLpcCharacter" in js

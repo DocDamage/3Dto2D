@@ -59,6 +59,15 @@ def add_parsers(sub: argparse._SubParsersAction) -> None:
     s.add_argument("--native-only", action="store_true", help="Run through SpriteForge native-only LoRA training runtime instead of external trainer.")
     s.set_defaults(func=spriteforge_unified_parser.cmd_lora_train)
 
+    s = sub.add_parser("register-lora-checkpoint", help="Register a completed external LoRA checkpoint in trained_loras.json")
+    s.add_argument("--checkpoint", required=True, help="Path to the finished .safetensors/.pt/.ckpt file")
+    s.add_argument("--run-dir", default=None, help="Training run folder containing training_run.json")
+    s.add_argument("--role", default="", help="Override registry role, e.g. tile_style or character_style")
+    s.add_argument("--label", default="", help="Friendly label for the registry entry")
+    s.add_argument("--notes", default="", help="Registry notes")
+    s.add_argument("--no-default", action="store_true", help="Register without replacing the current default for the role")
+    s.set_defaults(func=spriteforge_unified_parser.cmd_register_lora_checkpoint)
+
     s = sub.add_parser("export-engine", help="Create Godot or Unity helper files from a SpriteForge output folder")
     s.add_argument("--sprite-dir", required=True)
     s.add_argument("--engine", required=True, choices=["godot", "unity", "unreal"])

@@ -126,6 +126,20 @@ def cmd_lora_train(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_register_lora_checkpoint(args: argparse.Namespace) -> None:
+    from services.lora_training_service import register_external_lora_checkpoint
+
+    result = register_external_lora_checkpoint(
+        checkpoint_path=args.checkpoint,
+        run_dir=args.run_dir,
+        role=args.role,
+        label=args.label,
+        notes=args.notes,
+        make_default=not args.no_default,
+    )
+    print(json.dumps(result, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Unified ComfyUI + WAN + SpriteForge tool v12")
     sub = p.add_subparsers(dest="command", required=True)

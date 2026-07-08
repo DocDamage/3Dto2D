@@ -317,6 +317,20 @@ def test_native_only_flags_are_parsed_and_forwarded():
     parsed_lora = build_parser().parse_args(["lora-train", "--dataset", "output/training_datasets/test", "--native-only"])
     assert parsed_lora.native_only is True
 
+    parsed_register = build_parser().parse_args([
+        "register-lora-checkpoint",
+        "--checkpoint",
+        "output/training_runs/demo/demo.safetensors",
+        "--run-dir",
+        "output/training_runs/demo",
+        "--role",
+        "tile_style",
+        "--no-default",
+    ])
+    assert parsed_register.checkpoint.endswith("demo.safetensors")
+    assert parsed_register.role == "tile_style"
+    assert parsed_register.no_default is True
+
 
 def test_generate_native_source_video_forwarding_and_parse():
     from web_helpers import build_action_command

@@ -8,6 +8,7 @@ from services.job_service import JobService
 from services.comfy_service import ComfyService
 from services.model_service import ModelService
 from services.generation_intelligence import estimate_job_eta, preflight_generation, safer_retry_payload, rerun_similar_payload, update_job_timing
+from services.lora_training_service import register_external_lora_checkpoint
 from web_helpers import (
     ROOT, OUTPUT, LOGS, PYTHON,
     build_action_command, _project_meta_from_query, _project_workspace,
@@ -22,6 +23,7 @@ routes_jobs = Blueprint("routes_jobs", __name__)
 
 ARCHETYPE_PROVENANCE_SCHEMA = "spriteforge.archetype_generation_provenance.v1"
 ALL_DIRECTIONS = ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]
+LORA_CHECKPOINT_SUFFIXES = {".safetensors", ".pt", ".ckpt"}
 
 
 def _csv_values(value, default=None):
@@ -34,6 +36,37 @@ def _expand_directions(value, default=None):
     if any(direction.lower() == "all" for direction in directions):
         return list(ALL_DIRECTIONS)
     return directions
+
+
+def _resolve_workspace_path(value, label="path"):
+    raw = Path(str(value or "").strip())
+    if not str(raw):
+        raise ValueError(f"{label} is required")
+    path = raw if raw.is_absolute() else ROOT / raw
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(ROOT.resolve())
+    except ValueError as exc:
+        raise ValueError(f"{label} must stay inside the SpriteForge workspace.") from exc
+    return resolved
+
+
+def _latest_lora_checkpoint(run_dir):
+    candidates = [
+        path for path in run_dir.rglob("*")
+        if path.is_file() and path.suffix.lower() in LORA_CHECKPOINT_SUFFIXES
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
+def _truthy(value, default=True):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _job_status_payload(job, running: bool):
@@ -315,6 +348,41 @@ def get_lora_progress():
         return jsonify(summarize_lora_training_progress(run_path, root=ROOT))
     except ValueError as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_jobs.route("/api/lora/register-checkpoint", methods=["POST"])
+def register_lora_checkpoint():
+    body = request.json or {}
+    run_path = str(body.get("run_path") or body.get("path") or "").strip()
+    checkpoint_path = str(body.get("checkpoint_path") or body.get("checkpoint") or "").strip()
+    try:
+        if checkpoint_path:
+            checkpoint = _resolve_workspace_path(checkpoint_path, "checkpoint_path")
+            run_dir = _resolve_workspace_path(run_path, "run_path") if run_path else checkpoint.parent
+        else:
+            run_dir = _resolve_workspace_path(run_path, "run_path")
+            if not run_dir.is_dir():
+                return jsonify({"ok": False, "message": f"Run folder not found: {run_path}"}), 404
+            checkpoint = _latest_lora_checkpoint(run_dir)
+            if not checkpoint:
+                return jsonify({"ok": False, "message": "No LoRA checkpoint found in that run yet."}), 409
+        if checkpoint.suffix.lower() not in LORA_CHECKPOINT_SUFFIXES:
+            return jsonify({"ok": False, "message": "Checkpoint must be .safetensors, .pt, or .ckpt."}), 400
+        result = register_external_lora_checkpoint(
+            checkpoint_path=checkpoint,
+            run_dir=run_dir,
+            role=str(body.get("role") or "").strip(),
+            label=str(body.get("label") or "").strip(),
+            notes=str(body.get("notes") or "").strip(),
+            make_default=_truthy(body.get("make_default"), True),
+            registry_path=body.get("registry_path") or None,
+        )
+        return jsonify(result)
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 

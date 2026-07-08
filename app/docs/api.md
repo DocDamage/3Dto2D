@@ -679,6 +679,34 @@ Optional query parameters:
 
 Generated Pixel Studio assets also write a `memory` block into their sidecar with the linked `experiment_run_id` and, when a project name is supplied, the `library_asset_id`.
 
+### `GET /api/lora/progress`
+
+Inspect a LoRA training run folder for loss points, preview samples, and finished `.safetensors`, `.pt`, or `.ckpt` checkpoints.
+
+Optional query:
+- `path=output/training_runs/my_run`
+
+### `POST /api/lora/register-checkpoint`
+
+Register a completed external trainer checkpoint in the shared LoRA registry. If `checkpoint_path` is omitted, SpriteForge registers the newest checkpoint found under `run_path`.
+
+**Request Body:**
+```json
+{
+  "run_path": "output/training_runs/cutesckr_tile_style_kohya_ready",
+  "role": "tile_style",
+  "label": "CuteSCKR Tile Style",
+  "make_default": true
+}
+```
+
+**Response includes:**
+- `role`
+- `filename`
+- `registry_path`
+- `default`
+- `record`
+
 ### `GET /api/pixel-assets/loras`
 
 Return built-in Pixel Studio LoRA presets for style/profile controls.

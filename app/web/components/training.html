@@ -329,7 +329,10 @@
       <section class="card training-progress-card">
         <div class="card-head">
           <h3>Training Progress</h3>
-          <button class="mini" id="refreshLoraProgress" type="button">Refresh</button>
+          <div class="button-row inline-actions">
+            <button class="mini" id="refreshLoraProgress" type="button">Refresh</button>
+            <button class="mini" id="registerLoraCheckpoint" type="button">Register Checkpoint</button>
+          </div>
         </div>
         <label>Run folder
           <input id="loraProgressPath" placeholder="output/training_runs/sakpix_sprite_lora" />

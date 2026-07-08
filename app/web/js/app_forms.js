@@ -852,6 +852,7 @@ function initFormBindings() {
     showView('logs');
   }));
   if ($('#refreshLoraProgress')) $('#refreshLoraProgress').addEventListener('click', refreshLoraProgress);
+  if ($('#registerLoraCheckpoint')) $('#registerLoraCheckpoint').addEventListener('click', registerLoraCheckpoint);
   if ($('#buildLoraComparePlan')) $('#buildLoraComparePlan').addEventListener('click', buildLoraComparePlan);
   if ($('#applyLoraGpuDefaults')) $('#applyLoraGpuDefaults').addEventListener('click', applyLoraGpuDefaults);
 
@@ -1451,6 +1452,34 @@ async function refreshLoraProgress() {
     }
   } catch (err) {
     if (summary) summary.textContent = err.message || 'Could not load training progress.';
+  }
+}
+
+async function registerLoraCheckpoint() {
+  const input = $('#loraProgressPath');
+  const summary = $('#loraProgressSummary');
+  const path = String(input?.value || '').trim();
+  if (!path) {
+    toast('Enter a training run folder.');
+    return;
+  }
+  if (summary) summary.textContent = 'Registering latest checkpoint...';
+  try {
+    const data = await api('/api/lora/register-checkpoint', {
+      method: 'POST',
+      body: JSON.stringify({
+        run_path: path,
+        make_default: true,
+      }),
+    });
+    if (summary) {
+      summary.textContent = `Registered ${data.filename} as ${data.role}${data.default ? ' default' : ''}.`;
+    }
+    toast('LoRA checkpoint registered.');
+    await refreshLoraProgress();
+  } catch (err) {
+    if (summary) summary.textContent = err.message || 'Could not register LoRA checkpoint.';
+    toast(err.message || 'Could not register LoRA checkpoint.');
   }
 }
 

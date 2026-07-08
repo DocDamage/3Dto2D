@@ -77,7 +77,7 @@ Use **Training Lab -> LPC** for advanced catalog scans, LPC parts datasets, dire
 
 ## CuteSCKR tile training
 
-For the local `CuteSCKR_uncut` tile corpus, use the trigger token `cutesckr_tiles`. SpriteForge can build an auto-tile dataset under `app/output/training_datasets/`, register the native style adapter as the default `tile_style`, and prepare a Kohya SDXL run under `app/output/training_runs/`. These generated datasets, trainer installs, and model artifacts remain local and are ignored by Git.
+For the local `CuteSCKR_uncut` tile corpus, use the trigger token `cutesckr_tiles`. SpriteForge can build an auto-tile dataset under `app/output/training_datasets/`, register the native style adapter as the default `tile_style`, and prepare a Kohya SDXL run under `app/output/training_runs/`. In **Training Lab -> LoRA Run**, enter the run folder, click **Refresh**, then click **Register Checkpoint** after Kohya writes a `.safetensors`, `.pt`, or `.ckpt` file. These generated datasets, trainer installs, and model artifacts remain local and are ignored by Git.
 
 ## Cloud provider keys
 

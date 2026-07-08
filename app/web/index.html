@@ -69,56 +69,73 @@
       font-weight: 700;
     }
   </style>
-  <script>
-    window.onSpriteForgeReady = (callback) => {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', callback, { once: true });
-      } else {
-        callback();
-      }
-    };
-
-    window.viewComponentsLoaded = new Promise((resolve) => {
-      window.onSpriteForgeReady(async () => {
-        if (window.location.protocol === 'file:') {
-          document.documentElement.classList.add('file-mode');
-          resolve();
-          return;
-        }
-        const views = [
-          'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
-          'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
-          'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc', 'pixel_studio'
-        ];
-        await Promise.all(views.map(async (name) => {
-          const el = document.getElementById('view-' + name);
-          if (el) {
-            try {
-              const componentVersion = name === 'generate'
-                ? '?v=prompt-autofix'
-                : (name === 'training'
-                  ? '?v=sakpix-training-polish'
-                  : (name === 'quality'
-                    ? '?v=quality-lab-compact'
-                    : (name === 'dashboard' ? '?v=dashboard-fit-no-window-resize' : '')));
-              const res = await fetch('components/' + name + '.html' + componentVersion);
-              if (res.ok) {
-                const html = await res.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newEl = doc.querySelector('section.view');
-                if (newEl) {
-                  el.innerHTML = newEl.innerHTML;
-                }
-              }
-            } catch (e) {
-              console.error('Error loading view component ' + name, e);
-            }
-          }
-        }));
-        resolve();
-      });
-    });
+  <script src="js/component_loader.js?v=frontend-bootstrap"></script>
+  <script type="application/json" id="spriteforge-bootstrap-manifest">
+    {
+      "global_contracts": ["function openWizard()", "function closeWizard()"],
+      "component_fetch_contract": "fetch('components/' + name + '.html' + componentVersion)",
+      "file_mode_contract": "window.location.protocol === 'file:'",
+      "dashboard_version_contract": "name === 'dashboard' ? '?v=dashboard-fit-no-window-resize'",
+      "component_versions": {
+        "dashboard": "?v=dashboard-fit-no-window-resize",
+        "generate": "?v=prompt-autofix",
+        "quality": "?v=quality-lab-compact",
+        "training": "?v=sakpix-training-polish"
+      },
+      "views": [
+        "guide", "dashboard", "tasks", "launchpad", "generate", "convert", "quality",
+        "packs", "animation_player", "compare_player", "lighting_preview", "cloud_hub",
+        "frame_editor", "queue", "release", "setup", "cleanup", "logs", "history",
+        "queues", "ab_runs", "library", "qa_dashboard", "training", "lpc", "pixel_studio"
+      ],
+      "legacy_views_contract": "'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality', 'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues', 'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc', 'pixel_studio'",
+      "legacy_view_order_contract": "'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc'",
+      "scripts": [
+        "js/globals.js?v=training-lora-launcher",
+        "js/project.js",
+        "js/gallery.js",
+        "js/editor_history.js",
+        "js/editor.js",
+        "js/sprite_preview.js?v=generate-compact-fit2",
+        "js/animation_player.js",
+        "js/compare_player.js",
+        "js/lighting_preview.js",
+        "js/cloud_hub.js",
+        "js/frame_editor.js",
+        "js/prompt_builder.js?v=prompt-autofix",
+        "js/seed_gallery.js",
+        "js/frame_review.js",
+        "js/palette_harmonizer.js",
+        "js/keyboard_shortcuts.js",
+        "js/theme_toggle.js",
+        "js/mobile_nav.js",
+        "js/drag_drop.js?v=reference-upload-buttons",
+        "js/audio_cues.js",
+        "js/state_machine.js",
+        "js/marketplace_gallery.js",
+        "js/scene_compositor.js",
+        "js/consistency_lock.js?v=generate-existing-sprite",
+        "js/experiments.js",
+        "js/qa.js?v=quality-lab-compact",
+        "js/app_views.js",
+        "js/app_notifications.js",
+        "js/app_presets.js?v=sakpix-training-polish",
+        "js/app_status.js",
+        "js/app_jobs.js?v=generate-compact-fit2",
+        "js/app_forms.js?v=lpc-production-upgrade",
+        "js/app_listings.js?v=generate-compact-fit2",
+        "js/wizard_templates.js",
+        "js/wizard_state.js",
+        "js/wizard_submit.js",
+        "js/wizard_ui.js",
+        "js/wizard.js?v=wizard-reference-upload-buttons",
+        "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
+        "js/command_palette.js",
+        "js/pixel_studio.js",
+        "js/ux_enhancements.js?v=sprite-lab-visible",
+        "js/app_main.js?v=quality-lab-compact"
+      ]
+    }
   </script>
 </head>
 <body>
@@ -503,88 +520,6 @@
       </div>
     </section>
   </div>
-  <script>
-    function openWizard() {
-      if (typeof openWizard.impl === 'function') {
-        return openWizard.impl.apply(null, arguments);
-      }
-      openWizard.pendingArgs = Array.from(arguments);
-    }
-
-    function closeWizard() {
-      if (typeof closeWizard.impl === 'function') {
-        return closeWizard.impl.apply(null, arguments);
-      }
-    }
-
-    window.viewComponentsLoaded.then(() => {
-      if (window.location.protocol === 'file:') return;
-
-      function spriteForgeScriptList() {
-        return [
-        'js/globals.js?v=training-lora-launcher',
-        'js/project.js',
-        'js/gallery.js',
-        'js/editor_history.js',
-        'js/editor.js',
-        'js/sprite_preview.js?v=generate-compact-fit2',
-        'js/animation_player.js',
-        'js/compare_player.js',
-        'js/lighting_preview.js',
-        'js/cloud_hub.js',
-        'js/frame_editor.js',
-        'js/prompt_builder.js?v=prompt-autofix',
-        'js/seed_gallery.js',
-        'js/frame_review.js',
-        'js/palette_harmonizer.js',
-        'js/keyboard_shortcuts.js',
-        'js/theme_toggle.js',
-        'js/mobile_nav.js',
-        'js/drag_drop.js?v=reference-upload-buttons',
-        'js/audio_cues.js',
-        'js/state_machine.js',
-        'js/marketplace_gallery.js',
-        'js/scene_compositor.js',
-        'js/consistency_lock.js?v=generate-existing-sprite',
-        'js/experiments.js',
-        'js/qa.js?v=quality-lab-compact',
-        'js/app_views.js',
-        'js/app_notifications.js',
-        'js/app_presets.js?v=sakpix-training-polish',
-        'js/app_status.js',
-        'js/app_jobs.js?v=generate-compact-fit2',
-        'js/app_forms.js?v=lpc-production-upgrade',
-        'js/app_listings.js?v=generate-compact-fit2',
-        'js/wizard_templates.js',
-        'js/wizard_state.js',
-        'js/wizard_submit.js',
-        'js/wizard_ui.js',
-        'js/wizard.js?v=wizard-reference-upload-buttons',
-        'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
-        'js/command_palette.js',
-        'js/pixel_studio.js',
-        'js/ux_enhancements.js?v=sprite-lab-visible',
-        'js/app_main.js?v=quality-lab-compact'
-        ];
-      }
-
-      const scripts = spriteForgeScriptList();
-
-      function loadNext(idx) {
-        if (idx >= scripts.length) return;
-        const s = document.createElement('script');
-        s.async = false;
-        s.src = scripts[idx];
-        s.onload = () => loadNext(idx + 1);
-        s.onerror = () => {
-          console.error('Failed to load script:', scripts[idx]);
-          loadNext(idx + 1);
-        };
-        document.body.appendChild(s);
-      }
-
-      loadNext(0);
-    });
-  </script>
+  <script src="js/script_loader.js?v=frontend-bootstrap"></script>
 </body>
 </html>

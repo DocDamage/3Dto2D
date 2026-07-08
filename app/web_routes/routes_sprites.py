@@ -12,6 +12,7 @@ from services.palette_harmonizer_service import harmonize_palette
 from services.audio_cue_service import load_audio_cues, remove_audio_cue, upsert_audio_cue
 from services.rate_limit_service import route_rate_limited
 from services.skeletal_export_service import export_skeletal_parts
+from web_routes.api_errors import api_exception_response
 from web_helpers import (
     ROOT, _resolve_sprite_output_dir, _project_meta_from_query,
     _project_workspace, sprite_outputs, sprite_preview_bundle,
@@ -21,6 +22,10 @@ from web_helpers import (
 from spriteforge_utils import save_json, load_json
 
 routes_sprites = Blueprint("routes_sprites", __name__)
+
+
+def _sprite_route_error(exc: Exception, *, status: int = 500):
+    return api_exception_response(exc, default_status=status, context="sprite-routes")
 
 
 def _resolve_workspace_output_dir(value: str) -> Path:
@@ -58,7 +63,7 @@ def get_sprite_preview():
     try:
         return jsonify(sprite_preview_bundle(sprite_path))
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 404
+        return _sprite_route_error(exc, status=404)
 
 @routes_sprites.route("/api/sprite/version/list", methods=["GET"])
 def get_sprite_versions():
@@ -68,7 +73,7 @@ def get_sprite_versions():
     try:
         return jsonify(_sprite_version_list(sprite_path))
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/version/save", methods=["POST"])
 @route_rate_limited("sprite_version_save", limit=20, window_seconds=60)
@@ -82,7 +87,7 @@ def save_sprite_version():
         res = _sprite_version_save(sprite_path, label)
         return jsonify(res)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/version/rollback", methods=["POST"])
 @route_rate_limited("sprite_version_rollback", limit=10, window_seconds=60)
@@ -96,7 +101,7 @@ def rollback_sprite_version():
         res = _sprite_version_rollback(sprite_path, version_id)
         return jsonify(res)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/save_metadata", methods=["POST"])
 @route_rate_limited("sprite_save_metadata", limit=30, window_seconds=60)
@@ -112,11 +117,11 @@ def save_sprite_metadata():
         save_json(sheet_json_path, meta_data)
         return jsonify({"ok": True, "message": "Metadata saved successfully."})
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 403
+        return _sprite_route_error(exc, status=403)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/edit_frames", methods=["POST"])
 @route_rate_limited("sprite_edit_frames", limit=20, window_seconds=60)
@@ -131,7 +136,7 @@ def edit_sprite_frames():
         res = _sprite_edit_frames(sprite_path, actions, new_fps)
         return jsonify(res)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/repack-sheet", methods=["POST"])
 @route_rate_limited("sprite_repack_sheet", limit=20, window_seconds=60)
@@ -146,11 +151,11 @@ def repack_sheet():
         result["path"] = sprite_path
         return jsonify(result)
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/export_animation", methods=["POST"])
 def export_sprite_animation():
@@ -169,11 +174,11 @@ def export_sprite_animation():
         result["path"] = str(Path(result["path"]).relative_to(ROOT))
         return jsonify(result)
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/export_lighting_preview", methods=["POST"])
 def export_sprite_lighting_preview():
@@ -194,11 +199,11 @@ def export_sprite_lighting_preview():
             result[key] = str(Path(result[key]).resolve().relative_to(ROOT.resolve())).replace("\\", "/")
         return jsonify(result)
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/export_skeletal", methods=["POST"])
 def export_sprite_skeletal():
@@ -217,11 +222,11 @@ def export_sprite_skeletal():
             result[key] = str(Path(result[key]).resolve().relative_to(ROOT.resolve())).replace("\\", "/")
         return jsonify(result)
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/frame/status", methods=["POST"])
 @route_rate_limited("sprite_frame_status", limit=60, window_seconds=60)
@@ -241,11 +246,11 @@ def set_sprite_frame_status():
         summary = update_frame_status(sprite_dir, frame_index, status, note)
         return jsonify({"ok": True, "summary": summary})
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except (IndexError, ValueError) as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprites/palette_harmonize", methods=["POST"])
 @route_rate_limited("sprite_palette_harmonize", limit=10, window_seconds=60)
@@ -266,11 +271,11 @@ def harmonize_sprite_palettes():
         report = harmonize_palette(sprite_dirs, colors=colors, write_images=write_images, root=ROOT)
         return jsonify(report)
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/audio_cue", methods=["GET", "POST", "DELETE"])
 @route_rate_limited("sprite_audio_cue_write", limit=40, window_seconds=60)
@@ -295,11 +300,11 @@ def sprite_audio_cue():
         manifest = upsert_audio_cue(sprite_dir, frame_index, audio_path, str(body.get("label") or ""))
         return jsonify({"ok": True, "audio_cues": manifest})
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/qa/batch_summary", methods=["GET"])
 def get_qa_batch_summary():
@@ -315,11 +320,11 @@ def get_qa_advisor():
         sprite_dir = _resolve_sprite_output_dir(sprite_path)
         return jsonify(advise_sprite_quality(sprite_dir))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/qa/advisor/feedback", methods=["POST"])
 def post_qa_advisor_feedback():
@@ -336,11 +341,11 @@ def post_qa_advisor_feedback():
             str(body.get("note") or ""),
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _sprite_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/sprite/validate_engine", methods=["GET"])
 def validate_engine_export():
@@ -354,7 +359,7 @@ def validate_engine_export():
         res = validate_export(sprite_dir, engine=engine, return_dict=True)
         return jsonify(res)
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        return _sprite_route_error(exc)
 
 @routes_sprites.route("/api/release/precheck", methods=["POST"])
 def release_precheck():
@@ -432,6 +437,6 @@ def save_edited_frame():
             "job_id": job_id_or_err if ok else None
         })
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _sprite_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _sprite_route_error(exc)

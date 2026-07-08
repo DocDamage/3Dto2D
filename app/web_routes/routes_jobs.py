@@ -9,6 +9,7 @@ from services.comfy_service import ComfyService
 from services.model_service import ModelService
 from services.generation_intelligence import estimate_job_eta, preflight_generation, safer_retry_payload, rerun_similar_payload, update_job_timing
 from services.lora_training_service import register_external_lora_checkpoint
+from web_routes.api_errors import api_exception_response
 from web_helpers import (
     ROOT, OUTPUT, LOGS, PYTHON,
     build_action_command, _project_meta_from_query, _project_workspace,
@@ -24,6 +25,15 @@ routes_jobs = Blueprint("routes_jobs", __name__)
 ARCHETYPE_PROVENANCE_SCHEMA = "spriteforge.archetype_generation_provenance.v1"
 ALL_DIRECTIONS = ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]
 LORA_CHECKPOINT_SUFFIXES = {".safetensors", ".pt", ".ckpt"}
+
+
+def _job_route_error(exc: Exception, *, status: int = 500, extra: dict | None = None):
+    response, code = api_exception_response(exc, default_status=status, context="job-routes")
+    if extra:
+        payload = response.get_json(silent=True) or {}
+        payload.update(extra)
+        return jsonify(payload), code
+    return response, code
 
 
 def _csv_values(value, default=None):
@@ -163,11 +173,11 @@ def get_queue_detail():
         data["progress"] = _queue_progress(counts, len(data.get("jobs", [])))
         return jsonify(data)
     except FileNotFoundError as exc:
-        return jsonify({"error": str(exc)}), 404
+        return _job_route_error(exc)
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 403
+        return _job_route_error(exc, status=403)
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        return _job_route_error(exc)
 
 @routes_jobs.route("/api/status/stream", methods=["GET"])
 def status_stream():
@@ -289,7 +299,7 @@ def run_action():
         else:
             return jsonify({"ok": False, "message": job_id_or_err, "job": None}), 409
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc), "job": None}), 500
+        return _job_route_error(exc, extra={"job": None})
 
 @routes_jobs.route("/api/cancel", methods=["POST"])
 def cancel_job():
@@ -347,9 +357,9 @@ def get_lora_progress():
     try:
         return jsonify(summarize_lora_training_progress(run_path, root=ROOT))
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _job_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _job_route_error(exc)
 
 @routes_jobs.route("/api/lora/register-checkpoint", methods=["POST"])
 def register_lora_checkpoint():
@@ -380,11 +390,11 @@ def register_lora_checkpoint():
         )
         return jsonify(result)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _job_route_error(exc, status=400)
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _job_route_error(exc)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _job_route_error(exc)
 
 @routes_jobs.route("/api/launch_comfy", methods=["POST"])
 def launch_comfy():
@@ -423,7 +433,7 @@ def reorder_queue():
         save_json(qpath, data)
         return jsonify({"ok": True, "queue": data})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _job_route_error(exc)
 
 @routes_jobs.route("/api/queues/duplicate", methods=["POST"])
 def duplicate_queue_job():
@@ -460,7 +470,7 @@ def duplicate_queue_job():
         save_json(qpath, data)
         return jsonify({"ok": True, "queue": data})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _job_route_error(exc)
 
 @routes_jobs.route("/api/queues/delete", methods=["POST"])
 def delete_queue_job():
@@ -487,7 +497,7 @@ def delete_queue_job():
         save_json(qpath, data)
         return jsonify({"ok": True, "queue": data})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _job_route_error(exc)
 
 @routes_jobs.route("/api/queues/cancel_queue", methods=["POST"])
 def cancel_queue():
@@ -511,7 +521,7 @@ def cancel_queue():
             
         return jsonify({"ok": True, "queue": data})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _job_route_error(exc)
 
 @routes_jobs.route("/api/job/clean_completed", methods=["POST"])
 def clean_completed_jobs():

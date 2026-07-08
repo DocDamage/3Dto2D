@@ -58,6 +58,20 @@ def test_get_project_config(client):
     assert "max_foot_drift" in data["quality_gates"]
 
 
+def test_project_config_error_uses_standard_api_shape(client, monkeypatch):
+    from services.project_service import ProjectService
+
+    monkeypatch.setattr(ProjectService, "get_active_project", staticmethod(lambda: None))
+
+    response = client.get("/api/project/config")
+
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["ok"] is False
+    assert data["message"] == "No active project"
+    assert "code" in data
+
+
 def test_post_project_config(client):
     """POST /api/project/config updates config parameters."""
     payload = {

@@ -46,8 +46,13 @@ from web_helpers import (
     _ab_run_list, _ab_run_create, open_local_path, rel, _is_relative_to,
     _resolve_sprite_output_dir, build_action_command
 )
+from web_routes.api_errors import api_exception_response
 
 routes_misc = Blueprint("routes_misc", __name__)
+
+
+def _misc_route_error(exc: Exception, *, status: int = 500):
+    return api_exception_response(exc, default_status=status, context="misc-routes")
 
 @routes_misc.route("/api/auth/token", methods=["GET"])
 def get_auth_token():
@@ -141,11 +146,11 @@ def post_training_dataset_preview():
             cell_size=str(body.get("cell_size") or "").strip() or None,
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/parts/scan", methods=["POST"])
 def post_lpc_parts_scan():
@@ -161,11 +166,11 @@ def post_lpc_parts_scan():
             max_files=int(body.get("max_files") or 0),
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/parts/dataset", methods=["POST"])
 def post_lpc_part_dataset():
@@ -181,11 +186,11 @@ def post_lpc_part_dataset():
             max_samples=int(body.get("max_samples") or 0),
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/compose", methods=["POST"])
 def post_lpc_compose():
@@ -208,11 +213,11 @@ def post_lpc_compose():
             palette=str(body.get("palette") or "default"),
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/options", methods=["POST"])
 def post_lpc_options():
@@ -230,11 +235,11 @@ def post_lpc_options():
             limit_per_category=int(body.get("limit_per_category") or 240),
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/palettes", methods=["GET"])
 def get_lpc_palettes():
@@ -256,11 +261,11 @@ def post_lpc_rules():
             include_body=include_body,
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/presets", methods=["GET"])
 def get_lpc_presets():
@@ -272,9 +277,9 @@ def post_lpc_preset():
     try:
         return jsonify(save_lpc_preset(body))
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/presets/delete", methods=["POST"])
 def post_lpc_preset_delete():
@@ -282,9 +287,9 @@ def post_lpc_preset_delete():
     try:
         return jsonify(delete_lpc_preset(str(body.get("id") or body.get("name") or "")))
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/batch-compose", methods=["POST"])
 def post_lpc_batch_compose():
@@ -310,11 +315,11 @@ def post_lpc_batch_compose():
             palette=str(body.get("palette") or "default"),
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/dataset-preview", methods=["POST"])
 def post_lpc_dataset_preview():
@@ -325,11 +330,11 @@ def post_lpc_dataset_preview():
     try:
         return jsonify(preview_lpc_dataset(dataset_dir, limit=int(body.get("limit") or 12)))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/dataset-qa", methods=["POST"])
 def post_lpc_dataset_qa():
@@ -344,11 +349,11 @@ def post_lpc_dataset_qa():
             max_balance_delta=int(body.get("max_balance_delta") or 2),
         ))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/lpc/lora-prefill", methods=["POST"])
 def post_lpc_lora_prefill():
@@ -359,11 +364,11 @@ def post_lpc_lora_prefill():
     try:
         return jsonify(lpc_lora_prefill(dataset_dir))
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/architecture/status", methods=["GET"])
 def get_architecture_status():
@@ -406,7 +411,7 @@ def update_cloud_image_provider_key():
         result = save_provider_api_key(provider, api_key)
         return jsonify({"ok": True, **result, **cloud_image_provider_status()})
     except (ValueError, RuntimeError) as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
 
 @routes_misc.route("/api/cloud/image-generation-plan", methods=["POST"])
 def get_cloud_image_generation_plan():
@@ -427,7 +432,7 @@ def get_cloud_image_generation_plan():
             negative=str(body.get("negative") or ""),
         ))
     except (ValueError, RuntimeError) as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
 
 @routes_misc.route("/api/cloud/queue-plan", methods=["POST"])
 def get_cloud_queue_plan():
@@ -447,7 +452,7 @@ def get_lora_compare_plan():
     try:
         return jsonify(plan_lora_comparison(prompt, list(loras), base_payload=body.get("base_payload") if isinstance(body.get("base_payload"), dict) else {}))
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _misc_route_error(exc, status=400)
 
 @routes_misc.route("/api/lora/recommended-defaults", methods=["GET"])
 def get_lora_recommended_defaults():
@@ -535,7 +540,7 @@ def lint_prompt_endpoint():
         result["ok"] = True
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/prompt/autofix", methods=["GET", "POST"])
 def autofix_prompt_endpoint():
@@ -552,7 +557,7 @@ def autofix_prompt_endpoint():
         result["ok"] = True
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/archetypes", methods=["GET"])
 def get_archetypes():
@@ -575,7 +580,7 @@ def get_advisor():
     try:
         return jsonify(advisor_advise(quality))
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/model/explain", methods=["GET"])
 def get_model_explanation():
@@ -988,11 +993,11 @@ def compare_sprites():
         report_rel = rel(out_dir / "compare_report.html")
         return jsonify({"ok": True, "report_url": "/file/" + report_rel})
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _misc_route_error(exc)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 403
+        return _misc_route_error(exc, status=403)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _misc_route_error(exc)
 
 @routes_misc.route("/api/open", methods=["POST"])
 def open_folder():

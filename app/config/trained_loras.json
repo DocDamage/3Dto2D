@@ -7,8 +7,8 @@
       "label": "CuteSCKR Tile Style (Kohya)",
       "trigger": "cutesckr_tiles",
       "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
-      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\cutesckr_tile_style_kohya.safetensors",
-      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\cutesckr_tile_style_kohya.safetensors",
+      "source_path": "app/output/training_runs/cutesckr_tile_style_kohya_ready/cutesckr_tile_style_kohya.safetensors",
+      "installed_path": "app/output/training_runs/cutesckr_tile_style_kohya_ready/cutesckr_tile_style_kohya.safetensors",
       "notes": "Kohya SDXL LoRA trained from CuteSCKR_uncut tile corpus.",
       "metadata": {
         "schema": "spriteforge.trained_lora_metadata.v1",
@@ -19,15 +19,15 @@
         "sample_count": 10009,
         "max_train_steps": 2400,
         "dataset_provenance": {
-          "dataset_dir": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_datasets\\cutesckr_tiles_20260708_002438",
+          "dataset_dir": "app/output/training_datasets/cutesckr_tiles_20260708_002438",
           "dataset_kind": "autotile",
-          "source_dataset": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\CuteSCKR_uncut",
+          "source_dataset": "CuteSCKR_uncut",
           "sample_count": 10009
         },
         "training_run": {
-          "run_dir": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready",
-          "manifest": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\training_run.json",
-          "checkpoint": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\cutesckr_tile_style_kohya.safetensors"
+          "run_dir": "app/output/training_runs/cutesckr_tile_style_kohya_ready",
+          "manifest": "app/output/training_runs/cutesckr_tile_style_kohya_ready/training_run.json",
+          "checkpoint": "app/output/training_runs/cutesckr_tile_style_kohya_ready/cutesckr_tile_style_kohya.safetensors"
         }
       },
       "created_at": "2026-07-08 03:09:19"
@@ -40,8 +40,8 @@
       "label": "SakPix 8-Direction Characters",
       "trigger": "sakpix_style",
       "base_model": "SDXL",
-      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\sakpix_8dir_sdxl_continue_20260703_080326\\sakpix_8dir_sdxl_continue.safetensors",
-      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\vendor\\ComfyUI\\models\\loras\\sakpix_8dir_sdxl_continue.safetensors",
+      "source_path": "app/output/training_runs/sakpix_8dir_sdxl_continue_20260703_080326/sakpix_8dir_sdxl_continue.safetensors",
+      "installed_path": "app/vendor/ComfyUI/models/loras/sakpix_8dir_sdxl_continue.safetensors",
       "notes": "Continuation pass is the current default. Keep sakpix_8dir_sdxl.safetensors as fallback and do not stack both.",
       "created_at": "2026-07-03 08:48:29"
     },
@@ -51,8 +51,8 @@
       "label": "SakPix Stage Auto-Tiles",
       "trigger": "sakpix_tiles",
       "base_model": "SDXL",
-      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\sakpix_tiles_sdxl_20260703_084925\\sakpix_tiles_sdxl.safetensors",
-      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\vendor\\ComfyUI\\models\\loras\\sakpix_tiles_sdxl.safetensors",
+      "source_path": "app/output/training_runs/sakpix_tiles_sdxl_20260703_084925/sakpix_tiles_sdxl.safetensors",
+      "installed_path": "app/vendor/ComfyUI/models/loras/sakpix_tiles_sdxl.safetensors",
       "notes": "First auto-tile pass from SakPix stage tile sheets. Keep separate from the character LoRA.",
       "created_at": "2026-07-03 09:43:00"
     },
@@ -62,8 +62,8 @@
       "label": "cutesckr_tile_style (Native)",
       "trigger": "cutesckr_tiles",
       "base_model": "CHOOSE_BASE_MODEL_PATH_OR_HF_ID",
-      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_20260708_002815\\native_model\\cutesckr_tile_style.spriteforge_lora.json",
-      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_20260708_002815\\native_model\\cutesckr_tile_style.spriteforge_lora.json",
+      "source_path": "app/output/training_runs/cutesckr_tile_style_20260708_002815/native_model/cutesckr_tile_style.spriteforge_lora.json",
+      "installed_path": "app/output/training_runs/cutesckr_tile_style_20260708_002815/native_model/cutesckr_tile_style.spriteforge_lora.json",
       "notes": "Native SpriteForge adapter generated via --native-only --run.",
       "metadata": {
         "schema": "spriteforge.trained_lora_metadata.v1",
@@ -75,12 +75,12 @@
         "max_train_steps": 1600,
         "style_metadata": {
           "base_caption": "CuteSCKR pixel art tileset, game-ready environmental tiles",
-          "source_dir": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\CuteSCKR_uncut",
+          "source_dir": "CuteSCKR_uncut",
           "cell_size": "auto"
         },
         "dataset_provenance": {
-          "dataset_dir": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_datasets\\cutesckr_tiles_20260708_002438",
-          "source_dataset": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\CuteSCKR_uncut",
+          "dataset_dir": "app/output/training_datasets/cutesckr_tiles_20260708_002438",
+          "source_dataset": "CuteSCKR_uncut",
           "created_at": "2026-07-08 00:25:36",
           "sample_count": 10009
         },
@@ -169,8 +169,8 @@
       "label": "CuteSCKR Tile Style (Kohya)",
       "trigger": "cutesckr_tiles",
       "base_model": "stabilityai/stable-diffusion-xl-base-1.0",
-      "source_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\cutesckr_tile_style_kohya.safetensors",
-      "installed_path": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\cutesckr_tile_style_kohya.safetensors",
+      "source_path": "app/output/training_runs/cutesckr_tile_style_kohya_ready/cutesckr_tile_style_kohya.safetensors",
+      "installed_path": "app/output/training_runs/cutesckr_tile_style_kohya_ready/cutesckr_tile_style_kohya.safetensors",
       "notes": "Kohya SDXL LoRA trained from CuteSCKR_uncut tile corpus.",
       "metadata": {
         "schema": "spriteforge.trained_lora_metadata.v1",
@@ -181,15 +181,15 @@
         "sample_count": 10009,
         "max_train_steps": 2400,
         "dataset_provenance": {
-          "dataset_dir": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_datasets\\cutesckr_tiles_20260708_002438",
+          "dataset_dir": "app/output/training_datasets/cutesckr_tiles_20260708_002438",
           "dataset_kind": "autotile",
-          "source_dataset": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\CuteSCKR_uncut",
+          "source_dataset": "CuteSCKR_uncut",
           "sample_count": 10009
         },
         "training_run": {
-          "run_dir": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready",
-          "manifest": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\training_run.json",
-          "checkpoint": "C:\\Users\\dferr\\OneDrive\\Desktop\\spriteforge_studio_v12_final_polish\\app\\output\\training_runs\\cutesckr_tile_style_kohya_ready\\cutesckr_tile_style_kohya.safetensors"
+          "run_dir": "app/output/training_runs/cutesckr_tile_style_kohya_ready",
+          "manifest": "app/output/training_runs/cutesckr_tile_style_kohya_ready/training_run.json",
+          "checkpoint": "app/output/training_runs/cutesckr_tile_style_kohya_ready/cutesckr_tile_style_kohya.safetensors"
         }
       },
       "created_at": "2026-07-08 03:09:19"

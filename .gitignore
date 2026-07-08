@@ -22,6 +22,9 @@ app/state/
 app/config/*.bak_*
 dist_release.zip
 
+# Optional local training/asset corpora
+CuteSCKR_uncut/
+app/input/lpc_assets/
 
 # External dependencies and model payloads are installed/downloaded locally.
 app/vendor/*

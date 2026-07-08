@@ -11,7 +11,7 @@ from services.web_helpers_cmd import build_action_command
 def test_tile_training_dataset_action_builds_autotile_command() -> None:
     title, cmd = build_action_command({
         "action": "tile_training_dataset",
-        "source_dir": r"G:\Stage Assets",
+        "source_dir": "input/tiles/stage_assets",
         "trigger": "sakpix_tiles",
         "cell_size": "auto",
         "max_samples_per_source": "24",
@@ -21,7 +21,7 @@ def test_tile_training_dataset_action_builds_autotile_command() -> None:
     assert "spriteforge_unified.py" in cmd
     assert "autotile-dataset" in cmd
     assert "--source" in cmd
-    assert r"G:\Stage Assets" in cmd
+    assert "input/tiles/stage_assets" in cmd
     assert "--max-samples-per-source" in cmd
     assert "24" in cmd
 

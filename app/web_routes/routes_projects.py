@@ -10,6 +10,7 @@ from services.consistency_lock_service import build_consistency_lock
 from services.prompt_builder_service import build_structured_prompt, prompt_builder_options
 from services.scene_compositor_service import build_scene_manifest
 from services.state_machine_service import build_state_machine
+from web_routes.api_errors import ApiError, api_exception_response
 from web_helpers import (
     ROOT, UPLOADS, VIDEO_SUFFIXES, IMAGE_SUFFIXES, AUDIO_SUFFIXES,
     _get_presets, _library_list, _library_save, _library_delete,
@@ -19,6 +20,11 @@ from spriteforge_utils import load_json, save_json
 
 routes_projects = Blueprint("routes_projects", __name__)
 logger = logging.getLogger(__name__)
+
+
+def _project_route_error(exc: Exception, *, status: int = 500):
+    return api_exception_response(exc, default_status=status, context="project-routes")
+
 
 @routes_projects.route("/api/projects", methods=["GET"])
 def get_projects():
@@ -66,7 +72,7 @@ def build_prompt_from_fields():
     try:
         return jsonify({"ok": True, "prompt": build_structured_prompt(body)})
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _project_route_error(exc, status=400)
 
 @routes_projects.route("/api/consistency_lock/save", methods=["POST"])
 def save_consistency_lock():
@@ -82,9 +88,9 @@ def save_consistency_lock():
     try:
         return jsonify(build_consistency_lock(ROOT, body, output_dir))
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _project_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _project_route_error(exc)
 
 @routes_projects.route("/api/presets/save", methods=["POST"])
 def save_preset():
@@ -124,10 +130,10 @@ def delete_preset():
 def get_project_config():
     active = ProjectService.get_active_project()
     if not active:
-        return jsonify({"error": "No active project"}), 400
+        return _project_route_error(ApiError("No active project", 400))
     p_path = ROOT / active["path"]
     if not p_path.exists():
-        return jsonify({"error": "Project file not found"}), 404
+        return _project_route_error(ApiError("Project file not found", 404, code="not_found"))
     try:
         data = json.loads(p_path.read_text(encoding="utf-8"))
         if "quality_gates" not in data:
@@ -141,16 +147,16 @@ def get_project_config():
         data["palette_lock"] = normalize_palette_lock(data.get("palette_lock", DEFAULT_PALETTE_LOCK))
         return jsonify(data)
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        return _project_route_error(exc)
 
 @routes_projects.route("/api/project/config", methods=["POST"])
 def save_project_config():
     active = ProjectService.get_active_project()
     if not active:
-        return jsonify({"error": "No active project"}), 400
+        return _project_route_error(ApiError("No active project", 400))
     p_path = ROOT / active["path"]
     if not p_path.exists():
-        return jsonify({"error": "Project file not found"}), 404
+        return _project_route_error(ApiError("Project file not found", 404, code="not_found"))
     
     body = request.json or {}
     try:
@@ -164,7 +170,7 @@ def save_project_config():
         save_json(p_path, data)
         return jsonify({"ok": True, "config": data})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _project_route_error(exc)
 
 @routes_projects.route("/api/library/list", methods=["GET"])
 def get_library_list():
@@ -210,9 +216,9 @@ def build_state_machine_route():
         result = build_state_machine(body, output_dir)
         return jsonify(result)
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _project_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _project_route_error(exc)
 
 @routes_projects.route("/api/scene_compositor/preview", methods=["POST"])
 def build_scene_compositor_preview():
@@ -220,9 +226,9 @@ def build_scene_compositor_preview():
     try:
         return jsonify(build_scene_manifest(ROOT, body))
     except ValueError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _project_route_error(exc, status=400)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _project_route_error(exc)
 
 @routes_projects.route("/api/upload", methods=["POST"])
 def upload_file():
@@ -294,7 +300,7 @@ def export_project_bundle():
         from flask import send_from_directory
         return send_from_directory(releases_dir, f"{p_dir.name}.spriteforge", as_attachment=True)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _project_route_error(exc)
 
 @routes_projects.route("/api/projects/import_bundle", methods=["POST"])
 def import_project_bundle():
@@ -342,7 +348,7 @@ def import_project_bundle():
         
         return jsonify({"ok": True, "message": f"Successfully imported project '{project_name}'.", "project_path": rel_path})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _project_route_error(exc)
 
 @routes_projects.route("/api/pose/estimate", methods=["POST"])
 def run_pose_estimation():

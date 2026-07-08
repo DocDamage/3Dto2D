@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify, send_file
 import json
-import os
 from pathlib import Path
 from PIL import Image
+from services.project_path_service import ProjectPaths
 from services.pixel_asset_service import PixelAssetService, ASSETS_DIR
 from services.pixel_normalization_service import PixelNormalizationService
 from services.pixel_direction_service import PixelDirectionService
@@ -13,8 +13,28 @@ from services.pixel_style_service import PixelStyleService
 from services.pixel_asset_memory_service import PixelAssetMemoryService
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_utils import load_json, ROOT, save_json
+from web_routes.api_errors import ApiError, api_exception_response
 
 routes_pixel_asset = Blueprint("routes_pixel_asset", __name__)
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+
+
+def _pixel_route_error(exc: Exception, *, status: int = 500):
+    return api_exception_response(exc, default_status=status, context="pixel-assets")
+
+
+def _resolve_workspace_image_path(value: str) -> Path:
+    if not value:
+        raise ApiError("path is required")
+    candidate = Path(value.strip().lstrip("/\\"))
+    path = candidate.resolve() if candidate.is_absolute() else (ROOT / candidate).resolve()
+    if not ProjectPaths.is_relative_to(path, ROOT):
+        raise ApiError("Security error: Path must stay inside workspace", 403, code="path_escape")
+    if path.suffix.lower() not in IMAGE_SUFFIXES:
+        raise ApiError("Unsupported image type", 400, code="unsupported_image")
+    if not path.exists() or not path.is_file():
+        raise FileNotFoundError(f"File not found: {value}")
+    return path
 
 @routes_pixel_asset.route("/api/pixel-assets/modes", methods=["GET"])
 def get_pixel_modes():
@@ -22,7 +42,7 @@ def get_pixel_modes():
         modes = PixelAssetService.get_modes()
         return jsonify({"ok": True, "modes": modes, "mode_configs": PixelAssetService.get_mode_configs()})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/failure/explain", methods=["POST"])
 def explain_pixel_asset_failure():
@@ -37,8 +57,7 @@ def pixel_asset_qa_report():
         from services.pixel_qa_report_service import PixelQAReportService
         return jsonify(PixelQAReportService.build_report(body))
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
-
+        return _pixel_route_error(exc, status=400)
 @routes_pixel_asset.route("/api/pixel-assets/qa/report.html", methods=["GET"])
 def pixel_asset_qa_report_html():
     body = {"asset_id": request.args.get("asset_id", "")}
@@ -47,9 +66,9 @@ def pixel_asset_qa_report_html():
         html_path = PixelQAReportService.write_html_report(body)
         return send_file(html_path, mimetype="text/html")
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _pixel_route_error(exc)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/generate", methods=["POST"])
 def generate_pixel_asset():
@@ -66,7 +85,7 @@ def generate_pixel_asset():
             result = PixelAssetService.generate_pixel_asset_batch(body)
             return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/style/list", methods=["GET"])
 def get_pixel_styles():
@@ -74,7 +93,7 @@ def get_pixel_styles():
         styles = PixelAssetService.list_style_profiles()
         return jsonify({"ok": True, "styles": styles})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/style/save", methods=["POST"])
 def save_pixel_style():
@@ -83,7 +102,7 @@ def save_pixel_style():
         saved = PixelAssetService.save_style_profile(body)
         return jsonify({"ok": True, "style": saved})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/style/extract", methods=["POST"])
 def extract_pixel_style():
@@ -92,7 +111,7 @@ def extract_pixel_style():
         saved = PixelStyleService.extract_style_profile(body)
         return jsonify({"ok": True, "style": saved})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/style/compare", methods=["POST"])
 def compare_pixel_style():
@@ -101,7 +120,7 @@ def compare_pixel_style():
         match = PixelStyleService.compare_asset_to_style(body)
         return jsonify({"ok": True, "match": match})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/history", methods=["GET"])
 def get_pixel_history():
@@ -151,28 +170,15 @@ def get_pixel_history():
             "filters": {"q": query, "asset_type": asset_type, "limit": limit},
         })
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/normalize", methods=["POST"])
 def normalize_pixel_asset():
     body = request.json or {}
     image_path_str = body.get("path", "")
-    if not image_path_str:
-        return jsonify({"ok": False, "message": "path is required"}), 400
 
     try:
-        # Resolve path safely inside the workspace
-        resolved_path = (ROOT / image_path_str.strip("/")).resolve()
-        if not resolved_path.exists() or not resolved_path.is_file():
-            return jsonify({"ok": False, "message": f"File not found: {image_path_str}"}), 404
-
-        # Verify relative path guardrails
-        try:
-            resolved_path.relative_to(ROOT.resolve())
-        except ValueError:
-            return jsonify({"ok": False, "message": "Security error: Path must stay inside workspace"}), 403
-
-        # Open and normalize image
+        resolved_path = _resolve_workspace_image_path(str(image_path_str or ""))
         img = Image.open(resolved_path)
         
         res_val = body.get("resolution", [32, 32])
@@ -207,7 +213,7 @@ def normalize_pixel_asset():
             "rules_applied": norm_rules
         })
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/cleanup", methods=["POST"])
 def cleanup_pixel_asset():
@@ -217,7 +223,7 @@ def cleanup_pixel_asset():
         result = PixelCleanupService.cleanup_asset(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/directions", methods=["POST"])
 def generate_pixel_directions():
@@ -226,7 +232,7 @@ def generate_pixel_directions():
         result = PixelDirectionService.generate_directions(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/loras", methods=["GET"])
 def get_pixel_loras():
@@ -238,7 +244,7 @@ def get_pixel_loras():
         ]
         return jsonify({"ok": True, "loras": loras})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/providers/capabilities", methods=["GET"])
 def get_pixel_provider_capabilities():
@@ -247,7 +253,7 @@ def get_pixel_provider_capabilities():
         provider = request.args.get("provider", "")
         return jsonify(pixel_provider_capabilities(provider or None))
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/providers/plan", methods=["POST"])
 def plan_pixel_provider_workflow():
@@ -256,7 +262,7 @@ def plan_pixel_provider_workflow():
         from services.pixel_provider_capability_service import provider_workflow_plan
         return jsonify(provider_workflow_plan(body))
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/export", methods=["GET"])
 def export_pixel_batch():
@@ -276,9 +282,9 @@ def export_pixel_batch():
             download_name=f"{batch_id}_export_{engine}.zip"
         )
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _pixel_route_error(exc)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/tileset", methods=["POST"])
 def generate_pixel_tileset():
@@ -287,7 +293,7 @@ def generate_pixel_tileset():
         result = PixelTilesetService.generate_tileset(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/tileset/repair", methods=["POST"])
 def repair_pixel_tileset_tile():
@@ -296,9 +302,9 @@ def repair_pixel_tileset_tile():
         result = PixelTilesetService.repair_tile_seams(body)
         return jsonify(result)
     except FileNotFoundError as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 404
+        return _pixel_route_error(exc)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 def _save_pixel_asset_edit(body):
     asset_id = body.get("asset_id", "")
@@ -363,7 +369,7 @@ def edit_pixel_asset():
             return jsonify({"ok": False, "message": message}), status
         return jsonify({"ok": True, "asset": meta_data})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/version/save", methods=["POST"])
 def save_pixel_asset_version():
@@ -404,7 +410,7 @@ def save_pixel_asset_version():
         save_json(meta_path, meta_data)
         return jsonify({"ok": True, "asset": meta_data, "version_path": rel_version})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/inpaint", methods=["POST"])
 def inpaint_pixel_asset():
@@ -414,7 +420,7 @@ def inpaint_pixel_asset():
         result = PixelInpaintService.inpaint_asset(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/part/apply", methods=["POST"])
 def apply_pixel_part():
@@ -424,7 +430,7 @@ def apply_pixel_part():
         result = PixelPartApplyService.create_variants(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/part/accept", methods=["POST"])
 def accept_pixel_part_variant():
@@ -434,7 +440,7 @@ def accept_pixel_part_variant():
         result = PixelPartApplyService.accept_variant(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/reskin", methods=["POST"])
 def reskin_pixel_asset():
@@ -444,7 +450,7 @@ def reskin_pixel_asset():
         result = PixelReskinService.create_variants(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/reskin/accept", methods=["POST"])
 def accept_pixel_reskin_variant():
@@ -454,7 +460,7 @@ def accept_pixel_reskin_variant():
         result = PixelReskinService.accept_variant(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/animate", methods=["POST"])
 def animate_pixel_asset():
@@ -464,7 +470,7 @@ def animate_pixel_asset():
         result = PixelAnimationService.generate_animation(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/animation-transfer", methods=["POST"])
 def transfer_pixel_animation():
@@ -474,7 +480,7 @@ def transfer_pixel_animation():
         result = PixelTransferService.transfer_animation(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/rig/render", methods=["POST"])
 @routes_pixel_asset.route("/api/pixel-assets/skeleton/render", methods=["POST"])
@@ -485,7 +491,7 @@ def render_pixel_rig():
         result = PixelRigService.render_rig_animation(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/pack/generate", methods=["POST"])
 @routes_pixel_asset.route("/api/pixel-assets/pack/build", methods=["POST"])
@@ -496,7 +502,7 @@ def generate_pixel_pack():
         result = PixelPackService.generate_pack(body)
         return jsonify(result)
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/pack/export", methods=["GET"])
 def export_pixel_pack():
@@ -512,7 +518,7 @@ def export_pixel_pack():
             download_name=f"{pack_id}_release.zip"
         )
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/recipes", methods=["GET"])
 def list_pixel_recipes():
@@ -520,7 +526,7 @@ def list_pixel_recipes():
         recipes = PixelRecipeService.list_recipes()
         return jsonify({"ok": True, "recipes": recipes})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 500
+        return _pixel_route_error(exc)
 
 @routes_pixel_asset.route("/api/pixel-assets/recipes/save", methods=["POST"])
 def save_pixel_recipe():
@@ -529,7 +535,7 @@ def save_pixel_recipe():
         recipe = PixelRecipeService.save_recipe(body)
         return jsonify({"ok": True, "recipe": recipe})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/recipes/import", methods=["POST"])
 def import_pixel_recipe():
@@ -538,7 +544,7 @@ def import_pixel_recipe():
         recipe = PixelRecipeService.import_recipe(body)
         return jsonify({"ok": True, "recipe": recipe})
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)
 
 @routes_pixel_asset.route("/api/pixel-assets/recipes/export", methods=["GET"])
 def export_pixel_recipe():
@@ -554,4 +560,4 @@ def export_pixel_recipe():
             download_name=f"{recipe_id}.json"
         )
     except Exception as exc:
-        return jsonify({"ok": False, "message": str(exc)}), 400
+        return _pixel_route_error(exc, status=400)

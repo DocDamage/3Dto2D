@@ -277,6 +277,17 @@ def generate_pixel_tileset():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
 
+@routes_pixel_asset.route("/api/pixel-assets/tileset/repair", methods=["POST"])
+def repair_pixel_tileset_tile():
+    body = request.json or {}
+    try:
+        result = PixelTilesetService.repair_tile_seams(body)
+        return jsonify(result)
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 def _save_pixel_asset_edit(body):
     asset_id = body.get("asset_id", "")
     image_data = body.get("image_data", "")

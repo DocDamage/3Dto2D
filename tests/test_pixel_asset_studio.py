@@ -612,6 +612,49 @@ def test_tileset_generation_endpoint(client):
     assert asset["role"] == "ground"
     assert "seam_check" in asset["qa"]
 
+def test_tileset_repair_endpoint_versions_and_improves_seams(client):
+    import sys
+    routes_module = sys.modules["web_routes.routes_pixel_asset"]
+    asset_id = "pxa_bad_tile"
+    asset_dir = routes_module.ASSETS_DIR / asset_id
+    asset_dir.mkdir(parents=True, exist_ok=True)
+
+    bad_tile = Image.new("RGBA", (16, 16), (60, 60, 60, 255))
+    for y in range(16):
+        bad_tile.putpixel((0, y), (255, 0, 0, 255))
+        bad_tile.putpixel((15, y), (0, 0, 255, 255))
+    bad_tile.save(asset_dir / "asset.png")
+
+    before = PixelTilesetService.calculate_seam_deltas(bad_tile)
+    metadata = {
+        "schema": "spriteforge.pixel_asset.v1",
+        "asset_id": asset_id,
+        "asset_type": "tileset",
+        "role": "floor",
+        "prompt": "bad seam floor tile",
+        "resolution": [16, 16],
+        "palette": {"max_colors": 8, "colors": []},
+        "outputs": {
+            "png": f"output/pixel_assets/assets/{asset_id}/asset.png",
+            "metadata": f"output/pixel_assets/assets/{asset_id}/pixel_asset.json",
+        },
+        "qa": {"seam_check": before},
+    }
+    (asset_dir / "pixel_asset.json").write_text(json.dumps(metadata), encoding="utf-8")
+
+    response = client.post(
+        "/api/pixel-assets/tileset/repair",
+        data=json.dumps({"asset_id": asset_id}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert data["after"]["left_right_delta"] < before["left_right_delta"]
+    assert data["asset"]["qa"]["seam_check"] == data["after"]
+    assert data["asset"]["versions"][-1]["label"] == "before tile seam repair"
+    assert data["asset"]["tile_repair_history"][-1]["strategy"] == "edge_blend"
+
 def test_edit_asset_endpoint(client):
     # 1. Generate an asset
     payload = {
@@ -1437,3 +1480,6 @@ def test_pixel_studio_polish_ui_assets():
     assert 'id="inspectorCleanupBtn"' in html
     assert "/api/pixel-assets/cleanup" in js
     assert "cleanupSelectedAsset" in js
+    assert 'id="inspectorRepairTileBtn"' in html
+    assert "/api/pixel-assets/tileset/repair" in js
+    assert "repairSelectedTile" in js

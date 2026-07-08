@@ -1402,6 +1402,11 @@
       cleanupBtn.addEventListener('click', cleanupSelectedAsset);
     }
 
+    const repairTileBtn = $('#inspectorRepairTileBtn');
+    if (repairTileBtn) {
+      repairTileBtn.addEventListener('click', repairSelectedTile);
+    }
+
     const matchStyleBtn = $('#inspectorMatchStyleBtn');
     if (matchStyleBtn) {
       matchStyleBtn.addEventListener('click', async () => {
@@ -2500,6 +2505,12 @@
     $('#inspectorReskinBtn').disabled = false;
     $('#inspectorMatchStyleBtn').disabled = false;
     $('#inspectorApplyPartBtn').disabled = false;
+    const repairTileBtn = $('#inspectorRepairTileBtn');
+    if (repairTileBtn) {
+      const isTileset = asset.asset_type === 'tileset';
+      repairTileBtn.disabled = !isTileset;
+      repairTileBtn.style.display = isTileset ? 'block' : 'none';
+    }
     $('#inspectorCleanupBtn').disabled = false;
     $('#inspectorEditBtn').disabled = false;
     $('#inspectorExportBtn').disabled = false;
@@ -2791,6 +2802,36 @@
         activeAsset = res.asset;
         currentCompareMode = 'normalized';
         toast('Cleanup completed and previous image versioned.');
+        selectAsset(activeAsset);
+      } else {
+        showPixelFailure(res.message);
+      }
+    } catch (err) {
+      showPixelFailure(err.message);
+    }
+  }
+
+  async function repairSelectedTile() {
+    if (!activeAsset) {
+      toast('Select a tileset tile first.');
+      return;
+    }
+    if (activeAsset.asset_type !== 'tileset') {
+      toast('Tile seam repair is only available for tileset assets.');
+      return;
+    }
+
+    toast('Repairing tile seams...');
+    try {
+      const res = await api('/api/pixel-assets/tileset/repair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset_id: activeAsset.asset_id })
+      });
+      if (res.ok) {
+        activeAsset = res.asset;
+        currentCompareMode = 'normalized';
+        toast('Tile seams repaired and previous image versioned.');
         selectAsset(activeAsset);
       } else {
         showPixelFailure(res.message);

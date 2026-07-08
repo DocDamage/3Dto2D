@@ -756,6 +756,15 @@ Generate a top-down, side-scroller, or isometric tileset with seam checks.
 }
 ```
 
+### `POST /api/pixel-assets/tileset/repair`
+
+Repair the selected tileset tile by blending opposite edges for cleaner seams. The current `asset.png` is saved into `versions/`, `tile_repair_history` records before/after seam deltas, and the asset QA seam metrics are refreshed.
+
+**Request Body:**
+```json
+{ "asset_id": "pxa_tile_123" }
+```
+
 ### `POST /api/pixel-assets/edit`
 
 Alias: `POST /api/pixel-assets/edit/save`

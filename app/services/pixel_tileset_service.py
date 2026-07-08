@@ -1,12 +1,13 @@
 from __future__ import annotations
 import datetime as dt
+import shutil
 import uuid
 import numpy as np
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from PIL import Image, ImageDraw
 
-from spriteforge_utils import ROOT, save_json
+from spriteforge_utils import ROOT, load_json, save_json
 from services.pixel_normalization_service import PixelNormalizationService
 from services.sprite_sheet_service import pack_sheet
 from services.sprite_video_loader import FrameItem
@@ -56,6 +57,104 @@ class PixelTilesetService:
         return {
             "left_right_delta": round(left_right_delta, 4),
             "top_bottom_delta": round(top_bottom_delta, 4)
+        }
+
+    @staticmethod
+    def repair_tile_seams(params: Dict[str, Any]) -> Dict[str, Any]:
+        """Blend opposite tile edges, save a version, and refresh seam QA."""
+        asset_id = str(params.get("asset_id") or "").strip()
+        if not asset_id:
+            raise ValueError("asset_id is required")
+
+        asset_dir = ASSETS_DIR / asset_id
+        asset_path = asset_dir / "asset.png"
+        meta_path = asset_dir / "pixel_asset.json"
+        if not asset_path.exists() or not meta_path.exists():
+            raise FileNotFoundError(f"Tile asset {asset_id} was not found")
+
+        meta_data = load_json(meta_path, {})
+        if meta_data.get("asset_type") != "tileset":
+            raise ValueError("Only tileset assets can use seam repair")
+
+        image = Image.open(asset_path).convert("RGBA")
+        before_seams = PixelTilesetService.calculate_seam_deltas(image)
+
+        versions_dir = asset_dir / "versions"
+        versions_dir.mkdir(parents=True, exist_ok=True)
+        stamp = dt.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        version_path = versions_dir / f"{asset_id}_before_tile_repair_{stamp}.png"
+        shutil.copy(asset_path, version_path)
+
+        pixels = image.load()
+        width, height = image.size
+        for y in range(height):
+            left = pixels[0, y]
+            right = pixels[width - 1, y]
+            blended = tuple(int(round((left[idx] + right[idx]) / 2)) for idx in range(4))
+            pixels[0, y] = blended
+            pixels[width - 1, y] = blended
+        for x in range(width):
+            top = pixels[x, 0]
+            bottom = pixels[x, height - 1]
+            blended = tuple(int(round((top[idx] + bottom[idx]) / 2)) for idx in range(4))
+            pixels[x, 0] = blended
+            pixels[x, height - 1] = blended
+
+        palette_limit = int(meta_data.get("palette", {}).get("max_colors", params.get("palette_size", 24)) or 24)
+        repaired = PixelNormalizationService.normalize_asset(image, {
+            "resolution": [width, height],
+            "clean_alpha": True,
+            "quantize_palette": True,
+            "max_colors": palette_limit,
+            "remove_islands": False,
+            "outline": "none",
+        })
+        repaired.save(asset_path)
+
+        after_seams = PixelTilesetService.calculate_seam_deltas(repaired)
+        colors_list = []
+        unique_colors = repaired.getcolors(maxcolors=256)
+        if unique_colors:
+            for count_val, col in unique_colors:
+                if len(col) >= 3 and (len(col) == 3 or col[3] > 0):
+                    colors_list.append(f"#{col[0]:02x}{col[1]:02x}{col[2]:02x}")
+
+        try:
+            rel_version = str(version_path.relative_to(ROOT)).replace("\\", "/")
+        except ValueError:
+            rel_version = str(version_path)
+
+        meta_data.setdefault("versions", [])
+        meta_data["versions"].append({
+            "path": rel_version,
+            "label": "before tile seam repair",
+            "created_at": dt.datetime.utcnow().isoformat() + "Z",
+        })
+        meta_data.setdefault("tile_repair_history", [])
+        meta_data["tile_repair_history"].append({
+            "created_at": dt.datetime.utcnow().isoformat() + "Z",
+            "strategy": "edge_blend",
+            "before": before_seams,
+            "after": after_seams,
+        })
+        meta_data.setdefault("palette", {"max_colors": palette_limit, "colors": []})
+        meta_data["palette"]["colors"] = colors_list[:palette_limit]
+        meta_data.setdefault("qa", {})
+        meta_data["qa"].update({
+            "ok": after_seams["left_right_delta"] < 0.2 and after_seams["top_bottom_delta"] < 0.2,
+            "color_count": len(colors_list),
+            "alpha_ok": True,
+            "blur_score": 0.0,
+            "seam_check": after_seams,
+        })
+        save_json(meta_path, meta_data)
+
+        return {
+            "ok": True,
+            "asset": meta_data,
+            "version_path": rel_version,
+            "before": before_seams,
+            "after": after_seams,
         }
 
     @staticmethod

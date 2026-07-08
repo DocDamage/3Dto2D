@@ -72,6 +72,7 @@ Provider panel -> confirm generate/edit/inpaint/prompt-help support before runni
 Normalize for fixed size, palette, alpha, and cleanup
 Directions for 1/4/8-direction sheets
 Tileset for tile roles and seam QA
+Repair tile seams -> version selected tile and refresh seam score
 Paint & Edit -> AI Mask -> set opacity/variants -> Run AI Edit
 Hold Before to compare against the saved pre-inpaint image
 Animate / Transfer / Rig for motion sheets

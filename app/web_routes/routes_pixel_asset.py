@@ -324,6 +324,26 @@ def inpaint_pixel_asset():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
 
+@routes_pixel_asset.route("/api/pixel-assets/part/apply", methods=["POST"])
+def apply_pixel_part():
+    body = request.json or {}
+    try:
+        from services.pixel_part_apply_service import PixelPartApplyService
+        result = PixelPartApplyService.create_variants(body)
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_pixel_asset.route("/api/pixel-assets/part/accept", methods=["POST"])
+def accept_pixel_part_variant():
+    body = request.json or {}
+    try:
+        from services.pixel_part_apply_service import PixelPartApplyService
+        result = PixelPartApplyService.accept_variant(body)
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 @routes_pixel_asset.route("/api/pixel-assets/animate", methods=["POST"])
 def animate_pixel_asset():
     body = request.json or {}

@@ -26,6 +26,7 @@ from services.pixel_pack_service import PixelPackService
 from services.pixel_recipe_service import PixelRecipeService
 from services.pixel_style_service import PixelStyleService
 from services.pixel_asset_memory_service import PixelAssetMemoryService
+from services.pixel_part_apply_service import PixelPartApplyService
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_web import app
 
@@ -75,6 +76,10 @@ def mock_pixel_paths(tmp_path, monkeypatch):
     import services.pixel_rig_service as prs_srv_mod
     monkeypatch.setattr(prs_srv_mod, "ASSETS_DIR", assets)
     monkeypatch.setattr(prs_srv_mod, "BATCHES_DIR", batches)
+
+    import services.pixel_part_apply_service as ppa_srv_mod
+    monkeypatch.setattr(ppa_srv_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(ppa_srv_mod, "ASSETS_DIR", assets)
 
     import services.pixel_recipe_service as recipe_mod
     monkeypatch.setattr(recipe_mod, "RECIPES_DIR", temp_root / "recipes")
@@ -733,6 +738,54 @@ def test_inpaint_endpoint(client):
     assert data_inpaint["ok"] is True
     assert len(data_inpaint["asset"]["inpaint_history"]) > 0
 
+def test_part_apply_variants_and_accept_endpoint(client):
+    response = client.post(
+        "/api/pixel-assets/generate",
+        data=json.dumps({
+            "asset_type": "characters",
+            "prompt": "zombie guard",
+            "resolution": "32x32",
+            "palette_size": "16",
+            "provider": "openai",
+            "count": 1,
+            "mock": True
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    asset = json.loads(response.data.decode("utf-8"))["assets"][0]
+
+    apply_res = client.post(
+        "/api/pixel-assets/part/apply",
+        data=json.dumps({
+            "asset_id": asset["asset_id"],
+            "part_prompt": "gold chest armor",
+            "count": 3,
+            "mock": True
+        }),
+        content_type="application/json"
+    )
+    assert apply_res.status_code == 200
+    apply_data = json.loads(apply_res.data.decode("utf-8"))
+    assert apply_data["ok"] is True
+    assert apply_data["manifest"]["schema"] == "spriteforge.pixel_part_apply.v1"
+    assert len(apply_data["variants"]) == 3
+
+    accept_res = client.post(
+        "/api/pixel-assets/part/accept",
+        data=json.dumps({
+            "asset_id": asset["asset_id"],
+            "variant_path": apply_data["variants"][0]["path"],
+            "label": "gold chest armor"
+        }),
+        content_type="application/json"
+    )
+    assert accept_res.status_code == 200
+    accept_data = json.loads(accept_res.data.decode("utf-8"))
+    assert accept_data["ok"] is True
+    assert accept_data["asset"]["part_apply_history"][0]["label"] == "gold chest armor"
+    assert accept_data["asset"]["versions"][0]["label"] == "before gold chest armor"
+
 def test_animation_generation_service(tmp_path):
     # Setup test asset
     asset_id = "pxa_test_animate"
@@ -1141,3 +1194,9 @@ def test_pixel_studio_polish_ui_assets():
     assert "/api/pixel-assets/version/save" in js
     assert 'id="pixelRecipeImportBtn"' in html
     assert "/api/pixel-assets/recipes/import" in js
+    assert 'id="inspectorApplyPartBtn"' in html
+    assert 'id="pixelPartApplyModal"' in html
+    assert 'id="pixelPartVariantGrid"' in html
+    assert "/api/pixel-assets/part/apply" in js
+    assert "/api/pixel-assets/part/accept" in js
+    assert "renderPartVariants" in js

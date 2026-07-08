@@ -738,6 +738,34 @@ Apply a masked edit workflow to an existing pixel asset.
 }
 ```
 
+### `POST /api/pixel-assets/part/apply`
+
+Create non-destructive outfit, armor, weapon, or accessory variants for an existing pixel asset.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "part_prompt": "gold chest armor",
+  "part_image_data": "data:image/png;base64,...",
+  "count": 3,
+  "mock": true
+}
+```
+
+### `POST /api/pixel-assets/part/accept`
+
+Accept one generated part variant and apply it to `asset.png`. The previous asset image is copied into `versions/`, and the sidecar receives `part_apply_history`.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "variant_path": "output/pixel_assets/assets/pxa_123/part_variants/part_abc/part_abc_v1.png",
+  "label": "gold chest armor"
+}
+```
+
 ### `POST /api/pixel-assets/animate`
 
 Generate an animation sheet and GIF preview from an asset.

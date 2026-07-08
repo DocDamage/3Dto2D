@@ -1255,6 +1255,64 @@
       });
     }
 
+    const applyPartBtn = $('#inspectorApplyPartBtn');
+    const partModal = $('#pixelPartApplyModal');
+    const partBackdrop = $('#pixelPartApplyModalBackdrop');
+    const partCancelBtn = $('#pixelPartApplyCancelBtn');
+    const partForm = $('#pixelPartApplyForm');
+    const partGrid = $('#pixelPartVariantGrid');
+    if (applyPartBtn && partModal) {
+      applyPartBtn.addEventListener('click', () => {
+        if (!activeAsset) {
+          toast('Select a character or sprite first.');
+          return;
+        }
+        partModal.classList.remove('hidden');
+        const promptInput = $('#pixelPartPrompt');
+        if (promptInput && !promptInput.value) promptInput.value = 'iron chest armor';
+      });
+    }
+    const closePartModal = () => {
+      if (partModal) partModal.classList.add('hidden');
+    };
+    if (partBackdrop) partBackdrop.addEventListener('click', closePartModal);
+    if (partCancelBtn) partCancelBtn.addEventListener('click', closePartModal);
+    if (partForm) {
+      partForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!activeAsset) return;
+        const prompt = $('#pixelPartPrompt')?.value?.trim() || '';
+        const count = parseInt($('#pixelPartVariantCount')?.value || '3', 10);
+        const file = $('#pixelPartImageInput')?.files?.[0] || null;
+        let imageData = '';
+        if (file) imageData = await readFileDataUrl(file);
+        if (partGrid) {
+          partGrid.innerHTML = '<div style="font-size: 12px; color: var(--muted); grid-column: 1 / -1;">Generating variants...</div>';
+        }
+        try {
+          const res = await api('/api/pixel-assets/part/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              asset_id: activeAsset.asset_id,
+              part_prompt: prompt,
+              part_image_data: imageData,
+              count,
+              mock: true
+            })
+          });
+          if (res.ok) {
+            renderPartVariants(res.variants || []);
+            toast('Part variants generated.');
+          } else {
+            showPixelFailure(res.message);
+          }
+        } catch (err) {
+          showPixelFailure(err.message);
+        }
+      });
+    }
+
     if (playPauseBtn) {
       playPauseBtn.addEventListener('click', () => {
         if (!activeAnimation) return;
@@ -2074,8 +2132,71 @@
     $('#inspectorUseAsStyleBtn').disabled = false;
     $('#inspectorGenerateLikeBtn').disabled = false;
     $('#inspectorMatchStyleBtn').disabled = false;
+    $('#inspectorApplyPartBtn').disabled = false;
     $('#inspectorEditBtn').disabled = false;
     $('#inspectorExportBtn').disabled = false;
+  }
+
+  function renderPartVariants(variants) {
+    const grid = $('#pixelPartVariantGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    if (!variants.length) {
+      grid.innerHTML = '<div style="font-size: 12px; color: var(--muted); grid-column: 1 / -1;">No variants returned.</div>';
+      return;
+    }
+    variants.forEach((variant) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid rgba(85,241,255,0.18); border-radius:8px; padding:8px; background:rgba(0,0,0,0.22); display:flex; flex-direction:column; gap:6px;';
+      const img = document.createElement('img');
+      img.src = `/file/${variant.path}?t=${Date.now()}`;
+      img.alt = variant.variant_id;
+      img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:contain; image-rendering:pixelated; background:#05070d;';
+      const note = document.createElement('div');
+      note.textContent = variant.recommendation || variant.variant_id;
+      note.style.cssText = 'font-size:11px; color:var(--muted); min-height:28px;';
+      const accept = document.createElement('button');
+      accept.className = 'mini primary';
+      accept.type = 'button';
+      accept.textContent = 'Accept';
+      accept.addEventListener('click', async () => {
+        if (!activeAsset) return;
+        try {
+          const res = await api('/api/pixel-assets/part/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              asset_id: activeAsset.asset_id,
+              variant_path: variant.path,
+              label: variant.recommendation || 'applied part'
+            })
+          });
+          if (res.ok) {
+            activeAsset = res.asset;
+            toast('Part applied to selected asset.');
+            selectAsset(activeAsset);
+            $('#pixelPartApplyModal')?.classList.add('hidden');
+          } else {
+            showPixelFailure(res.message);
+          }
+        } catch (err) {
+          showPixelFailure(err.message);
+        }
+      });
+      card.appendChild(img);
+      card.appendChild(note);
+      card.appendChild(accept);
+      grid.appendChild(card);
+    });
+  }
+
+  function readFileDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || '');
+      reader.onerror = () => reject(reader.error || new Error('Could not read file.'));
+      reader.readAsDataURL(file);
+    });
   }
 
   async function compareActiveAssetToStyle(showToast) {

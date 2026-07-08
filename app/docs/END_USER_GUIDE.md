@@ -99,6 +99,7 @@ Common Pixel Studio workflows:
 - **Tileset** creates top-down, side-scroller, or isometric tile roles with seam checks.
 - **Edit** opens the browser pixel editor with pencil, eraser, fill, picker, line, rectangle, selection, move, import PNG, export PNG, save edits, and save version controls.
 - **Inpaint** applies a masked edit workflow while preserving pixel metadata.
+- **Apply outfit / part** generates multiple non-destructive armor, clothing, weapon, hat, or accessory variants for the selected sprite, then applies only the accepted variant as a versioned edit.
 - **Animate** generates a spritesheet and GIF preview from a selected asset.
 - **Animation Transfer** applies an existing sheet layout to a new prompt/style.
 - **Skeleton & Rigging** renders simple keyframed rig motion into a sheet.

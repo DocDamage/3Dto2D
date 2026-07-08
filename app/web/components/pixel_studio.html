@@ -503,12 +503,40 @@
         <button class="ghost" id="inspectorUseAsStyleBtn" type="button" disabled style="width: 100%;">Use as style reference</button>
         <button class="ghost" id="inspectorGenerateLikeBtn" type="button" disabled style="width: 100%;">Generate more like this</button>
         <button class="ghost" id="inspectorMatchStyleBtn" type="button" disabled style="width: 100%;">Make match project style</button>
+        <button class="ghost" id="inspectorApplyPartBtn" type="button" disabled style="width: 100%;">Apply outfit / part</button>
         <button class="ghost" id="inspectorEditBtn" type="button" disabled style="width: 100%;">Paint & Edit Pixel</button>
         <button class="ghost" id="inspectorExportBtn" type="button" disabled style="width: 100%;">Export Game Release</button>
         <button class="ghost" id="inspectorExportPackBtn" type="button" disabled style="width: 100%; display: none;">Export Complete Pack (.ZIP)</button>
       </div>
     </div>
 
+  </div>
+
+  <!-- Apply Outfit / Part Modal Dialog -->
+  <div id="pixelPartApplyModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="partApplyModalTitle" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6);">
+    <div class="result-modal-backdrop" id="pixelPartApplyModalBackdrop" style="position: absolute; top:0; left:0; width:100%; height:100%;"></div>
+    <section class="result-dialog" style="position: relative; max-width: 640px; width: 92vw; background: #0f1322; border: 1px solid rgba(85,241,255,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="result-dialog-head" style="margin-bottom: 16px;">
+        <h2 id="partApplyModalTitle" style="font-size: 18px; font-weight: bold; color: var(--cyan); margin: 0;">Apply outfit or part</h2>
+      </div>
+
+      <form id="pixelPartApplyForm" style="display: flex; flex-direction: column; gap: 12px;">
+        <label>Part or outfit
+          <input type="text" id="pixelPartPrompt" placeholder="iron chest armor, blue hood, leather boots..." required style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Optional part/reference image
+          <input type="file" id="pixelPartImageInput" accept="image/png,image/webp,image/jpeg" style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Variants
+          <input type="number" id="pixelPartVariantCount" value="3" min="1" max="6" style="width:100%; margin-top:4px;" />
+        </label>
+        <div id="pixelPartVariantGrid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-height: 40px;"></div>
+        <div class="button-row" style="justify-content: flex-end; margin-top: 8px;">
+          <button type="button" class="ghost" id="pixelPartApplyCancelBtn">Close</button>
+          <button type="submit" class="primary" id="pixelPartApplyGenerateBtn">Generate Variants</button>
+        </div>
+      </form>
+    </section>
   </div>
 
   <!-- Style Profile Modal Dialog -->

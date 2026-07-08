@@ -1,0 +1,94 @@
+{
+  "schema": "spriteforge.pixel_asset_modes.v1",
+  "modes": {
+    "characters": {
+      "label": "Characters",
+      "description": "Full-body game-ready character sprites.",
+      "controls": {
+        "body_type": ["regular", "slim", "stocky", "small"],
+        "outfit": ["adventurer", "armor", "robe", "villager", "modern"],
+        "role": ["hero", "merchant", "mage", "rogue", "guard"],
+        "pose": ["idle", "t-pose", "a-pose", "walk-ready", "attack-ready"],
+        "view": ["front", "side", "three-quarter", "top-down"],
+        "scale": ["tiny", "standard", "tall"]
+      }
+    },
+    "creatures": {
+      "label": "Creatures",
+      "description": "Enemies, pets, monsters, and neutral wildlife sprites.",
+      "controls": {
+        "species": ["slime", "wolf", "goblin", "bat", "construct"],
+        "size": ["tiny", "small", "medium", "large"],
+        "threat_level": ["friendly", "neutral", "dangerous", "boss"],
+        "body_parts": ["simple", "horns", "wings", "tail", "many legs"],
+        "color_family": ["green", "red", "blue", "purple", "earth"]
+      }
+    },
+    "items": {
+      "label": "Items",
+      "description": "Props, pickups, containers, keys, and inventory objects.",
+      "controls": {
+        "category": ["pickup", "container", "key", "crafting", "treasure"],
+        "rarity": ["common", "uncommon", "rare", "epic"],
+        "material": ["wood", "iron", "gold", "crystal", "cloth"],
+        "glow": ["no glow", "soft glow", "magic glow"],
+        "icon_silhouette": ["round", "square", "tall", "wide", "irregular"]
+      }
+    },
+    "weapons": {
+      "label": "Weapons",
+      "description": "Weapon icons and equipment sprites.",
+      "controls": {
+        "class": ["sword", "axe", "bow", "staff", "dagger", "spear"],
+        "material": ["iron", "steel", "gold", "crystal", "wood"],
+        "angle": ["diagonal", "horizontal", "vertical", "three-quarter"],
+        "handedness": ["one-handed", "two-handed", "offhand"],
+        "effects": ["none", "fire", "ice", "lightning", "poison"]
+      }
+    },
+    "potions": {
+      "label": "Potions",
+      "description": "Potion, vial, elixir, and bottle icons.",
+      "controls": {
+        "bottle_shape": ["round", "tall", "square", "teardrop", "flask"],
+        "liquid_color": ["red", "blue", "green", "purple", "gold"],
+        "stopper": ["cork", "wax seal", "glass cap", "metal cap"],
+        "label": ["no label", "paper label", "rune label"],
+        "rarity": ["common", "uncommon", "rare", "epic"]
+      }
+    },
+    "ui_icons": {
+      "label": "UI Icons",
+      "description": "HUD, button, inventory, cursor, and status icons.",
+      "controls": {
+        "ui_type": ["button", "icon", "bar", "window", "cursor"],
+        "border_style": ["plain", "beveled", "ornate", "stone", "wood"],
+        "fill_color": ["dark", "gold", "blue", "red", "transparent"],
+        "text_policy": ["no text", "symbol only", "short glyph"],
+        "variant": ["normal", "hover", "disabled", "pressed"]
+      }
+    },
+    "tilesets": {
+      "label": "Tilesets",
+      "description": "Tileable terrain roles for top-down, side-scroller, and isometric maps.",
+      "controls": {
+        "scene_type": ["dungeon", "forest", "village", "cave", "castle"],
+        "tile_family": ["floor", "wall", "edge", "corner", "water", "door"],
+        "tileable": ["tileable", "edge-aware", "decorative"],
+        "perspective": ["top-down", "side-scroller", "isometric"],
+        "weathering": ["clean", "mossy", "cracked", "ancient"]
+      }
+    },
+    "backgrounds": {
+      "label": "Backgrounds",
+      "description": "Parallax and scene background layers.",
+      "controls": {
+        "scene_type": ["forest", "mountains", "town", "dungeon", "space"],
+        "perspective": ["side-view", "top-down", "isometric", "wide panorama"],
+        "parallax_layer": ["foreground", "midground", "background", "sky"],
+        "target_resolution": ["128x64", "256x128", "320x180", "512x288"],
+        "tileable": ["not tileable", "horizontal loop", "fully tileable"]
+      }
+    }
+  }
+}

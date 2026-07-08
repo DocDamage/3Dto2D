@@ -7,6 +7,7 @@
   let activeBatch = null; // Active batch manifest if multi-direction or tileset
   let styleProfiles = [];
   let pixelRecipes = [];
+  let pixelModeConfigs = {};
   let currentCompareMode = 'normalized'; // 'normalized', 'raw', 'transferred', 'source'
   let currentViewMode = 'sheet'; // 'sheet' or 'single'
 
@@ -62,6 +63,7 @@
           backgrounds: "sunset sky parallax layer with distant low-poly purple mountains"
         };
         $('#pixelPrompt').placeholder = promptPlaceholderMap[mode] || "Enter description...";
+        renderModeOptions(mode);
 
         // Toggle tileset generator settings (Phase 6)
         const tilesetSection = $('#pixelTilesetSettingsSection');
@@ -151,6 +153,7 @@
     }
 
     // Load styles & LoRAs on launch
+    loadModeConfigs();
     loadStyles();
     loadLoras();
     loadRecipes();
@@ -1170,6 +1173,62 @@
     }
   }
 
+  async function loadModeConfigs() {
+    try {
+      const res = await api('/api/pixel-assets/modes');
+      if (res.ok && res.mode_configs) {
+        pixelModeConfigs = res.mode_configs;
+        renderModeOptions($('#pixelActiveMode')?.value || 'characters');
+      }
+    } catch (err) {
+      console.error('Error loading mode configs:', err);
+    }
+  }
+
+  function renderModeOptions(mode) {
+    const container = $('#pixelModeOptionsContainer');
+    if (!container) return;
+
+    const config = pixelModeConfigs[mode] || {};
+    const controls = config.controls || {};
+    container.innerHTML = '';
+
+    Object.keys(controls).forEach(controlId => {
+      const label = document.createElement('label');
+      label.textContent = controlId.replaceAll('_', ' ');
+      label.style.fontSize = '11px';
+      label.style.textTransform = 'uppercase';
+      label.style.color = 'var(--muted)';
+
+      const select = document.createElement('select');
+      select.dataset.pixelModeOption = controlId;
+      select.style.width = '100%';
+      select.style.marginTop = '4px';
+
+      controls[controlId].forEach(value => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = value;
+        select.appendChild(opt);
+      });
+
+      label.appendChild(select);
+      container.appendChild(label);
+    });
+
+    if (!Object.keys(controls).length) {
+      container.innerHTML = '<div style="grid-column: 1 / -1; color: var(--muted); font-size: 11px;">No extra controls for this asset type.</div>';
+    }
+  }
+
+  function collectModeOptions() {
+    const out = {};
+    $$('[data-pixel-mode-option]').forEach(select => {
+      out[select.dataset.pixelModeOption] = select.value;
+    });
+    return out;
+  }
+
   async function loadRecipes() {
     const selectEl = $('#pixelPackRecipeSelect');
     if (!selectEl) return;
@@ -1278,6 +1337,7 @@
       negative: negativeVal,
       reference_image: referenceVal,
       style_profile_id: styleProfileId,
+      mode_options: collectModeOptions(),
       resolution: resolutionVal,
       palette_size: paletteSizeVal,
       provider: providerVal,

@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, send_file
+import json
 import os
 from pathlib import Path
 from PIL import Image
@@ -17,7 +18,7 @@ routes_pixel_asset = Blueprint("routes_pixel_asset", __name__)
 def get_pixel_modes():
     try:
         modes = PixelAssetService.get_modes()
-        return jsonify({"ok": True, "modes": modes})
+        return jsonify({"ok": True, "modes": modes, "mode_configs": PixelAssetService.get_mode_configs()})
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 
@@ -74,8 +75,8 @@ def get_pixel_history():
                 data = load_json(file, {})
                 if data:
                     history.append(data)
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError, ValueError):
+                continue
         return jsonify({"ok": True, "history": history})
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
@@ -325,6 +326,7 @@ def transfer_pixel_animation():
         return jsonify({"ok": False, "message": str(exc)}), 400
 
 @routes_pixel_asset.route("/api/pixel-assets/rig/render", methods=["POST"])
+@routes_pixel_asset.route("/api/pixel-assets/skeleton/render", methods=["POST"])
 def render_pixel_rig():
     body = request.json or {}
     try:

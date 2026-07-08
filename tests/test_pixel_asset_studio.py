@@ -346,6 +346,60 @@ def test_lora_payload_in_dry_run(client):
     assert contract["lora_config"]["lora_name"] == "neon-cyberpunk-lora"
     assert contract["lora_config"]["lora_weight"] == 0.9
 
+def test_mode_configs_and_mode_specific_prompt_options(client):
+    response = client.get("/api/pixel-assets/modes")
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert "weapons" in data["mode_configs"]
+    assert "class" in data["mode_configs"]["weapons"]["controls"]
+
+    payload = {
+        "asset_type": "weapons",
+        "prompt": "moonlit blade",
+        "resolution": "32x32",
+        "palette_size": "16",
+        "provider": "openai",
+        "mode_options": {
+            "class": "sword",
+            "material": "crystal",
+            "angle": "diagonal",
+            "handedness": "one-handed",
+            "effects": "ice"
+        },
+        "dry_run": True
+    }
+    response = client.post(
+        "/api/pixel-assets/generate",
+        data=json.dumps(payload),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    plan = json.loads(response.data.decode("utf-8"))["plan"]
+    assert "class: sword" in plan["expanded_prompt"]
+    assert "material: crystal" in plan["expanded_prompt"]
+    assert plan["parameters"]["mode_options"]["effects"] == "ice"
+
+def test_invalid_mode_options_are_rejected(client):
+    payload = {
+        "asset_type": "weapons",
+        "prompt": "bad weapon",
+        "resolution": "32x32",
+        "palette_size": "16",
+        "provider": "openai",
+        "mode_options": {"class": "laser cannon"},
+        "dry_run": True
+    }
+    response = client.post(
+        "/api/pixel-assets/generate",
+        data=json.dumps(payload),
+        content_type="application/json"
+    )
+    assert response.status_code == 400
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is False
+    assert "Invalid class" in data["message"]
+
 def test_export_packaging_service(client):
     # 1. First generate a directions batch
     payload = {
@@ -855,6 +909,16 @@ def test_rig_render_endpoint(client):
     data_rig = json.loads(res_rig.data.decode("utf-8"))
     assert data_rig["ok"] is True
     assert data_rig["manifest"]["frame_count"] == 4
+
+    res_skeleton = client.post(
+        "/api/pixel-assets/skeleton/render",
+        data=json.dumps(payload_rig),
+        content_type="application/json"
+    )
+    assert res_skeleton.status_code == 200
+    data_skeleton = json.loads(res_skeleton.data.decode("utf-8"))
+    assert data_skeleton["ok"] is True
+    assert data_skeleton["manifest"]["schema"] == "spriteforge.pixel_skeletal_rig.v1"
 
 def test_pack_generation_service(tmp_path):
     # Redirect paths inside pack service to temp directories

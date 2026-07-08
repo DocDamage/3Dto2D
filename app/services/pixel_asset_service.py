@@ -1,10 +1,9 @@
 from __future__ import annotations
 import json
-import os
 import uuid
 import datetime as dt
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional
 from PIL import Image, ImageDraw
 
 from spriteforge_utils import ROOT, load_json, save_json
@@ -25,6 +24,9 @@ STYLES_DIR = PIXEL_ASSETS_DIR / "styles"
 
 # Standard modes
 MODES = ["characters", "creatures", "items", "weapons", "potions", "ui_icons", "tilesets", "backgrounds"]
+CONFIG_DIR = ROOT / "config"
+MODE_CONFIG_PATH = CONFIG_DIR / "pixel_asset_modes.json"
+PROMPT_TEMPLATE_PATH = CONFIG_DIR / "pixel_prompt_templates.json"
 
 # Standard prompt templates
 PROMPT_TEMPLATES = {
@@ -38,6 +40,17 @@ PROMPT_TEMPLATES = {
     "backgrounds": "horizontal scrolling parallax background layer, {description}, {style_profile}, true pixel art, fixed {resolution} perspective landscape",
 }
 
+SINGULAR_TO_PLURAL = {
+    "character": "characters",
+    "creature": "creatures",
+    "item": "items",
+    "weapon": "weapons",
+    "potion": "potions",
+    "ui_icon": "ui_icons",
+    "tileset": "tilesets",
+    "background": "backgrounds",
+}
+
 class PixelAssetService:
     @staticmethod
     def initialize():
@@ -48,6 +61,54 @@ class PixelAssetService:
     @staticmethod
     def get_modes() -> List[str]:
         return MODES
+
+    @staticmethod
+    def get_mode_configs() -> Dict[str, Dict[str, Any]]:
+        data = load_json(MODE_CONFIG_PATH, {})
+        modes = data.get("modes", {}) if isinstance(data, dict) else {}
+        if not modes:
+            return {mode: {"label": mode.replace("_", " ").title(), "controls": {}} for mode in MODES}
+        return modes
+
+    @staticmethod
+    def get_prompt_templates() -> Dict[str, str]:
+        data = load_json(PROMPT_TEMPLATE_PATH, {})
+        templates = data.get("templates", {}) if isinstance(data, dict) else {}
+        merged = dict(PROMPT_TEMPLATES)
+        merged.update({key: val for key, val in templates.items() if isinstance(val, str)})
+        return merged
+
+    @staticmethod
+    def normalize_asset_type(asset_type: str) -> str:
+        normalized = str(asset_type or "characters").lower().strip()
+        return normalized if normalized in MODES else SINGULAR_TO_PLURAL.get(normalized, "characters")
+
+    @staticmethod
+    def validate_mode_options(asset_type: str, mode_options: Dict[str, Any]) -> Dict[str, str]:
+        configs = PixelAssetService.get_mode_configs()
+        controls = configs.get(asset_type, {}).get("controls", {})
+        clean: Dict[str, str] = {}
+        if not isinstance(mode_options, dict):
+            return clean
+        for control_id, value in mode_options.items():
+            if control_id not in controls:
+                raise ValueError(f"Unsupported {asset_type} option: {control_id}")
+            value_text = str(value).strip()
+            allowed = controls[control_id]
+            if value_text not in allowed:
+                raise ValueError(f"Invalid {control_id} for {asset_type}. Choose one of: {', '.join(allowed)}")
+            clean[control_id] = value_text
+        return clean
+
+    @staticmethod
+    def describe_mode_options(mode_options: Dict[str, str]) -> str:
+        if not mode_options:
+            return "asset-specific details: default"
+        parts = []
+        for key, value in mode_options.items():
+            label = key.replace("_", " ")
+            parts.append(f"{label}: {value}")
+        return ", ".join(parts)
 
     @staticmethod
     def list_style_profiles() -> List[Dict[str, Any]]:
@@ -91,18 +152,13 @@ class PixelAssetService:
     @staticmethod
     def generate_dry_run_plan(params: Dict[str, Any]) -> Dict[str, Any]:
         """Builds a dry-run plan based on selected mode, prompt parameters, and providers."""
-        asset_type = params.get("asset_type", "characters").lower()
-        if asset_type not in PROMPT_TEMPLATES:
-            # check plural vs singular helper
-            singular_to_plural = {
-                "character": "characters", "creature": "creatures", "item": "items",
-                "weapon": "weapons", "potion": "potions", "ui_icon": "ui_icons",
-                "tileset": "tilesets", "background": "backgrounds"
-            }
-            asset_type = singular_to_plural.get(asset_type, "characters")
+        asset_type = PixelAssetService.normalize_asset_type(params.get("asset_type", "characters"))
+        mode_options = PixelAssetService.validate_mode_options(asset_type, params.get("mode_options", {}))
+        mode_options_text = PixelAssetService.describe_mode_options(mode_options)
 
         # Resolve prompt template
-        template = PROMPT_TEMPLATES.get(asset_type, PROMPT_TEMPLATES["characters"])
+        prompt_templates = PixelAssetService.get_prompt_templates()
+        template = prompt_templates.get(asset_type, prompt_templates["characters"])
         
         description = params.get("prompt", "hero adventurer").strip()
         style_profile_id = params.get("style_profile_id", "")
@@ -153,6 +209,7 @@ class PixelAssetService:
         # Format expanded prompt
         expanded_prompt = template.format(
             description=description,
+            mode_options=mode_options_text,
             style_profile=style_profile_text,
             resolution=resolution_str,
             palette_size=palette_size,
@@ -194,7 +251,8 @@ class PixelAssetService:
                 "palette_size": palette_size,
                 "provider": provider,
                 "model": model or cloud_plan.get("model"),
-                "count": params.get("count", 1)
+                "count": params.get("count", 1),
+                "mode_options": mode_options
             }
         }
 
@@ -212,6 +270,7 @@ class PixelAssetService:
         asset_type = plan["asset_type"]
         resolution = plan["parameters"]["resolution"]
         palette_size = int(plan["parameters"]["palette_size"]) if plan["parameters"]["palette_size"].isdigit() else 24
+        mode_options = plan["parameters"].get("mode_options", {})
 
         # Validate API Key (raises RuntimeError on missing key)
         is_mock_requested = params.get("mock_generation", False) or params.get("mock", False)
@@ -300,6 +359,7 @@ class PixelAssetService:
                 "model": model or "mock_model",
                 "source_reference": params.get("reference_image"),
                 "style_profile_id": params.get("style_profile_id"),
+                "mode_options": mode_options,
                 "resolution": resolution,
                 "palette": {
                     "max_colors": palette_size,

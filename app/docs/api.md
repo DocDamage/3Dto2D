@@ -503,7 +503,15 @@ Return supported Pixel Studio asset modes.
 ```json
 {
   "ok": true,
-  "modes": ["characters", "creatures", "items", "weapons", "potions", "ui_icons", "tilesets", "backgrounds"]
+  "modes": ["characters", "creatures", "items", "weapons", "potions", "ui_icons", "tilesets", "backgrounds"],
+  "mode_configs": {
+    "weapons": {
+      "label": "Weapons",
+      "controls": {
+        "class": ["sword", "axe", "bow", "staff", "dagger", "spear"]
+      }
+    }
+  }
 }
 ```
 
@@ -521,11 +529,17 @@ Generate a batch of pixel assets or return a dry-run plan.
   "provider": "openai",
   "count": 2,
   "style_profile_id": "style_fantasy",
+  "mode_options": {
+    "class": "bow",
+    "material": "wood",
+    "effects": "none"
+  },
   "mock": true
 }
 ```
 
 Use `"dry_run": true` to return a prompt/provider plan without writing assets.
+`mode_options` are validated against `app/config/pixel_asset_modes.json` and included in the expanded prompt through `app/config/pixel_prompt_templates.json`.
 
 ### `POST /api/pixel-assets/normalize`
 
@@ -701,6 +715,8 @@ Transfer an existing sheet layout/motion to a new prompt/style.
 ```
 
 ### `POST /api/pixel-assets/rig/render`
+
+Alias: `POST /api/pixel-assets/skeleton/render`
 
 Render a lightweight skeleton/bone rig animation from an existing asset.
 

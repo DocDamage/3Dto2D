@@ -86,8 +86,9 @@ Use **Pixel Studio** for MagicPixel-style asset creation:
 1. Open **Pixel Studio**.
 2. Choose an asset type such as character, creature, item, weapon, potion, UI icon, tileset, or background.
 3. Enter a prompt, optional reference image, resolution, palette size, provider, and style profile.
-4. Generate assets in mock mode for fast local previews or use a configured provider for real image generation.
-5. Use the gallery and inspector to normalize, edit, inpaint, animate, export, or reuse outputs.
+4. Use **Asset Details** to choose type-specific controls such as weapon class/material/effects, potion bottle/liquid/rarity, character pose/outfit, creature species, UI border, or tileset perspective.
+5. Generate assets in mock mode for fast local previews or use a configured provider for real image generation.
+6. Use the gallery and inspector to normalize, edit, inpaint, animate, export, or reuse outputs.
 
 Common Pixel Studio workflows:
 
@@ -112,6 +113,13 @@ app/output/pixel_assets/batches/
 app/output/pixel_assets/packs/
 app/output/pixel_assets/recipes/
 app/output/pixel_assets/styles/
+```
+
+Asset-type controls and prompt templates are editable in:
+
+```text
+app/config/pixel_asset_modes.json
+app/config/pixel_prompt_templates.json
 ```
 
 ## Existing video conversion

@@ -13,11 +13,15 @@
 
   // Editor states (Phase 7 & 8)
   let isEditing = false;
-  let currentTool = 'pencil'; // 'pencil', 'eraser', 'bucket', 'picker', 'mask'
+  let currentTool = 'pencil'; // pencil, eraser, bucket, picker, line, rectangle, select, move, mask
   let activeColor = '#ffffff';
   let drawing = false;
   let undoStack = [];
   let redoStack = [];
+  let editorDragStart = null;
+  let editorPreviewState = null;
+  let editorSelection = null;
+  let editorMovedSelection = null;
 
   // Animation player states (Phase 9 & 10)
   let activeAnimation = null;
@@ -313,10 +317,18 @@
     const btnEraser = $('#btnEditorEraser');
     const btnBucket = $('#btnEditorBucket');
     const btnPicker = $('#btnEditorPicker');
+    const btnLine = $('#btnEditorLine');
+    const btnRect = $('#btnEditorRect');
+    const btnSelect = $('#btnEditorSelect');
+    const btnMove = $('#btnEditorMove');
     const btnMask = $('#btnEditorMask');
 
     const btnUndo = $('#btnEditorUndo');
     const btnRedo = $('#btnEditorRedo');
+    const btnImport = $('#btnEditorImport');
+    const editorImportInput = $('#pixelEditorImportInput');
+    const btnExport = $('#btnEditorExport');
+    const btnVersion = $('#btnEditorVersion');
     const btnCancel = $('#btnEditorCancel');
     const btnSave = $('#btnEditorSave');
     const btnRunInpaint = $('#btnEditorRunInpaint');
@@ -369,6 +381,10 @@
           // Initialize undo stack
           undoStack = [ctx.getImageData(0, 0, w, h)];
           redoStack = [];
+          editorSelection = null;
+          editorMovedSelection = null;
+          editorDragStart = null;
+          editorPreviewState = null;
         };
         img.src = '/file/' + activeAsset.outputs.png + '?t=' + Date.now();
 
@@ -379,13 +395,17 @@
 
     function setEditorTool(tool) {
       currentTool = tool;
-      [btnPencil, btnEraser, btnBucket, btnPicker, btnMask].forEach(btn => {
+      [btnPencil, btnEraser, btnBucket, btnPicker, btnLine, btnRect, btnSelect, btnMove, btnMask].forEach(btn => {
         if (btn) btn.classList.remove('active');
       });
       if (tool === 'pencil' && btnPencil) btnPencil.classList.add('active');
       if (tool === 'eraser' && btnEraser) btnEraser.classList.add('active');
       if (tool === 'bucket' && btnBucket) btnBucket.classList.add('active');
       if (tool === 'picker' && btnPicker) btnPicker.classList.add('active');
+      if (tool === 'line' && btnLine) btnLine.classList.add('active');
+      if (tool === 'rectangle' && btnRect) btnRect.classList.add('active');
+      if (tool === 'select' && btnSelect) btnSelect.classList.add('active');
+      if (tool === 'move' && btnMove) btnMove.classList.add('active');
       if (tool === 'mask' && btnMask) btnMask.classList.add('active');
 
       if (tool === 'mask') {
@@ -399,16 +419,22 @@
     if (btnEraser) btnEraser.addEventListener('click', () => setEditorTool('eraser'));
     if (btnBucket) btnBucket.addEventListener('click', () => setEditorTool('bucket'));
     if (btnPicker) btnPicker.addEventListener('click', () => setEditorTool('picker'));
+    if (btnLine) btnLine.addEventListener('click', () => setEditorTool('line'));
+    if (btnRect) btnRect.addEventListener('click', () => setEditorTool('rectangle'));
+    if (btnSelect) btnSelect.addEventListener('click', () => setEditorTool('select'));
+    if (btnMove) btnMove.addEventListener('click', () => setEditorTool('move'));
     if (btnMask) btnMask.addEventListener('click', () => setEditorTool('mask'));
 
     // Paint event listeners (bound to top canvas or mask overlay)
     canvas.addEventListener('mousedown', (e) => {
       drawing = true;
-      applyPaintTool(e);
+      editorDragStart = getCanvasCellFromEvent(e);
+      editorPreviewState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      applyPaintTool(e, false);
     });
 
     canvas.addEventListener('mousemove', (e) => {
-      if (drawing) applyPaintTool(e);
+      if (drawing) applyPaintTool(e, true);
     });
 
     const stopDrawing = () => {
@@ -418,15 +444,28 @@
         undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
         if (undoStack.length > 50) undoStack.shift();
         redoStack = []; // Clear redo stack on new action
+        if (editorMovedSelection) {
+          editorSelection = editorMovedSelection;
+          editorMovedSelection = null;
+        }
+        editorDragStart = null;
+        editorPreviewState = null;
       }
     };
     canvas.addEventListener('mouseup', stopDrawing);
     canvas.addEventListener('mouseleave', stopDrawing);
 
-    function applyPaintTool(e) {
+    function getCanvasCellFromEvent(e) {
       const rect = canvas.getBoundingClientRect();
       const cellX = Math.floor((e.clientX - rect.left) / rect.width * canvas.width);
       const cellY = Math.floor((e.clientY - rect.top) / rect.height * canvas.height);
+      return { x: cellX, y: cellY };
+    }
+
+    function applyPaintTool(e, isDrag) {
+      const cell = getCanvasCellFromEvent(e);
+      const cellX = cell.x;
+      const cellY = cell.y;
 
       if (cellX < 0 || cellX >= canvas.width || cellY < 0 || cellY >= canvas.height) return;
 
@@ -443,6 +482,23 @@
           activeColor = rgbToHex(pix[0], pix[1], pix[2]);
           toast(`Active color picked: ${activeColor}`);
         }
+      } else if (currentTool === 'line' && editorDragStart && editorPreviewState) {
+        ctx.putImageData(editorPreviewState, 0, 0);
+        drawEditorLine(editorDragStart.x, editorDragStart.y, cellX, cellY, activeColor);
+      } else if (currentTool === 'rectangle' && editorDragStart && editorPreviewState) {
+        ctx.putImageData(editorPreviewState, 0, 0);
+        drawEditorRectangle(editorDragStart.x, editorDragStart.y, cellX, cellY, activeColor);
+      } else if (currentTool === 'select' && editorDragStart && editorPreviewState) {
+        ctx.putImageData(editorPreviewState, 0, 0);
+        clearEditorOverlay();
+        editorSelection = normalizeRect(editorDragStart.x, editorDragStart.y, cellX, cellY);
+        drawEditorSelection(editorSelection);
+      } else if (currentTool === 'move' && editorSelection && editorDragStart && editorPreviewState) {
+        const dx = cellX - editorDragStart.x;
+        const dy = cellY - editorDragStart.y;
+        moveEditorSelection(dx, dy);
+      } else if (currentTool === 'move' && isDrag) {
+        toast('Select a region before using Move.');
       } else if (currentTool === 'mask') {
         const radius = parseInt($('#pixelInpaintBrushSize').value || '2');
         maskCtx.fillStyle = 'rgba(255, 0, 0, 0.5)';
@@ -450,6 +506,74 @@
         maskCtx.arc(cellX, cellY, radius, 0, 2 * Math.PI);
         maskCtx.fill();
       }
+    }
+
+    function drawEditorLine(x0, y0, x1, y1, color) {
+      let dx = Math.abs(x1 - x0);
+      let sx = x0 < x1 ? 1 : -1;
+      let dy = -Math.abs(y1 - y0);
+      let sy = y0 < y1 ? 1 : -1;
+      let err = dx + dy;
+      ctx.fillStyle = color;
+      while (true) {
+        ctx.fillRect(x0, y0, 1, 1);
+        if (x0 === x1 && y0 === y1) break;
+        const e2 = 2 * err;
+        if (e2 >= dy) {
+          err += dy;
+          x0 += sx;
+        }
+        if (e2 <= dx) {
+          err += dx;
+          y0 += sy;
+        }
+      }
+    }
+
+    function drawEditorRectangle(x0, y0, x1, y1, color) {
+      const rect = normalizeRect(x0, y0, x1, y1);
+      ctx.fillStyle = color;
+      ctx.fillRect(rect.x, rect.y, rect.w, 1);
+      ctx.fillRect(rect.x, rect.y + rect.h - 1, rect.w, 1);
+      ctx.fillRect(rect.x, rect.y, 1, rect.h);
+      ctx.fillRect(rect.x + rect.w - 1, rect.y, 1, rect.h);
+    }
+
+    function normalizeRect(x0, y0, x1, y1) {
+      const x = Math.max(0, Math.min(x0, x1));
+      const y = Math.max(0, Math.min(y0, y1));
+      const w = Math.min(canvas.width - x, Math.abs(x1 - x0) + 1);
+      const h = Math.min(canvas.height - y, Math.abs(y1 - y0) + 1);
+      return { x, y, w, h };
+    }
+
+    function drawEditorSelection(rect) {
+      if (!rect || rect.w < 1 || rect.h < 1) return;
+      maskCtx.save();
+      maskCtx.strokeStyle = 'rgba(85, 241, 255, 0.85)';
+      maskCtx.lineWidth = 1;
+      maskCtx.setLineDash([2, 1]);
+      maskCtx.strokeRect(rect.x + 0.5, rect.y + 0.5, Math.max(0, rect.w - 1), Math.max(0, rect.h - 1));
+      maskCtx.restore();
+    }
+
+    function clearEditorOverlay() {
+      maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    }
+
+    function moveEditorSelection(dx, dy) {
+      const source = editorPreviewState;
+      const rect = editorSelection;
+      if (!source || !rect || rect.w < 1 || rect.h < 1) return;
+      ctx.putImageData(source, 0, 0);
+      const patch = ctx.getImageData(rect.x, rect.y, rect.w, rect.h);
+      ctx.clearRect(rect.x, rect.y, rect.w, rect.h);
+      const nx = Math.max(0, Math.min(canvas.width - rect.w, rect.x + dx));
+      const ny = Math.max(0, Math.min(canvas.height - rect.h, rect.y + dy));
+      ctx.putImageData(patch, nx, ny);
+      clearEditorOverlay();
+      editorMovedSelection = { x: nx, y: ny, w: rect.w, h: rect.h };
+      drawEditorSelection(editorMovedSelection);
     }
 
     // Flood fill algorithm
@@ -527,13 +651,74 @@
       });
     }
 
+    if (btnImport && editorImportInput) {
+      btnImport.addEventListener('click', () => editorImportInput.click());
+      editorImportInput.addEventListener('change', () => {
+        const file = editorImportInput.files && editorImportInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            if (undoStack.length > 50) undoStack.shift();
+            redoStack = [];
+            toast('Imported PNG into editor canvas.');
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+        editorImportInput.value = '';
+      });
+    }
+
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        if (!activeAsset) return;
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `${activeAsset.asset_id || 'pixel_asset'}_edited.png`;
+        link.click();
+      });
+    }
+
+    if (btnVersion) {
+      btnVersion.addEventListener('click', async () => {
+        if (!activeAsset) return;
+        const label = window.prompt('Version label', 'manual pixel edit');
+        if (label === null) return;
+        try {
+          const res = await api('/api/pixel-assets/version/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              asset_id: activeAsset.asset_id,
+              label: label.trim() || 'manual pixel edit'
+            })
+          });
+          if (res.ok) {
+            activeAsset = res.asset;
+            toast('Version saved.');
+            populateInspector(activeAsset);
+          } else {
+            showPixelFailure(res.message);
+          }
+        } catch (err) {
+          showPixelFailure(err.message);
+        }
+      });
+    }
+
     if (btnSave) {
       btnSave.addEventListener('click', async () => {
         if (!activeAsset) return;
 
         const dataUrl = canvas.toDataURL("image/png");
         try {
-          const res = await api('/api/pixel-assets/edit', {
+          const res = await api('/api/pixel-assets/edit/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -880,6 +1065,8 @@
     const recipeSelect = $('#pixelPackRecipeSelect');
     const recipeSaveBtn = $('#pixelRecipeSaveBtn');
     const recipeExportBtn = $('#pixelRecipeExportBtn');
+    const recipeImportBtn = $('#pixelRecipeImportBtn');
+    const recipeImportInput = $('#pixelRecipeImportInput');
 
     if (recipeSelect) {
       recipeSelect.addEventListener('change', renderSelectedRecipeMeta);
@@ -919,6 +1106,40 @@
           return;
         }
         window.location.href = `/api/pixel-assets/recipes/export?recipe_id=${encodeURIComponent(recipeId)}`;
+      });
+    }
+
+    if (recipeImportBtn && recipeImportInput) {
+      recipeImportBtn.addEventListener('click', () => recipeImportInput.click());
+      recipeImportInput.addEventListener('change', () => {
+        const file = recipeImportInput.files && recipeImportInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const recipe = JSON.parse(reader.result);
+            const res = await api('/api/pixel-assets/recipes/import', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(recipe)
+            });
+            if (res.ok) {
+              toast('Recipe imported.');
+              await loadRecipes();
+              if (recipeSelect && res.recipe && res.recipe.recipe_id) {
+                recipeSelect.value = res.recipe.recipe_id;
+                renderSelectedRecipeMeta();
+              }
+            } else {
+              showPixelFailure(res.message || 'Recipe import failed.');
+            }
+          } catch (err) {
+            showPixelFailure(`Recipe import failed: ${err.message}`);
+          } finally {
+            recipeImportInput.value = '';
+          }
+        };
+        reader.readAsText(file);
       });
     }
 

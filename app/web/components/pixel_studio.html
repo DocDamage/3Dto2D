@@ -223,6 +223,8 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
             <button class="mini" id="pixelRecipeSaveBtn" type="button">Save recipe</button>
             <button class="mini" id="pixelRecipeExportBtn" type="button">Export JSON</button>
+            <button class="mini" id="pixelRecipeImportBtn" type="button">Import JSON</button>
+            <input id="pixelRecipeImportInput" type="file" accept="application/json,.json" style="display: none;" />
           </div>
           <button class="mini primary" id="pixelPackGenerateBtn" type="button" style="width: 100%; margin-top: 6px; font-weight: 700;">Generate Complete Pack</button>
         </div>
@@ -312,12 +314,20 @@
             <button class="mini" id="btnEditorEraser" title="Eraser Tool" style="padding: 4px 8px;">🧼 Eraser</button>
             <button class="mini" id="btnEditorBucket" title="Paint Bucket (Fill)" style="padding: 4px 8px;">🪣 Bucket</button>
             <button class="mini" id="btnEditorPicker" title="Color Eyedropper" style="padding: 4px 8px;">🧪 Picker</button>
+            <button class="mini" id="btnEditorLine" title="Line Tool" style="padding: 4px 8px;">Line</button>
+            <button class="mini" id="btnEditorRect" title="Rectangle Tool" style="padding: 4px 8px;">Rect</button>
+            <button class="mini" id="btnEditorSelect" title="Selection Tool" style="padding: 4px 8px;">Select</button>
+            <button class="mini" id="btnEditorMove" title="Move Selected Pixels" style="padding: 4px 8px;">Move</button>
             <button class="mini" id="btnEditorMask" title="AI Mask Brush" style="padding: 4px 8px;">🎭 AI Mask</button>
             <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
             <button class="mini" id="btnEditorUndo" title="Undo Edit" style="padding: 4px 8px;">↩️ Undo</button>
             <button class="mini" id="btnEditorRedo" title="Redo Edit" style="padding: 4px 8px;">↪️ Redo</button>
           </div>
           <div style="display: flex; gap: 6px;">
+            <button class="mini" id="btnEditorImport" title="Import PNG into editor">Import PNG</button>
+            <input id="pixelEditorImportInput" type="file" accept="image/png,image/webp,image/jpeg" style="display: none;" />
+            <button class="mini" id="btnEditorExport" title="Export edited PNG">Export PNG</button>
+            <button class="mini" id="btnEditorVersion" title="Save current edit as a named version">Save Version</button>
             <button class="mini ghost" id="btnEditorCancel">Cancel</button>
             <button class="mini primary" id="btnEditorSave" style="font-weight: 700;">Save Edits</button>
           </div>

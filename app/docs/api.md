@@ -698,6 +698,8 @@ Save a browser-edited pixel asset image.
 }
 ```
 
+The Pixel Studio editor can create this payload from manual pencil, eraser, fill, picker, line, rectangle, selection/move, or imported PNG edits.
+
 ### `POST /api/pixel-assets/version/save`
 
 Copy the current `asset.png` into the asset's `versions/` folder and append version metadata.
@@ -821,6 +823,8 @@ Save a reusable recipe for Pixel Studio pack generation.
 ### `POST /api/pixel-assets/recipes/import`
 
 Import a recipe JSON payload and save it locally.
+
+The in-app Pack Builder import button posts the selected JSON file to this endpoint, refreshes the recipe selector, and selects the imported recipe.
 
 ### `GET /api/pixel-assets/recipes/export?recipe_id=<id>`
 

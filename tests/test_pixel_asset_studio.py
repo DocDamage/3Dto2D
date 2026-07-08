@@ -1043,6 +1043,20 @@ def test_recipe_service_and_endpoints(client, tmp_path, monkeypatch):
     assert exported.status_code == 200
     assert exported.mimetype == "application/json"
 
+    imported = client.post(
+        "/api/pixel-assets/recipes/import",
+        data=json.dumps({
+            **custom,
+            "recipe_id": "imported_shop",
+            "name": "Imported Shop",
+        }),
+        content_type="application/json"
+    )
+    assert imported.status_code == 200
+    imported_data = json.loads(imported.data.decode("utf-8"))
+    assert imported_data["ok"] is True
+    assert imported_data["recipe"]["recipe_id"] == "recipe_imported_shop"
+
     generated = client.post(
         "/api/pixel-assets/pack/build",
         data=json.dumps({"recipe_type": "recipe_test_shop", "mock": True}),
@@ -1089,3 +1103,16 @@ def test_pixel_studio_polish_ui_assets():
     assert 'id="inspectorMatchStyleBtn"' in html
     assert "/api/pixel-assets/style/compare" in js
     assert "compareActiveAssetToStyle" in js
+    assert 'id="btnEditorLine"' in html
+    assert 'id="btnEditorRect"' in html
+    assert 'id="btnEditorSelect"' in html
+    assert 'id="btnEditorMove"' in html
+    assert 'id="btnEditorImport"' in html
+    assert 'id="btnEditorExport"' in html
+    assert 'id="btnEditorVersion"' in html
+    assert "drawEditorLine" in js
+    assert "drawEditorRectangle" in js
+    assert "/api/pixel-assets/edit/save" in js
+    assert "/api/pixel-assets/version/save" in js
+    assert 'id="pixelRecipeImportBtn"' in html
+    assert "/api/pixel-assets/recipes/import" in js

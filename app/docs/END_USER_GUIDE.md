@@ -97,7 +97,7 @@ Common Pixel Studio workflows:
 - **Normalize** enforces fixed pixel canvas, palette, alpha, outline, and cleanup rules.
 - **Directions** builds 1, 4, or 8-direction character sheets and consistency scores.
 - **Tileset** creates top-down, side-scroller, or isometric tile roles with seam checks.
-- **Edit** saves an in-browser pixel edit as a new asset version.
+- **Edit** opens the browser pixel editor with pencil, eraser, fill, picker, line, rectangle, selection, move, import PNG, export PNG, save edits, and save version controls.
 - **Inpaint** applies a masked edit workflow while preserving pixel metadata.
 - **Animate** generates a spritesheet and GIF preview from a selected asset.
 - **Animation Transfer** applies an existing sheet layout to a new prompt/style.
@@ -106,7 +106,7 @@ Common Pixel Studio workflows:
 - **Generate more like this** seeds the prompt from the selected asset.
 - **Make match project style** compares the selected asset to the active style profile and updates the style score panel.
 - **Cohesive Pack Builder** generates built-in or user-saved recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
-- **Recipe controls** let you preview the pack queue, save the current settings as a local recipe, and export recipe JSON for reuse.
+- **Recipe controls** let you preview the pack queue, save the current settings as a local recipe, import recipe JSON, and export recipe JSON for reuse.
 - **Failure panel** explains common Pixel Studio issues such as missing provider keys, unsupported inpaint providers, non-square images, too many colors, missing alpha, style mismatch, or tile seam failure.
 
 Pixel Studio files are saved under:

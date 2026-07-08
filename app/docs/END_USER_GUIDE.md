@@ -92,6 +92,7 @@ Use **Pixel Studio** for MagicPixel-style asset creation:
 
 Common Pixel Studio workflows:
 
+- **Workflow shortcut buttons** set up the first asset, first tileset, first animation, or first pack starting point.
 - **Generate** creates individual pixel assets and writes metadata sidecars.
 - **Normalize** enforces fixed pixel canvas, palette, alpha, outline, and cleanup rules.
 - **Directions** builds 1, 4, or 8-direction character sheets and consistency scores.
@@ -104,6 +105,7 @@ Common Pixel Studio workflows:
 - **Use as style reference** extracts palette and style hints from a selected asset so future assets can match it.
 - **Cohesive Pack Builder** generates built-in or user-saved recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
 - **Recipe controls** let you preview the pack queue, save the current settings as a local recipe, and export recipe JSON for reuse.
+- **Failure panel** explains common Pixel Studio issues such as missing provider keys, unsupported inpaint providers, non-square images, too many colors, missing alpha, style mismatch, or tile seam failure.
 
 Pixel Studio files are saved under:
 

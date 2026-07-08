@@ -541,6 +541,29 @@ Generate a batch of pixel assets or return a dry-run plan.
 Use `"dry_run": true` to return a prompt/provider plan without writing assets.
 `mode_options` are validated against `app/config/pixel_asset_modes.json` and included in the expanded prompt through `app/config/pixel_prompt_templates.json`.
 
+### `POST /api/pixel-assets/failure/explain`
+
+Return a plain-English Pixel Studio failure explainer for UI panels and troubleshooting.
+
+**Request Body:**
+```json
+{
+  "message": "Key Validation Failed: Missing local API key."
+}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "explainer": {
+    "code": "pixel_missing_provider_key",
+    "title": "Provider key is missing",
+    "fix": "Open Setup or Cloud Hub, save the provider key, then retry."
+  }
+}
+```
+
 ### `POST /api/pixel-assets/normalize`
 
 Normalize an existing image to pixel-art constraints.

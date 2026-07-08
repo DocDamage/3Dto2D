@@ -10,6 +10,7 @@ from services.pixel_export_service import PixelExportService
 from services.pixel_tileset_service import PixelTilesetService
 from services.pixel_recipe_service import PixelRecipeService
 from services.pixel_style_service import PixelStyleService
+from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_utils import load_json, ROOT, save_json
 
 routes_pixel_asset = Blueprint("routes_pixel_asset", __name__)
@@ -21,6 +22,12 @@ def get_pixel_modes():
         return jsonify({"ok": True, "modes": modes, "mode_configs": PixelAssetService.get_mode_configs()})
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_pixel_asset.route("/api/pixel-assets/failure/explain", methods=["POST"])
+def explain_pixel_asset_failure():
+    body = request.json or {}
+    message = str(body.get("message") or body.get("error") or "")
+    return jsonify({"ok": True, "explainer": explain_pixel_failure(message)})
 
 @routes_pixel_asset.route("/api/pixel-assets/generate", methods=["POST"])
 def generate_pixel_asset():

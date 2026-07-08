@@ -256,6 +256,13 @@
         <button class="ghost" id="pixelDryRunBtn" type="button" style="flex: 1; padding: 8px; font-size: 12px;" title="Review prompt and cloud payload plan">Plan</button>
         <button class="primary" id="pixelGenerateBtn" type="button" style="flex: 2; padding: 8px; font-weight: 700;">Generate</button>
       </div>
+
+      <div id="pixelWorkflowCards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+        <button class="mini" type="button" data-pixel-workflow="first_asset">First Asset</button>
+        <button class="mini" type="button" data-pixel-workflow="first_tileset">Tileset</button>
+        <button class="mini" type="button" data-pixel-workflow="first_animation">Animation</button>
+        <button class="mini" type="button" data-pixel-workflow="first_pack">Pack</button>
+      </div>
     </div>
 
     <!-- Center: Preview & Gallery -->
@@ -367,6 +374,17 @@
           <div style="margin-bottom: 4px;"><strong>Provider payload:</strong> <span id="pixelPlanPayload"></span></div>
           <div style="margin-bottom: 4px;"><strong>Processing pipeline:</strong></div>
           <ul id="pixelPlanPipeline" style="margin: 0; padding-left: 16px;"></ul>
+        </div>
+      </div>
+
+      <div class="card pixel-failure-panel" id="pixelFailurePanel" style="padding: 16px; border: 1px solid rgba(255, 107, 107, 0.35); border-radius: 12px; background: rgba(36, 12, 18, 0.75); display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+          <div>
+            <h3 id="pixelFailureTitle" style="font-size: 14px; font-weight: 700; color: #ff8a8a; margin: 0 0 6px 0;">Pixel Studio issue</h3>
+            <p id="pixelFailureWhat" style="margin: 0 0 6px 0; color: #f4dada; font-size: 12px; line-height: 1.4;"></p>
+            <p id="pixelFailureFix" style="margin: 0; color: #f7c7c7; font-size: 12px; line-height: 1.4;"></p>
+          </div>
+          <button class="mini" id="pixelFailureDismissBtn" type="button">Dismiss</button>
         </div>
       </div>
 

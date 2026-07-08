@@ -102,6 +102,18 @@
       });
     }
 
+    $$('[data-pixel-workflow]').forEach(btn => {
+      btn.addEventListener('click', () => applyPixelWorkflow(btn.dataset.pixelWorkflow));
+    });
+
+    const failureDismissBtn = $('#pixelFailureDismissBtn');
+    if (failureDismissBtn) {
+      failureDismissBtn.addEventListener('click', () => {
+        const panel = $('#pixelFailurePanel');
+        if (panel) panel.style.display = 'none';
+      });
+    }
+
     // Zoom Controls
     const zoomInBtn = $('#pixelZoomInBtn');
     const zoomOutBtn = $('#pixelZoomOutBtn');
@@ -223,10 +235,10 @@
               selectEl.value = res.style.style_id;
             }
           } else {
-            toast('Failed to save profile: ' + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -534,10 +546,10 @@
             exitEditorMode();
             selectAsset(activeAsset);
           } else {
-            toast("Failed to save edits: " + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -590,10 +602,10 @@
             };
             img.src = '/file/' + res.asset.outputs.png + '?t=' + Date.now();
           } else {
-            toast("AI Inpainting failed: " + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -649,10 +661,10 @@
             startAnimPlayer();
             populateAnimationQA(res.manifest);
           } else {
-            toast("Animation generation failed: " + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -707,10 +719,10 @@
             currentFrameIdx = 0;
             startAnimPlayer();
           } else {
-            toast("Animation transfer failed: " + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -849,10 +861,10 @@
             currentFrameIdx = 0;
             startAnimPlayer();
           } else {
-            toast("Rig animation render failed: " + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -886,10 +898,10 @@
               renderSelectedRecipeMeta();
             }
           } else {
-            toast('Recipe save failed: ' + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -937,10 +949,10 @@
             // Load the assets list into the gallery
             renderGallery(res.manifest.assets);
           } else {
-            toast("Pack generation failed: " + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -976,10 +988,10 @@
             const select = $('#pixelStyleProfileSelect');
             if (select) select.value = res.style.style_id;
           } else {
-            toast('Style extraction failed: ' + res.message);
+            showPixelFailure(res.message);
           }
         } catch (err) {
-          toast(err.message);
+          showPixelFailure(err.message);
         }
       });
     }
@@ -1229,6 +1241,70 @@
     return out;
   }
 
+  function applyPixelWorkflow(workflowId) {
+    const modeByWorkflow = {
+      first_asset: 'weapons',
+      first_tileset: 'tilesets',
+      first_animation: 'characters',
+      first_pack: 'characters'
+    };
+    const mode = modeByWorkflow[workflowId] || 'characters';
+    const tab = $(`[data-mode-tab="${mode}"]`);
+    if (tab) tab.click();
+
+    const prompts = {
+      first_asset: 'iron sword pickup icon',
+      first_tileset: 'mossy dungeon stone floor',
+      first_animation: 'forest ranger adventurer',
+      first_pack: 'cozy rpg starter assets'
+    };
+    const promptEl = $('#pixelPrompt');
+    if (promptEl) promptEl.value = prompts[workflowId] || prompts.first_asset;
+
+    if ($('#pixelResolutionSelect')) {
+      $('#pixelResolutionSelect').value = workflowId === 'first_asset' ? '16x16' : '32x32';
+    }
+    if ($('#pixelPaletteSizeSelect')) $('#pixelPaletteSizeSelect').value = '16';
+    if ($('#pixelBatchCount')) $('#pixelBatchCount').value = workflowId === 'first_pack' ? '1' : '4';
+    if ($('#pixelDirectionsSelect')) $('#pixelDirectionsSelect').value = workflowId === 'first_animation' ? '4' : '1';
+
+    if (workflowId === 'first_pack') {
+      const recipe = $('#pixelPackRecipeSelect');
+      if (recipe) {
+        recipe.value = 'rpg_starter';
+        renderSelectedRecipeMeta();
+      }
+    }
+
+    toast('Pixel Studio workflow ready.');
+  }
+
+  async function showPixelFailure(message) {
+    const text = message || 'Pixel Studio request failed.';
+    toast(text);
+    try {
+      const res = await api('/api/pixel-assets/failure/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      if (res.ok && res.explainer) {
+        renderPixelFailure(res.explainer);
+      }
+    } catch (err) {
+      console.error('Error explaining Pixel Studio failure:', err);
+    }
+  }
+
+  function renderPixelFailure(explainer) {
+    const panel = $('#pixelFailurePanel');
+    if (!panel) return;
+    $('#pixelFailureTitle').textContent = explainer.title || 'Pixel Studio issue';
+    $('#pixelFailureWhat').textContent = explainer.what_happened || '';
+    $('#pixelFailureFix').textContent = explainer.fix || '';
+    panel.style.display = 'block';
+  }
+
   async function loadRecipes() {
     const selectEl = $('#pixelPackRecipeSelect');
     if (!selectEl) return;
@@ -1408,10 +1484,10 @@
           }
         }
       } else {
-        toast('Generation failed: ' + res.message);
+        showPixelFailure(res.message);
       }
     } catch (err) {
-      toast(err.message);
+      showPixelFailure(err.message);
     }
   }
 
@@ -1781,10 +1857,10 @@
         currentCompareMode = 'normalized';
         syncComparePreview();
       } else {
-        toast('Normalization failed: ' + res.message);
+        showPixelFailure(res.message);
       }
     } catch (err) {
-      toast(err.message);
+      showPixelFailure(err.message);
     }
   }
 

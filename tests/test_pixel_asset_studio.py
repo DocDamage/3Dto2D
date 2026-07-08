@@ -25,6 +25,7 @@ from services.pixel_rig_service import PixelRigService
 from services.pixel_pack_service import PixelPackService
 from services.pixel_recipe_service import PixelRecipeService
 from services.pixel_style_service import PixelStyleService
+from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_web import app
 
 @pytest.fixture(autouse=True)
@@ -1041,3 +1042,35 @@ def test_recipe_service_and_endpoints(client, tmp_path, monkeypatch):
     assert generated_data["ok"] is True
     assert generated_data["manifest"]["recipe_name"] == "Test Shop"
     assert len(generated_data["manifest"]["assets"]) == 2
+
+def test_pixel_failure_explainers_and_endpoint(client):
+    missing_key = explain_pixel_failure("Key Validation Failed: Missing local API key.")
+    assert missing_key["code"] == "pixel_missing_provider_key"
+    assert "Provider key" in missing_key["title"]
+
+    too_many_colors = explain_pixel_failure("QA failed: too many colors in palette")
+    assert too_many_colors["code"] == "pixel_too_many_colors"
+
+    seam = explain_pixel_failure("tile seam check failed on left edge")
+    assert seam["code"] == "pixel_tile_seam"
+
+    response = client.post(
+        "/api/pixel-assets/failure/explain",
+        data=json.dumps({"message": "No alpha channel detected"}),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert data["explainer"]["code"] == "pixel_no_alpha"
+
+def test_pixel_studio_polish_ui_assets():
+    html = (APP / "web" / "components" / "pixel_studio.html").read_text(encoding="utf-8")
+    js = (APP / "web" / "js" / "pixel_studio.js").read_text(encoding="utf-8")
+
+    assert 'id="pixelWorkflowCards"' in html
+    assert 'data-pixel-workflow="first_asset"' in html
+    assert 'id="pixelFailurePanel"' in html
+    assert "showPixelFailure" in js
+    assert "/api/pixel-assets/failure/explain" in js
+    assert "applyPixelWorkflow" in js

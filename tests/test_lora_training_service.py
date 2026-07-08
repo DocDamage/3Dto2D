@@ -345,3 +345,48 @@ def test_lora_training_native_autotile_registers_tile_style(tmp_path):
     assert registry_data["defaults"]["tile_style"]["filename"] == native_artifact.name
     assert registry_data["defaults"]["tile_style"]["trigger"] == "tile_style_token"
     assert "character_style" not in registry_data["defaults"]
+
+
+def test_lora_training_registers_external_kohya_checkpoint_as_tile_style(tmp_path):
+    from services.lora_training_service import build_lora_training_run, register_external_lora_checkpoint
+    from services.trained_lora_registry_service import load_registry
+
+    dataset = _write_dataset(tmp_path)
+    manifest_path = dataset / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["dataset_kind"] = "tileset"
+    manifest["trigger"] = "cutesckr_tiles"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    output = tmp_path / "runs" / "kohya_tiles"
+    registry = tmp_path / "trained_loras.json"
+    build_lora_training_run(
+        dataset_dir=dataset,
+        output_dir=output,
+        name="cutesckr_tile_style",
+        model_family="sdxl",
+        trainer="kohya",
+        trainer_dir=tmp_path / "missing_external_trainer",
+        base_model="C:/models/sdxl-base.safetensors",
+        trigger="cutesckr_tiles",
+        mode="prepare",
+        registry_path=registry,
+    )
+    checkpoint = output / "cutesckr_tile_style.safetensors"
+    checkpoint.write_bytes(b"fake checkpoint")
+
+    result = register_external_lora_checkpoint(
+        checkpoint_path=checkpoint,
+        run_dir=output,
+        registry_path=registry,
+    )
+
+    assert result["ok"] is True
+    assert result["role"] == "tile_style"
+    registry_data = load_registry(registry_path=registry)
+    tile_default = registry_data["defaults"]["tile_style"]
+    assert tile_default["filename"] == checkpoint.name
+    assert tile_default["trigger"] == "cutesckr_tiles"
+    assert tile_default["metadata"]["runtime_backend"] == "external"
+    assert tile_default["metadata"]["trainer"] == "kohya"
+    assert tile_default["metadata"]["dataset_provenance"]["dataset_kind"] == "tileset"

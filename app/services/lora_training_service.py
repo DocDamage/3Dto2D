@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional
 
 from PIL import Image
 
-from services.trained_lora_registry_service import set_default_lora
-from spriteforge_utils import ROOT, safe_name
+from services.trained_lora_registry_service import DEFAULT_REGISTRY_PATH, load_registry, save_registry, set_default_lora
+from spriteforge_utils import ROOT, load_json, safe_name
 
 DEFAULT_OUTPUT = ROOT / "output" / "training_runs"
 logger = logging.getLogger(__name__)
@@ -392,6 +392,96 @@ def _run_native_training(
         "native_token_count": len(tokens),
         "native_palette_count": len(palette),
         "registry_path": str(Path(registry_path).resolve()) if registry_path else "",
+    }
+
+
+def register_external_lora_checkpoint(
+    checkpoint_path: Path | str,
+    run_dir: Path | str | None = None,
+    role: str = "",
+    label: str = "",
+    notes: str = "",
+    make_default: bool = True,
+    registry_path: Optional[Path | str] = None,
+) -> Dict[str, Any]:
+    """Register a finished external trainer checkpoint in the shared LoRA registry."""
+    checkpoint = Path(checkpoint_path).resolve()
+    if not checkpoint.exists() or checkpoint.suffix.lower() not in {".safetensors", ".pt", ".ckpt"}:
+        raise FileNotFoundError(f"LoRA checkpoint not found: {checkpoint}")
+
+    resolved_run_dir = Path(run_dir).resolve() if run_dir else checkpoint.parent
+    manifest_path = resolved_run_dir / "training_run.json"
+    manifest = load_json(manifest_path, {}) if manifest_path.exists() else {}
+    dataset_dir = Path(str(manifest.get("dataset_dir") or "")).resolve() if manifest.get("dataset_dir") else None
+    dataset_manifest = {}
+    if dataset_dir and (dataset_dir / "manifest.json").exists():
+        dataset_manifest = load_json(dataset_dir / "manifest.json", {})
+
+    dataset_kind = str(dataset_manifest.get("dataset_kind") or "").strip().lower()
+    inferred_role = "tile_style" if dataset_kind in {"autotile", "tiles", "tileset", "tile_training"} else "character_style"
+    registry_role = str(role or inferred_role).strip()
+    trigger = str(manifest.get("trigger") or dataset_manifest.get("trigger") or "").strip()
+    base_model = str(manifest.get("base_model") or "").strip()
+    record_label = str(label or f"{manifest.get('name') or checkpoint.stem} (Kohya)").strip()
+    record_notes = str(notes or "External trainer checkpoint registered after Kohya/AI Toolkit run completed.").strip()
+    metadata = {
+        "schema": "spriteforge.trained_lora_metadata.v1",
+        "runtime_backend": "external",
+        "trainer": manifest.get("trainer", ""),
+        "model_family": manifest.get("model_family", ""),
+        "resolution": manifest.get("resolution"),
+        "sample_count": manifest.get("sample_count"),
+        "max_train_steps": manifest.get("max_train_steps"),
+        "dataset_provenance": {
+            "dataset_dir": str(dataset_dir) if dataset_dir else "",
+            "dataset_kind": dataset_kind,
+            "source_dataset": str(dataset_manifest.get("source_dir") or ""),
+            "sample_count": dataset_manifest.get("sample_count"),
+        },
+        "training_run": {
+            "run_dir": str(resolved_run_dir),
+            "manifest": str(manifest_path) if manifest_path.exists() else "",
+            "checkpoint": str(checkpoint),
+        },
+    }
+
+    if make_default:
+        registry = set_default_lora(
+            role=registry_role,
+            filename=checkpoint.name,
+            label=record_label,
+            trigger=trigger,
+            base_model=base_model,
+            source_path=str(checkpoint),
+            installed_path=str(checkpoint),
+            notes=record_notes,
+            metadata=metadata,
+            registry_path=registry_path,
+        )
+    else:
+        registry = load_registry(registry_path)
+        record = {
+            "role": registry_role,
+            "filename": checkpoint.name,
+            "label": record_label,
+            "trigger": trigger,
+            "base_model": base_model,
+            "source_path": str(checkpoint),
+            "installed_path": str(checkpoint),
+            "notes": record_notes,
+            "metadata": metadata,
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        registry.setdefault("loras", {})[checkpoint.name] = record
+        save_registry(registry, registry_path)
+
+    return {
+        "ok": True,
+        "role": registry_role,
+        "filename": checkpoint.name,
+        "registry_path": str(Path(registry_path).resolve()) if registry_path else str(DEFAULT_REGISTRY_PATH),
+        "default": bool(make_default),
+        "record": registry["loras"][checkpoint.name],
     }
 
 

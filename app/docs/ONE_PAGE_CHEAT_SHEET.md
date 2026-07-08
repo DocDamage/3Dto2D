@@ -79,6 +79,7 @@ Use as style reference -> reuse palette/style memory
 Visual QA report -> review palette, alpha, sharpness, seam, style, and edit trace gates
 Search/filter recipe cards -> reuse built-in or saved recipes
 Save/import/export recipe JSON -> reuse or share current settings
+Gallery History -> search/filter saved Pixel Studio assets and reload them into the inspector
 Cohesive Pack Builder -> Generate Complete Pack -> Export Complete Pack ZIP
 ```
 

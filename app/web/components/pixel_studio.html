@@ -447,8 +447,22 @@
       </div>
 
       <!-- Gallery (Cohesive Sets) -->
-      <div class="card pixel-studio-gallery-card" style="height: 240px; display: flex; flex-direction: column; padding: 18px; border: 1px solid rgba(85, 241, 255, 0.1); border-radius: 12px; background: rgba(10, 14, 28, 0.8);">
-        <h3 style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px;">Generated asset gallery</h3>
+      <div class="card pixel-studio-gallery-card" style="height: 270px; display: flex; flex-direction: column; padding: 18px; border: 1px solid rgba(85, 241, 255, 0.1); border-radius: 12px; background: rgba(10, 14, 28, 0.8);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+          <h3 style="font-size: 14px; font-weight: 700; color: #fff; margin: 0;">Generated asset gallery</h3>
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <input id="pixelHistorySearchInput" type="search" placeholder="Search history..." style="width: 142px; height: 26px; font-size: 11px; padding: 4px 8px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.16); color: var(--text); border-radius: 6px;" />
+            <select id="pixelHistoryTypeFilter" style="width: 108px; height: 26px; font-size: 11px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.16); color: var(--text); border-radius: 6px;">
+              <option value="">All types</option>
+              <option value="characters">Characters</option>
+              <option value="items">Items</option>
+              <option value="tilesets">Tilesets</option>
+              <option value="ui_icons">UI Icons</option>
+              <option value="portraits">Portraits</option>
+            </select>
+            <button class="mini" id="pixelLoadHistoryBtn" type="button">History</button>
+          </div>
+        </div>
         <div id="pixelGalleryContainer" style="flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; overflow-y: auto; align-content: start;">
           <!-- Empty State -->
           <div id="pixelGalleryEmptyState" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted);">

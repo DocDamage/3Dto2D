@@ -658,12 +658,18 @@ Score a Pixel Studio asset against a saved style profile.
 
 Return saved Pixel Studio asset metadata records plus linked experiment-memory rows.
 
+Optional query parameters:
+- `q`: search prompts, asset ids, roles, providers, and output paths.
+- `asset_type` or `mode`: filter by saved asset type, such as `characters`, `weapons`, `tilesets`, or `ui_icons`.
+- `limit`: cap results from `1` to `250`; defaults to `80`.
+
 **Response:**
 ```json
 {
   "ok": true,
   "history": [{ "schema": "spriteforge.pixel_asset.v1" }],
-  "experiment_history": [{ "job_id": "pixel_asset:pxa_123" }]
+  "experiment_history": [{ "job_id": "pixel_asset:pxa_123" }],
+  "filters": { "q": "golden", "asset_type": "weapons", "limit": 80 }
 }
 ```
 

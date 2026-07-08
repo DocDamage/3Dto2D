@@ -95,17 +95,49 @@ def compare_pixel_style():
 def get_pixel_history():
     try:
         PixelAssetService.initialize()
+        query = (request.args.get("q") or "").strip().lower()
+        asset_type = (request.args.get("asset_type") or request.args.get("mode") or "").strip().lower()
+        limit_raw = (request.args.get("limit") or "80").strip()
+        try:
+            limit = max(1, min(int(limit_raw), 250))
+        except ValueError:
+            limit = 80
+
+        def matches_filters(item):
+            mode = str(item.get("asset_type") or item.get("mode") or item.get("type") or "").lower()
+            if asset_type and mode != asset_type:
+                return False
+            if not query:
+                return True
+            searchable = " ".join(
+                str(item.get(key) or "")
+                for key in ("asset_id", "prompt", "role", "mode", "type", "provider")
+            ).lower()
+            outputs = item.get("outputs") if isinstance(item.get("outputs"), dict) else {}
+            searchable += " " + " ".join(str(value) for value in outputs.values()).lower()
+            return query in searchable
+
         history = []
         for file in ASSETS_DIR.glob("**/pixel_asset.json"):
             try:
                 data = load_json(file, {})
-                if data:
+                if data and matches_filters(data):
                     history.append(data)
             except (OSError, json.JSONDecodeError, ValueError):
                 continue
         history = sorted(history, key=lambda item: item.get("created_at", ""), reverse=True)
         experiment_history = PixelAssetMemoryService.pixel_experiment_rows()
-        return jsonify({"ok": True, "history": history, "experiment_history": experiment_history})
+        if query:
+            experiment_history = [
+                row for row in experiment_history
+                if query in json.dumps(row, default=str).lower()
+            ]
+        return jsonify({
+            "ok": True,
+            "history": history[:limit],
+            "experiment_history": experiment_history[:limit],
+            "filters": {"q": query, "asset_type": asset_type, "limit": limit},
+        })
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 

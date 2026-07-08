@@ -1586,6 +1586,9 @@
     const generateBtn = $('#pixelGenerateBtn');
     const planDismissBtn = $('#pixelClosePlanBtn');
     const normalizeBtn = $('#pixelNormalizeTriggerBtn');
+    const loadHistoryBtn = $('#pixelLoadHistoryBtn');
+    const historySearchInput = $('#pixelHistorySearchInput');
+    const historyTypeFilter = $('#pixelHistoryTypeFilter');
 
     if (dryRunBtn) {
       dryRunBtn.addEventListener('click', () => runGenerationFlow(true));
@@ -1601,6 +1604,17 @@
     }
     if (normalizeBtn) {
       normalizeBtn.addEventListener('click', triggerReNormalization);
+    }
+    if (loadHistoryBtn) {
+      loadHistoryBtn.addEventListener('click', loadPixelHistory);
+    }
+    if (historySearchInput) {
+      historySearchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') loadPixelHistory();
+      });
+    }
+    if (historyTypeFilter) {
+      historyTypeFilter.addEventListener('change', loadPixelHistory);
     }
 
     // Before/After comparison toggles
@@ -2153,18 +2167,29 @@
     if (emptyState) emptyState.remove();
     container.innerHTML = '';
 
+    if (!Array.isArray(assets) || assets.length === 0) {
+      const empty = document.createElement('div');
+      empty.id = 'pixelGalleryEmptyState';
+      empty.style.cssText = 'grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; min-height: 120px; color: var(--muted); font-size: 12px; text-align: center;';
+      empty.textContent = 'No saved pixel assets match this search yet.';
+      container.appendChild(empty);
+      return;
+    }
+
     assets.forEach((asset, idx) => {
       const card = document.createElement('div');
       card.className = 'pixel-gallery-card-item checkerboard';
       card.dataset.assetId = asset.asset_id;
 
       // Render thumbnail image path
-      const imgPath = '/file/' + asset.outputs.png;
+      const outputs = asset.outputs || {};
+      const imgPath = '/file/' + (outputs.png || outputs.sheet || outputs.preview || '');
       let label = asset.role || `Asset #${idx + 1}`;
-      if (asset.prompt.includes("front view")) label = "Front";
-      else if (asset.prompt.includes("right side")) label = "Right";
-      else if (asset.prompt.includes("back view")) label = "Back";
-      else if (asset.prompt.includes("left side")) label = "Left";
+      const prompt = String(asset.prompt || '');
+      if (prompt.includes("front view")) label = "Front";
+      else if (prompt.includes("right side")) label = "Right";
+      else if (prompt.includes("back view")) label = "Back";
+      else if (prompt.includes("left side")) label = "Left";
 
       card.innerHTML = `
         <img src="${imgPath}" alt="" />
@@ -2189,6 +2214,30 @@
       // Auto-select first asset
       const firstCard = container.querySelector('.pixel-gallery-card-item');
       if (firstCard) firstCard.click();
+    }
+  }
+
+  async function loadPixelHistory() {
+    const searchInput = $('#pixelHistorySearchInput');
+    const typeFilter = $('#pixelHistoryTypeFilter');
+    const query = searchInput ? searchInput.value.trim() : '';
+    const assetType = typeFilter ? typeFilter.value.trim() : '';
+    const params = new URLSearchParams({ limit: '120' });
+    if (query) params.set('q', query);
+    if (assetType) params.set('asset_type', assetType);
+
+    try {
+      const res = await api(`/api/pixel-assets/history?${params.toString()}`);
+      if (!res.ok) {
+        showPixelFailure(res.message || 'Could not load Pixel Studio history.');
+        return;
+      }
+      activeBatch = null;
+      const assets = res.history || [];
+      renderGallery(assets);
+      toast(`Loaded ${assets.length} saved pixel asset${assets.length === 1 ? '' : 's'}.`);
+    } catch (err) {
+      showPixelFailure(err.message);
     }
   }
 

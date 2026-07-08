@@ -236,6 +236,15 @@ def test_real_generation_mock_mode(client, tmp_path):
     assert len(history_data["history"]) == 2
     assert len(history_data["experiment_history"]) == 2
 
+    filtered_response = client.get("/api/pixel-assets/history?q=golden&asset_type=weapons&limit=1")
+    assert filtered_response.status_code == 200
+    filtered_data = json.loads(filtered_response.data.decode("utf-8"))
+    assert filtered_data["filters"]["q"] == "golden"
+    assert filtered_data["filters"]["asset_type"] == "weapons"
+    assert filtered_data["filters"]["limit"] == 1
+    assert len(filtered_data["history"]) == 1
+    assert "golden" in filtered_data["history"][0]["prompt"].lower()
+
 def test_normalize_endpoint(client, tmp_path):
     # Save a test raw image to normalize
     test_img = Image.new("RGBA", (32, 32), (255, 0, 0, 150))
@@ -1408,6 +1417,11 @@ def test_pixel_studio_polish_ui_assets():
     assert "filteredRecipes" in js
     assert "escapeHtml" in js
     assert "/api/pixel-assets/recipes/import" in js
+    assert 'id="pixelHistorySearchInput"' in html
+    assert 'id="pixelHistoryTypeFilter"' in html
+    assert 'id="pixelLoadHistoryBtn"' in html
+    assert "/api/pixel-assets/history?" in js
+    assert "loadPixelHistory" in js
     assert 'id="inspectorApplyPartBtn"' in html
     assert 'id="pixelPartApplyModal"' in html
     assert 'id="pixelPartVariantGrid"' in html

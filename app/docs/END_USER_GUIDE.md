@@ -110,6 +110,7 @@ Common Pixel Studio workflows:
 - **Skeleton & Rigging** renders simple keyframed rig motion into a sheet.
 - **Use as style reference** extracts palette and style hints from a selected asset so future assets can match it.
 - **Generate more like this** seeds the prompt from the selected asset.
+- **Gallery History** searches and filters saved Pixel Studio assets by prompt, id, provider, output path, or asset type, then reloads matches into the gallery and inspector.
 - **Reskin variations** quickly creates multiple palette/theme variants from the selected asset, then applies only the accepted variant as a versioned edit.
 - **Make match project style** compares the selected asset to the active style profile and updates the style score panel.
 - **Visual QA report** in the inspector summarizes palette, alpha/background, sharpness, seam, style, cleanup, version, and inpaint trace checks with recommendations.

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+from pathlib import Path
 from typing import Any, Dict, List
 
 from services.pixel_asset_service import ASSETS_DIR
@@ -63,6 +65,69 @@ class PixelQAReportService:
                 "metadata": (asset.get("outputs") or {}).get("metadata", ""),
             },
         }
+
+    @staticmethod
+    def write_html_report(payload: Dict[str, Any]) -> Path:
+        report = PixelQAReportService.build_report(payload)
+        asset_id = str(report.get("asset_id") or "").strip()
+        if not asset_id:
+            raise ValueError("asset_id is required for HTML QA report")
+
+        asset_dir = ASSETS_DIR / asset_id
+        asset_dir.mkdir(parents=True, exist_ok=True)
+        html_path = asset_dir / "pixel_qa_report.html"
+        gates = "\n".join(
+            "<tr>"
+            f"<td>{html.escape(str(gate.get('label') or gate.get('id') or 'Gate'))}</td>"
+            f"<td class='{html.escape(str(gate.get('status') or 'warn'))}'>{html.escape(str(gate.get('status') or 'warn')).upper()}</td>"
+            f"<td>{html.escape(str(gate.get('value') or ''))}</td>"
+            f"<td>{html.escape(str(gate.get('recommendation') or ''))}</td>"
+            "</tr>"
+            for gate in report.get("gates", [])
+        )
+        recommendations = "\n".join(
+            f"<li>{html.escape(str(item))}</li>"
+            for item in report.get("recommendations", [])
+        )
+        source_png = html.escape(str((report.get("source") or {}).get("png") or ""))
+        body = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Pixel Studio QA - {html.escape(asset_id)}</title>
+  <style>
+    body {{ background: #0d1020; color: #edf2ff; font-family: Segoe UI, Arial, sans-serif; margin: 0; padding: 24px; }}
+    main {{ max-width: 960px; margin: 0 auto; }}
+    h1 {{ font-size: 24px; margin: 0 0 8px; }}
+    .meta {{ color: #aab4d4; margin-bottom: 18px; }}
+    .score {{ display: inline-block; padding: 6px 10px; border: 1px solid #3ad8ff; border-radius: 6px; color: #3ad8ff; }}
+    table {{ width: 100%; border-collapse: collapse; margin-top: 18px; background: #141a2e; }}
+    th, td {{ border: 1px solid #2c3658; padding: 9px; text-align: left; vertical-align: top; }}
+    th {{ background: #1d2642; }}
+    .pass {{ color: #73e29b; font-weight: 700; }}
+    .warn {{ color: #ffd36d; font-weight: 700; }}
+    .fail {{ color: #ff7d7d; font-weight: 700; }}
+    code {{ color: #b7e9ff; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pixel Studio Visual QA</h1>
+    <div class="meta">Asset <code>{html.escape(asset_id)}</code> · Type {html.escape(str(report.get("asset_type") or ""))} · <span class="score">{html.escape(str(report.get("status") or "")).upper()} {int(report.get("score") or 0)}/100</span></div>
+    <p>Source PNG: <code>{source_png}</code></p>
+    <h2>Gates</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Value</th><th>Recommendation</th></tr></thead>
+      <tbody>{gates}</tbody>
+    </table>
+    <h2>Recommendations</h2>
+    <ul>{recommendations}</ul>
+  </main>
+</body>
+</html>
+"""
+        html_path.write_text(body, encoding="utf-8")
+        return html_path
 
     @staticmethod
     def _load_asset(asset_id: str) -> Dict[str, Any]:

@@ -39,6 +39,18 @@ def pixel_asset_qa_report():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
 
+@routes_pixel_asset.route("/api/pixel-assets/qa/report.html", methods=["GET"])
+def pixel_asset_qa_report_html():
+    body = {"asset_id": request.args.get("asset_id", "")}
+    try:
+        from services.pixel_qa_report_service import PixelQAReportService
+        html_path = PixelQAReportService.write_html_report(body)
+        return send_file(html_path, mimetype="text/html")
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 @routes_pixel_asset.route("/api/pixel-assets/generate", methods=["POST"])
 def generate_pixel_asset():
     body = request.json or {}

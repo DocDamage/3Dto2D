@@ -96,6 +96,9 @@ def mock_pixel_paths(tmp_path, monkeypatch):
     monkeypatch.setattr(cleanup_srv_mod, "ROOT", tmp_path)
     monkeypatch.setattr(cleanup_srv_mod, "ASSETS_DIR", assets)
 
+    import services.pixel_qa_report_service as qa_report_mod
+    monkeypatch.setattr(qa_report_mod, "ASSETS_DIR", assets)
+
     import services.pixel_recipe_service as recipe_mod
     monkeypatch.setattr(recipe_mod, "RECIPES_DIR", temp_root / "recipes")
 
@@ -1425,6 +1428,15 @@ def test_pixel_visual_qa_report_service_and_endpoint(client):
     assert endpoint_data["schema"] == "spriteforge.pixel_visual_qa.v1"
     assert endpoint_data["score"] >= 0
 
+    html_path = PixelQAReportService.write_html_report({"asset_id": asset["asset_id"]})
+    assert html_path.exists()
+    assert "Pixel Studio Visual QA" in html_path.read_text(encoding="utf-8")
+
+    html_endpoint = client.get(f"/api/pixel-assets/qa/report.html?asset_id={asset['asset_id']}")
+    assert html_endpoint.status_code == 200
+    assert html_endpoint.mimetype == "text/html"
+    assert b"Pixel Studio Visual QA" in html_endpoint.data
+
 def test_pixel_studio_polish_ui_assets():
     html = (APP / "web" / "components" / "pixel_studio.html").read_text(encoding="utf-8")
     js = (APP / "web" / "js" / "pixel_studio.js").read_text(encoding="utf-8")
@@ -1441,7 +1453,9 @@ def test_pixel_studio_polish_ui_assets():
     assert 'id="pixelVisualQaPanel"' in html
     assert 'id="pixelVisualQaRows"' in html
     assert 'id="inspectorRefreshQaBtn"' in html
+    assert 'id="inspectorOpenQaPageBtn"' in html
     assert "/api/pixel-assets/qa/report" in js
+    assert "/api/pixel-assets/qa/report.html" in js
     assert "renderVisualQaReport" in js
     assert ".pixel-visual-qa-row" in css
     assert 'data-pixel-workflow="first_asset"' in html

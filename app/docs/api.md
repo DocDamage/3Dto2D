@@ -584,6 +584,10 @@ The UI may also send an `asset` object to avoid re-reading the sidecar when the 
 - `gates` for palette, alpha/background, sharpness, tile seams, style match, versions, cleanup, and inpaint trace when present
 - `recommendations`
 
+### `GET /api/pixel-assets/qa/report.html?asset_id=<id>`
+
+Generate and open a saved Pixel Studio visual QA HTML page for the asset. The page is written beside the asset as `pixel_qa_report.html`.
+
 ### `POST /api/pixel-assets/normalize`
 
 Normalize an existing image to pixel-art constraints.

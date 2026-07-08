@@ -2519,6 +2519,13 @@
       refreshQaBtn.disabled = false;
       refreshQaBtn.onclick = () => loadVisualQaReport(activeAsset);
     }
+    const openQaPageBtn = $('#inspectorOpenQaPageBtn');
+    if (openQaPageBtn) {
+      openQaPageBtn.disabled = false;
+      openQaPageBtn.onclick = () => {
+        window.open(`/api/pixel-assets/qa/report.html?asset_id=${encodeURIComponent(activeAsset.asset_id)}`, '_blank');
+      };
+    }
   }
 
   async function loadVisualQaReport(asset) {

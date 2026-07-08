@@ -210,8 +210,14 @@
               <option value="dungeon_crawler">Dungeon Crawler (6 assets)</option>
               <option value="platformer_starter">Platformer Starter (6 assets)</option>
               <option value="potion_shop">Potion / Item Shop (6 assets)</option>
+              <option value="ui_hud_pack">UI HUD Pack (6 assets)</option>
             </select>
           </label>
+          <div id="pixelRecipeMeta" style="font-size: 11px; line-height: 1.35; color: var(--muted); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px;">Recipe details load here.</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <button class="mini" id="pixelRecipeSaveBtn" type="button">Save recipe</button>
+            <button class="mini" id="pixelRecipeExportBtn" type="button">Export JSON</button>
+          </div>
           <button class="mini primary" id="pixelPackGenerateBtn" type="button" style="width: 100%; margin-top: 6px; font-weight: 700;">Generate Complete Pack</button>
         </div>
       </details>

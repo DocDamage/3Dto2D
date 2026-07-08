@@ -7,6 +7,7 @@ from PIL import Image
 
 import services.pixel_asset_service as pas_mod
 from services.pixel_asset_service import PixelAssetService
+from services.pixel_recipe_service import PixelRecipeService
 from spriteforge_utils import save_json, load_json
 
 def _get_assets_dir():
@@ -19,40 +20,7 @@ class PixelPackService:
     @staticmethod
     def get_recipes() -> dict:
         """Returns predefined pack recipes."""
-        return {
-            "rpg_starter": [
-                {"type": "characters", "prompt": "rpg warrior hero", "resolution": "32x32"},
-                {"type": "characters", "prompt": "rpg goblin thief", "resolution": "32x32"},
-                {"type": "weapons", "prompt": "iron broadsword", "resolution": "16x16"},
-                {"type": "potions", "prompt": "mana potion potion", "resolution": "16x16"},
-                {"type": "items", "prompt": "treasure chest container", "resolution": "32x32"},
-                {"type": "tilesets", "prompt": "dungeon floor stone tile", "resolution": "32x32"}
-            ],
-            "dungeon_crawler": [
-                {"type": "characters", "prompt": "skeleton archer", "resolution": "32x32"},
-                {"type": "characters", "prompt": "wizard cleric", "resolution": "32x32"},
-                {"type": "weapons", "prompt": "fire staff staff", "resolution": "16x16"},
-                {"type": "potions", "prompt": "antidote elixir potion", "resolution": "16x16"},
-                {"type": "items", "prompt": "iron key locking key", "resolution": "16x16"},
-                {"type": "tilesets", "prompt": "mossy brick wall tile", "resolution": "32x32"}
-            ],
-            "platformer_starter": [
-                {"type": "characters", "prompt": "platformer runner hero", "resolution": "32x32"},
-                {"type": "characters", "prompt": "spiky bug crawler enemy", "resolution": "32x32"},
-                {"type": "weapons", "prompt": "bouncing cherry bomb", "resolution": "16x16"},
-                {"type": "potions", "prompt": "haste elixir potion", "resolution": "16x16"},
-                {"type": "items", "prompt": "spinning gold coin currency", "resolution": "16x16"},
-                {"type": "tilesets", "prompt": "grass dirt block tile", "resolution": "32x32"}
-            ],
-            "potion_shop": [
-                {"type": "potions", "prompt": "health recovery potion", "resolution": "16x16"},
-                {"type": "potions", "prompt": "mana recovery potion", "resolution": "16x16"},
-                {"type": "potions", "prompt": "stamina vigor potion", "resolution": "16x16"},
-                {"type": "potions", "prompt": "deadly poison vial", "resolution": "16x16"},
-                {"type": "items", "prompt": "wooden shop counter shelf", "resolution": "32x32"},
-                {"type": "items", "prompt": "potion storage rack container", "resolution": "32x32"}
-            ]
-        }
+        return {recipe["recipe_id"]: recipe["items"] for recipe in PixelRecipeService.list_recipes()}
 
     @staticmethod
     def generate_pack(payload: dict) -> dict:
@@ -64,11 +32,8 @@ class PixelPackService:
         style_profile_id = payload.get("style_profile_id", "")
         mock = payload.get("mock", True)
 
-        recipes = PixelPackService.get_recipes()
-        if recipe_type not in recipes:
-            raise ValueError(f"Unknown recipe type: {recipe_type}")
-
-        recipe_items = recipes[recipe_type]
+        recipe = PixelRecipeService.get_recipe(recipe_type)
+        recipe_items = recipe["items"]
         generated_assets = []
 
         # Trigger asset generation for each recipe item
@@ -80,7 +45,7 @@ class PixelPackService:
                 "resolution": item["resolution"],
                 "palette_size": "16",
                 "provider": "openai",
-                "count": 1,
+                "count": int(item.get("count", 1)),
                 "style_profile_id": style_profile_id,
                 "mock": mock
             }
@@ -99,6 +64,7 @@ class PixelPackService:
             "schema": "spriteforge.pixel_pack.v1",
             "pack_id": pack_id,
             "recipe_type": recipe_type,
+            "recipe_name": recipe.get("name", recipe_type),
             "style_profile_id": style_profile_id,
             "assets": generated_assets,
             "created_at": datetime.datetime.utcnow().isoformat() + "Z"

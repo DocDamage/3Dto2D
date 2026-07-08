@@ -23,6 +23,8 @@ from services.pixel_animation_service import PixelAnimationService
 from services.pixel_transfer_service import PixelTransferService
 from services.pixel_rig_service import PixelRigService
 from services.pixel_pack_service import PixelPackService
+from services.pixel_recipe_service import PixelRecipeService
+from services.pixel_style_service import PixelStyleService
 from spriteforge_web import app
 
 @pytest.fixture(autouse=True)
@@ -71,6 +73,9 @@ def mock_pixel_paths(tmp_path, monkeypatch):
     import services.pixel_rig_service as prs_srv_mod
     monkeypatch.setattr(prs_srv_mod, "ASSETS_DIR", assets)
     monkeypatch.setattr(prs_srv_mod, "BATCHES_DIR", batches)
+
+    import services.pixel_recipe_service as recipe_mod
+    monkeypatch.setattr(recipe_mod, "RECIPES_DIR", temp_root / "recipes")
 
     import sys
     routes_module = sys.modules.get("web_routes.routes_pixel_asset")
@@ -497,6 +502,53 @@ def test_edit_asset_endpoint(client):
     assert data_edit["ok"] is True
     assert data_edit["asset"]["qa"]["color_count"] > 0
 
+    res_edit_alias = client.post(
+        "/api/pixel-assets/edit/save",
+        data=json.dumps(payload_edit),
+        content_type="application/json"
+    )
+    assert res_edit_alias.status_code == 200
+
+    res_version = client.post(
+        "/api/pixel-assets/version/save",
+        data=json.dumps({"asset_id": asset_id, "label": "red edit"}),
+        content_type="application/json"
+    )
+    assert res_version.status_code == 200
+    version_data = json.loads(res_version.data.decode("utf-8"))
+    assert version_data["ok"] is True
+    assert version_data["asset"]["versions"][0]["label"] == "red edit"
+
+def test_style_extraction_endpoint(client):
+    payload = {
+        "asset_type": "weapons",
+        "prompt": "silver dagger",
+        "resolution": "16x16",
+        "palette_size": "8",
+        "provider": "openai",
+        "count": 1,
+        "mock": True
+    }
+    res = client.post(
+        "/api/pixel-assets/generate",
+        data=json.dumps(payload),
+        content_type="application/json"
+    )
+    data = json.loads(res.data.decode("utf-8"))
+    asset_id = data["assets"][0]["asset_id"]
+
+    extract = client.post(
+        "/api/pixel-assets/style/extract",
+        data=json.dumps({"asset_id": asset_id, "name": "Silver Dagger Style"}),
+        content_type="application/json"
+    )
+    assert extract.status_code == 200
+    style_data = json.loads(extract.data.decode("utf-8"))
+    assert style_data["ok"] is True
+    assert style_data["style"]["schema"] == "spriteforge.pixel_style_profile.v1"
+    assert style_data["style"]["name"] == "Silver Dagger Style"
+    assert style_data["style"]["palette"]
+
 def test_inpaint_service_mock(tmp_path):
     # Setup test asset
     asset_id = "pxa_test_inpaint"
@@ -876,3 +928,52 @@ def test_pack_endpoints(client, tmp_path):
     assert "Content-Disposition" in res_export.headers
     assert f"attachment; filename={pack_id}_release.zip" in res_export.headers["Content-Disposition"]
 
+def test_recipe_service_and_endpoints(client, tmp_path, monkeypatch):
+    import services.pixel_recipe_service as recipe_mod
+    import services.pixel_pack_service as pps_mod
+
+    recipe_dir = tmp_path / "pixel_assets" / "recipes"
+    monkeypatch.setattr(recipe_mod, "RECIPES_DIR", recipe_dir)
+    monkeypatch.setattr(pps_mod, "PACKS_DIR", tmp_path / "pixel_assets" / "packs")
+
+    recipes = PixelRecipeService.list_recipes()
+    assert any(recipe["recipe_id"] == "ui_hud_pack" for recipe in recipes)
+
+    custom = {
+        "schema": "spriteforge.pixel_recipe.v1",
+        "recipe_id": "recipe_test_shop",
+        "name": "Test Shop",
+        "items": [
+            {"type": "potions", "prompt": "tiny green potion", "resolution": "16x16", "count": 1},
+            {"type": "items", "prompt": "small wooden crate", "resolution": "16x16", "count": 1},
+        ],
+    }
+    saved = client.post(
+        "/api/pixel-assets/recipes/save",
+        data=json.dumps(custom),
+        content_type="application/json"
+    )
+    assert saved.status_code == 200
+    saved_data = json.loads(saved.data.decode("utf-8"))
+    assert saved_data["ok"] is True
+    assert saved_data["recipe"]["recipe_id"] == "recipe_test_shop"
+
+    listed = client.get("/api/pixel-assets/recipes")
+    assert listed.status_code == 200
+    listed_data = json.loads(listed.data.decode("utf-8"))
+    assert any(recipe["recipe_id"] == "recipe_test_shop" for recipe in listed_data["recipes"])
+
+    exported = client.get("/api/pixel-assets/recipes/export?recipe_id=recipe_test_shop")
+    assert exported.status_code == 200
+    assert exported.mimetype == "application/json"
+
+    generated = client.post(
+        "/api/pixel-assets/pack/build",
+        data=json.dumps({"recipe_type": "recipe_test_shop", "mock": True}),
+        content_type="application/json"
+    )
+    assert generated.status_code == 200
+    generated_data = json.loads(generated.data.decode("utf-8"))
+    assert generated_data["ok"] is True
+    assert generated_data["manifest"]["recipe_name"] == "Test Shop"
+    assert len(generated_data["manifest"]["assets"]) == 2

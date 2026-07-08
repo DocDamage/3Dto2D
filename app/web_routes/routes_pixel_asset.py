@@ -7,6 +7,8 @@ from services.pixel_normalization_service import PixelNormalizationService
 from services.pixel_direction_service import PixelDirectionService
 from services.pixel_export_service import PixelExportService
 from services.pixel_tileset_service import PixelTilesetService
+from services.pixel_recipe_service import PixelRecipeService
+from services.pixel_style_service import PixelStyleService
 from spriteforge_utils import load_json, ROOT, save_json
 
 routes_pixel_asset = Blueprint("routes_pixel_asset", __name__)
@@ -49,6 +51,15 @@ def save_pixel_style():
     body = request.json or {}
     try:
         saved = PixelAssetService.save_style_profile(body)
+        return jsonify({"ok": True, "style": saved})
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_pixel_asset.route("/api/pixel-assets/style/extract", methods=["POST"])
+def extract_pixel_style():
+    body = request.json or {}
+    try:
+        saved = PixelStyleService.extract_style_profile(body)
         return jsonify({"ok": True, "style": saved})
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
@@ -177,65 +188,109 @@ def generate_pixel_tileset():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
 
-@routes_pixel_asset.route("/api/pixel-assets/edit", methods=["POST"])
-def edit_pixel_asset():
-    body = request.json or {}
+def _save_pixel_asset_edit(body):
     asset_id = body.get("asset_id", "")
     image_data = body.get("image_data", "")
 
     if not asset_id or not image_data:
-        return jsonify({"ok": False, "message": "Missing asset_id or image_data"}), 400
+        return None, ("Missing asset_id or image_data", 400)
+
+    asset_dir = ASSETS_DIR / asset_id
+    if not asset_dir.exists() or not asset_dir.is_dir():
+        return None, (f"Asset {asset_id} not found", 404)
+
+    import base64
+    from io import BytesIO
+
+    header, encoded = image_data.split(",", 1)
+    missing_padding = len(encoded) % 4
+    if missing_padding:
+        encoded += "=" * (4 - missing_padding)
+    data = base64.b64decode(encoded)
+    img = Image.open(BytesIO(data)).convert("RGBA")
+
+    orig_png = asset_dir / "asset.png"
+    backup_png = asset_dir / "asset_before_edit.png"
+    if orig_png.exists() and not backup_png.exists():
+        import shutil
+        shutil.copy(orig_png, backup_png)
+
+    img.save(orig_png)
+
+    colors_list = []
+    unique_colors = img.getcolors(maxcolors=256)
+    if unique_colors:
+        for count_val, col in unique_colors:
+            if len(col) >= 3 and (len(col) == 3 or col[3] > 0):
+                hex_color = f"#{col[0]:02x}{col[1]:02x}{col[2]:02x}"
+                colors_list.append(hex_color)
+
+    meta_path = asset_dir / "pixel_asset.json"
+    meta_data = {}
+    if meta_path.exists():
+        meta_data = load_json(meta_path, {})
+
+    meta_data.setdefault("palette", {"max_colors": 24, "colors": []})
+    meta_data.setdefault("qa", {})
+    meta_data["palette"]["colors"] = colors_list[:meta_data.get("palette", {}).get("max_colors", 24)]
+    meta_data["qa"]["color_count"] = len(colors_list)
+    meta_data["qa"]["alpha_ok"] = True
+    meta_data["qa"]["blur_score"] = 0.00
+
+    save_json(meta_path, meta_data)
+    return meta_data, None
+
+@routes_pixel_asset.route("/api/pixel-assets/edit", methods=["POST"])
+@routes_pixel_asset.route("/api/pixel-assets/edit/save", methods=["POST"])
+def edit_pixel_asset():
+    body = request.json or {}
+    try:
+        meta_data, error = _save_pixel_asset_edit(body)
+        if error:
+            message, status = error
+            return jsonify({"ok": False, "message": message}), status
+        return jsonify({"ok": True, "asset": meta_data})
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_pixel_asset.route("/api/pixel-assets/version/save", methods=["POST"])
+def save_pixel_asset_version():
+    body = request.json or {}
+    asset_id = body.get("asset_id", "")
+    if not asset_id:
+        return jsonify({"ok": False, "message": "asset_id is required"}), 400
 
     asset_dir = ASSETS_DIR / asset_id
     if not asset_dir.exists() or not asset_dir.is_dir():
         return jsonify({"ok": False, "message": f"Asset {asset_id} not found"}), 404
 
     try:
-        import base64
-        from io import BytesIO
+        import datetime as dt
+        import shutil
 
-        # Decode image data url
-        header, encoded = image_data.split(",", 1)
-        missing_padding = len(encoded) % 4
-        if missing_padding:
-            encoded += "=" * (4 - missing_padding)
-        data = base64.b64decode(encoded)
-        img = Image.open(BytesIO(data)).convert("RGBA")
+        versions_dir = asset_dir / "versions"
+        versions_dir.mkdir(parents=True, exist_ok=True)
+        stamp = dt.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        source_png = asset_dir / "asset.png"
+        version_png = versions_dir / f"{asset_id}_{stamp}.png"
+        if not source_png.exists():
+            return jsonify({"ok": False, "message": "asset.png is missing"}), 404
+        shutil.copy(source_png, version_png)
 
-        # Save backup of the original asset.png if not present
-        orig_png = asset_dir / "asset.png"
-        backup_png = asset_dir / "asset_before_edit.png"
-        if orig_png.exists() and not backup_png.exists():
-            import shutil
-            shutil.copy(orig_png, backup_png)
-
-        # Overwrite asset.png
-        img.save(orig_png)
-
-        # Extract unique colors
-        colors_list = []
-        unique_colors = img.getcolors(maxcolors=256)
-        if unique_colors:
-            for count_val, col in unique_colors:
-                if len(col) >= 3 and (len(col) == 3 or col[3] > 0):
-                    hex_color = f"#{col[0]:02x}{col[1]:02x}{col[2]:02x}"
-                    colors_list.append(hex_color)
-
-        # Update metadata JSON
         meta_path = asset_dir / "pixel_asset.json"
-        meta_data = {}
-        if meta_path.exists():
-            meta_data = load_json(meta_path, {})
-        
-        # Populate updated attributes
-        meta_data["palette"]["colors"] = colors_list[:meta_data.get("palette", {}).get("max_colors", 24)]
-        meta_data["qa"]["color_count"] = len(colors_list)
-        meta_data["qa"]["alpha_ok"] = True
-        meta_data["qa"]["blur_score"] = 0.00 # edited pixel art is perfectly sharp
-
+        meta_data = load_json(meta_path, {}) if meta_path.exists() else {}
+        meta_data.setdefault("versions", [])
+        try:
+            rel_version = str(version_png.relative_to(ROOT)).replace("\\", "/")
+        except ValueError:
+            rel_version = str(version_png)
+        meta_data["versions"].append({
+            "path": rel_version,
+            "label": body.get("label", "manual version"),
+            "created_at": dt.datetime.utcnow().isoformat() + "Z",
+        })
         save_json(meta_path, meta_data)
-
-        return jsonify({"ok": True, "asset": meta_data})
+        return jsonify({"ok": True, "asset": meta_data, "version_path": rel_version})
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 
@@ -280,6 +335,7 @@ def render_pixel_rig():
         return jsonify({"ok": False, "message": str(exc)}), 400
 
 @routes_pixel_asset.route("/api/pixel-assets/pack/generate", methods=["POST"])
+@routes_pixel_asset.route("/api/pixel-assets/pack/build", methods=["POST"])
 def generate_pixel_pack():
     body = request.json or {}
     try:
@@ -301,6 +357,48 @@ def export_pixel_pack():
             mimetype="application/zip",
             as_attachment=True,
             download_name=f"{pack_id}_release.zip"
+        )
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_pixel_asset.route("/api/pixel-assets/recipes", methods=["GET"])
+def list_pixel_recipes():
+    try:
+        recipes = PixelRecipeService.list_recipes()
+        return jsonify({"ok": True, "recipes": recipes})
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_pixel_asset.route("/api/pixel-assets/recipes/save", methods=["POST"])
+def save_pixel_recipe():
+    body = request.json or {}
+    try:
+        recipe = PixelRecipeService.save_recipe(body)
+        return jsonify({"ok": True, "recipe": recipe})
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_pixel_asset.route("/api/pixel-assets/recipes/import", methods=["POST"])
+def import_pixel_recipe():
+    body = request.json or {}
+    try:
+        recipe = PixelRecipeService.import_recipe(body)
+        return jsonify({"ok": True, "recipe": recipe})
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_pixel_asset.route("/api/pixel-assets/recipes/export", methods=["GET"])
+def export_pixel_recipe():
+    recipe_id = request.args.get("recipe_id", "")
+    if not recipe_id:
+        return jsonify({"ok": False, "message": "recipe_id parameter is required"}), 400
+    try:
+        export_path = PixelRecipeService.export_recipe(recipe_id)
+        return send_file(
+            export_path,
+            mimetype="application/json",
+            as_attachment=True,
+            download_name=f"{recipe_id}.json"
         )
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400

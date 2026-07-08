@@ -100,7 +100,9 @@ Common Pixel Studio workflows:
 - **Animate** generates a spritesheet and GIF preview from a selected asset.
 - **Animation Transfer** applies an existing sheet layout to a new prompt/style.
 - **Skeleton & Rigging** renders simple keyframed rig motion into a sheet.
-- **Cohesive Pack Builder** generates recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
+- **Use as style reference** extracts palette and style hints from a selected asset so future assets can match it.
+- **Cohesive Pack Builder** generates built-in or user-saved recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
+- **Recipe controls** let you preview the pack queue, save the current settings as a local recipe, and export recipe JSON for reuse.
 
 Pixel Studio files are saved under:
 
@@ -108,6 +110,7 @@ Pixel Studio files are saved under:
 app/output/pixel_assets/assets/
 app/output/pixel_assets/batches/
 app/output/pixel_assets/packs/
+app/output/pixel_assets/recipes/
 app/output/pixel_assets/styles/
 ```
 

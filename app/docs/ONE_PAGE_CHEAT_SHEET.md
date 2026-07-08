@@ -72,6 +72,8 @@ Normalize for fixed size, palette, alpha, and cleanup
 Directions for 1/4/8-direction sheets
 Tileset for tile roles and seam QA
 Animate / Transfer / Rig for motion sheets
+Use as style reference -> reuse palette/style memory
+Save recipe -> reuse current settings later
 Cohesive Pack Builder -> Generate Complete Pack -> Export Complete Pack ZIP
 ```
 

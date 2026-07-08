@@ -566,6 +566,19 @@ Save a Pixel Studio style profile.
 }
 ```
 
+### `POST /api/pixel-assets/style/extract`
+
+Create a reusable style profile from an existing Pixel Studio asset or workspace image.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "name": "Hero Sprite Style",
+  "max_colors": 24
+}
+```
+
 ### `GET /api/pixel-assets/history`
 
 Return saved Pixel Studio asset metadata records.
@@ -618,6 +631,8 @@ Generate a top-down, side-scroller, or isometric tileset with seam checks.
 
 ### `POST /api/pixel-assets/edit`
 
+Alias: `POST /api/pixel-assets/edit/save`
+
 Save a browser-edited pixel asset image.
 
 **Request Body:**
@@ -625,6 +640,18 @@ Save a browser-edited pixel asset image.
 {
   "asset_id": "pxa_123",
   "image_data": "data:image/png;base64,..."
+}
+```
+
+### `POST /api/pixel-assets/version/save`
+
+Copy the current `asset.png` into the asset's `versions/` folder and append version metadata.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "label": "manual cleanup pass"
 }
 ```
 
@@ -690,7 +717,9 @@ Render a lightweight skeleton/bone rig animation from an existing asset.
 
 ### `POST /api/pixel-assets/pack/generate`
 
-Generate a cohesive asset pack from a predefined recipe.
+Alias: `POST /api/pixel-assets/pack/build`
+
+Generate a cohesive asset pack from a built-in or saved recipe.
 
 **Request Body:**
 ```json
@@ -706,10 +735,39 @@ Supported recipes include:
 - `dungeon_crawler`
 - `platformer_starter`
 - `potion_shop`
+- `ui_hud_pack`
 
 ### `GET /api/pixel-assets/pack/export?pack_id=<id>`
 
 Export a generated Pixel Studio pack as a ZIP containing asset PNGs, sidecar metadata, `pack_manifest.json`, and `catalog.html`.
+
+### `GET /api/pixel-assets/recipes`
+
+List built-in and user-saved Pixel Studio recipes.
+
+### `POST /api/pixel-assets/recipes/save`
+
+Save a reusable recipe for Pixel Studio pack generation.
+
+**Request Body:**
+```json
+{
+  "schema": "spriteforge.pixel_recipe.v1",
+  "recipe_id": "recipe_custom_shop",
+  "name": "Custom Shop",
+  "items": [
+    {"type": "potions", "prompt": "tiny green potion", "resolution": "16x16", "count": 4}
+  ]
+}
+```
+
+### `POST /api/pixel-assets/recipes/import`
+
+Import a recipe JSON payload and save it locally.
+
+### `GET /api/pixel-assets/recipes/export?recipe_id=<id>`
+
+Download a recipe JSON file for sharing or backup.
 
 ---
 

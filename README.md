@@ -107,9 +107,11 @@ Use **Pixel Studio** when you want MagicPixel-style game asset workflows directl
 *   Normalize outputs to game-ready pixel constraints: fixed canvas size, palette reduction, transparent background, nearest-neighbor scaling, and sidecar metadata.
 *   Build 4-direction or 8-direction character sheets, tile atlases with seam QA, text-to-animation sheets, animation transfers from an existing sheet, and lightweight skeleton/rig renders.
 *   Edit assets in-browser, run mock AI inpainting/edit workflows, and export Godot, Unity, or Aseprite ZIP packages from generated batches.
-*   Use **Cohesive Pack Builder** to generate recipe-based starter packs such as RPG, dungeon crawler, platformer, or potion shop packs, then export the whole pack as a ZIP with a browsable HTML catalog.
+*   Extract a style profile from any selected asset, then reuse that palette/style memory for matching future generations.
+*   Use **Cohesive Pack Builder** to generate built-in or saved recipe packs such as RPG, dungeon crawler, platformer, potion shop, or UI HUD packs, then export the whole pack as a ZIP with a browsable HTML catalog.
+*   Save current Pixel Studio settings as reusable local recipes and export recipe JSON for sharing or backup.
 
-Pixel Studio outputs are written under `app/output/pixel_assets/` with per-asset JSON metadata, batch manifests, and pack manifests.
+Pixel Studio outputs are written under `app/output/pixel_assets/` with per-asset JSON metadata, batch manifests, style profiles, recipes, and pack manifests.
 
 ### 6. Cloud Image Providers and API Keys
 Open **Setup** or **Cloud Hub** to inspect cloud image provider readiness and save local API keys. Supported provider slots include Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Free-tier availability depends on each provider and model account; SpriteForge reports provider capability but does not guarantee quota or pricing.

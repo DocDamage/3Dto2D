@@ -6,6 +6,7 @@
   let activeAsset = null; // Currently selected asset metadata object
   let activeBatch = null; // Active batch manifest if multi-direction or tileset
   let styleProfiles = [];
+  let pixelRecipes = [];
   let currentCompareMode = 'normalized'; // 'normalized', 'raw', 'transferred', 'source'
   let currentViewMode = 'sheet'; // 'sheet' or 'single'
 
@@ -152,6 +153,7 @@
     // Load styles & LoRAs on launch
     loadStyles();
     loadLoras();
+    loadRecipes();
 
     // Style profile dialog events
     const createStyleBtn = $('#pixelCreateStyleBtn');
@@ -855,6 +857,50 @@
     // Bind Pack Builder generate & export triggers (Phase 12)
     const packGenerateBtn = $('#pixelPackGenerateBtn');
     const exportPackBtn = $('#inspectorExportPackBtn');
+    const recipeSelect = $('#pixelPackRecipeSelect');
+    const recipeSaveBtn = $('#pixelRecipeSaveBtn');
+    const recipeExportBtn = $('#pixelRecipeExportBtn');
+
+    if (recipeSelect) {
+      recipeSelect.addEventListener('change', renderSelectedRecipeMeta);
+    }
+
+    if (recipeSaveBtn) {
+      recipeSaveBtn.addEventListener('click', async () => {
+        const payload = buildRecipeFromCurrentSettings();
+        try {
+          const res = await api('/api/pixel-assets/recipes/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            toast('Pixel Studio recipe saved.');
+            await loadRecipes();
+            const select = $('#pixelPackRecipeSelect');
+            if (select) {
+              select.value = res.recipe.recipe_id;
+              renderSelectedRecipeMeta();
+            }
+          } else {
+            toast('Recipe save failed: ' + res.message);
+          }
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+    }
+
+    if (recipeExportBtn) {
+      recipeExportBtn.addEventListener('click', () => {
+        const recipeId = $('#pixelPackRecipeSelect').value;
+        if (!recipeId) {
+          toast('Choose a recipe first.');
+          return;
+        }
+        window.location.href = `/api/pixel-assets/recipes/export?recipe_id=${encodeURIComponent(recipeId)}`;
+      });
+    }
 
     if (packGenerateBtn) {
       packGenerateBtn.addEventListener('click', async () => {
@@ -901,6 +947,37 @@
         if (!activePack) return;
         toast("Exporting cohesive asset pack release ZIP...");
         window.location.href = `/api/pixel-assets/pack/export?pack_id=${activePack.pack_id}`;
+      });
+    }
+
+    const useAsStyleBtn = $('#inspectorUseAsStyleBtn');
+    if (useAsStyleBtn) {
+      useAsStyleBtn.addEventListener('click', async () => {
+        if (!activeAsset) {
+          toast('Select an asset first.');
+          return;
+        }
+        try {
+          const res = await api('/api/pixel-assets/style/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              asset_id: activeAsset.asset_id,
+              name: `${activeAsset.prompt || activeAsset.asset_type} style`,
+              max_colors: activeAsset.palette?.max_colors || 24
+            })
+          });
+          if (res.ok) {
+            toast('Style profile extracted from selected asset.');
+            await loadStyles();
+            const select = $('#pixelStyleProfileSelect');
+            if (select) select.value = res.style.style_id;
+          } else {
+            toast('Style extraction failed: ' + res.message);
+          }
+        } catch (err) {
+          toast(err.message);
+        }
       });
     }
 
@@ -1091,6 +1168,70 @@
     } catch (err) {
       console.error('Error loading styles:', err);
     }
+  }
+
+  async function loadRecipes() {
+    const selectEl = $('#pixelPackRecipeSelect');
+    if (!selectEl) return;
+
+    try {
+      const res = await api('/api/pixel-assets/recipes');
+      if (res.ok && res.recipes) {
+        const current = selectEl.value;
+        pixelRecipes = res.recipes;
+        selectEl.innerHTML = '';
+        res.recipes.forEach(recipe => {
+          const opt = document.createElement('option');
+          opt.value = recipe.recipe_id;
+          const count = (recipe.items || []).reduce((total, item) => total + (item.count || 1), 0);
+          opt.textContent = `${recipe.name} (${count} assets)`;
+          selectEl.appendChild(opt);
+        });
+        if (current && res.recipes.some(recipe => recipe.recipe_id === current)) {
+          selectEl.value = current;
+        }
+        renderSelectedRecipeMeta();
+      }
+    } catch (err) {
+      console.error('Error loading recipes:', err);
+    }
+  }
+
+  function renderSelectedRecipeMeta() {
+    const meta = $('#pixelRecipeMeta');
+    const selectEl = $('#pixelPackRecipeSelect');
+    if (!meta || !selectEl) return;
+
+    const recipe = pixelRecipes.find(item => item.recipe_id === selectEl.value);
+    if (!recipe) {
+      meta.textContent = 'Recipe details load here.';
+      return;
+    }
+
+    const jobs = (recipe.items || []).map(item => `${item.count || 1}x ${item.type}: ${item.prompt}`).join(' | ');
+    meta.textContent = `${recipe.description || recipe.name} ${jobs}`;
+  }
+
+  function buildRecipeFromCurrentSettings() {
+    const mode = $('#pixelActiveMode').value;
+    const prompt = $('#pixelPrompt').value || $('#pixelPrompt').placeholder || 'pixel art asset';
+    const resolution = $('#pixelResolutionSelect').value;
+    const count = Math.max(1, parseInt($('#pixelBatchCount').value || '1'));
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '').slice(0, 15);
+
+    return {
+      schema: 'spriteforge.pixel_recipe.v1',
+      recipe_id: `recipe_${mode}_${timestamp}`,
+      name: `${mode.replace('_', ' ')} recipe`,
+      description: 'Saved from the current Pixel Studio generation settings.',
+      tags: [mode, 'custom'],
+      items: [{
+        type: mode,
+        prompt,
+        resolution,
+        count
+      }]
+    };
   }
 
   async function loadLoras() {

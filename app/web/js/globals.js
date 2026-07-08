@@ -27,7 +27,7 @@ function toast(msg){
 function formData(form){
   const data={};
   new FormData(form).forEach((v,k)=>{data[k]=v});
-  $$('input[type="checkbox"]', form).forEach(i=>data[i.name]=i.checked);
+  $$('input[type="checkbox"]', form).forEach(i=>{ if (i.name) data[i.name]=i.checked; });
   return data;
 }
 
@@ -447,7 +447,7 @@ function closeResultPreview(){
 function clampSpriteZoom(value){
   const n = Number(value);
   if(!Number.isFinite(n)) return 1;
-  return Math.max(0.5, Math.min(6, n));
+  return Math.max(0.1, Math.min(16, n));
 }
 
 function applySpriteZoom(container, target, zoom, pointer){
@@ -488,6 +488,7 @@ function setupSpriteWheelZoom(container, targetGetter){
 
 async function openResultPreview(spritePath){
   if(!spritePath){ toast('No sprite output selected.'); return; }
+  localStorage.setItem('spriteforgeLastPreviewPath', spritePath);
   try{
     const data = await api('/api/sprite/preview?path=' + encodeURIComponent(spritePath));
     const modal = $('#previewModal');

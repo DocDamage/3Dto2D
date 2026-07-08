@@ -17,6 +17,21 @@ from services.web_path_proxy import ROOT, OUTPUT, INPUT, UPLOADS
 
 logger = logging.getLogger(__name__)
 
+ALL_DIRECTIONS = ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]
+
+
+def _csv_values(value: Any, default: Optional[Sequence[str]] = None) -> List[str]:
+    items = [item.strip() for item in str(value or "").split(",") if item.strip()]
+    return items or list(default or [])
+
+
+def _expand_directions(value: Any, default: Optional[Sequence[str]] = None) -> List[str]:
+    directions = _csv_values(value, default or ["right"])
+    if any(direction.lower() == "all" for direction in directions):
+        return list(ALL_DIRECTIONS)
+    return directions
+
+
 def _is_relative_to(path: Path, base: Path) -> bool:
     return ProjectPaths.is_relative_to(path, base)
 
@@ -250,7 +265,24 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         title = "Start LoRA training run" if run_now else "Prepare LoRA training run"
         return title, cmd
     if action == "generate_sprite":
-        cmd = [PYTHON, "spriteforge_unified.py", "generate-sprite"]
+        actions = _csv_values(
+            payload.get("default_actions") or payload.get("actions") or payload.get("sprite_action"),
+            [str(payload.get("sprite_action") or "idle")],
+        )
+        directions = _expand_directions(
+            payload.get("default_directions") or payload.get("directions") or payload.get("direction"),
+            [str(payload.get("direction") or "right")],
+        )
+        is_batch = not payload.get("preview", False) and (len(actions) > 1 or len(directions) > 1)
+        payload["sprite_action"] = actions[0]
+        payload["direction"] = directions[0]
+        if is_batch:
+            payload["default_actions"] = ",".join(actions)
+            payload["default_directions"] = ",".join(directions)
+        command_name = "generate-batch" if is_batch else "generate-sprite"
+        cmd = [PYTHON, "spriteforge_unified.py", command_name]
+        if is_batch:
+            cmd += ["--actions", ",".join(actions), "--directions", ",".join(directions)]
         if payload.get("native_only"):
             cmd.append("--native-only")
             native_source = str(payload.get("native_source_video") or payload.get("input") or payload.get("source_video") or "").strip()
@@ -273,6 +305,8 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             if workflow:
                 payload["workflow"] = workflow
         for key, arg in [("workflow", "--workflow"), ("sprite_action", "--action"), ("direction", "--direction"), ("character", "--character"), ("style", "--style"), ("background", "--background"), ("prompt", "--prompt"), ("negative", "--negative"), ("reference_image", "--reference-image"), ("seed", "--seed"), ("output_prefix", "--output-prefix"), ("lora_name", "--lora-name")]:
+            if is_batch and key in {"sprite_action", "direction"}:
+                continue
             value = str(payload.get(key) if payload.get(key) is not None else "").strip()
             if value:
                 cmd += [arg, value]
@@ -305,7 +339,7 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
             cmd.append("--power-of-two")
         _apply_project_palette_lock(payload)
         cmd += _sprite_polish_args(payload)
-        return "Generate WAN sprite", cmd
+        return ("Generate WAN sprite batch" if is_batch else "Generate WAN sprite"), cmd
     if action == "cloud_image_sprite":
         prompt = str(payload.get("prompt") or payload.get("character") or "").strip()
         if not prompt:
@@ -353,8 +387,8 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         style = str(payload.get("style") or "polished 2D game sprite, preserve the uploaded source sprite identity, exact outfit, palette, proportions, and silhouette").strip()
         if "preserve" not in style.lower():
             style += ", preserve the uploaded source sprite identity, exact outfit, palette, proportions, and silhouette"
-        actions = str(payload.get("existing_sprite_actions") or payload.get("default_actions") or payload.get("actions") or payload.get("sprite_action") or "idle,walk,run,attack_light,hurt,death").strip()
-        directions = str(payload.get("existing_sprite_directions") or payload.get("default_directions") or payload.get("directions") or payload.get("direction") or "right").strip()
+        actions = ",".join(_csv_values(payload.get("existing_sprite_actions") or payload.get("default_actions") or payload.get("actions") or payload.get("sprite_action"), ["idle", "walk", "run", "attack_light", "hurt", "death"]))
+        directions = ",".join(_expand_directions(payload.get("existing_sprite_directions") or payload.get("default_directions") or payload.get("directions") or payload.get("direction"), ["right"]))
         tier = str(payload.get("tier") or "wan22_5b").strip()
         mode = str(payload.get("mode") or "auto").strip()
         profile = str(payload.get("profile") or "wan22_5b_3060_best").strip()

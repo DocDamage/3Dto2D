@@ -37,6 +37,33 @@ Direction: right
 Character: single full body original game hero, simple outfit, boots, clean silhouette
 ```
 
+## Sprite Lab must-knows
+
+```text
+Use AI Auto Fix in Final prompt preview
+Choose multiple actions when building a pack
+Choose All directions for full directional coverage
+Keep Start ComfyUI if needed enabled for local WAN generation
+```
+
+## LPC builder
+
+```text
+LPC -> Load Pickers
+Pick body/hair/clothes/weapons/accessories
+Compose
+Zoom the center character preview with mouse wheel or slider
+Build Batch -> Run QA -> Prepare LoRA
+```
+
+## API keys and free providers
+
+```text
+Setup or Cloud Hub -> Provider keys
+Save local keys for Hugging Face, OpenAI, Google/Gemini, Anthropic, Kimi, GLM, DeepSeek, or Grok/xAI
+Free/community availability depends on each provider account and model
+```
+
 ## Best output folder files
 
 ```text

@@ -91,7 +91,8 @@
     margin-left: 282px;
     margin-top: 0 !important;
     max-width: none;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding: 8px 14px 12px;
     width: calc(100vw - 282px);
   }
@@ -152,7 +153,10 @@
   .subview-pane.active {
     max-height: calc(100vh - 112px);
     min-height: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: 48px;
+    scrollbar-gutter: stable;
   }
 
   #view-tasks-parent.view.active,
@@ -205,7 +209,8 @@
   #view-dashboard.view.active {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   #view-dashboard .dashboard-tabs {
@@ -303,6 +308,30 @@
     max-height: none;
     min-height: 80px;
     overflow: auto;
+  }
+
+  #view-logs.view.active,
+  #view-packs.view.active,
+  #view-release.view.active,
+  #view-setup.view.active,
+  #view-history.view.active {
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  #view-logs .command-card {
+    min-height: min(360px, calc(100vh - 170px));
+    overflow: visible;
+  }
+
+  #view-logs #full-log {
+    flex: 1 1 auto;
+    max-height: none !important;
+    min-height: 300px;
+    overflow: auto !important;
+    resize: vertical !important;
   }
 
   #view-dashboard .dashboard-workspace-hub {

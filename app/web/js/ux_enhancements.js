@@ -10,7 +10,7 @@
 
   const VIEW_LABELS = {
     guide: 'Guide', dashboard: 'Dashboard', tasks: 'Task Center',
-    launchpad: 'Launchpad', generate: 'Generate Sprite', convert: 'Convert Video',
+    launchpad: 'Launchpad', generate: 'Sprite Lab', lpc: 'LPC', convert: 'Convert Video',
     quality: 'Quality Lab', ab_runs: 'A/B Runs', library: 'Pose Library',
     qa_dashboard: 'QA Dashboard', training: 'Training Lab', packs: 'Packs & Atlas', queue: 'Queue Builder',
     queues: 'Queue Monitor', history: 'History', release: 'Release',
@@ -23,6 +23,7 @@
   const NAV_ICONS = {
     guide: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
     generate: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="m19 2 4 4L7 22H3v-4z"/><path d="M14 7l4 4"/></svg>`,
+    lpc: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="8" r="2"/><path d="M9 13h6"/><path d="M8 17h8"/></svg>`,
     convert: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M23 7a2 2 0 0 0-2.45-1.45L16 7V5a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2l4.55 1.45A2 2 0 0 0 23 17z"/></svg>`,
     queue: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
     quality: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
@@ -43,7 +44,7 @@
   };
 
   const NAV_GROUPS = [
-    { name: 'Create', views: ['guide', 'training', 'generate', 'convert'] },
+    { name: 'Create', views: ['guide', 'training', 'generate', 'lpc', 'convert'] },
     { name: 'Review', views: ['quality'] },
     { name: 'Manage', views: ['dashboard', 'tasks', 'packs', 'history', 'release', 'cleanup'] },
     { name: 'System', views: ['setup', 'logs'] }

@@ -190,10 +190,13 @@ function usePromptHistoryRow(row) {
   set('negative', row.negative || '');
   set('sprite_action', row.action || '');
   set('direction', row.direction || '');
+  set('default_actions', row.action || '');
+  set('default_directions', row.direction || '');
   set('profile', row.profile || '');
   set('tier', row.tier || '');
   set('seed', row.seed ?? '');
   showView('generate');
+  if (typeof syncGenerateChoiceChecksFromHidden === 'function') syncGenerateChoiceChecksFromHidden();
   if (typeof refreshGeneratePromptPreview === 'function') refreshGeneratePromptPreview();
   toast('Loaded prompt history into Generate.');
 }
@@ -270,11 +273,43 @@ async function loadHistory() {
   try {
     const data = await api('/api/experiments' + projectQuery());
     currentHistory = data.experiments || [];
+    if (!currentHistory.length) {
+      try {
+        const outputData = await api('/api/outputs' + projectQuery());
+        currentHistory = (outputData.outputs || []).map((o, idx) => ({
+          id: `output-${idx}-${o.path || o.name || ''}`,
+          created_at: o.modified || o.created_at || '',
+          project_name: o.project_name || '',
+          sprite_action: o.action || o.sprite_action || inferHistoryAction(o),
+          direction: o.direction || inferHistoryDirection(o),
+          model_tier: o.tier || '',
+          profile: o.profile || '',
+          qa_score: o.qa_score,
+          qa_passed: o.qa_passed,
+          sprite_folder: o.path || '',
+          notes: 'Recovered from output folder',
+        }));
+      } catch (fallbackErr) {
+        console.warn('Output history fallback failed:', fallbackErr);
+      }
+    }
     selectedCompareIds.clear();
     updateCompareButton();
     renderHistory();
     await loadExperimentAnalytics();
   } catch(e) { console.error(e); }
+}
+
+function inferHistoryAction(row) {
+  const text = `${row.name || ''} ${row.path || ''}`.toLowerCase();
+  const actions = ['idle', 'walk', 'run', 'jump', 'attack_light', 'attack_heavy', 'cast', 'hurt', 'death', 't_pose', 'a_pose'];
+  return actions.find(action => text.includes(action)) || '';
+}
+
+function inferHistoryDirection(row) {
+  const text = `${row.name || ''} ${row.path || ''}`.toLowerCase();
+  const directions = ['front_right', 'front_left', 'back_right', 'back_left', 'front', 'right', 'back', 'left'];
+  return directions.find(direction => text.includes(direction)) || '';
 }
 
 function renderHistory() {

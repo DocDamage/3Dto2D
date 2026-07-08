@@ -3,6 +3,15 @@
 
   const WIZARD_TEMPLATES = window.SpriteForgeWizardTemplates?.templates || {};
   const PERSPECTIVE_PROMPTS = window.SpriteForgeWizardTemplates?.perspectivePrompts || {};
+  const CHARACTER_PRESETS = {
+    hero: 'single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit',
+    knight: 'single full body armored knight fighter, heroic adult proportions, readable weapon silhouette, distinctive armor plates, clean silhouette, consistent outfit',
+    mage: 'single full body fantasy mage caster, robe and staff, readable magical silhouette, distinctive accessories, clean silhouette, consistent outfit',
+    rogue: 'single full body agile rogue ranger, hooded adventure outfit, light armor, readable weapon silhouette, clean silhouette, consistent outfit',
+    monster: 'single full body enemy monster creature, bold readable shape language, game-ready proportions, clean silhouette, consistent anatomy',
+    npc: 'single full body town NPC character, friendly readable design, distinctive outfit, clean silhouette, consistent outfit',
+    robot: 'single full body robot mech character, readable mechanical silhouette, bold armor shapes, clean silhouette, consistent materials',
+  };
   let currentStep = window.SpriteForgeWizardStateConfig?.initialStep || 1;
   const STORAGE_KEY = window.SpriteForgeWizardStateConfig?.storageKey || 'spriteforge_wizard_state';
 
@@ -66,14 +75,25 @@
     // Step 2 Preview Builder
     const nameInput = form.querySelector('[name="wiz_name"]');
     const descTextarea = form.querySelector('[name="wiz_character"]');
+    const presetSelect = form.querySelector('[name="wiz_character_preset"]');
     const templateSelect = form.querySelector('[name="wiz_template"]');
     const referenceInput = form.querySelector('[name="wiz_reference_image"]');
     const styleInput = form.querySelector('[name="wiz_style_image"]');
 
-    [nameInput, descTextarea, templateSelect, referenceInput, styleInput].forEach(el => {
+    [nameInput, descTextarea, presetSelect, templateSelect, referenceInput, styleInput].forEach(el => {
       if (el) el.addEventListener('input', updatePromptPreview);
       if (el) el.addEventListener('change', updatePromptPreview);
     });
+
+    if (presetSelect) {
+      presetSelect.addEventListener('change', () => {
+        const preset = CHARACTER_PRESETS[presetSelect.value];
+        if (preset && descTextarea) {
+          descTextarea.value = preset;
+          updatePromptPreview();
+        }
+      });
+    }
 
     // Template change defaults
     if (templateSelect) {
@@ -437,6 +457,7 @@
   function saveWizardState() {
     const name = form.querySelector('[name="wiz_name"]').value;
     const desc = form.querySelector('[name="wiz_character"]').value;
+    const characterPreset = form.querySelector('[name="wiz_character_preset"]')?.value || '';
     const template = form.querySelector('[name="wiz_template"]').value;
     const goal = getSelectedGoal();
     const video = form.querySelector('[name="wiz_video_path"]').value;
@@ -451,6 +472,7 @@
       goal,
       name,
       desc,
+      characterPreset,
       template,
       video,
       referenceImage,
@@ -486,6 +508,7 @@
 
     // Restore fields
     if (state.name) form.querySelector('[name="wiz_name"]').value = state.name;
+    if (state.characterPreset && form.querySelector('[name="wiz_character_preset"]')) form.querySelector('[name="wiz_character_preset"]').value = state.characterPreset;
     if (state.desc) form.querySelector('[name="wiz_character"]').value = state.desc;
     if (state.template) form.querySelector('[name="wiz_template"]').value = state.template;
     if (state.video) form.querySelector('[name="wiz_video_path"]').value = state.video;

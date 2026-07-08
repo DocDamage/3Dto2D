@@ -73,6 +73,18 @@
             <label>Character name
               <input name="wiz_name" value="hero" placeholder="e.g. hero, goblin, knight" required />
             </label>
+            <label>Character type preset
+              <select name="wiz_character_preset" id="wizCharacterPreset">
+                <option value="">Custom</option>
+                <option value="hero">Hero / Adventurer</option>
+                <option value="knight">Knight / Fighter</option>
+                <option value="mage">Mage / Caster</option>
+                <option value="rogue">Rogue / Ranger</option>
+                <option value="monster">Enemy Monster</option>
+                <option value="npc">Town NPC</option>
+                <option value="robot">Robot / Mech</option>
+              </select>
+            </label>
             <label>Character description
               <textarea name="wiz_character" rows="5" required>single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea>
             </label>
@@ -132,6 +144,8 @@
                 <legend>Movement</legend>
                 <label class="wizard-action-checkbox selected"><input type="checkbox" value="idle" checked /> <span>Idle</span></label>
                 <label class="wizard-action-checkbox selected"><input type="checkbox" value="walk" checked /> <span>Walk</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="t_pose" /> <span>T-pose</span></label>
+                <label class="wizard-action-checkbox"><input type="checkbox" value="a_pose" /> <span>A-pose</span></label>
                 <label class="wizard-action-checkbox"><input type="checkbox" value="run" /> <span>Run</span></label>
                 <label class="wizard-action-checkbox"><input type="checkbox" value="jump" /> <span>Jump</span></label>
                 <label class="wizard-action-checkbox"><input type="checkbox" value="fall" /> <span>Fall</span></label>

@@ -159,6 +159,30 @@ Intelligent retry with profile downgrade for OOM recoveries.
 
 Launch the ComfyUI server if not already running.
 
+### `POST /api/prompt/autofix`
+
+Auto-fix sprite prompts and negative prompts for the final prompt preview.
+
+**Request Body:**
+```json
+{
+  "prompt": "knight walking, cinematic camera",
+  "negative": "blur",
+  "action": "walk",
+  "direction": "right"
+}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "prompt": "...locked camera...",
+  "negative": "...",
+  "changes": [...]
+}
+```
+
 ---
 
 ## Queues
@@ -327,6 +351,143 @@ List all character archetype templates. Filter with `?tag=monster` or `?search=s
   "total": 21
 }
 ```
+
+---
+
+## LPC Parts, Composer, and Training
+
+### `POST /api/lpc/parts/scan`
+
+Scan a Universal LPC source folder and write a catalog of readable paper-doll layers.
+
+**Request Body:**
+```json
+{
+  "source_dir": "app/input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator",
+  "output": "output/lpc_parts",
+  "thumbnail_limit": 24
+}
+```
+
+### `POST /api/lpc/parts/dataset`
+
+Build a training dataset from individual LPC parts with captions.
+
+**Request Body:**
+```json
+{
+  "source_dir": "app/input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator",
+  "output": "output/training_datasets/lpc_parts",
+  "trigger": "lpc_parts"
+}
+```
+
+### `POST /api/lpc/options`
+
+Return picker options for the dedicated LPC tab and Training Lab composer.
+
+**Request Body:**
+```json
+{
+  "source_dir": "app/input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator",
+  "categories": ["hair", "torso", "legs", "feet", "weapons"],
+  "limit_per_category": 240
+}
+```
+
+### `POST /api/lpc/compose`
+
+Compose one LPC character spritesheet from selected layers.
+
+**Request Body:**
+```json
+{
+  "source_dir": "app/input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator",
+  "compose_action": "idle",
+  "body_type": "male",
+  "compose_name": "hero_idle",
+  "selections": {
+    "hair": "afro",
+    "torso": "shirt",
+    "legs": "pants",
+    "feet": "shoes"
+  }
+}
+```
+
+### `POST /api/lpc/batch-compose`
+
+Build a balanced dataset of composed LPC character sheets for LoRA training.
+
+**Request Body:**
+```json
+{
+  "source_dir": "app/input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator",
+  "batch_count": 48,
+  "batch_actions": "idle,walk,slash,cast",
+  "batch_body_types": "male,female",
+  "batch_categories": "hair,torso,legs,feet,weapons",
+  "trigger": "lpc_composed"
+}
+```
+
+### `POST /api/lpc/dataset-qa`
+
+Validate a composed LPC dataset before LoRA handoff.
+
+**Request Body:**
+```json
+{
+  "dataset_dir": "output/training_datasets/lpc_composed_123",
+  "min_layers": 3
+}
+```
+
+### `POST /api/lpc/lora-prefill`
+
+Return recommended LoRA training settings for a QA-passed composed LPC dataset.
+
+**Request Body:**
+```json
+{
+  "dataset_dir": "output/training_datasets/lpc_composed_123"
+}
+```
+
+---
+
+## Cloud Image Providers
+
+### `GET /api/cloud/image-providers`
+
+Return provider metadata and key readiness for Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI slots. Use `?provider=openai` to inspect one provider.
+
+### `POST /api/cloud/image-provider-key`
+
+Save a provider API key to the local app environment.
+
+**Request Body:**
+```json
+{
+  "provider": "openai",
+  "api_key": "..."
+}
+```
+
+### `DELETE /api/cloud/image-provider-key`
+
+Remove stored local keys for a provider.
+
+**Request Body:**
+```json
+{
+  "provider": "openai"
+}
+```
+
+### `POST /api/cloud/image-generation-plan`
+
+Preview the hardened prompts and post-processing plan for a cloud image generation request without launching a full local WAN job.
 
 ---
 

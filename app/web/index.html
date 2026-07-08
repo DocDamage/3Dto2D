@@ -87,14 +87,14 @@
         const views = [
           'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
           'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
-          'ab_runs', 'library', 'qa_dashboard', 'training'
+          'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc'
         ];
         await Promise.all(views.map(async (name) => {
           const el = document.getElementById('view-' + name);
           if (el) {
             try {
               const componentVersion = name === 'generate'
-                ? '?v=generate-existing-sprite'
+                ? '?v=prompt-autofix'
                 : (name === 'training'
                   ? '?v=sakpix-training-polish'
                   : (name === 'quality'
@@ -146,7 +146,8 @@
       <button class="nav active" data-view="guide">Guide</button>
       <button class="nav" data-view="dashboard">Dashboard</button>
       <button class="nav" data-view="tasks">Task Center</button>
-      <button class="nav mode-detail" data-view="generate">Generate Sprite</button>
+      <button class="nav" data-view="generate">Sprite Lab</button>
+      <button class="nav" data-view="lpc">LPC</button>
       <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
       <button class="nav" data-view="animation_player">Animation Player</button>
@@ -275,6 +276,7 @@
     <section class="view" id="view-frame_editor"></section>
 
     <section class="view" id="view-training"></section>
+    <section class="view" id="view-lpc"></section>
 
     <section class="view" id="view-release"></section>
 
@@ -528,7 +530,7 @@
         'js/lighting_preview.js',
         'js/cloud_hub.js',
         'js/frame_editor.js',
-        'js/prompt_builder.js?v=generate-compact-fit2',
+        'js/prompt_builder.js?v=prompt-autofix',
         'js/seed_gallery.js',
         'js/frame_review.js',
         'js/palette_harmonizer.js',
@@ -548,7 +550,7 @@
         'js/app_presets.js?v=sakpix-training-polish',
         'js/app_status.js',
         'js/app_jobs.js?v=generate-compact-fit2',
-        'js/app_forms.js?v=training-lora-launcher',
+        'js/app_forms.js?v=prompt-autofix',
         'js/app_listings.js?v=generate-compact-fit2',
         'js/wizard_templates.js',
         'js/wizard_state.js',
@@ -557,7 +559,7 @@
         'js/wizard.js?v=wizard-reference-upload-buttons',
         'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
         'js/command_palette.js',
-        'js/ux_enhancements.js?v=training-lora-launcher',
+        'js/ux_enhancements.js?v=sprite-lab-visible',
           'js/app_main.js?v=quality-lab-compact'
         ];
       }

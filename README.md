@@ -86,7 +86,22 @@ If you want to use the text-to-video generation features:
 1.  Navigate to the **Setup** view in the Web UI.
 2.  Install or link your local/remote **ComfyUI** instance.
 3.  Load the Wan model tiers (from Wan 2.1 1.3B up to heavier 5B or 14B models).
-4.  Launch text-guided character generations directly from the **Generate** interface.
+4.  Use **Sprite Lab** to choose one or more actions, one or more directions, or **All** directions.
+5.  Leave **Start ComfyUI if needed** enabled when you want SpriteForge to start the local ComfyUI server automatically before generation.
+6.  Review the **Final prompt preview** and use **AI Auto Fix** to add sprite-safe language before running.
+
+### 4. Build LPC Characters and Training Data
+SpriteForge now includes a dedicated **LPC** tab for Universal LPC paper-doll assets:
+
+*   Load the bundled/local Universal LPC asset folder and choose body, hair, clothes, weapons, and accessories from LPC-style picker panels.
+*   Preview the composed character in the center pane and zoom with the mouse wheel, zoom buttons, or slider.
+*   Compose a single character sheet, build a balanced batch dataset, run dataset QA, and prepare an LPC LoRA run from the same tab.
+*   Use **Training Lab -> LPC** when you need lower-level catalog scans, parts datasets, or batch controls.
+
+The LPC source assets are local-only and are not bundled into release ZIPs or pushed as generated output.
+
+### 5. Cloud Image Providers and API Keys
+Open **Setup** or **Cloud Hub** to inspect cloud image provider readiness and save local API keys. Supported provider slots include Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Free-tier availability depends on each provider and model account; SpriteForge reports provider capability but does not guarantee quota or pricing.
 
 ---
 

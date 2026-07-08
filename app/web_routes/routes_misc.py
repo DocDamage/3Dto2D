@@ -18,8 +18,15 @@ from services.database_service import DatabaseService
 from services.websocket_service import ProgressEventHub, progress_transport_status
 from services.project_service import ProjectService
 from services.cloud_hub_service import cloud_hub_status, upsert_cloud_node, remove_cloud_node, load_cloud_nodes, plan_cloud_queue_assignments
-from services.cloud_image_generation_service import cloud_image_provider_status, build_cloud_generation_plan
+from services.cloud_image_generation_service import (
+    cloud_image_provider_status, build_cloud_generation_plan,
+    save_provider_api_key, delete_provider_api_key,
+)
 from services.training_dataset_service import preview_training_dataset
+from services.lpc_parts_service import (
+    scan_lpc_parts, build_lpc_part_dataset, compose_lpc_character,
+    lpc_catalog_options, compose_lpc_batch, qa_lpc_dataset, lpc_lora_prefill,
+)
 from services.architecture_status_service import architecture_status
 from services.advisor_service import advise as advisor_advise
 from services.generation_intelligence import (
@@ -27,7 +34,7 @@ from services.generation_intelligence import (
     mark_review_decision, restore_review_decision, rerun_similar_payload,
     estimate_job_eta
 )
-from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score
+from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score, autofix_from_payload
 from services.api_auth_service import get_session_token
 from services.feature_capability_service import capability_report
 from web_helpers import (
@@ -138,6 +145,156 @@ def post_training_dataset_preview():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 
+@routes_misc.route("/api/lpc/parts/scan", methods=["POST"])
+def post_lpc_parts_scan():
+    body = request.json or {}
+    source_dir = str(body.get("source_dir") or "").strip()
+    if not source_dir:
+        return jsonify({"ok": False, "message": "source_dir is required"}), 400
+    try:
+        return jsonify(scan_lpc_parts(
+            source_dir,
+            output_dir=str(body.get("output") or "").strip() or None,
+            thumbnail_limit=int(body.get("thumbnail_limit") or 24),
+            max_files=int(body.get("max_files") or 0),
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/parts/dataset", methods=["POST"])
+def post_lpc_part_dataset():
+    body = request.json or {}
+    source_dir = str(body.get("source_dir") or "").strip()
+    if not source_dir:
+        return jsonify({"ok": False, "message": "source_dir is required"}), 400
+    try:
+        return jsonify(build_lpc_part_dataset(
+            source_dir,
+            output_dir=str(body.get("output") or "").strip() or None,
+            trigger=str(body.get("trigger") or "lpc_parts"),
+            max_samples=int(body.get("max_samples") or 0),
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/compose", methods=["POST"])
+def post_lpc_compose():
+    body = request.json or {}
+    source_dir = str(body.get("source_dir") or "").strip()
+    if not source_dir:
+        return jsonify({"ok": False, "message": "source_dir is required"}), 400
+    selections = body.get("selections")
+    if not isinstance(selections, dict):
+        selections = str(body.get("parts") or "").strip()
+    try:
+        return jsonify(compose_lpc_character(
+            source_dir,
+            output_dir=str(body.get("compose_output") or body.get("output_dir") or "").strip() or None,
+            action=str(body.get("compose_action") or body.get("action") or "idle"),
+            body_type=str(body.get("body_type") or "male"),
+            selections=selections,
+            name=str(body.get("compose_name") or body.get("name") or ""),
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/options", methods=["POST"])
+def post_lpc_options():
+    body = request.json or {}
+    source_dir = str(body.get("source_dir") or "").strip()
+    if not source_dir:
+        return jsonify({"ok": False, "message": "source_dir is required"}), 400
+    categories = body.get("categories")
+    if isinstance(categories, str):
+        categories = [part.strip() for part in categories.split(",") if part.strip()]
+    try:
+        return jsonify(lpc_catalog_options(
+            source_dir,
+            categories=list(categories) if isinstance(categories, list) else None,
+            limit_per_category=int(body.get("limit_per_category") or 240),
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/batch-compose", methods=["POST"])
+def post_lpc_batch_compose():
+    body = request.json or {}
+    source_dir = str(body.get("source_dir") or "").strip()
+    if not source_dir:
+        return jsonify({"ok": False, "message": "source_dir is required"}), 400
+    categories = body.get("batch_categories") or body.get("categories")
+    if isinstance(categories, str):
+        categories = [part.strip() for part in categories.split(",") if part.strip()]
+    try:
+        return jsonify(compose_lpc_batch(
+            source_dir,
+            output_dir=str(body.get("batch_output") or body.get("output_dir") or "").strip() or None,
+            count=int(body.get("batch_count") or body.get("count") or 24),
+            action=str(body.get("batch_action") or body.get("compose_action") or body.get("action") or "idle"),
+            body_type=str(body.get("body_type") or "male"),
+            actions=[part.strip() for part in str(body.get("batch_actions") or "").split(",") if part.strip()] or None,
+            body_types=[part.strip() for part in str(body.get("batch_body_types") or "").split(",") if part.strip()] or None,
+            categories=list(categories) if isinstance(categories, list) else None,
+            seed=int(body.get("batch_seed")) if str(body.get("batch_seed") or "").strip() else None,
+            trigger=str(body.get("trigger") or "lpc_composed"),
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/dataset-qa", methods=["POST"])
+def post_lpc_dataset_qa():
+    body = request.json or {}
+    dataset_dir = str(body.get("dataset_dir") or body.get("batch_output") or body.get("output_dir") or "").strip()
+    if not dataset_dir:
+        return jsonify({"ok": False, "message": "dataset_dir is required"}), 400
+    try:
+        return jsonify(qa_lpc_dataset(
+            dataset_dir,
+            min_layers=int(body.get("min_layers") or 3),
+            max_balance_delta=int(body.get("max_balance_delta") or 2),
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/lora-prefill", methods=["POST"])
+def post_lpc_lora_prefill():
+    body = request.json or {}
+    dataset_dir = str(body.get("dataset_dir") or body.get("batch_output") or body.get("output_dir") or "").strip()
+    if not dataset_dir:
+        return jsonify({"ok": False, "message": "dataset_dir is required"}), 400
+    try:
+        return jsonify(lpc_lora_prefill(dataset_dir))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
 @routes_misc.route("/api/architecture/status", methods=["GET"])
 def get_architecture_status():
     return jsonify(architecture_status())
@@ -166,6 +323,20 @@ def delete_cloud_node(node_id):
 def get_cloud_image_providers():
     provider = str(request.args.get("provider") or "").strip() or None
     return jsonify(cloud_image_provider_status(provider))
+
+@routes_misc.route("/api/cloud/image-provider-key", methods=["POST", "DELETE"])
+def update_cloud_image_provider_key():
+    body = request.json or {}
+    provider = str(body.get("provider") or "").strip()
+    try:
+        if request.method == "DELETE":
+            result = delete_provider_api_key(provider)
+            return jsonify({"ok": True, **result, **cloud_image_provider_status()})
+        api_key = str(body.get("api_key") or "").strip()
+        result = save_provider_api_key(provider, api_key)
+        return jsonify({"ok": True, **result, **cloud_image_provider_status()})
+    except (ValueError, RuntimeError) as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
 
 @routes_misc.route("/api/cloud/image-generation-plan", methods=["POST"])
 def get_cloud_image_generation_plan():
@@ -291,6 +462,23 @@ def lint_prompt_endpoint():
             result = lint_from_payload(full)
         else:
             result = lint_prompt(prompt, negative=negative, action=action)
+        result["ok"] = True
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/prompt/autofix", methods=["GET", "POST"])
+def autofix_prompt_endpoint():
+    if request.method == "GET":
+        return jsonify({
+            "ok": False,
+            "message": "Prompt auto-fix must be triggered from the Generate form."
+        }), 400
+    body = request.json or {}
+    if not isinstance(body, dict):
+        return jsonify({"ok": False, "message": "JSON object is required"}), 400
+    try:
+        result = autofix_from_payload(body)
         result["ok"] = True
         return jsonify(result)
     except Exception as exc:

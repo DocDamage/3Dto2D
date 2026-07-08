@@ -5,8 +5,8 @@
 1. Double-click `START_HERE.bat` in the main folder.
 2. Open **Launchpad** and run the **No-GPU Demo**.
 3. Open **Setup**, run the first-run diagnostic, install the safe WAN setup, and launch ComfyUI.
-4. Open **Generate Sprite**.
-5. Describe the character, choose an action/direction, and use the `debug` or recommended profile first.
+4. Open **Sprite Lab**.
+5. Describe the character, choose one or more actions, choose one or more directions, or select **All** directions, and use the `debug` or recommended profile first.
 6. Watch progress in **Task Center** or **Queue Monitor**.
 7. Review the finished result in **Quality Lab**.
 8. Build a shareable/exportable package in **Release**.
@@ -48,9 +48,36 @@ Bad:
 cinematic shot, camera orbit, close-up, complex background, motion blur, scene cut, dramatic zoom
 ```
 
+Use the **Final prompt preview** before generating. The **AI Auto Fix** button calls SpriteForge's prompt fixer and adds sprite-safe cues such as locked camera, clean silhouette, transparent/chroma background language, and negative prompt cleanup.
+
+## Sprite Lab generation controls
+
+- **Actions** can include more than one animation in a single request, such as `idle`, `walk`, `slash`, and `cast`.
+- **Directions** can include individual directions or **All**, which expands to the full directional set.
+- **T-pose** and **A-pose** are available for reference/pose generation workflows.
+- **Start ComfyUI if needed** should stay enabled for normal local generation. ComfyUI may still take time to load Python, custom nodes, models, and GPU memory before it can accept work.
+- Generated previews and recent outputs persist when changing tabs; use **History** for previous experiment records and **Task Center/Logs** for job logs.
+
 ## Reference image mode
 
 Reference-image WAN workflows are heavier than basic text-to-video. Use a remote/cloud ComfyUI server for best results.
+
+## LPC character workflow
+
+Use the dedicated **LPC** tab when you want a paper-doll character builder like the Universal LPC generator:
+
+1. Click **LPC**.
+2. Click **Load Pickers** if the part dropdowns have not loaded yet.
+3. Choose body, hair, clothing, weapons, and accessories from the left/right panels.
+4. Click **Compose** to build a single LPC spritesheet.
+5. Zoom the center preview with the mouse wheel, zoom buttons, or slider.
+6. Click **Build Batch** to create a composed LPC training dataset, then **Run QA**, then **Prepare LoRA**.
+
+Use **Training Lab -> LPC** for advanced catalog scans, LPC parts datasets, direct composer inputs, and LoRA handoff controls.
+
+## Cloud provider keys
+
+Open **Setup** or **Cloud Hub** to add local API keys for Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Keys are stored locally in the app environment file. Free/community image generation depends on the provider, region, account, model, and current quota.
 
 ## Existing video conversion
 

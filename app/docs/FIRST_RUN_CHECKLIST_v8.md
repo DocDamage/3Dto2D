@@ -9,7 +9,7 @@ This guide keeps its historical filename for compatibility, but the workflow bel
 5. Open **Setup** and run **Start First Run Diagnostic**.
 6. Run **Install Everything: Safe Wan 2.1**.
 7. Click **Launch ComfyUI**.
-8. Open **Generate Sprite**.
+8. Open **Sprite Lab**.
 9. Use profile `debug` for the first WAN test.
 10. After that works, use the recommended local profile such as `rtx3060_12gb`.
 
@@ -26,3 +26,10 @@ cinematic camera, camera movement, zoom, close-up, complex background, dramatic 
 ```
 
 When you are ready to share outputs, build a fresh package from the **Release** tab. Release and project bundles should not contain `app/vendor/`, model weights, logs, uploaded videos, or generated release folders.
+
+Optional follow-up checks:
+
+1. In **Sprite Lab**, use **AI Auto Fix** in the final prompt preview before your first real generation.
+2. Try selecting multiple actions and **All** directions only after the single debug sprite works.
+3. In **LPC**, click **Load Pickers**, compose a character, and confirm the center preview zooms with the mouse wheel or slider.
+4. In **Setup** or **Cloud Hub**, add only the API keys you want stored locally for cloud image/provider experiments.

@@ -1,0 +1,94 @@
+<section class="view" id="view-lpc">
+  <div class="lpc-generator">
+    <header class="lpc-titlebar">
+      <div>
+        <p class="eyebrow">Paper-doll sprite builder</p>
+        <h2>LPC Character Generator</h2>
+      </div>
+      <div class="lpc-title-actions">
+        <label>Palette
+          <select id="lpcPalette"><option>Default</option></select>
+        </label>
+        <button class="mini" id="lpcLoadPickers" type="button">Load Pickers</button>
+      </div>
+    </header>
+
+    <input type="hidden" id="lpcSourceDir" value="C:\Users\dferr\OneDrive\Desktop\spriteforge_studio_v12_final_polish\app\input\lpc_assets\Universal-LPC-Spritesheet-Character-Generator" />
+
+    <div class="lpc-stage">
+      <form class="lpc-panel" id="lpcLeftPanel">
+        <label>Race<select data-lpc-fixed="race"><option>Human</option></select></label>
+        <label>Gender<select id="lpcGender"><option value="male">Male</option><option value="female">Female</option></select></label>
+        <label>Body<select id="lpcBody"><option value="regular">Regular</option><option value="thin">Thin</option><option value="muscular">Muscular</option><option value="child">Child</option><option value="teen">Teen</option></select></label>
+        <label>Wings<select data-lpc-slot="body" data-lpc-query="wings"><option value="">None</option></select></label>
+        <label>Tail<select data-lpc-slot="body" data-lpc-query="tail"><option value="">None</option></select></label>
+        <label>Horns<select data-lpc-slot="head" data-lpc-query="horn"><option value="">None</option></select></label>
+        <label>Hair<select data-lpc-slot="hair"><option value="">None</option></select></label>
+        <label>Hair Addon<select data-lpc-slot="hair" data-lpc-query="addon"><option value="">None</option></select></label>
+        <label>Eyes<select data-lpc-slot="eyes"><option value="">Human</option></select></label>
+        <label>Ears<select data-lpc-slot="head" data-lpc-query="ears"><option value="">Base</option></select></label>
+        <label>Nose<select data-lpc-slot="facial" data-lpc-query="nose"><option value="">Base</option></select></label>
+        <label>Facial Hair<select data-lpc-slot="beards"><option value="">None</option></select></label>
+        <label>Body Addon 1<select data-lpc-slot="body"><option value="">None</option></select></label>
+        <label>Body Addon 2<select data-lpc-slot="body"><option value="">None</option></select></label>
+      </form>
+
+      <section class="lpc-preview-stage">
+        <div class="lpc-preview-toolbar">
+          <label>Action
+            <select id="lpcAction">
+              <option value="idle">Idle</option>
+              <option value="walk">Walk</option>
+              <option value="run">Run</option>
+              <option value="slash">Slash</option>
+              <option value="cast">Cast</option>
+              <option value="shoot">Shoot</option>
+              <option value="thrust">Thrust</option>
+              <option value="hurt">Hurt</option>
+            </select>
+          </label>
+          <label>Name<input id="lpcCharacterName" value="lpc_character" /></label>
+        </div>
+        <div class="lpc-preview-window" id="lpcPreviewWindow">
+          <img id="lpcPreviewImage" alt="LPC character preview" />
+          <div class="lpc-preview-empty" id="lpcPreviewEmpty">Compose a character to preview it here.</div>
+        </div>
+        <div class="lpc-zoom-row">
+          <button class="mini" id="lpcZoomOut" type="button">-</button>
+          <input id="lpcZoom" type="range" min="1" max="8" step="0.25" value="3" />
+          <button class="mini" id="lpcZoomIn" type="button">+</button>
+          <span id="lpcZoomLabel">300%</span>
+        </div>
+      </section>
+
+      <form class="lpc-panel" id="lpcRightPanel">
+        <label>Mask<select data-lpc-slot="hat" data-lpc-query="mask"><option value="">None</option></select></label>
+        <label>Hat<select data-lpc-slot="hat"><option value="">None</option></select></label>
+        <label>Facial<select data-lpc-slot="facial"><option value="">None</option></select></label>
+        <label>Suit<select data-lpc-slot="torso" data-lpc-query="suit"><option value="">None</option></select></label>
+        <label>Coverall<select data-lpc-slot="torso" data-lpc-query="coverall"><option value="">None</option></select></label>
+        <label>Shirt<select data-lpc-slot="torso"><option value="">Shirt</option></select></label>
+        <label>Gloves<select data-lpc-slot="arms"><option value="">None</option></select></label>
+        <label>Belt<select data-lpc-slot="waist"><option value="">None</option></select></label>
+        <label>Pants<select data-lpc-slot="legs"><option value="">Pants</option></select></label>
+        <label>Shoes<select data-lpc-slot="feet"><option value="">None</option></select></label>
+        <label>Back<select data-lpc-slot="backpack"><option value="">None</option></select></label>
+        <label>Mainhand<select data-lpc-slot="weapons"><option value="">None</option></select></label>
+        <label>Ammo<select data-lpc-slot="ammo"><option value="">None</option></select></label>
+        <label>Offhand<select data-lpc-slot="shield"><option value="">None</option></select></label>
+      </form>
+    </div>
+
+    <footer class="lpc-footer">
+      <label class="checkbox-line"><input id="lpcShowBody" type="checkbox" checked /> Show Body</label>
+      <label class="checkbox-line"><input id="lpcShowAddons" type="checkbox" checked /> Show Body Addons</label>
+      <label class="checkbox-line"><input id="lpcCastShadow" type="checkbox" /> Cast Shadow</label>
+      <button class="mini primary" id="lpcComposeCharacter" type="button">Compose</button>
+      <button class="mini" id="lpcBuildBatch" type="button">Build Batch</button>
+      <button class="mini" id="lpcRunQa" type="button" disabled>Run QA</button>
+      <button class="mini" id="lpcPrepareLora" type="button" disabled>Prepare LoRA</button>
+      <button class="mini" type="button" data-open="output/lpc_composed">Open Output</button>
+    </footer>
+    <div id="lpcStatus" class="lpc-status">Ready.</div>
+  </div>
+</section>

@@ -1,5 +1,6 @@
 import argparse
 import sys
+from pathlib import Path
 from services.generation_commands import add_sprite_polish_args
 from spriteforge_commands import (
     ROOT,
@@ -10,6 +11,21 @@ from spriteforge_commands import (
     cmd_convert_video,
     cmd_cloud_image_sprite,
 )
+
+
+ALL_DIRECTIONS = ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]
+
+
+def _csv_values(value, default=None):
+    items = [item.strip() for item in str(value or "").split(",") if item.strip()]
+    return items or list(default or [])
+
+
+def _expand_directions(value, default=None):
+    directions = _csv_values(value, default or ["right"])
+    if any(direction.lower() == "all" for direction in directions):
+        return list(ALL_DIRECTIONS)
+    return directions
 
 
 def add_wan_args(s: argparse.ArgumentParser) -> None:
@@ -87,6 +103,53 @@ def add_parsers(sub: argparse._SubParsersAction) -> None:
     s.add_argument("--native-only", action="store_true", help="Require native in-app backend only. Fail instead of using external ComfyUI runtime.")
     s.add_argument("--native-source-video", default=None, help="Use native in-app conversion from an existing source video instead of WAN generation.")
     s.set_defaults(func=cmd_generate_sprite)
+
+    s = sub.add_parser("generate-batch", help="Generate multiple sprite actions and/or directions sequentially")
+    add_wan_args(s)
+    s.add_argument("--actions", default=None, help="Comma-separated actions to generate")
+    s.add_argument("--directions", default=None, help="Comma-separated directions, or all")
+    s.add_argument("--start-comfy", action="store_true")
+    s.add_argument("--stop-comfy", action="store_true")
+    s.add_argument("--timeout", type=float, default=3600)
+    s.add_argument("--comfy-timeout", type=float, default=180)
+    s.add_argument("--poll-seconds", type=float, default=5)
+    s.add_argument("--stable-seconds", type=float, default=5)
+    s.add_argument("--no-history", action="store_true")
+    s.add_argument("--no-folder-fallback", action="store_true")
+    s.add_argument("--quality-check", action="store_true")
+    s.add_argument("--cell-size", default=None)
+    s.add_argument("--fps", type=float, default=None)
+    s.add_argument("--key-color", default=None)
+    s.add_argument("--qa-threshold-loop-rmse", type=float, default=None)
+    s.add_argument("--qa-threshold-foot-drift", type=float, default=None)
+    s.add_argument("--qa-threshold-center-drift", type=float, default=None)
+    s.add_argument("--power-of-two", action="store_true")
+    add_sprite_polish_args(s, defaults=False)
+    s.set_defaults(pack_mode="grid")
+    s.add_argument("--lora-name", default=None)
+    s.add_argument("--output", default=None)
+    s.add_argument("--native-only", action="store_true")
+    s.add_argument("--native-source-video", default=None)
+
+    def _generate_batch(a):
+        actions = _csv_values(a.actions, [a.action or "idle"])
+        directions = _expand_directions(a.directions, [a.direction or "right"])
+        base_output = str(a.output or "").strip()
+        base_prefix = str(a.output_prefix or "").strip()
+        for action in actions:
+            for direction in directions:
+                item = argparse.Namespace(**vars(a))
+                item.action = action
+                item.direction = direction
+                if base_output:
+                    stem = Path(base_output)
+                    item.output = str(stem.parent / f"{stem.name}_{action}_{direction}")
+                if base_prefix:
+                    item.output_prefix = f"{base_prefix}_{action}_{direction}"
+                print(f"Generating {action} / {direction}")
+                cmd_generate_sprite(item)
+
+    s.set_defaults(func=_generate_batch)
 
     s = sub.add_parser("watch-output", help="Watch ComfyUI output and convert new videos into sprites")
     s.add_argument("--folder", default=None)

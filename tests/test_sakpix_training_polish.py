@@ -32,10 +32,12 @@ def test_default_presets_include_trained_sakpix_character_families():
 
 def test_easy_mode_styles_surface_trained_sakpix_options():
     data = json.loads((APP / "config" / "easy_presets.json").read_text(encoding="utf-8"))
+    easy_ui = (APP / "services" / "easy_ui_mixin.py").read_text(encoding="utf-8")
 
     styles = data["styles"]
     assert any("trained SakPix" in style and "side-view" in style for style in styles)
     assert any("trained SakPix" in style and "top-down RPG" in style for style in styles)
+    assert "ACTION_TEMPLATES" in easy_ui
 
 
 def test_archetype_browser_has_sakpix_set_like_filters():

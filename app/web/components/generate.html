@@ -91,29 +91,37 @@
         </div>
       </details>
 
-      <div class="row">
-        <label>Action
-          <select name="sprite_action">
-            <option>idle</option>
-            <option selected>walk</option>
-            <option>run</option>
-            <option>attack_light</option>
-            <option>attack_heavy</option>
-            <option>cast</option>
-            <option>jump</option>
-            <option>hurt</option>
-            <option>death</option>
-          </select>
-        </label>
-        <label>Direction
-          <select name="direction">
-            <option>front</option>
-            <option selected>right</option>
-            <option>left</option>
-            <option>back</option>
-            <option>three_quarter</option>
-          </select>
-        </label>
+      <input type="hidden" name="sprite_action" value="walk" />
+      <input type="hidden" name="direction" value="right" />
+      <input type="hidden" name="default_actions" value="walk" />
+      <input type="hidden" name="default_directions" value="right" />
+      <div class="row generate-choice-row">
+        <fieldset class="choice-fieldset" id="generateActionChoices">
+          <legend>Actions</legend>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="idle" />Idle</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="walk" checked />Walk</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="t_pose" />T-pose</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="a_pose" />A-pose</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="run" />Run</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="attack_light" />Attack light</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="attack_heavy" />Attack heavy</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="cast" />Cast</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="jump" />Jump</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="hurt" />Hurt</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-action value="death" />Death</label>
+        </fieldset>
+        <fieldset class="choice-fieldset" id="generateDirectionChoices">
+          <legend>Directions</legend>
+          <label class="choice-chip emphasis"><input type="checkbox" data-generate-direction-all value="all" />All</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="front" />Front</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="front_right" />Front right</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="right" checked />Right</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="back_right" />Back right</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="back" />Back</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="back_left" />Back left</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="left" />Left</label>
+          <label class="choice-chip"><input type="checkbox" data-generate-direction value="front_left" />Front left</label>
+        </fieldset>
       </div>
 
       <!-- Style Options (Collapsed by default) -->
@@ -218,10 +226,10 @@
           </div>
           <div class="row">
             <label>Default Actions
-              <input name="default_actions" placeholder="idle,walk,run,jump,hurt" />
+              <input name="default_actions_text" placeholder="idle,walk,run,jump,hurt" />
             </label>
             <label>Default Directions
-              <input name="default_directions" placeholder="left,right" />
+              <input name="default_directions_text" placeholder="left,right" />
             </label>
           </div>
         </div>
@@ -314,7 +322,10 @@
             <b>Final prompt preview</b>
             <small>Updates as you edit generation fields.</small>
           </div>
-          <span class="prompt-quality-badge muted" id="generatePromptQuality">checking</span>
+          <div class="prompt-preview-actions">
+            <button class="mini primary" id="btnAutoFixPrompt" type="button">AI auto fix</button>
+            <span class="prompt-quality-badge muted" id="generatePromptQuality">checking</span>
+          </div>
         </div>
         <div class="generation-estimate" id="generateEstimate">Runtime estimate: learning from previous runs.</div>
         <pre id="generatePromptPreview" class="prompt-preview-text">Prompt preview will appear here.</pre>

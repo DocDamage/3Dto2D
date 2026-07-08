@@ -41,6 +41,25 @@ def test_cloud_image_provider_status_does_not_expose_secret_values(monkeypatch):
     assert provider["configured"] is True
     assert provider["configured_env_name"] == "OPENAI_API_KEY"
     assert "sk-secret-value" not in json.dumps(status)
+    assert "huggingface" in cloud_image_provider_status()["providers"]
+
+
+def test_provider_api_keys_save_and_delete_locally(tmp_path, monkeypatch):
+    from services.cloud_image_generation_service import (
+        cloud_image_provider_status,
+        delete_provider_api_key,
+        save_provider_api_key,
+    )
+
+    monkeypatch.delenv("HUGGINGFACE_API_KEY", raising=False)
+    saved = save_provider_api_key("huggingface", "hf_test_secret_value", root=tmp_path)
+    assert saved["env_name"] == "HUGGINGFACE_API_KEY"
+    assert "hf_test_secret_value" in (tmp_path / ".env").read_text(encoding="utf-8")
+    assert cloud_image_provider_status("huggingface")["providers"]["huggingface"]["configured"] is True
+
+    removed = delete_provider_api_key("huggingface", root=tmp_path)
+    assert "HUGGINGFACE_API_KEY" in removed["removed"]
+    assert "hf_test_secret_value" not in ((tmp_path / ".env").read_text(encoding="utf-8") if (tmp_path / ".env").exists() else "")
 
 
 def test_cloud_generation_plan_is_secret_safe_and_provider_specific(monkeypatch):
@@ -73,6 +92,18 @@ def test_cloud_generation_plan_is_secret_safe_and_provider_specific(monkeypatch)
     assert "solid magenta background" in plan["hardened_prompts"][0]
     assert "nearest-neighbor" in json.dumps(plan["processing_steps"])
     assert "gemini-secret-value" not in dumped
+
+
+def test_huggingface_plan_is_available_for_free_tier_preview(monkeypatch):
+    from services.cloud_image_generation_service import build_cloud_generation_plan
+
+    monkeypatch.setenv("HUGGINGFACE_API_KEY", "hf-secret-value")
+    plan = build_cloud_generation_plan(prompt="tiny hero t-pose", provider="huggingface", frame_count=1)
+
+    assert plan["provider"] == "huggingface"
+    assert plan["provider_configured"] is True
+    assert plan["model"] == "stabilityai/stable-diffusion-xl-base-1.0"
+    assert "hf-secret-value" not in json.dumps(plan)
 
 
 def test_cloud_image_source_processing_builds_engine_ready_sheet(tmp_path):

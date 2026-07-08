@@ -21,6 +21,19 @@ from services.lora_training_progress_service import summarize_lora_training_prog
 routes_jobs = Blueprint("routes_jobs", __name__)
 
 ARCHETYPE_PROVENANCE_SCHEMA = "spriteforge.archetype_generation_provenance.v1"
+ALL_DIRECTIONS = ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]
+
+
+def _csv_values(value, default=None):
+    items = [item.strip() for item in str(value or "").split(",") if item.strip()]
+    return items or list(default or [])
+
+
+def _expand_directions(value, default=None):
+    directions = _csv_values(value, default or ["right"])
+    if any(direction.lower() == "all" for direction in directions):
+        return list(ALL_DIRECTIONS)
+    return directions
 
 
 def _job_status_payload(job, running: bool):
@@ -184,11 +197,11 @@ def run_action():
     # Disk Budget Guard check
     estimated_gb = 1.0
     if action in {"generate_sprite", "animate_existing_sprite"}:
-        act_list = [a.strip() for a in str(payload.get("default_actions") or "").split(",") if a.strip()]
-        dir_list = [d.strip() for d in str(payload.get("default_directions") or "").split(",") if d.strip()]
+        act_list = _csv_values(payload.get("default_actions") or payload.get("actions") or payload.get("sprite_action"), [payload.get("sprite_action") or "idle"])
+        dir_list = _expand_directions(payload.get("default_directions") or payload.get("directions") or payload.get("direction"), [payload.get("direction") or "right"])
         if action == "animate_existing_sprite":
-            act_list = [a.strip() for a in str(payload.get("existing_sprite_actions") or payload.get("default_actions") or "").split(",") if a.strip()]
-            dir_list = [d.strip() for d in str(payload.get("existing_sprite_directions") or payload.get("default_directions") or "").split(",") if d.strip()]
+            act_list = _csv_values(payload.get("existing_sprite_actions") or payload.get("default_actions") or payload.get("actions") or payload.get("sprite_action"), ["idle"])
+            dir_list = _expand_directions(payload.get("existing_sprite_directions") or payload.get("default_directions") or payload.get("directions") or payload.get("direction"), ["right"])
         num_jobs = max(1, len(act_list) * len(dir_list))
         estimated_gb = 0.2 if action == "animate_existing_sprite" else num_jobs * 0.8
         
@@ -283,7 +296,7 @@ def retry_safe_job():
         return jsonify({"ok": False, "message": "Job not found in history"}), 404
     logs = "\n".join(job.get("logs") or [])
     original_payload = dict(job.get("metadata") or {})
-    original_payload["action"] = "generate_sprite" if any("generate-sprite" in str(c) for c in job.get("command") or []) else original_payload.get("action", "")
+    original_payload["action"] = "generate_sprite" if any(str(c) in {"generate-sprite", "generate-batch"} for c in job.get("command") or []) else original_payload.get("action", "")
     retry_payload = safer_retry_payload(logs, original_payload)
     if retry_payload.get("action") == "launch_comfy":
         ok = ComfyService.launch()

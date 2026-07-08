@@ -141,6 +141,16 @@ textarea {
     max-width: 100%;
   }
 
+  #view-packs.view.active .card,
+  #view-release.view.active .card,
+  #view-setup.view.active .card,
+  #view-logs.view.active .card {
+    max-block-size: none !important;
+    max-height: none !important;
+    overflow: visible;
+    resize: none !important;
+  }
+
   .training-tab-panel.active,
   .result-dialog,
   .wizard-container,

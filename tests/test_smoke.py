@@ -137,6 +137,43 @@ def test_power_of_two_web_option_forwarded():
     assert parsed.output is None
 
 
+def test_generate_multi_action_and_all_direction_forwarded():
+    from web_helpers import build_action_command
+    from spriteforge_unified import build_parser
+
+    generate_html = (APP / "web" / "components" / "generate.html").read_text(encoding="utf-8")
+    form_js = (APP / "web" / "js" / "app_forms.js").read_text(encoding="utf-8")
+
+    title, cmd = build_action_command({
+        "action": "generate_sprite",
+        "sprite_action": "idle",
+        "direction": "all",
+        "default_actions": "idle,walk,run",
+        "default_directions": "all",
+        "quality_check": False,
+    })
+
+    assert title == "Generate WAN sprite batch"
+    assert "generate-batch" in cmd
+    assert "--actions" in cmd
+    assert cmd[cmd.index("--actions") + 1] == "idle,walk,run"
+    assert "--directions" in cmd
+    directions = cmd[cmd.index("--directions") + 1]
+    for direction in ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]:
+        assert direction in directions
+
+    assert 'data-generate-direction-all' in generate_html
+    assert 'data-generate-action value="walk"' in generate_html
+    assert 'name="default_actions"' in generate_html
+    assert "GENERATE_ALL_DIRECTIONS" in form_js
+    assert "loadGenerateActionChoices" in form_js
+    assert "/api/prompt_builder/options" in form_js
+
+    parsed = build_parser().parse_args(["generate-batch", "--actions", "idle,walk", "--directions", "all"])
+    assert parsed.actions == "idle,walk"
+    assert parsed.directions == "all"
+
+
 def test_native_polish_web_options_forwarded():
     from web_helpers import build_action_command
     from spriteforge_unified import build_parser

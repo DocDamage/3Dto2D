@@ -2270,6 +2270,7 @@
 
     syncComparePreview();
     populateInspector(asset);
+    loadVisualQaReport(asset);
     compareActiveAssetToStyle();
   }
 
@@ -2453,6 +2454,59 @@
     $('#inspectorCleanupBtn').disabled = false;
     $('#inspectorEditBtn').disabled = false;
     $('#inspectorExportBtn').disabled = false;
+    const refreshQaBtn = $('#inspectorRefreshQaBtn');
+    if (refreshQaBtn) {
+      refreshQaBtn.disabled = false;
+      refreshQaBtn.onclick = () => loadVisualQaReport(activeAsset);
+    }
+  }
+
+  async function loadVisualQaReport(asset) {
+    const rowsEl = $('#pixelVisualQaRows');
+    const scoreEl = $('#pixelVisualQaScore');
+    if (!rowsEl || !scoreEl || !asset) return;
+    rowsEl.innerHTML = '<div class="pixel-visual-qa-empty">Checking visual QA...</div>';
+    scoreEl.textContent = '...';
+    scoreEl.className = 'badge';
+
+    try {
+      const res = await api('/api/pixel-assets/qa/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asset_id: asset.asset_id, asset })
+      });
+      if (!res.ok) {
+        throw new Error(res.message || 'QA report failed.');
+      }
+      renderVisualQaReport(res);
+    } catch (err) {
+      rowsEl.innerHTML = `<div class="pixel-visual-qa-empty">${escapeHtml(err.message || 'QA report failed.')}</div>`;
+      scoreEl.textContent = 'ERR';
+      scoreEl.className = 'badge qa-fail';
+    }
+  }
+
+  function renderVisualQaReport(report) {
+    const rowsEl = $('#pixelVisualQaRows');
+    const scoreEl = $('#pixelVisualQaScore');
+    if (!rowsEl || !scoreEl) return;
+    const statusClass = report.status === 'pass' ? 'qa-pass' : report.status === 'fail' ? 'qa-fail' : 'qa-warn';
+    scoreEl.textContent = `${report.score}`;
+    scoreEl.className = `badge ${statusClass}`;
+    rowsEl.innerHTML = '';
+    (report.gates || []).forEach(gate => {
+      const row = document.createElement('div');
+      row.className = `pixel-visual-qa-row ${gate.status || 'warn'}`;
+      row.innerHTML = `
+        <div>
+          <div class="pixel-visual-qa-label">${escapeHtml(gate.label)}</div>
+          <div class="pixel-visual-qa-value">${escapeHtml(gate.value || '')}</div>
+          ${gate.recommendation ? `<div class="pixel-visual-qa-note">${escapeHtml(gate.recommendation)}</div>` : ''}
+        </div>
+        <span class="pixel-visual-qa-status ${escapeHtml(gate.status || 'warn')}">${escapeHtml(gate.status || 'warn')}</span>
+      `;
+      rowsEl.appendChild(row);
+    });
   }
 
   function renderPartVariants(variants) {
@@ -2603,6 +2657,8 @@
         overallEl.textContent = `${(match.overall * 100).toFixed(0)}%`;
         overallEl.className = match.ok ? 'badge qa-pass' : 'badge qa-warn';
       }
+      activeAsset.style_match = match;
+      loadVisualQaReport(activeAsset);
       if (showToast) {
         toast(match.ok ? 'Selected asset matches the project style.' : 'Selected asset may need style repair.');
       }

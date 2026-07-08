@@ -564,6 +564,26 @@ Return a plain-English Pixel Studio failure explainer for UI panels and troubles
 }
 ```
 
+### `POST /api/pixel-assets/qa/report`
+
+Build a visual QA report for a Pixel Studio asset from its sidecar metadata.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123"
+}
+```
+
+The UI may also send an `asset` object to avoid re-reading the sidecar when the current metadata is already in memory.
+
+**Response includes:**
+- `schema: "spriteforge.pixel_visual_qa.v1"`
+- `score`
+- `status`
+- `gates` for palette, alpha/background, sharpness, tile seams, style match, versions, cleanup, and inpaint trace when present
+- `recommendations`
+
 ### `POST /api/pixel-assets/normalize`
 
 Normalize an existing image to pixel-art constraints.
@@ -652,6 +672,41 @@ Generated Pixel Studio assets also write a `memory` block into their sidecar wit
 ### `GET /api/pixel-assets/loras`
 
 Return built-in Pixel Studio LoRA presets for style/profile controls.
+
+### `GET /api/pixel-assets/providers/capabilities`
+
+Return Pixel Studio provider capability metadata for generation, edit, inpaint, and prompt-help workflows.
+
+Optional query:
+- `provider=openai`
+
+**Response includes:**
+- local fallback and local ComfyUI entries
+- cloud provider configured status without exposing key values
+- `capabilities`
+- `free_tier`
+- provider limits and notes
+
+### `POST /api/pixel-assets/providers/plan`
+
+Return a provider workflow plan for a Pixel Studio action, including whether SpriteForge should use the selected provider or local fallback.
+
+**Request Body:**
+```json
+{
+  "provider": "openai",
+  "workflow": "inpaint"
+}
+```
+
+**Response includes:**
+- `status`
+- `supports_workflow`
+- `configured`
+- `adapter_wired`
+- `fallback_provider`
+- `mock_recommended`
+- `provider_capability`
 
 ### `POST /api/pixel-assets/directions`
 

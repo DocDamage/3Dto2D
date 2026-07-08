@@ -33,6 +33,7 @@ from services.pixel_provider_capability_service import (
     pixel_provider_capabilities,
     provider_workflow_plan,
 )
+from services.pixel_qa_report_service import PixelQAReportService
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_web import app
 
@@ -1318,6 +1319,41 @@ def test_pixel_provider_capabilities_and_plan_endpoint(client, monkeypatch):
     assert api_plan["status"] == "unsupported"
     assert api_plan["mock_recommended"] is True
 
+def test_pixel_visual_qa_report_service_and_endpoint(client):
+    response = client.post(
+        "/api/pixel-assets/generate",
+        data=json.dumps({
+            "asset_type": "items",
+            "prompt": "silver key",
+            "resolution": "16x16",
+            "palette_size": "8",
+            "provider": "openai",
+            "count": 1,
+            "mock": True,
+        }),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    asset = json.loads(response.data.decode("utf-8"))["assets"][0]
+
+    report = PixelQAReportService.build_report({"asset": asset})
+    assert report["schema"] == "spriteforge.pixel_visual_qa.v1"
+    assert report["asset_id"] == asset["asset_id"]
+    assert report["status"] in {"pass", "warn", "fail"}
+    gate_ids = {gate["id"] for gate in report["gates"]}
+    assert {"palette", "alpha", "sharpness"}.issubset(gate_ids)
+
+    endpoint = client.post(
+        "/api/pixel-assets/qa/report",
+        data=json.dumps({"asset_id": asset["asset_id"], "asset": asset}),
+        content_type="application/json",
+    )
+    assert endpoint.status_code == 200
+    endpoint_data = json.loads(endpoint.data.decode("utf-8"))
+    assert endpoint_data["ok"] is True
+    assert endpoint_data["schema"] == "spriteforge.pixel_visual_qa.v1"
+    assert endpoint_data["score"] >= 0
+
 def test_pixel_studio_polish_ui_assets():
     html = (APP / "web" / "components" / "pixel_studio.html").read_text(encoding="utf-8")
     js = (APP / "web" / "js" / "pixel_studio.js").read_text(encoding="utf-8")
@@ -1331,6 +1367,12 @@ def test_pixel_studio_polish_ui_assets():
     assert "/api/pixel-assets/providers/plan" in js
     assert "provider_capable_not_wired" in js
     assert ".pixel-provider-capability-panel" in css
+    assert 'id="pixelVisualQaPanel"' in html
+    assert 'id="pixelVisualQaRows"' in html
+    assert 'id="inspectorRefreshQaBtn"' in html
+    assert "/api/pixel-assets/qa/report" in js
+    assert "renderVisualQaReport" in js
+    assert ".pixel-visual-qa-row" in css
     assert 'data-pixel-workflow="first_asset"' in html
     assert 'id="pixelFailurePanel"' in html
     assert "showPixelFailure" in js

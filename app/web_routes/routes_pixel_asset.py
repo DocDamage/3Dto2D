@@ -30,6 +30,15 @@ def explain_pixel_asset_failure():
     message = str(body.get("message") or body.get("error") or "")
     return jsonify({"ok": True, "explainer": explain_pixel_failure(message)})
 
+@routes_pixel_asset.route("/api/pixel-assets/qa/report", methods=["POST"])
+def pixel_asset_qa_report():
+    body = request.json or {}
+    try:
+        from services.pixel_qa_report_service import PixelQAReportService
+        return jsonify(PixelQAReportService.build_report(body))
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 @routes_pixel_asset.route("/api/pixel-assets/generate", methods=["POST"])
 def generate_pixel_asset():
     body = request.json or {}

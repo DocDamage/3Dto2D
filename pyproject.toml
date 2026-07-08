@@ -30,14 +30,88 @@ spriteforge = "spriteforge_cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "app"}
+include-package-data = true
 py-modules = [
     "spriteforge",
+    "spriteforge_atlas",
+    "spriteforge_batch",
+    "spriteforge_character",
+    "spriteforge_cloud",
     "spriteforge_cli",
-    "spriteforge_web",
-    "spriteforge_unified",
-    "spriteforge_engine_export",
+    "spriteforge_commands",
     "spriteforge_compare",
-    "spriteforge_utils",
+    "spriteforge_demo",
+    "spriteforge_easy",
+    "spriteforge_engine_export",
+    "spriteforge_final",
+    "spriteforge_first_run",
+    "spriteforge_hardware",
+    "spriteforge_launcher",
     "spriteforge_prompts",
-    "spriteforge_maintenance"
+    "spriteforge_maintenance",
+    "spriteforge_pack",
+    "spriteforge_pack_formats",
+    "spriteforge_production",
+    "spriteforge_project",
+    "spriteforge_qc",
+    "spriteforge_quality",
+    "spriteforge_queue",
+    "spriteforge_remote",
+    "spriteforge_repro",
+    "spriteforge_studio",
+    "spriteforge_support_bundle",
+    "spriteforge_unified",
+    "spriteforge_unified_parser",
+    "spriteforge_utils",
+    "spriteforge_vram_guard",
+    "spriteforge_web",
+    "spriteforge_workflows",
+    "web_helpers",
+    "blender_render_ortho"
+]
+
+[tool.setuptools.packages.find]
+where = ["app"]
+include = [
+    "cli*",
+    "config*",
+    "docs*",
+    "examples*",
+    "model_manifests*",
+    "plugins*",
+    "services*",
+    "tools*",
+    "web*",
+    "web_routes*",
+    "workflows*",
+]
+exclude = [
+    "input*",
+    "logs*",
+    "output*",
+    "projects*",
+    "releases*",
+    "scratch*",
+    "state*",
+    "tests*",
+    "vendor*",
+]
+namespaces = true
+
+[tool.setuptools.package-data]
+"*" = [
+    "*.bat",
+    "*.css",
+    "*.gif",
+    "*.html",
+    "*.ico",
+    "*.jpg",
+    "*.js",
+    "*.json",
+    "*.md",
+    "*.png",
+    "*.ps1",
+    "*.svg",
+    "*.txt",
+    "*.webp",
 ]

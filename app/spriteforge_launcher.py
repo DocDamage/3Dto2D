@@ -1,8 +1,10 @@
 import sys
 import os
 import subprocess
+import json
 from pathlib import Path
 import datetime as dt
+import urllib.request
 
 from spriteforge_utils import ROOT
 
@@ -26,6 +28,51 @@ def get_venv_python() -> Path:
         return ROOT / ".venv" / "Scripts" / "python.exe"
     else:
         return ROOT / ".venv" / "bin" / "python"
+
+def _load_comfy_config() -> tuple[Path, str, int]:
+    config_path = ROOT / "config" / "spriteforge_config.json"
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+    comfy_dir = Path(str(data.get("paths", {}).get("comfyui_dir", "vendor/ComfyUI")))
+    if not comfy_dir.is_absolute():
+        comfy_dir = ROOT / comfy_dir
+    comfy = data.get("comfy", {})
+    host = str(comfy.get("host", "127.0.0.1"))
+    port = int(comfy.get("port", 8188))
+    return comfy_dir, host, port
+
+def _comfy_is_running(host: str, port: int) -> bool:
+    url = f"http://{host}:{port}/system_stats"
+    try:
+        with urllib.request.urlopen(url, timeout=0.8) as response:
+            return 200 <= getattr(response, "status", 200) < 500
+    except Exception:
+        return False
+
+def launch_comfy_for_default_start(venv_python: Path) -> bool:
+    try:
+        comfy_dir, host, port = _load_comfy_config()
+    except Exception as exc:
+        log(f"ComfyUI autostart skipped: could not read config ({exc}).")
+        return False
+
+    if _comfy_is_running(host, port):
+        log(f"ComfyUI already running at http://{host}:{port}")
+        return True
+    if not comfy_dir.exists():
+        log(f"ComfyUI autostart skipped: not installed at {comfy_dir}")
+        return False
+
+    cmd = [str(venv_python), "spriteforge_unified.py", "launch-comfy"]
+    try:
+        kwargs = {"cwd": str(ROOT)}
+        if os.name == "nt":
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+        subprocess.Popen(cmd, **kwargs)
+        log(f"Started ComfyUI in the background: http://{host}:{port}")
+        return True
+    except Exception as exc:
+        log(f"ComfyUI autostart failed: {exc}")
+        return False
 
 def main():
     log(f"==== SpriteForge Launcher starting with args: {sys.argv[1:]} ====")
@@ -85,6 +132,7 @@ def main():
     else:
         # Default: Web UI first, fallback to Classic
         cmd = [str(venv_python), "spriteforge_web.py"]
+        launch_comfy_for_default_start(venv_python)
         log("Launching SpriteForge Studio Web UI...")
         try:
             res = subprocess.run(cmd, cwd=str(ROOT))

@@ -40,6 +40,28 @@ STYLE_NEGATIVE_TERMS = {
 PROMPT_MAX_LENGTH = 500
 PROMPT_WARN_LENGTH = 350
 
+BASE_PROMPT_FIXES = [
+    "single full body 2D game sprite",
+    "locked camera",
+    "centered character",
+    "clean readable silhouette",
+    "plain bright green chroma key background",
+]
+
+BASE_NEGATIVE_FIXES = [
+    "camera movement",
+    "zoom",
+    "pan",
+    "tilt",
+    "motion blur",
+    "depth of field",
+    "text",
+    "watermark",
+    "extra limbs",
+    "bad anatomy",
+    "deformed",
+]
+
 
 def lint_prompt(prompt: str, negative: Optional[str] = None, 
                 action: Optional[str] = None) -> Dict[str, Any]:
@@ -202,6 +224,8 @@ def _action_hints(action: str) -> List[str]:
     """Return terms that should appear in a prompt for the given action."""
     hints_map = {
         "idle": ["idle", "standing", "breathing", "loop", "ready stance"],
+        "t_pose": ["T-pose", "arms extended horizontally", "neutral reference stance"],
+        "a_pose": ["A-pose", "arms angled downward", "neutral reference stance"],
         "walk": ["walking", "walk cycle", "stride", "stepping", "loop"],
         "run": ["running", "sprinting", "dashing", "run cycle", "loop"],
         "jump": ["jumping", "leap", "airborne", "ascending", "descending"],
@@ -272,9 +296,70 @@ def quick_score(prompt: str) -> Dict[str, Any]:
     }
 
 
+def _split_phrases(value: str) -> List[str]:
+    return [part.strip() for part in re.split(r"[,;\n]+", value or "") if part.strip()]
+
+
+def _append_missing_phrases(value: str, additions: List[str]) -> Tuple[str, List[str]]:
+    phrases = _split_phrases(value)
+    lower = " ".join(phrases).lower()
+    added: List[str] = []
+    for phrase in additions:
+        if phrase.lower() not in lower:
+            phrases.append(phrase)
+            added.append(phrase)
+            lower += " " + phrase.lower()
+    return ", ".join(phrases), added
+
+
+def _base_prompt_from_payload(payload: Dict[str, Any]) -> str:
+    prompt = str(payload.get("prompt") or payload.get("positive") or "").strip()
+    if prompt:
+        return prompt
+    parts = [
+        payload.get("character"),
+        payload.get("sprite_action") or payload.get("default_actions") or payload.get("action"),
+        payload.get("direction") or payload.get("default_directions"),
+        payload.get("style"),
+        payload.get("extra_prompt"),
+    ]
+    return ", ".join(str(part).strip() for part in parts if str(part or "").strip())
+
+
+def autofix_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply deterministic prompt fixes from the sprite prompt linter."""
+    prompt = _base_prompt_from_payload(payload)
+    negative = str(payload.get("negative") or payload.get("negative_prompt") or "").strip()
+    action = str(payload.get("sprite_action") or payload.get("action") or "").strip()
+    before = lint_prompt(prompt, negative=negative, action=action)
+
+    additions = list(BASE_PROMPT_FIXES)
+    if action:
+        additions.extend(_action_hints(action)[:3])
+    fixed_prompt, prompt_added = _append_missing_phrases(prompt, additions)
+    fixed_negative, negative_added = _append_missing_phrases(negative, BASE_NEGATIVE_FIXES)
+
+    after = lint_prompt(fixed_prompt, negative=fixed_negative, action=action)
+    changes: List[str] = []
+    if prompt_added:
+        changes.append("Added sprite-safe prompt anchors: " + ", ".join(prompt_added))
+    if negative_added:
+        changes.append("Added negative prompt guards: " + ", ".join(negative_added))
+    if not changes:
+        changes.append("Prompt already had the main sprite safety anchors.")
+
+    return {
+        "prompt": fixed_prompt,
+        "negative": fixed_negative,
+        "changes": changes,
+        "lint_before": before,
+        "lint_after": after,
+    }
+
+
 def lint_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Lint a full generation payload (from web UI or CLI)."""
-    prompt = payload.get("prompt", "") or payload.get("positive", "") or ""
+    prompt = _base_prompt_from_payload(payload)
     negative = payload.get("negative", "") or payload.get("negative_prompt", "") or ""
     action = payload.get("sprite_action") or payload.get("action") or ""
     return lint_prompt(prompt, negative=negative, action=action)

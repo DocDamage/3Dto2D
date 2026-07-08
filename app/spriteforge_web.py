@@ -21,7 +21,7 @@ from services.job_service import JobService
 from services.logging_service import configure_logging
 from services.api_auth_service import validate_token
 from web_helpers import ROOT, WEB, LOGS, OUTPUT, INPUT
-from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static, routes_onboarding
+from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static, routes_onboarding, routes_pixel_asset
 
 app = Flask(__name__)
 
@@ -48,6 +48,7 @@ app.register_blueprint(routes_sprites)
 app.register_blueprint(routes_misc)
 app.register_blueprint(routes_static)
 app.register_blueprint(routes_onboarding)
+app.register_blueprint(routes_pixel_asset)
 
 def find_free_port(preferred: int) -> int:
     for port in [preferred, 8766, 8767, 8877, 8899, 0]:

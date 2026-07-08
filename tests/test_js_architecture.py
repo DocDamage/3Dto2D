@@ -8,12 +8,21 @@ WEB = ROOT / "app" / "web"
 
 
 def _loader_scripts() -> list[str]:
-    html = (WEB / "index.html").read_text(encoding="utf-8")
-    assert "function spriteForgeScriptList()" in html
-    assert "const scripts = spriteForgeScriptList();" in html
-    match = re.search(r"function spriteForgeScriptList\(\) \{\s*return \[(.*?)\];\s*\}", html, re.S)
-    assert match, "index.html must define the sequential script loader list behind spriteForgeScriptList()"
+    loader = (WEB / "js" / "script_loader.js").read_text(encoding="utf-8")
+    assert "window.spriteForgeScriptList = function spriteForgeScriptList()" in loader
+    assert "loadSequentially(window.spriteForgeScriptList(), 0)" in loader
+    match = re.search(r"function spriteForgeScriptList\(\) \{\s*return \[(.*?)\];\s*\}", loader, re.S)
+    assert match, "script_loader.js must define the sequential script loader list behind spriteForgeScriptList()"
     return re.findall(r"'([^']+)'", match.group(1))
+
+
+def test_index_delegates_bootstrap_to_loader_files():
+    html = (WEB / "index.html").read_text(encoding="utf-8")
+
+    assert 'src="js/component_loader.js?v=frontend-bootstrap"' in html
+    assert 'src="js/script_loader.js?v=frontend-bootstrap"' in html
+    assert "function spriteForgeScriptList()" not in html
+    assert "window.viewComponentsLoaded = new Promise" not in html
 
 
 def test_js_architecture_manifest_matches_loader_order():

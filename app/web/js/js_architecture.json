@@ -23,7 +23,7 @@
         "js/lighting_preview.js",
         "js/cloud_hub.js",
         "js/frame_editor.js",
-        "js/prompt_builder.js?v=generate-compact-fit2",
+        "js/prompt_builder.js?v=prompt-autofix",
         "js/seed_gallery.js",
         "js/frame_review.js",
         "js/palette_harmonizer.js"
@@ -55,7 +55,7 @@
         "js/app_presets.js?v=sakpix-training-polish",
         "js/app_status.js",
         "js/app_jobs.js?v=generate-compact-fit2",
-        "js/app_forms.js?v=training-lora-launcher",
+        "js/app_forms.js?v=lpc-production-upgrade",
         "js/app_listings.js?v=generate-compact-fit2",
         "js/wizard_templates.js",
         "js/wizard_state.js",
@@ -63,14 +63,15 @@
         "js/wizard_ui.js",
         "js/wizard.js?v=wizard-reference-upload-buttons",
         "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
-        "js/command_palette.js"
+        "js/command_palette.js",
+        "js/pixel_studio.js"
       ],
-      "purpose": "View rendering, forms, jobs, dashboard, wizard, history, QA, and command palette."
+      "purpose": "View rendering, forms, jobs, dashboard, wizard, history, QA, Pixel Studio, and command palette."
     },
     {
       "layer": "bootstrap",
       "files": [
-        "js/ux_enhancements.js?v=training-lora-launcher",
+        "js/ux_enhancements.js?v=sprite-lab-visible",
         "js/app_main.js?v=quality-lab-compact"
       ],
       "purpose": "Final UX wrappers and application startup. Must stay last until ES module migration is complete."

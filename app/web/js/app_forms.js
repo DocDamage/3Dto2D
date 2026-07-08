@@ -46,6 +46,100 @@ function firstCsvValue(value, fallback) {
   return csvValues(value)[0] || fallback;
 }
 
+const GENERATE_ALL_DIRECTIONS = ['front', 'front_right', 'right', 'back_right', 'back', 'back_left', 'left', 'front_left'];
+
+function labelFromToken(value) {
+  return String(value || '')
+    .split('_')
+    .map(part => part ? part[0].toUpperCase() + part.slice(1) : '')
+    .join(' ');
+}
+
+function generateChoiceValues(selector) {
+  return $$(selector)
+    .filter(input => input.checked)
+    .map(input => input.value)
+    .filter(Boolean);
+}
+
+function setGenerateChoiceHidden(form, name, value) {
+  const input = form?.querySelector(`[name="${name}"]`);
+  if (input) input.value = value;
+}
+
+function renderGenerateActionChoices(actions) {
+  const fieldset = $('#generateActionChoices');
+  if (!fieldset || !Array.isArray(actions) || !actions.length) return;
+  const selected = new Set(generateChoiceValues('[data-generate-action]'));
+  const currentHidden = csvValues($('#generateForm')?.querySelector('[name="default_actions"]')?.value || '');
+  currentHidden.forEach(action => selected.add(action));
+  clearNode(fieldset);
+  const legend = document.createElement('legend');
+  legend.textContent = 'Actions';
+  fieldset.appendChild(legend);
+  actions.forEach(action => {
+    const label = document.createElement('label');
+    label.className = 'choice-chip';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.dataset.generateAction = '';
+    input.value = action;
+    input.checked = selected.size ? selected.has(action) : action === 'walk';
+    label.appendChild(input);
+    label.append(labelFromToken(action));
+    fieldset.appendChild(label);
+  });
+  syncGenerateChoices();
+}
+
+async function loadGenerateActionChoices() {
+  try {
+    const options = await api('/api/prompt_builder/options');
+    renderGenerateActionChoices(options.actions || []);
+  } catch (err) {
+    console.warn('Could not load full action catalog:', err);
+  }
+}
+
+function syncGenerateChoices() {
+  const form = $('#generateForm');
+  if (!form) return;
+  const actionText = String(form.querySelector('[name="default_actions_text"]')?.value || '').trim();
+  const directionText = String(form.querySelector('[name="default_directions_text"]')?.value || '').trim();
+  const actions = actionText ? csvValues(actionText) : generateChoiceValues('[data-generate-action]');
+  const allDirections = !!form.querySelector('[data-generate-direction-all]')?.checked;
+  const directions = directionText
+    ? csvValues(directionText)
+    : (allDirections ? GENERATE_ALL_DIRECTIONS : generateChoiceValues('[data-generate-direction]'));
+  const finalActions = actions.length ? actions : ['idle'];
+  const finalDirections = directions.length ? directions : ['right'];
+  setGenerateChoiceHidden(form, 'sprite_action', finalActions[0]);
+  setGenerateChoiceHidden(form, 'direction', finalDirections[0]);
+  setGenerateChoiceHidden(form, 'default_actions', finalActions.join(','));
+  setGenerateChoiceHidden(form, 'default_directions', finalDirections.join(','));
+}
+
+function syncGenerateChoiceChecksFromHidden() {
+  const form = $('#generateForm');
+  if (!form) return;
+  const actions = new Set(csvValues(form.querySelector('[name="default_actions"]')?.value || form.querySelector('[name="sprite_action"]')?.value || 'walk'));
+  const directionsRaw = csvValues(form.querySelector('[name="default_directions"]')?.value || form.querySelector('[name="direction"]')?.value || 'right');
+  const directions = new Set(directionsRaw);
+  const knownActions = new Set($$('[data-generate-action]', form).map(input => input.value));
+  const actionText = form.querySelector('[name="default_actions_text"]');
+  const directionText = form.querySelector('[name="default_directions_text"]');
+  const hasCustomActions = Array.from(actions).some(action => !knownActions.has(action));
+  const hasCustomDirections = directionsRaw.some(direction => !GENERATE_ALL_DIRECTIONS.includes(direction));
+  if (actionText) actionText.value = hasCustomActions ? Array.from(actions).join(',') : '';
+  if (directionText) directionText.value = hasCustomDirections ? directionsRaw.join(',') : '';
+  $$('[data-generate-action]', form).forEach(input => { input.checked = actions.has(input.value); });
+  const allSelected = GENERATE_ALL_DIRECTIONS.every(direction => directions.has(direction));
+  const allToggle = form.querySelector('[data-generate-direction-all]');
+  if (allToggle) allToggle.checked = allSelected;
+  $$('[data-generate-direction]', form).forEach(input => { input.checked = !allSelected && directions.has(input.value); });
+  syncGenerateChoices();
+}
+
 function inferSpriteName(source, fallback) {
   const explicit = String(fallback || '').trim();
   if (explicit) return explicit;
@@ -125,10 +219,12 @@ let generatePromptPreviewTimer = null;
 function buildGeneratePromptPreview(data) {
   const override = String(data.prompt || '').trim();
   if (override) return override;
+  const actions = csvValues(data.default_actions || data.sprite_action || 'idle');
+  const directions = csvValues(data.default_directions || data.direction || 'right');
   return [
     data.character,
-    `${data.sprite_action || 'idle'} animation`,
-    `${data.direction || 'right'} direction`,
+    `${actions.join(', ') || 'idle'} animation${actions.length === 1 ? '' : 's'}`,
+    `${directions.join(', ') || 'right'} direction${directions.length === 1 ? '' : 's'}`,
     data.style,
     data.extra_prompt,
     'single full body 2D game sprite, locked camera, centered character, clean readable silhouette',
@@ -189,6 +285,7 @@ function refreshGenerateReferencePreview() {
 function refreshGeneratePromptPreview() {
   const form = $('#generateForm');
   if (!form) return;
+  syncGenerateChoices();
   const data = formData(form);
   const prompt = buildGeneratePromptPreview(data);
   const preview = $('#generatePromptPreview');
@@ -235,6 +332,584 @@ function refreshGeneratePromptPreview() {
   }, 350);
 }
 
+async function applyGeneratePromptAutofix(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const form = $('#generateForm');
+  if (!form) return;
+  syncGenerateChoices();
+  const data = formData(form);
+  try {
+    const result = await api('/api/prompt/autofix', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        prompt: buildGeneratePromptPreview(data),
+      }),
+    });
+    if (form.elements.prompt && result.prompt) form.elements.prompt.value = result.prompt;
+    if (form.elements.negative && result.negative) form.elements.negative.value = result.negative;
+    renderGeneratePromptLint(result.lint_after || result);
+    refreshGeneratePromptPreview();
+    toast('Prompt auto-fixed');
+  } catch (err) {
+    toast(err.message || 'Prompt auto-fix failed');
+  }
+}
+
+async function loadProviderKeysPanel() {
+  const grid = $('#providerKeyGrid');
+  if (!grid) return;
+  try {
+    const data = await api('/api/cloud/image-providers');
+    const providers = Object.values(data.providers || {});
+    clearNode(grid);
+    if (!providers.length) {
+      appendText(grid, 'div', 'No providers configured.', 'empty compact');
+      return;
+    }
+    providers.forEach(provider => {
+      const card = document.createElement('article');
+      card.className = 'provider-key-card';
+      const head = document.createElement('div');
+      head.className = 'provider-key-title';
+      appendText(head, 'b', provider.label || provider.provider);
+      const status = document.createElement('span');
+      status.className = 'badge ' + (provider.configured ? 'ok' : 'warn');
+      status.textContent = provider.configured ? 'Configured' : 'Missing';
+      head.appendChild(status);
+      card.appendChild(head);
+      appendText(card, 'small', provider.image_generation || 'Provider availability depends on your account.');
+      appendText(card, 'small', `Env: ${(provider.env_names || []).join(', ') || 'not available'}`);
+      if (provider.free_tier) appendText(card, 'small', 'Free-tier capable: check current provider limits before running batches.');
+      const input = document.createElement('input');
+      input.type = 'password';
+      input.placeholder = 'Paste API key';
+      input.autocomplete = 'off';
+      input.dataset.providerKeyInput = provider.provider;
+      card.appendChild(input);
+      const actions = document.createElement('div');
+      actions.className = 'button-row compact-actions';
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'mini primary';
+      save.dataset.saveProviderKey = provider.provider;
+      save.textContent = 'Save key';
+      actions.appendChild(save);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'mini danger';
+      remove.dataset.removeProviderKey = provider.provider;
+      remove.textContent = 'Remove';
+      actions.appendChild(remove);
+      card.appendChild(actions);
+      grid.appendChild(card);
+    });
+  } catch (err) {
+    clearNode(grid);
+    appendText(grid, 'div', 'Could not load provider key status: ' + err.message, 'empty compact');
+  }
+}
+
+async function saveProviderKey(provider) {
+  const input = document.querySelector(`[data-provider-key-input="${provider}"]`);
+  const apiKey = String(input?.value || '').trim();
+  if (!apiKey) return toast('Paste an API key first.');
+  await api('/api/cloud/image-provider-key', {
+    method: 'POST',
+    body: JSON.stringify({ provider, api_key: apiKey }),
+  });
+  if (input) input.value = '';
+  toast('API key saved locally');
+  await loadProviderKeysPanel();
+}
+
+async function removeProviderKey(provider) {
+  await api('/api/cloud/image-provider-key', {
+    method: 'DELETE',
+    body: JSON.stringify({ provider }),
+  });
+  toast('API key removed locally');
+  await loadProviderKeysPanel();
+}
+
+const DEDICATED_LPC_CATEGORIES = [
+  'body', 'hair', 'eyes', 'facial', 'beards', 'head', 'torso', 'arms',
+  'legs', 'feet', 'hat', 'backpack', 'weapon', 'shield', 'quiver', 'cape',
+  'shoulders', 'neck', 'dress'
+];
+
+const DEDICATED_LPC_SLOT_ALIASES = {
+  ammo: 'quiver',
+  back: 'backpack',
+  mainhand: 'weapon',
+  weapons: 'weapon',
+  offhand: 'shield',
+  waist: 'torso',
+};
+
+function dedicatedLpcCanonicalSlot(slot) {
+  const key = String(slot || '').trim().toLowerCase().replace(/[-\s]+/g, '_');
+  return DEDICATED_LPC_SLOT_ALIASES[key] || key;
+}
+
+function dedicatedLpcCurrentPalette() {
+  return $('#lpcPalette')?.value || 'default';
+}
+
+function dedicatedLpcStatus(text) {
+  const target = $('#lpcStatus');
+  if (target) target.textContent = text || 'Ready.';
+}
+
+function dedicatedLpcSetZoom(value) {
+  const slider = $('#lpcZoom');
+  const img = $('#lpcPreviewImage');
+  const label = $('#lpcZoomLabel');
+  const next = Math.max(1, Math.min(8, Number(value) || 3));
+  if (slider) slider.value = String(next);
+  if (img) img.style.transform = `scale(${next})`;
+  if (label) label.textContent = `${Math.round(next * 100)}%`;
+}
+
+function dedicatedLpcFillSelect(select, options) {
+  if (!select) return;
+  const first = select.options[0]
+    ? { value: select.options[0].value, text: select.options[0].textContent || select.options[0].label || 'None' }
+    : { value: '', text: 'None' };
+  const current = select.value;
+  clearNode(select);
+  const base = document.createElement('option');
+  base.value = first.value || '';
+  base.textContent = first.text || 'None';
+  select.appendChild(base);
+  const query = String(select.dataset.lpcQuery || '').toLowerCase();
+  const source = Array.isArray(options) ? options : [];
+  let filtered = query
+    ? source.filter(option => `${option.value || ''} ${option.label || ''}`.toLowerCase().includes(query))
+    : source;
+  if (query && !filtered.length) filtered = source;
+  filtered.forEach(option => {
+    const value = String(option.value || option.label || '').trim();
+    if (!value) return;
+    const item = document.createElement('option');
+    item.value = value;
+    item.textContent = option.body_type ? `${option.label || value} · ${option.body_type}` : (option.label || value);
+    select.appendChild(item);
+  });
+  if ([...select.options].some(option => option.value === current)) select.value = current;
+}
+
+async function loadDedicatedLpcPickers(opts = {}) {
+  const sourceDir = $('#lpcSourceDir')?.value || '';
+  if (!sourceDir) return;
+  if (!opts.silent) dedicatedLpcStatus('Loading LPC picker options...');
+  const data = await api('/api/lpc/options', {
+    method: 'POST',
+    body: JSON.stringify({
+      source_dir: sourceDir,
+      categories: DEDICATED_LPC_CATEGORIES,
+      limit_per_category: 420,
+    })
+  });
+  $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
+    const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+    dedicatedLpcFillSelect(select, data.options?.[slot] || data.options?.[select.dataset.lpcSlot]);
+  });
+  if (!opts.silent) toast('LPC picker options loaded.');
+  dedicatedLpcStatus(`${data.part_count || 0} LPC parts indexed across ${(data.categories || []).length} categories.`);
+}
+
+async function loadDedicatedLpcPalettes() {
+  const select = $('#lpcPalette');
+  if (!select) return;
+  try {
+    const data = await api('/api/lpc/palettes');
+    const current = select.value || 'default';
+    clearNode(select);
+    (data.palettes || []).forEach(palette => {
+      const option = document.createElement('option');
+      option.value = palette.id || 'default';
+      option.textContent = palette.label || palette.id || 'Default';
+      select.appendChild(option);
+    });
+    if ([...select.options].some(option => option.value === current)) select.value = current;
+  } catch (err) {
+    console.warn('Could not load LPC palettes:', err);
+  }
+}
+
+async function loadDedicatedLpcPresets() {
+  const select = $('#lpcPresetSelect');
+  if (!select) return;
+  try {
+    const data = await api('/api/lpc/presets');
+    const current = select.value;
+    clearNode(select);
+    const base = document.createElement('option');
+    base.value = '';
+    base.textContent = 'Unsaved';
+    select.appendChild(base);
+    (data.presets || []).forEach(preset => {
+      const option = document.createElement('option');
+      option.value = preset.id || preset.name || '';
+      option.textContent = preset.label || preset.name || preset.id || 'Recipe';
+      option.dataset.preset = JSON.stringify(preset);
+      select.appendChild(option);
+    });
+    if ([...select.options].some(option => option.value === current)) select.value = current;
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not load LPC recipes.');
+  }
+}
+
+function dedicatedLpcSetSelectValue(select, value) {
+  if (!select || !value) return false;
+  if (![...select.options].some(option => option.value === value)) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  }
+  select.value = value;
+  return true;
+}
+
+function applyDedicatedLpcPreset() {
+  const option = $('#lpcPresetSelect')?.selectedOptions?.[0];
+  if (!option?.dataset.preset) return;
+  const preset = JSON.parse(option.dataset.preset);
+  if ($('#lpcAction')) $('#lpcAction').value = preset.action || 'idle';
+  if ($('#lpcPalette')) $('#lpcPalette').value = preset.palette || 'default';
+  if ($('#lpcCharacterName')) $('#lpcCharacterName').value = preset.label || preset.name || 'lpc_character';
+  if ($('#lpcShowBody')) $('#lpcShowBody').checked = preset.include_body !== false;
+  const bodyType = preset.body_type || 'male';
+  if (['male', 'female'].includes(bodyType)) {
+    if ($('#lpcGender')) $('#lpcGender').value = bodyType;
+    if ($('#lpcBody')) $('#lpcBody').value = 'regular';
+  } else if ($('#lpcBody')) {
+    $('#lpcBody').value = bodyType;
+  }
+  $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => { select.value = ''; });
+  const used = new Set();
+  (preset.selections || []).forEach(selection => {
+    const category = dedicatedLpcCanonicalSlot(selection.category);
+    const query = String(selection.query || '').trim();
+    if (!category || !query || (category === 'body' && query === 'bodies')) return;
+    const candidates = $$('[data-lpc-slot]', $('#view-lpc')).filter(select => {
+      if (used.has(select)) return false;
+      const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+      const hint = String(select.dataset.lpcQuery || '').toLowerCase();
+      return slot === category && (!hint || query.toLowerCase().includes(hint) || !selection.query);
+    });
+    const target = candidates[0] || $$('[data-lpc-slot]', $('#view-lpc')).find(select => !used.has(select) && dedicatedLpcCanonicalSlot(select.dataset.lpcSlot) === category);
+    if (target && dedicatedLpcSetSelectValue(target, query)) used.add(target);
+  });
+  dedicatedLpcStatus(`Recipe loaded: ${preset.label || preset.name || preset.id}.`);
+}
+
+function dedicatedLpcSelectionPayload() {
+  const selections = [];
+  const selectedBody = $('#lpcBody')?.value || 'regular';
+  const gender = $('#lpcGender')?.value || 'male';
+  const body = selectedBody === 'regular' ? gender : selectedBody;
+  $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
+    const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+    const value = String(select.value || '').trim();
+    if (!slot || !value) return;
+    if (!$('#lpcShowAddons')?.checked && slot === 'body') return;
+    selections.push({ category: slot, query: value });
+  });
+  return {
+    source_dir: $('#lpcSourceDir')?.value || '',
+    compose_action: $('#lpcAction')?.value || 'idle',
+    action: $('#lpcAction')?.value || 'idle',
+    body_type: body,
+    compose_name: $('#lpcCharacterName')?.value || 'lpc_character',
+    include_body: !!$('#lpcShowBody')?.checked,
+    palette: dedicatedLpcCurrentPalette(),
+    selections,
+  };
+}
+
+function renderDedicatedLpcRules(data) {
+  const panel = $('#lpcRulesPanel');
+  if (!panel) return;
+  clearNode(panel);
+  const issues = data.issues || [];
+  if (!issues.length) {
+    const row = document.createElement('div');
+    row.className = 'lpc-rule-item';
+    appendText(row, 'b', `${(data.resolved || []).length} layer choices compatible`);
+    appendText(row, 'small', `${data.body_type || 'body'} · ${data.action || 'idle'}`);
+    panel.appendChild(row);
+    return;
+  }
+  issues.slice(0, 8).forEach(issue => {
+    const row = document.createElement('div');
+    row.className = `lpc-rule-item ${issue.severity || ''}`;
+    appendText(row, 'b', issue.message || 'LPC rule issue');
+    if (issue.suggestion) appendText(row, 'small', issue.suggestion);
+    panel.appendChild(row);
+  });
+}
+
+async function checkDedicatedLpcRules(opts = {}) {
+  const payload = dedicatedLpcSelectionPayload();
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return null;
+  }
+  if (!opts.silent) dedicatedLpcStatus('Checking LPC layer rules...');
+  const data = await api('/api/lpc/rules', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  renderDedicatedLpcRules(data);
+  if (!opts.silent) dedicatedLpcStatus(data.ok ? 'LPC selections are compatible.' : 'LPC selections need attention.');
+  return data;
+}
+
+function dedicatedLpcRenderComposition(data) {
+  const img = $('#lpcPreviewImage');
+  const empty = $('#lpcPreviewEmpty');
+  if (img) {
+    img.src = data.thumbnail_data_uri || (data.sheet ? `/file/${data.sheet}` : '');
+    img.alt = data.name || 'Composed LPC character';
+  }
+  if (empty) empty.style.display = data.thumbnail_data_uri || data.sheet ? 'none' : '';
+  const layers = (data.layers || []).map(layer => `${layer.category}:${layer.variant || layer.relative_path}`).slice(0, 8);
+  const missing = (data.missing || []).map(item => `${item.category}:${item.query}`).slice(0, 4);
+  dedicatedLpcStatus(`${data.name || 'LPC character'} composed · ${data.action || 'idle'} · ${data.layers?.length || 0} layers · ${data.frame_count || 0} frames${layers.length ? ' · ' + layers.join(', ') : ''}${missing.length ? ' · Missing: ' + missing.join(', ') : ''}`);
+  dedicatedLpcSetZoom($('#lpcZoom')?.value || 3);
+}
+
+async function composeDedicatedLpcCharacter() {
+  const payload = dedicatedLpcSelectionPayload();
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return;
+  }
+  dedicatedLpcStatus('Composing LPC character...');
+  try {
+    const data = await api('/api/lpc/compose', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    dedicatedLpcRenderComposition(data);
+    if (data.rules) renderDedicatedLpcRules(data.rules);
+    toast('LPC character composed.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not compose LPC character.');
+    toast(err.message || 'Could not compose LPC character.');
+  }
+}
+
+function renderDedicatedLpcBatchGallery(data) {
+  const gallery = $('#lpcBatchGallery');
+  if (!gallery) return;
+  clearNode(gallery);
+  (data.samples || []).slice(0, 12).forEach(sample => {
+    const card = document.createElement('article');
+    card.className = 'lpc-sample-card';
+    if (sample.thumbnail_data_uri) {
+      const img = document.createElement('img');
+      img.src = sample.thumbnail_data_uri;
+      img.alt = sample.name || 'LPC sample';
+      card.appendChild(img);
+    }
+    appendText(card, 'b', sample.name || 'sample');
+    appendText(card, 'small', `${sample.body_type || ''} ${sample.action || ''}`.trim() || `${sample.layers || 0} layers`);
+    gallery.appendChild(card);
+  });
+}
+
+function dedicatedLpcBatchCategories() {
+  const picked = new Set();
+  $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
+    const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+    if (slot && slot !== 'body') picked.add(slot);
+  });
+  return [...picked].filter(category => ['hair', 'torso', 'legs', 'feet', 'weapon', 'hat', 'arms', 'shield', 'backpack', 'quiver', 'cape', 'shoulders', 'neck', 'dress'].includes(category));
+}
+
+function dedicatedLpcSetBatchState(datasetDir, qaOk = false) {
+  ['#lpcRunQa', '#lpcPrepareLora'].forEach(id => {
+    const btn = $(id);
+    if (!btn) return;
+    btn.dataset.datasetDir = datasetDir || '';
+    btn.dataset.qaOk = qaOk ? 'true' : 'false';
+  });
+  const qa = $('#lpcRunQa');
+  if (qa) qa.disabled = !datasetDir;
+  const lora = $('#lpcPrepareLora');
+  if (lora) lora.disabled = !datasetDir || !qaOk;
+}
+
+async function buildDedicatedLpcBatch() {
+  const payload = dedicatedLpcSelectionPayload();
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return;
+  }
+  dedicatedLpcStatus('Building LPC composed training batch...');
+  try {
+    const data = await api('/api/lpc/batch-compose', {
+      method: 'POST',
+      body: JSON.stringify({
+        source_dir: payload.source_dir,
+        batch_count: Math.max(1, Math.min(1000, Number($('#lpcBatchCount')?.value || 48))),
+        batch_action: payload.action,
+        batch_actions: 'idle,walk,slash,cast',
+        body_type: payload.body_type,
+        batch_body_types: 'male,female',
+        batch_categories: dedicatedLpcBatchCategories(),
+        palette: dedicatedLpcCurrentPalette(),
+        trigger: 'lpc_composed',
+      })
+    });
+    dedicatedLpcSetBatchState(data.output_dir || '', false);
+    renderDedicatedLpcBatchGallery(data);
+    const sample = (data.samples || [])[0];
+    if (sample?.thumbnail_data_uri) {
+      const img = $('#lpcPreviewImage');
+      const empty = $('#lpcPreviewEmpty');
+      if (img) img.src = sample.thumbnail_data_uri;
+      if (empty) empty.style.display = 'none';
+    }
+    dedicatedLpcStatus(`${data.sample_count || 0} LPC training samples built · ${data.output_dir || ''}`);
+    toast('LPC batch dataset ready.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not build LPC batch.');
+    toast(err.message || 'Could not build LPC batch.');
+  }
+}
+
+async function refreshDedicatedLpcBatchPreview(datasetDir) {
+  if (!datasetDir) return;
+  try {
+    const data = await api('/api/lpc/dataset-preview', {
+      method: 'POST',
+      body: JSON.stringify({ dataset_dir: datasetDir, limit: 12 })
+    });
+    renderDedicatedLpcBatchGallery(data);
+  } catch (err) {
+    console.warn('Could not refresh LPC batch preview:', err);
+  }
+}
+
+async function qaDedicatedLpcBatch() {
+  const btn = $('#lpcRunQa');
+  const datasetDir = btn?.dataset.datasetDir || '';
+  if (!datasetDir) {
+    toast('Build an LPC batch first.');
+    return;
+  }
+  dedicatedLpcStatus('Running LPC dataset QA...');
+  try {
+    const data = await api('/api/lpc/dataset-qa', {
+      method: 'POST',
+      body: JSON.stringify({ dataset_dir: datasetDir, min_layers: 3 })
+    });
+    dedicatedLpcSetBatchState(data.dataset_dir || datasetDir, !!data.ok);
+    await refreshDedicatedLpcBatchPreview(data.dataset_dir || datasetDir);
+    const issueText = (data.issues || []).slice(0, 3).map(issue => `${issue.severity}: ${issue.message}`).join(' · ');
+    dedicatedLpcStatus(`${data.ok ? 'QA passed' : 'QA needs attention'} · ${data.sample_count || 0} samples · ${data.image_count || 0} images${issueText ? ' · ' + issueText : ''}`);
+    toast(data.ok ? 'LPC dataset QA passed.' : 'LPC dataset QA found issues.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Dataset QA failed.');
+    toast(err.message || 'Dataset QA failed.');
+  }
+}
+
+async function saveDedicatedLpcPreset() {
+  const payload = dedicatedLpcSelectionPayload();
+  const name = $('#lpcCharacterName')?.value || 'lpc_character';
+  try {
+    const data = await api('/api/lpc/presets', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, name, label: name })
+    });
+    await loadDedicatedLpcPresets();
+    if ($('#lpcPresetSelect')) $('#lpcPresetSelect').value = data.preset?.id || '';
+    dedicatedLpcStatus(`Recipe saved: ${data.preset?.label || name}.`);
+    toast('LPC recipe saved.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not save LPC recipe.');
+    toast(err.message || 'Could not save LPC recipe.');
+  }
+}
+
+async function deleteDedicatedLpcPreset() {
+  const id = $('#lpcPresetSelect')?.value || '';
+  if (!id) {
+    toast('Choose a saved recipe first.');
+    return;
+  }
+  try {
+    await api('/api/lpc/presets/delete', {
+      method: 'POST',
+      body: JSON.stringify({ id })
+    });
+    await loadDedicatedLpcPresets();
+    dedicatedLpcStatus('Recipe deleted.');
+    toast('LPC recipe deleted.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not delete LPC recipe.');
+    toast(err.message || 'Could not delete LPC recipe.');
+  }
+}
+
+async function prepareDedicatedLpcLora() {
+  const btn = $('#lpcPrepareLora');
+  const datasetDir = btn?.dataset.datasetDir || '';
+  if (!datasetDir || btn?.dataset.qaOk !== 'true') {
+    toast('Run Dataset QA first.');
+    return;
+  }
+  try {
+    const prefill = await lpcLoraPrefill(datasetDir);
+    const rec = applyLpcLoraPrefill(prefill, datasetDir);
+    dedicatedLpcStatus(prefill.summary || 'LPC LoRA defaults prepared.');
+    await runAction('lora_training', { ...rec, mode: 'prepare' });
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not prepare LPC LoRA.');
+    toast(err.message || 'Could not prepare LPC LoRA.');
+  }
+}
+
+function initDedicatedLpcTab() {
+  if (!$('#view-lpc')) return;
+  $('#lpcLoadPickers')?.addEventListener('click', () => loadDedicatedLpcPickers().catch(err => {
+    dedicatedLpcStatus(err.message || 'Could not load LPC pickers.');
+    toast(err.message || 'Could not load LPC pickers.');
+  }));
+  $('#lpcPresetSelect')?.addEventListener('change', applyDedicatedLpcPreset);
+  $('#lpcSavePreset')?.addEventListener('click', saveDedicatedLpcPreset);
+  $('#lpcDeletePreset')?.addEventListener('click', deleteDedicatedLpcPreset);
+  $('#lpcCheckRules')?.addEventListener('click', () => checkDedicatedLpcRules().catch(err => {
+    dedicatedLpcStatus(err.message || 'Could not check LPC rules.');
+    toast(err.message || 'Could not check LPC rules.');
+  }));
+  $('#lpcComposeCharacter')?.addEventListener('click', composeDedicatedLpcCharacter);
+  $('#lpcBuildBatch')?.addEventListener('click', buildDedicatedLpcBatch);
+  $('#lpcRunQa')?.addEventListener('click', qaDedicatedLpcBatch);
+  $('#lpcPrepareLora')?.addEventListener('click', prepareDedicatedLpcLora);
+  $('#lpcZoom')?.addEventListener('input', event => dedicatedLpcSetZoom(event.currentTarget.value));
+  $('#lpcZoomOut')?.addEventListener('click', () => dedicatedLpcSetZoom(Number($('#lpcZoom')?.value || 3) - 0.25));
+  $('#lpcZoomIn')?.addEventListener('click', () => dedicatedLpcSetZoom(Number($('#lpcZoom')?.value || 3) + 0.25));
+  $('#lpcPreviewWindow')?.addEventListener('wheel', event => {
+    event.preventDefault();
+    dedicatedLpcSetZoom(Number($('#lpcZoom')?.value || 3) + (event.deltaY < 0 ? 0.25 : -0.25));
+  }, { passive: false });
+  dedicatedLpcSetZoom($('#lpcZoom')?.value || 3);
+  loadDedicatedLpcPalettes();
+  loadDedicatedLpcPresets();
+  loadDedicatedLpcPickers({ silent: true }).catch(() => dedicatedLpcStatus('Ready. Load pickers when the LPC folder is available.'));
+}
+
 function initFormBindings() {
   // Nav, jump, run, open binders
   $$('.nav').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
@@ -248,21 +923,40 @@ function initFormBindings() {
   if ($('#cancelJob2')) $('#cancelJob2').addEventListener('click',()=>api('/api/cancel',{method:'POST'}).then(refreshAll));
   if ($('#copyLog')) $('#copyLog').addEventListener('click',()=>navigator.clipboard.writeText(lastLogText||'').then(()=>toast('Log copied')));
   if ($('#launchComfy')) $('#launchComfy').addEventListener('click',async()=>{ try{await api('/api/launch_comfy',{method:'POST'}); toast('ComfyUI launch requested'); setTimeout(refreshAll,1800);}catch(e){toast(e.message)} });
+  if ($('#refreshProviderKeys')) $('#refreshProviderKeys').addEventListener('click', loadProviderKeysPanel);
+  if ($('#providerKeyGrid')) {
+    loadProviderKeysPanel();
+    $('#providerKeyGrid').addEventListener('click', event => {
+      const save = event.target.closest('[data-save-provider-key]');
+      const remove = event.target.closest('[data-remove-provider-key]');
+      if (save) saveProviderKey(save.dataset.saveProviderKey).catch(err => toast(err.message));
+      if (remove) removeProviderKey(remove.dataset.removeProviderKey).catch(err => toast(err.message));
+    });
+  }
 
   // Generation form
-  if ($('#generateForm')) $('#generateForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('generate_sprite', formData(e.currentTarget)); showView('logs'); });
+  if ($('#generateForm')) $('#generateForm').addEventListener('submit',e=>{ e.preventDefault(); syncGenerateChoices(); runAction('generate_sprite', formData(e.currentTarget)); showView('logs'); });
   if ($('#generateForm')) {
+    loadGenerateActionChoices();
+    $('#generateForm').addEventListener('change', event => {
+      if (event.target.matches('[data-generate-action], [data-generate-direction], [data-generate-direction-all], [name="default_actions_text"], [name="default_directions_text"]')) {
+        syncGenerateChoices();
+      }
+    });
     $('#generateForm').addEventListener('input', refreshGeneratePromptPreview);
     $('#generateForm').addEventListener('change', refreshGeneratePromptPreview);
     $('#generationReferenceImage')?.addEventListener('input', refreshGenerateReferencePreview);
     $('#generationStyleImage')?.addEventListener('input', refreshGenerateReferencePreview);
     $('#generationReferenceImage')?.addEventListener('change', refreshGenerateReferencePreview);
     $('#generationStyleImage')?.addEventListener('change', refreshGenerateReferencePreview);
+    $('#btnAutoFixPrompt')?.addEventListener('click', event => applyGeneratePromptAutofix(event));
     refreshGenerateReferencePreview();
+    syncGenerateChoiceChecksFromHidden();
     refreshGeneratePromptPreview();
   }
   if ($('#btnPreviewGenerate')) {
     $('#btnPreviewGenerate').addEventListener('click', () => {
+      syncGenerateChoices();
       const data = formData($('#generateForm'));
       runAction('generate_sprite', { ...data, preview: true });
       showView('logs');
@@ -370,6 +1064,16 @@ function initFormBindings() {
   if ($('#trainingDatasetForm')) $('#trainingDatasetForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('training_dataset', formData(e.currentTarget)); showView('logs'); });
   initTrainingDatasetBuilder();
   if ($('#previewTrainingDataset')) $('#previewTrainingDataset').addEventListener('click', previewTrainingDataset);
+  if ($('#scanLpcParts')) $('#scanLpcParts').addEventListener('click', scanLpcParts);
+  if ($('#buildLpcPartDataset')) $('#buildLpcPartDataset').addEventListener('click', buildLpcPartDataset);
+  if ($('#loadLpcComposerOptions')) $('#loadLpcComposerOptions').addEventListener('click', loadLpcComposerOptions);
+  if ($('#composeLpcCharacter')) $('#composeLpcCharacter').addEventListener('click', composeLpcCharacter);
+  if ($('#composeLpcBatch')) $('#composeLpcBatch').addEventListener('click', composeLpcBatch);
+  if ($('#qaLpcBatch')) $('#qaLpcBatch').addEventListener('click', qaLpcBatch);
+  if ($('#useLpcBatchForLora')) $('#useLpcBatchForLora').addEventListener('click', useLpcBatchForLora);
+  if ($('#prepareLpcLoraRun')) $('#prepareLpcLoraRun').addEventListener('click', prepareLpcLoraRun);
+  if ($('#lpcComposerForm')) loadLpcComposerOptions({ silent: true }).catch(() => {});
+  initDedicatedLpcTab();
   if ($('#tileTrainingDatasetForm')) $('#tileTrainingDatasetForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('tile_training_dataset', formData(e.currentTarget)); showView('logs'); });
   if ($('#tilemapGeneratorForm')) $('#tilemapGeneratorForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('tilemap', formData(e.currentTarget)); showView('logs'); });
   $$('[data-lora-mode]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -379,6 +1083,7 @@ function initFormBindings() {
     showView('logs');
   }));
   if ($('#refreshLoraProgress')) $('#refreshLoraProgress').addEventListener('click', refreshLoraProgress);
+  if ($('#registerLoraCheckpoint')) $('#registerLoraCheckpoint').addEventListener('click', registerLoraCheckpoint);
   if ($('#buildLoraComparePlan')) $('#buildLoraComparePlan').addEventListener('click', buildLoraComparePlan);
   if ($('#applyLoraGpuDefaults')) $('#applyLoraGpuDefaults').addEventListener('click', applyLoraGpuDefaults);
 
@@ -463,6 +1168,396 @@ async function previewTrainingDataset() {
   } catch (err) {
     if (target) target.textContent = err.message || 'Could not preview dataset.';
     toast(err.message || 'Could not preview dataset.');
+  }
+}
+
+function renderLpcPartsResult(data, mode) {
+  const target = $('#lpcPartsPreview');
+  if (!target) return;
+  clearNode(target);
+  if (mode === 'dataset') {
+    appendText(target, 'b', `${data.sample_count || 0} LPC part samples written`);
+    appendText(target, 'small', `Dataset: ${data.output_dir || 'output/training_datasets'} · trigger ${data.trigger || 'lpc_parts'}`);
+  } else {
+    appendText(target, 'b', `${data.part_count || 0} LPC parts indexed`);
+    appendText(target, 'small', `Catalog: ${data.output_dir || 'output/lpc_parts'} · source ${data.spritesheets_dir || data.source_dir || ''}`);
+    if (data.readable_part_count || data.unreadable_part_count) appendText(target, 'small', `Preview sample readable ${data.readable_part_count || 0} · unreadable ${data.unreadable_part_count || 0}`);
+  }
+  const categories = Object.entries(data.category_counts || {}).slice(0, 8).map(([key, count]) => `${key} (${count})`);
+  const actions = Object.entries(data.action_counts || {}).slice(0, 8).map(([key, count]) => `${key} (${count})`);
+  const bodyTypes = Object.entries(data.body_type_counts || {}).slice(0, 8).map(([key, count]) => `${key} (${count})`);
+  if (categories.length) appendText(target, 'small', `Categories: ${categories.join(', ')}`);
+  if (actions.length) appendText(target, 'small', `Actions: ${actions.join(', ')}`);
+  if (bodyTypes.length) appendText(target, 'small', `Bodies: ${bodyTypes.join(', ')}`);
+  (data.samples || []).slice(0, 6).forEach(part => {
+    const row = document.createElement('div');
+    row.className = 'training-dataset-preview-row lpc-part-preview-row';
+    if (part.thumbnail_data_uri) {
+      const img = document.createElement('img');
+      img.src = part.thumbnail_data_uri;
+      img.alt = part.variant || part.category || 'LPC part';
+      row.appendChild(img);
+    }
+    appendText(row, 'b', `${part.category || 'part'} · ${part.variant || 'variant'}`);
+    appendText(row, 'span', `${part.action || 'action'}${part.body_type ? ' · ' + part.body_type : ''}${part.layer_phase ? ' · ' + part.layer_phase : ''}`);
+    appendText(row, 'small', `${part.relative_path || part.path || ''}`);
+    target.appendChild(row);
+  });
+}
+
+async function scanLpcParts() {
+  const form = $('#lpcPartsForm');
+  const target = $('#lpcPartsPreview');
+  if (!form) return;
+  const payload = formData(form);
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return;
+  }
+  if (target) target.textContent = 'Scanning LPC paper-doll parts...';
+  try {
+    const data = await api('/api/lpc/parts/scan', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, thumbnail_limit: 24 })
+    });
+    renderLpcPartsResult(data, 'scan');
+    toast('LPC parts catalog ready.');
+  } catch (err) {
+    if (target) target.textContent = err.message || 'Could not scan LPC parts.';
+    toast(err.message || 'Could not scan LPC parts.');
+  }
+}
+
+async function buildLpcPartDataset() {
+  const form = $('#lpcPartsForm');
+  const target = $('#lpcPartsPreview');
+  if (!form) return;
+  const payload = formData(form);
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return;
+  }
+  if (target) target.textContent = 'Building LPC part dataset...';
+  try {
+    const data = await api('/api/lpc/parts/dataset', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    renderLpcPartsResult(data, 'dataset');
+    toast('LPC part dataset ready.');
+  } catch (err) {
+    if (target) target.textContent = err.message || 'Could not build LPC part dataset.';
+    toast(err.message || 'Could not build LPC part dataset.');
+  }
+}
+
+function fillLpcDatalist(id, options) {
+  const list = $(id);
+  if (!list) return;
+  clearNode(list);
+  (options || []).forEach(option => {
+    const item = document.createElement('option');
+    item.value = option.value || option.label || '';
+    item.label = option.body_type ? `${option.label} · ${option.body_type}` : (option.label || option.value || '');
+    list.appendChild(item);
+  });
+}
+
+async function loadLpcComposerOptions(opts = {}) {
+  const form = $('#lpcComposerForm');
+  const target = $('#lpcComposerPreview');
+  if (!form) return;
+  const payload = formData(form);
+  if (!payload.source_dir) return;
+  if (!opts.silent && target) target.textContent = 'Loading LPC picker options...';
+  const data = await api('/api/lpc/options', {
+    method: 'POST',
+    body: JSON.stringify({
+      source_dir: payload.source_dir,
+      categories: ['hair', 'torso', 'legs', 'feet', 'weapons'],
+      limit_per_category: 320,
+    })
+  });
+  fillLpcDatalist('#lpcHairOptions', data.options?.hair);
+  fillLpcDatalist('#lpcTorsoOptions', data.options?.torso);
+  fillLpcDatalist('#lpcLegsOptions', data.options?.legs);
+  fillLpcDatalist('#lpcFeetOptions', data.options?.feet);
+  fillLpcDatalist('#lpcWeaponsOptions', data.options?.weapons);
+  if (!opts.silent && target) {
+    clearNode(target);
+    appendText(target, 'b', 'LPC pickers loaded');
+    appendText(target, 'small', `${data.part_count || 0} indexed parts · ${Object.keys(data.options || {}).length} picker groups`);
+  }
+  if (!opts.silent) toast('LPC picker options loaded.');
+}
+
+function lpcComposerPayload(form) {
+  const payload = formData(form);
+  const selections = {};
+  [
+    ['hair', payload.part_hair],
+    ['torso', payload.part_torso],
+    ['legs', payload.part_legs],
+    ['feet', payload.part_feet],
+    ['weapons', payload.part_weapons],
+  ].forEach(([category, value]) => {
+    const text = String(value || '').trim();
+    if (text) selections[category] = text;
+  });
+  String(payload.parts || '').split(';').forEach(item => {
+    const text = item.trim();
+    if (!text) return;
+    const sep = text.includes(':') ? ':' : '=';
+    if (!text.includes(sep)) return;
+    const [category, ...rest] = text.split(sep);
+    const key = String(category || '').trim();
+    const value = rest.join(sep).trim();
+    if (key && value) selections[key] = value;
+  });
+  return { ...payload, selections };
+}
+
+function renderLpcComposition(data) {
+  const target = $('#lpcComposerPreview');
+  if (!target) return;
+  clearNode(target);
+  appendText(target, 'b', `${data.name || 'LPC character'} composed`);
+  appendText(target, 'small', `${data.action || 'idle'} · ${data.body_type || 'body'} · ${data.layers?.length || 0} layer${data.layers?.length === 1 ? '' : 's'} · ${data.frame_count || 0} frames`);
+  if (data.thumbnail_data_uri) {
+    const img = document.createElement('img');
+    img.src = data.thumbnail_data_uri;
+    img.alt = data.name || 'Composed LPC character';
+    img.className = 'lpc-composer-preview-image';
+    target.appendChild(img);
+  }
+  if (data.sheet) {
+    const link = document.createElement('a');
+    link.className = 'mini link-button';
+    link.href = '/file/' + data.sheet;
+    link.textContent = 'Open Sheet';
+    target.appendChild(link);
+  }
+  if (data.output_dir) appendText(target, 'small', `Output: ${data.output_dir}`);
+  const layers = (data.layers || []).map(layer => `${layer.category}:${layer.variant || layer.relative_path}`).slice(0, 10);
+  if (layers.length) appendText(target, 'small', `Layers: ${layers.join(', ')}`);
+  const missing = (data.missing || []).map(item => `${item.category}:${item.query}`);
+  if (missing.length) appendText(target, 'small', `Missing: ${missing.join(', ')}`);
+}
+
+async function composeLpcCharacter() {
+  const form = $('#lpcComposerForm');
+  const target = $('#lpcComposerPreview');
+  if (!form) return;
+  const payload = lpcComposerPayload(form);
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return;
+  }
+  if (target) target.textContent = 'Composing LPC character...';
+  try {
+    const data = await api('/api/lpc/compose', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    renderLpcComposition(data);
+    toast('LPC character composed.');
+  } catch (err) {
+    if (target) target.textContent = err.message || 'Could not compose LPC character.';
+    toast(err.message || 'Could not compose LPC character.');
+  }
+}
+
+function renderLpcBatch(data) {
+  const target = $('#lpcBatchPreview');
+  if (!target) return;
+  clearNode(target);
+  appendText(target, 'b', `${data.sample_count || 0} composed LPC training sample${data.sample_count === 1 ? '' : 's'}`);
+  const actions = (data.actions || [data.action || 'idle']).join(', ');
+  const bodies = (data.body_types || [data.body_type || 'body']).join(', ');
+  appendText(target, 'small', `${bodies} · ${actions} · ${data.output_dir || ''}`);
+  const balance = Object.entries(data.balance || {}).map(([slot, count]) => `${slot} (${count})`);
+  if (balance.length) appendText(target, 'small', `Balance: ${balance.join(', ')}`);
+  const useBtn = $('#useLpcBatchForLora');
+  if (useBtn) {
+    useBtn.disabled = true;
+    useBtn.dataset.datasetDir = data.output_dir || '';
+    useBtn.dataset.qaOk = 'false';
+  }
+  const prepareBtn = $('#prepareLpcLoraRun');
+  if (prepareBtn) {
+    prepareBtn.disabled = true;
+    prepareBtn.dataset.datasetDir = data.output_dir || '';
+    prepareBtn.dataset.qaOk = 'false';
+  }
+  const qaBtn = $('#qaLpcBatch');
+  if (qaBtn) {
+    qaBtn.disabled = !data.output_dir;
+    qaBtn.dataset.datasetDir = data.output_dir || '';
+  }
+  (data.samples || []).slice(0, 4).forEach(sample => {
+    const row = document.createElement('div');
+    row.className = 'training-dataset-preview-row';
+    if (sample.thumbnail_data_uri) {
+      const img = document.createElement('img');
+      img.src = sample.thumbnail_data_uri;
+      img.alt = sample.name || 'LPC batch sample';
+      row.appendChild(img);
+    }
+    appendText(row, 'b', sample.name || 'sample');
+    appendText(row, 'span', sample.caption || '');
+    appendText(row, 'small', sample.output_dir || '');
+    target.appendChild(row);
+  });
+  if ((data.failures || []).length) appendText(target, 'small', `Skipped: ${data.failures.length}`);
+}
+
+function renderLpcQa(data) {
+  const target = $('#lpcBatchPreview');
+  if (!target) return;
+  appendText(target, 'b', data.ok ? 'Dataset QA passed' : 'Dataset QA needs attention');
+  appendText(target, 'small', `${data.sample_count || 0} samples · ${data.image_count || 0} images · ${data.caption_count || 0} captions · balance delta ${data.balance_delta ?? 'n/a'}`);
+  (data.issues || []).forEach(issue => {
+    appendText(target, 'small', `${String(issue.severity || 'info').toUpperCase()}: ${issue.message || ''}`);
+  });
+  if (data.caption_preview && data.caption_preview.length) {
+    appendText(target, 'small', `Caption: ${data.caption_preview[0].caption || ''}`);
+  }
+  const useBtn = $('#useLpcBatchForLora');
+  if (useBtn) {
+    useBtn.disabled = !data.ok;
+    useBtn.dataset.qaOk = data.ok ? 'true' : 'false';
+    useBtn.dataset.datasetDir = data.dataset_dir || useBtn.dataset.datasetDir || '';
+  }
+  const prepareBtn = $('#prepareLpcLoraRun');
+  if (prepareBtn) {
+    prepareBtn.disabled = !data.ok;
+    prepareBtn.dataset.qaOk = data.ok ? 'true' : 'false';
+    prepareBtn.dataset.datasetDir = data.dataset_dir || prepareBtn.dataset.datasetDir || '';
+  }
+}
+
+function lpcBatchButtonState(buttonId) {
+  const btn = $(buttonId);
+  const datasetDir = btn?.dataset.datasetDir || '';
+  if (!datasetDir) {
+    toast('Build an LPC batch first.');
+    return null;
+  }
+  if (btn?.dataset.qaOk !== 'true') {
+    toast('Run Dataset QA first.');
+    return null;
+  }
+  return { btn, datasetDir };
+}
+
+async function lpcLoraPrefill(datasetDir) {
+  return api('/api/lpc/lora-prefill', {
+    method: 'POST',
+    body: JSON.stringify({ dataset_dir: datasetDir })
+  });
+}
+
+function applyLpcLoraPrefill(prefill, datasetDir) {
+  const form = $('#loraTrainingForm');
+  const rec = prefill?.recommendation || { dataset_dir: datasetDir, name: 'lpc_composed_lora', trigger: 'lpc_composed' };
+  [
+    ['dataset_dir', rec.dataset_dir],
+    ['name', rec.name],
+    ['trigger', rec.trigger],
+    ['model_family', rec.model_family],
+    ['trainer', rec.trainer],
+    ['resolution', rec.resolution],
+    ['max_train_steps', rec.max_train_steps],
+    ['learning_rate', rec.learning_rate],
+    ['network_dim', rec.network_dim],
+    ['repeats', rec.repeats],
+  ].forEach(([field, value]) => {
+    const input = form?.querySelector(`[name="${field}"]`);
+    if (input && value !== undefined && value !== null) input.value = String(value);
+  });
+  const hint = $('#loraGpuDefaultsHint');
+  if (hint && prefill) {
+    hint.textContent = `${prefill.summary || 'LPC LoRA defaults applied.'}${(prefill.warnings || []).length ? ' Warning: ' + prefill.warnings.join(' ') : ''}`;
+  }
+  return rec;
+}
+
+async function useLpcBatchForLora() {
+  const state = lpcBatchButtonState('#useLpcBatchForLora');
+  if (!state) return;
+  let prefill = null;
+  try {
+    prefill = await lpcLoraPrefill(state.datasetDir);
+  } catch (err) {
+    toast(err.message || 'Could not build LPC LoRA defaults.');
+  }
+  applyLpcLoraPrefill(prefill, state.datasetDir);
+  const tab = $('#view-training [data-training-tab="lora"]');
+  if (tab) tab.click();
+  toast('LPC LoRA settings applied.');
+}
+
+async function prepareLpcLoraRun() {
+  const state = lpcBatchButtonState('#prepareLpcLoraRun');
+  if (!state) return;
+  let prefill = null;
+  try {
+    prefill = await lpcLoraPrefill(state.datasetDir);
+  } catch (err) {
+    toast(err.message || 'Could not build LPC LoRA defaults.');
+    return;
+  }
+  const rec = applyLpcLoraPrefill(prefill, state.datasetDir);
+  await runAction('lora_training', { ...rec, mode: 'prepare' });
+}
+
+async function qaLpcBatch() {
+  const form = $('#lpcBatchComposerForm');
+  const target = $('#lpcBatchPreview');
+  const btn = $('#qaLpcBatch');
+  const datasetDir = btn?.dataset.datasetDir || '';
+  if (!form || !datasetDir) {
+    toast('Build an LPC batch first.');
+    return;
+  }
+  const payload = formData(form);
+  if (target) appendText(target, 'small', 'Running Dataset QA...');
+  try {
+    const data = await api('/api/lpc/dataset-qa', {
+      method: 'POST',
+      body: JSON.stringify({
+        dataset_dir: datasetDir,
+        min_layers: payload.min_layers || 3,
+      })
+    });
+    renderLpcQa(data);
+    toast(data.ok ? 'LPC dataset QA passed.' : 'LPC dataset QA found issues.');
+  } catch (err) {
+    if (target) appendText(target, 'small', err.message || 'Dataset QA failed.');
+    toast(err.message || 'Dataset QA failed.');
+  }
+}
+
+async function composeLpcBatch() {
+  const form = $('#lpcBatchComposerForm');
+  const target = $('#lpcBatchPreview');
+  if (!form) return;
+  const payload = formData(form);
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return;
+  }
+  if (target) target.textContent = 'Building LPC composed batch...';
+  try {
+    const data = await api('/api/lpc/batch-compose', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    renderLpcBatch(data);
+    toast('LPC batch dataset ready.');
+  } catch (err) {
+    if (target) target.textContent = err.message || 'Could not build LPC batch.';
+    toast(err.message || 'Could not build LPC batch.');
   }
 }
 
@@ -588,6 +1683,34 @@ async function refreshLoraProgress() {
     }
   } catch (err) {
     if (summary) summary.textContent = err.message || 'Could not load training progress.';
+  }
+}
+
+async function registerLoraCheckpoint() {
+  const input = $('#loraProgressPath');
+  const summary = $('#loraProgressSummary');
+  const path = String(input?.value || '').trim();
+  if (!path) {
+    toast('Enter a training run folder.');
+    return;
+  }
+  if (summary) summary.textContent = 'Registering latest checkpoint...';
+  try {
+    const data = await api('/api/lora/register-checkpoint', {
+      method: 'POST',
+      body: JSON.stringify({
+        run_path: path,
+        make_default: true,
+      }),
+    });
+    if (summary) {
+      summary.textContent = `Registered ${data.filename} as ${data.role}${data.default ? ' default' : ''}.`;
+    }
+    toast('LoRA checkpoint registered.');
+    await refreshLoraProgress();
+  } catch (err) {
+    if (summary) summary.textContent = err.message || 'Could not register LoRA checkpoint.';
+    toast(err.message || 'Could not register LoRA checkpoint.');
   }
 }
 

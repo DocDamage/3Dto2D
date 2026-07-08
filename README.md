@@ -86,7 +86,38 @@ If you want to use the text-to-video generation features:
 1.  Navigate to the **Setup** view in the Web UI.
 2.  Install or link your local/remote **ComfyUI** instance.
 3.  Load the Wan model tiers (from Wan 2.1 1.3B up to heavier 5B or 14B models).
-4.  Launch text-guided character generations directly from the **Generate** interface.
+4.  Use **Sprite Lab** to choose one or more actions, one or more directions, or **All** directions.
+5.  Leave **Start ComfyUI if needed** enabled when you want SpriteForge to start the local ComfyUI server automatically before generation.
+6.  Review the **Final prompt preview** and use **AI Auto Fix** to add sprite-safe language before running.
+
+### 4. Build LPC Characters and Training Data
+SpriteForge now includes a dedicated **LPC** tab for Universal LPC paper-doll assets:
+
+*   Load the bundled/local Universal LPC asset folder and choose body, hair, clothes, weapons, and accessories from LPC-style picker panels.
+*   Preview the composed character in the center pane and zoom with the mouse wheel, zoom buttons, or slider.
+*   Compose a single character sheet, build a balanced batch dataset, run dataset QA, and prepare an LPC LoRA run from the same tab.
+*   Use **Training Lab -> LPC** when you need lower-level catalog scans, parts datasets, or batch controls.
+
+The LPC source assets are local-only and are not bundled into release ZIPs or pushed as generated output.
+
+### 5. Create Pixel Assets, Tiles, Animations, and Packs
+Use **Pixel Studio** when you want MagicPixel-style game asset workflows directly inside SpriteForge:
+
+*   Generate pixel-art characters, creatures, items, weapons, potions, UI icons, tilesets, and backgrounds from a prompt, reference image, style profile, and provider.
+*   Use asset-specific controls for characters, creatures, items, weapons, potions, UI, tilesets, and backgrounds. These controls expand prompts through editable JSON configs in `app/config/pixel_asset_modes.json` and `app/config/pixel_prompt_templates.json`.
+*   Normalize and clean outputs to game-ready pixel constraints: fixed canvas size, palette reduction, transparent background, nearest-neighbor scaling, version backups, and sidecar metadata.
+*   Build 4-direction or 8-direction character sheets, tile atlases with seam QA, text-to-animation sheets, animation transfers from an existing sheet, and lightweight skeleton/rig renders.
+*   Edit assets in-browser with pencil, eraser, fill, picker, line, rectangle, selection/move, PNG import/export, version saves, provider-aware AI inpainting fallback plans, mask opacity, before/after inpaint compare, fast reskin batches, and variant-first outfit/part application workflows.
+*   Extract a style profile from any selected asset, then reuse that palette/style memory for matching future generations.
+*   Use **Cohesive Pack Builder** to search/filter built-in or saved recipe cards such as RPG, dungeon crawler, platformer, potion shop, or UI HUD packs, then export the whole pack as a ZIP with a browsable HTML catalog.
+*   Save current Pixel Studio settings as reusable local recipes, import recipe JSON, and export recipe JSON for sharing or backup.
+*   Pixel Studio sidecars link into SpriteForge experiment memory, and project-scoped generations are also added to the active project Library.
+*   The local CuteSCKR tile corpus can be prepared as an auto-tile LoRA dataset with trigger `cutesckr_tiles`; Training Lab can register the finished Kohya/native checkpoint as the default `tile_style`.
+
+Pixel Studio outputs are written under `app/output/pixel_assets/` with per-asset JSON metadata, batch manifests, style profiles, recipes, and pack manifests.
+
+### 6. Cloud Image Providers and API Keys
+Open **Setup**, **Cloud Hub**, or the **Pixel Studio** provider panel to inspect provider readiness and save local API keys. Supported provider slots include local fallback, local ComfyUI, Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Free-tier availability depends on each provider and model account; SpriteForge reports provider capability, whether a local key is configured, and whether Pixel Studio will use the selected provider or a local fallback.
 
 ---
 

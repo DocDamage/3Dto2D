@@ -53,8 +53,32 @@ async function promptBuilderApply() {
   if (form.elements.negative) form.elements.negative.value = prompt.negative || '';
   if (form.elements.sprite_action) form.elements.sprite_action.value = prompt.action || body.action || 'idle';
   if (form.elements.direction) form.elements.direction.value = prompt.direction || body.direction || 'right';
+  if (form.elements.default_actions) form.elements.default_actions.value = form.elements.sprite_action?.value || 'idle';
+  if (form.elements.default_directions) form.elements.default_directions.value = form.elements.direction?.value || 'right';
   if (form.elements.fps && prompt.recommended_fps) form.elements.fps.value = prompt.recommended_fps;
+  if (typeof syncGenerateChoiceChecksFromHidden === 'function') syncGenerateChoiceChecksFromHidden();
   toast('Prompt wizard applied to Generate Sprite.');
+}
+
+async function promptBuilderAutofix(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  if (typeof applyGeneratePromptAutofix === 'function') {
+    await applyGeneratePromptAutofix(event);
+    return;
+  }
+  const form = $('#generateForm');
+  if (!form) return;
+  const res = await api('/api/prompt/autofix', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(formData(form)),
+  });
+  if (form.elements.prompt && res.prompt) form.elements.prompt.value = res.prompt;
+  if (form.elements.negative && res.negative) form.elements.negative.value = res.negative;
+  toast('Prompt auto-fixed');
 }
 
 async function promptBuilderInstall() {
@@ -98,7 +122,18 @@ async function promptBuilderInstall() {
   apply.className = 'mini primary';
   apply.textContent = 'Build Prompt';
   apply.addEventListener('click', promptBuilderApply);
-  card.appendChild(apply);
+
+  const autofix = document.createElement('button');
+  autofix.type = 'button';
+  autofix.className = 'mini ghost';
+  autofix.textContent = 'AI Auto Fix';
+  autofix.addEventListener('click', event => promptBuilderAutofix(event));
+
+  const actions = document.createElement('div');
+  actions.className = 'button-row prompt-builder-actions';
+  actions.appendChild(apply);
+  actions.appendChild(autofix);
+  card.appendChild(actions);
 
   const anchor = form.querySelector('.preset-builder-card');
   if (anchor) anchor.insertAdjacentElement('afterend', card);

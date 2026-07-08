@@ -54,6 +54,7 @@ body.theme-light {
 }
 
 html {
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 

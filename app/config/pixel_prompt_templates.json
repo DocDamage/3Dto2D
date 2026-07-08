@@ -1,0 +1,13 @@
+{
+  "schema": "spriteforge.pixel_prompt_templates.v1",
+  "templates": {
+    "characters": "single full-body game character sprite, {description}, {mode_options}, orthographic sprite view, transparent background, true pixel art, fixed {resolution} canvas, clean silhouette, limited {palette_size} color palette, {style_profile}",
+    "creatures": "single creature sprite, {description}, {mode_options}, {style_profile}, orthographic sprite view, transparent background, true pixel art, fixed {resolution} canvas, clean silhouette, limited {palette_size} color palette",
+    "items": "single item icon, {description}, {mode_options}, {style_profile}, transparent background, true pixel art, fixed {resolution} canvas, limited {palette_size} color palette, centered, no text",
+    "weapons": "single {description} weapon icon, {mode_options}, {style_profile}, transparent background, true pixel art, fixed {resolution} canvas, limited {palette_size} color palette, clean one-pixel outline, centered, no text",
+    "potions": "single potion bottle icon, {description}, {mode_options}, {style_profile}, transparent background, true pixel art, fixed {resolution} canvas, limited {palette_size} color palette, centered, no text",
+    "ui_icons": "single UI icon, {description}, {mode_options}, {style_profile}, transparent background, true pixel art, fixed {resolution} canvas, limited {palette_size} color palette, clean border outline, centered",
+    "tilesets": "seamless tilemap texture, {description}, {mode_options}, {style_profile}, true pixel art, fixed {resolution} grid tileset, clean repetition, orthographic view",
+    "backgrounds": "horizontal scrolling parallax background layer, {description}, {mode_options}, {style_profile}, true pixel art, fixed {resolution} perspective landscape"
+  }
+}

@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
-__all__ = ["explain_failure"]
+__all__ = ["explain_failure", "explain_pixel_failure"]
 
 def explain_failure(error_text: str) -> Dict[str, Any]:
     if not error_text:
@@ -76,3 +76,83 @@ def explain_failure(error_text: str) -> Dict[str, Any]:
         "fix": "Review the full execution logs to identify the root cause.",
         "action": None
     }
+
+def explain_pixel_failure(error_text: str) -> Dict[str, Any]:
+    """Return a plain-English Pixel Studio failure explainer."""
+    if not error_text:
+        return {
+            "code": "pixel_unknown",
+            "title": "Pixel Studio could not finish the request",
+            "what_happened": "The operation stopped without returning a detailed error.",
+            "fix": "Try Plan first, then retry with mock mode or a configured provider.",
+            "action": {"label": "Open Plan Preview", "kind": "pixel_plan"}
+        }
+
+    text = error_text.lower()
+
+    if "key validation failed" in text or "api key" in text or "missing local api key" in text:
+        return {
+            "code": "pixel_missing_provider_key",
+            "title": "Provider key is missing",
+            "what_happened": "The selected image provider needs a local API key before real generation can run.",
+            "fix": "Open Setup or Cloud Hub, save the provider key, then retry. Use mock mode for local UI testing.",
+            "action": {"label": "Open Provider Keys", "kind": "open_provider_keys"}
+        }
+
+    if "inpaint" in text and ("does not support" in text or "unsupported" in text or "capability" in text):
+        return {
+            "code": "pixel_inpaint_unsupported",
+            "title": "This provider does not support masked image edit",
+            "what_happened": "The selected provider cannot accept the mask/image edit request directly.",
+            "fix": "Choose a provider with image-edit support, or generate a variation from the selected sprite and re-normalize it.",
+            "action": {"label": "Use Variation Fallback", "kind": "pixel_variation_fallback"}
+        }
+
+    if "square" in text or "not square" in text:
+        return {
+            "code": "pixel_not_square",
+            "title": "Image is not square",
+            "what_happened": "Pixel Studio expected a square sprite canvas for this workflow.",
+            "fix": "Normalize the image to 16x16, 32x32, 64x64, or another square resolution before continuing.",
+            "action": {"label": "Run Normalize", "kind": "pixel_normalize"}
+        }
+
+    if "too many colors" in text or "color count" in text or "palette" in text:
+        return {
+            "code": "pixel_too_many_colors",
+            "title": "Palette has too many colors",
+            "what_happened": "The asset exceeds the palette target for this pixel-art workflow.",
+            "fix": "Enable palette quantization or lower the max colors before exporting.",
+            "action": {"label": "Quantize Palette", "kind": "pixel_quantize"}
+        }
+
+    if "no alpha" in text or "alpha" in text and "missing" in text or "transparent" in text and "background" in text:
+        return {
+            "code": "pixel_no_alpha",
+            "title": "Transparent background is missing",
+            "what_happened": "The asset appears to have an opaque background where transparency was expected.",
+            "fix": "Run Normalize with alpha cleanup, or use chroma key/background removal before export.",
+            "action": {"label": "Clean Alpha", "kind": "pixel_alpha_cleanup"}
+        }
+
+    if "style mismatch" in text or "style" in text and "mismatch" in text:
+        return {
+            "code": "pixel_style_mismatch",
+            "title": "Asset does not match the selected style",
+            "what_happened": "The palette, outline, or proportions drifted from the selected project style.",
+            "fix": "Use a stronger style reference, extract style from a winning sprite, or generate more like the selected asset.",
+            "action": {"label": "Extract Style", "kind": "pixel_extract_style"}
+        }
+
+    if "seam" in text or "tile" in text and "edge" in text:
+        return {
+            "code": "pixel_tile_seam",
+            "title": "Tile seam check failed",
+            "what_happened": "Opposite tile edges differ enough that repetition may show visible seams.",
+            "fix": "Use Seam Preview, regenerate the failed tile role, or choose a tileable/edge-aware recipe.",
+            "action": {"label": "Open Seam Preview", "kind": "pixel_seam_preview"}
+        }
+
+    base = explain_failure(error_text)
+    base["code"] = f"pixel_{base['code']}"
+    return base

@@ -1,0 +1,715 @@
+<section class="view" id="view-pixel_studio">
+  <div class="section-title">
+    <p class="eyebrow">MagicPixel-Parity Studio</p>
+    <h2>Pixel Asset Studio</h2>
+  </div>
+
+  <!-- Mode Selector Tabs -->
+  <div class="view-tabs" style="margin-bottom: 16px;">
+    <button class="view-tab-btn active" data-mode-tab="characters">Characters</button>
+    <button class="view-tab-btn" data-mode-tab="creatures">Creatures</button>
+    <button class="view-tab-btn" data-mode-tab="items">Items</button>
+    <button class="view-tab-btn" data-mode-tab="weapons">Weapons</button>
+    <button class="view-tab-btn" data-mode-tab="potions">Potions</button>
+    <button class="view-tab-btn" data-mode-tab="ui_icons">UI Icons</button>
+    <button class="view-tab-btn" data-mode-tab="tilesets">Tilesets</button>
+    <button class="view-tab-btn" data-mode-tab="backgrounds">Backgrounds</button>
+  </div>
+
+  <div class="pixel-studio-workspace" style="display: grid; grid-template-columns: 320px 1fr 300px; gap: 20px; min-height: calc(100vh - 220px); align-items: stretch;">
+
+    <!-- Left Sidebar: Controls -->
+    <div class="card pixel-studio-sidebar" style="display: flex; flex-direction: column; gap: 12px; padding: 18px; background: rgba(14, 19, 35, 0.94); border: 1px solid rgba(85, 241, 255, 0.15); border-radius: 12px;">
+      <h3 style="font-size: 15px; font-weight: 700; color: var(--cyan); margin-bottom: 2px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 6px;">Generation settings</h3>
+
+      <input type="hidden" id="pixelActiveMode" value="characters" />
+
+      <!-- Prompt Input -->
+      <label>Prompt
+        <textarea id="pixelPrompt" rows="3" placeholder="Enter pixel art concept description..." style="width: 100%; margin-top: 4px; font-family: inherit; font-size: 12px;"></textarea>
+      </label>
+
+      <!-- Negative Prompt -->
+      <label>Negative prompt
+        <input type="text" id="pixelNegativePrompt" value="blur, antialiasing, painterly texture, photographic detail" style="width: 100%; margin-top: 4px;" />
+      </label>
+
+      <!-- Reference Image -->
+      <label>Reference image path
+        <input type="text" id="pixelReferenceImage" placeholder="e.g. input/reference.png" style="width: 100%; margin-top: 4px;" />
+      </label>
+
+      <!-- Style Profile -->
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label>Style profile
+          <select id="pixelStyleProfileSelect" style="width: 100%; margin-top: 4px;">
+            <option value="">-- Select Profile --</option>
+          </select>
+        </label>
+        <button class="mini" id="pixelCreateStyleBtn" type="button" style="align-self: flex-end; margin-top: 2px;">+ Save style profile</button>
+      </div>
+
+      <!-- Asset-Type Workflow Details (Phase 4) -->
+      <details class="collapsible-section" id="pixelModeOptionsSection" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.15);" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Asset Details</summary>
+        <div id="pixelModeOptionsContainer" style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;"></div>
+      </details>
+
+      <!-- Settings Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <label>Resolution
+          <select id="pixelResolutionSelect" style="width: 100%; margin-top: 4px;">
+            <option value="16x16">16x16</option>
+            <option value="24x24">24x24</option>
+            <option value="32x32" selected>32x32</option>
+            <option value="48x48">48x48</option>
+            <option value="64x64">64x64</option>
+            <option value="128x128">128x128</option>
+          </select>
+        </label>
+        <label>Palette size
+          <select id="pixelPaletteSizeSelect" style="width: 100%; margin-top: 4px;">
+            <option value="4">4 colors</option>
+            <option value="8">8 colors</option>
+            <option value="16">16 colors</option>
+            <option value="24" selected>24 colors</option>
+            <option value="32">32 colors</option>
+            <option value="64">64 colors</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- Normalization Pipeline Settings (Phase 2) -->
+      <details class="collapsible-section" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.15);" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Normalization Pipeline</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label class="choice-chip" style="display: flex; align-items: center; gap: 6px; font-size: 12px; text-transform: none; margin: 0; color: #fff;">
+            <input type="checkbox" id="pixelCleanAlphaToggle" checked style="margin: 0;" /> Clean Alpha transparency
+          </label>
+          <label class="choice-chip" style="display: flex; align-items: center; gap: 6px; font-size: 12px; text-transform: none; margin: 0; color: #fff;">
+            <input type="checkbox" id="pixelQuantizeToggle" checked style="margin: 0;" /> Quantize Palette (Oklab)
+          </label>
+          <label class="choice-chip" style="display: flex; align-items: center; gap: 6px; font-size: 12px; text-transform: none; margin: 0; color: #fff;">
+            <input type="checkbox" id="pixelRemoveIslandsToggle" checked style="margin: 0;" /> Remove pixel islands
+          </label>
+          <label style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-top: 4px;">Outline Pass
+            <select id="pixelOutlineSelect" style="width: 100%; margin-top: 4px;">
+              <option value="none" selected>No outline</option>
+              <option value="dark-clean">Clean 1px black outline</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
+      <!-- Consistency & Locking (Phase 3) -->
+      <details class="collapsible-section" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.15);" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Consistency & Locking</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label class="choice-chip" style="display: flex; align-items: center; gap: 6px; font-size: 12px; text-transform: none; margin: 0; color: #fff;">
+            <input type="checkbox" id="pixelLockOutfitToggle" checked style="margin: 0;" /> Lock outfit & palette
+          </label>
+          <label class="choice-chip" style="display: flex; align-items: center; gap: 6px; font-size: 12px; text-transform: none; margin: 0; color: #fff;">
+            <input type="checkbox" id="pixelLockSilhouetteToggle" checked style="margin: 0;" /> Lock silhouette height
+          </label>
+        </div>
+      </details>
+
+      <!-- Tileset Settings (Phase 6) -->
+      <details class="collapsible-section" id="pixelTilesetSettingsSection" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(85,241,255,0.15); background: rgba(0,0,0,0.15); display: none;" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Tileset Settings</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label>Tileset Type
+            <select id="pixelTilesetTypeSelect" style="width: 100%; margin-top: 4px;">
+              <option value="top-down" selected>Top-Down Map Tiles (10 roles)</option>
+              <option value="side-scroller">Side-Scroller Ground (6 roles)</option>
+              <option value="isometric">Isometric Tiles (3 roles)</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
+      <!-- Animation Settings (Phase 8) -->
+      <details class="collapsible-section" id="pixelAnimationSettingsSection" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(85,241,255,0.15); background: rgba(0,0,0,0.15);" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Animation Settings</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label>Animation Action
+            <select id="pixelAnimationTypeSelect" style="width: 100%; margin-top: 4px;">
+              <option value="idle" selected>Idle Bob (2 frames)</option>
+              <option value="walk">Walk Cycle (4 frames)</option>
+              <option value="run">Run Cycle (4 frames)</option>
+              <option value="jump">Jump Arc (4 frames)</option>
+              <option value="slash">Slash Attack (6 frames)</option>
+            </select>
+          </label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <label>Frames count
+              <input type="number" id="pixelAnimationFrameCount" value="4" min="2" max="12" style="width: 100%; margin-top: 4px;" />
+            </label>
+            <label>Frame Rate (FPS)
+              <input type="number" id="pixelAnimationFps" value="8" min="1" max="24" style="width: 100%; margin-top: 4px;" />
+            </label>
+          </div>
+          <button class="mini primary" id="pixelAnimateSpriteBtn" type="button" style="width: 100%; margin-top: 6px; font-weight: 700;">Animate Selected Sprite</button>
+        </div>
+      </details>
+
+      <!-- Animation Transfer Settings (Phase 10) -->
+      <details class="collapsible-section" id="pixelTransferSettingsSection" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(85,241,255,0.15); background: rgba(0,0,0,0.15);" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Animation Transfer</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label>Source Sheet Path
+            <input type="text" id="pixelTransferSourceSheet" placeholder="e.g. output/pixel_assets/batches/pxb_xxxx/sheet.png" style="width: 100%; margin-top: 4px;" />
+          </label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <label>Grid Rows
+              <input type="number" id="pixelTransferRows" value="1" min="1" max="8" style="width: 100%; margin-top: 4px;" />
+            </label>
+            <label>Grid Cols
+              <input type="number" id="pixelTransferCols" value="4" min="1" max="16" style="width: 100%; margin-top: 4px;" />
+            </label>
+          </div>
+          <label>Target Prompt
+            <textarea id="pixelTransferPrompt" rows="2" placeholder="e.g. golden knight outfit..." style="width: 100%; margin-top: 4px; font-family: inherit; font-size: 12px;"></textarea>
+          </label>
+          <button class="mini primary" id="pixelTransferBtn" type="button" style="width: 100%; margin-top: 6px; font-weight: 700;">Transfer Poses</button>
+        </div>
+      </details>
+
+      <!-- Skeleton & Rigging Settings (Phase 11) -->
+      <details class="collapsible-section" id="pixelRigSettingsSection" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(85,241,255,0.15); background: rgba(0,0,0,0.15);" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Skeleton & Rigging</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Keyframe Selector -->
+          <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between;">
+            <span style="font-size: 11px; text-transform: uppercase; color: var(--muted);">Keyframe:</span>
+            <div style="display: flex; gap: 2px;">
+              <button class="mini active" id="btnRigKeyframe0" type="button" style="padding: 2px 6px; font-size: 10px;">Pose A</button>
+              <button class="mini" id="btnRigKeyframe1" type="button" style="padding: 2px 6px; font-size: 10px;">Pose B</button>
+            </div>
+          </div>
+          <!-- Joint Angles adjustments -->
+          <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+            <label style="font-size: 11px; text-transform: none; color: #fff; display: flex; justify-content: space-between;">Head Angle
+              <input type="range" id="pixelRigHeadAngle" min="-45" max="45" step="5" value="0" style="width: 100px;" oninput="document.getElementById('pixelRigHeadAngleVal').textContent = this.value + '°'" />
+              <span id="pixelRigHeadAngleVal" style="font-family: monospace; font-size: 11px; min-width: 28px; text-align: right;">0°</span>
+            </label>
+            <label style="font-size: 11px; text-transform: none; color: #fff; display: flex; justify-content: space-between;">Left Arm
+              <input type="range" id="pixelRigArmLeftAngle" min="-90" max="90" step="5" value="0" style="width: 100px;" oninput="document.getElementById('pixelRigArmLeftAngleVal').textContent = this.value + '°'" />
+              <span id="pixelRigArmLeftAngleVal" style="font-family: monospace; font-size: 11px; min-width: 28px; text-align: right;">0°</span>
+            </label>
+            <label style="font-size: 11px; text-transform: none; color: #fff; display: flex; justify-content: space-between;">Right Arm
+              <input type="range" id="pixelRigArmRightAngle" min="-90" max="90" step="5" value="0" style="width: 100px;" oninput="document.getElementById('pixelRigArmRightAngleVal').textContent = this.value + '°'" />
+              <span id="pixelRigArmRightAngleVal" style="font-family: monospace; font-size: 11px; min-width: 28px; text-align: right;">0°</span>
+            </label>
+          </div>
+          <button class="mini primary" id="pixelRigRenderBtn" type="button" style="width: 100%; margin-top: 6px; font-weight: 700;">Render Rig Animation</button>
+        </div>
+      </details>
+
+      <!-- Pack Builder Settings (Phase 12) -->
+      <details class="collapsible-section" id="pixelPackSettingsSection" style="margin-top: 4px; padding: 10px; border-radius: 8px; border: 1px solid rgba(85,241,255,0.15); background: rgba(0,0,0,0.15);" open>
+        <summary style="cursor: pointer; font-weight: bold; font-size: 12px; color: var(--cyan); outline: none;">Cohesive Pack Builder</summary>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label>Pack Template / Recipe
+            <select id="pixelPackRecipeSelect" style="width: 100%; margin-top: 4px;">
+              <option value="rpg_starter" selected>RPG Hero Starter (6 assets)</option>
+              <option value="dungeon_crawler">Dungeon Crawler (6 assets)</option>
+              <option value="platformer_starter">Platformer Starter (6 assets)</option>
+              <option value="potion_shop">Potion / Item Shop (6 assets)</option>
+              <option value="ui_hud_pack">UI HUD Pack (6 assets)</option>
+            </select>
+          </label>
+          <div class="pixel-recipe-discovery-controls">
+            <input id="pixelRecipeSearchInput" type="search" placeholder="Search recipes, tags, prompts..." />
+            <div class="pixel-recipe-filter-row">
+              <select id="pixelRecipeSourceFilter">
+                <option value="all">All sources</option>
+                <option value="built_in">Built-in</option>
+                <option value="user">Saved</option>
+              </select>
+              <select id="pixelRecipeTypeFilter">
+                <option value="all">All types</option>
+                <option value="characters">Characters</option>
+                <option value="creatures">Creatures</option>
+                <option value="items">Items</option>
+                <option value="weapons">Weapons</option>
+                <option value="potions">Potions</option>
+                <option value="ui_icons">UI Icons</option>
+                <option value="tilesets">Tilesets</option>
+                <option value="backgrounds">Backgrounds</option>
+              </select>
+            </div>
+          </div>
+          <div id="pixelRecipeCardGrid" class="pixel-recipe-card-grid"></div>
+          <div id="pixelRecipeTutorialCards" class="pixel-recipe-tutorial-cards">
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_asset">First asset</button>
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_tileset">First tileset</button>
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_animation">First animation</button>
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_pack">First pack</button>
+          </div>
+          <div id="pixelRecipeMeta" style="font-size: 11px; line-height: 1.35; color: var(--muted); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px;">Recipe details load here.</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <button class="mini" id="pixelRecipeSaveBtn" type="button">Save recipe</button>
+            <button class="mini" id="pixelRecipeExportBtn" type="button">Export JSON</button>
+            <button class="mini" id="pixelRecipeImportBtn" type="button">Import JSON</button>
+            <input id="pixelRecipeImportInput" type="file" accept="application/json,.json" style="display: none;" />
+          </div>
+          <button class="mini primary" id="pixelPackGenerateBtn" type="button" style="width: 100%; margin-top: 6px; font-weight: 700;">Generate Complete Pack</button>
+        </div>
+      </details>
+
+      <!-- Provider & Directions -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <label>Provider
+          <select id="pixelProviderSelect" style="width: 100%; margin-top: 4px;">
+            <option value="local_mock">Local fallback</option>
+            <option value="comfyui">ComfyUI Local</option>
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+            <option value="huggingface">Hugging Face</option>
+            <option value="anthropic">Anthropic Prompt Help</option>
+            <option value="moonshot">Moonshot / Kimi</option>
+            <option value="glm">GLM</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="grok">Grok / xAI</option>
+          </select>
+        </label>
+        <label id="pixelDirectionsLabel">Directions
+          <select id="pixelDirectionsSelect" style="width: 100%; margin-top: 4px;">
+            <option value="1" selected>1 Direction</option>
+            <option value="4">4 Directions</option>
+            <option value="8">8 Directions</option>
+          </select>
+        </label>
+      </div>
+      <div id="pixelProviderCapabilityPanel" class="pixel-provider-capability-panel">
+        <div id="pixelProviderCapabilityBadges" class="pixel-provider-capability-badges"></div>
+        <div id="pixelProviderCapabilityMessage" class="pixel-provider-capability-message">Checking provider...</div>
+      </div>
+
+      <!-- Batch count selector -->
+      <label id="pixelBatchCountLabel">Batch count
+        <input type="number" id="pixelBatchCount" value="4" min="1" max="64" style="width: 100%; margin-top: 4px;" />
+      </label>
+
+      <!-- Action Row -->
+      <div style="display: flex; gap: 8px; margin-top: auto;">
+        <button class="ghost" id="pixelDryRunBtn" type="button" style="flex: 1; padding: 8px; font-size: 12px;" title="Review prompt and cloud payload plan">Plan</button>
+        <button class="primary" id="pixelGenerateBtn" type="button" style="flex: 2; padding: 8px; font-weight: 700;">Generate</button>
+      </div>
+
+      <div id="pixelWorkflowCards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+        <button class="mini" type="button" data-pixel-workflow="first_asset">First Asset</button>
+        <button class="mini" type="button" data-pixel-workflow="first_tileset">Tileset</button>
+        <button class="mini" type="button" data-pixel-workflow="first_animation">Animation</button>
+        <button class="mini" type="button" data-pixel-workflow="first_pack">Pack</button>
+      </div>
+    </div>
+
+    <!-- Center: Preview & Gallery -->
+    <div class="pixel-studio-main" style="display: flex; flex-direction: column; gap: 16px;">
+
+      <!-- Preview Pane / Zoom Panel -->
+      <div class="card pixel-studio-preview-card" style="flex: 1; min-height: 280px; display: flex; flex-direction: column; padding: 18px; border: 1px solid rgba(85, 241, 255, 0.1); border-radius: 12px; background: rgba(10, 14, 28, 0.8);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <h3 style="font-size: 14px; font-weight: 700; color: #fff; margin: 0;">Interactive Zoom workspace</h3>
+            <!-- Before/After comparison toggles -->
+            <div id="pixelCompareToggleRow" style="display: none; gap: 4px; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 6px;">
+              <button class="mini active" id="btnPreviewShowNormalized" style="padding: 2px 6px; font-size: 10px;">Normalized</button>
+              <button class="mini" id="btnPreviewShowRaw" style="padding: 2px 6px; font-size: 10px;">Raw AI</button>
+            </div>
+            <!-- Spritesheet preview toggles (Phase 3) -->
+            <div id="pixelSheetViewToggleRow" style="display: none; gap: 4px; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 6px;">
+              <button class="mini active" id="btnPreviewShowSheet" style="padding: 2px 6px; font-size: 10px;">Full Sheet</button>
+              <button class="mini" id="btnPreviewShowSingle" style="padding: 2px 6px; font-size: 10px;">Active Direction</button>
+            </div>
+            <!-- Animation playback controls (Phase 8) -->
+            <div id="pixelAnimationPlayToggleRow" style="display: none; gap: 4px; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 6px; align-items: center;">
+              <button class="mini" id="btnAnimPlayPause" style="padding: 2px 6px; font-size: 10px;">⏸️ Pause</button>
+              <span id="txtAnimFrameCounter" style="font-family: monospace; font-size: 10px; color: var(--cyan); margin: 0 4px;">F: 0/0</span>
+            </div>
+            <!-- Animation Transfer comparison (Phase 10) -->
+            <div id="pixelTransferCompareRow" style="display: none; gap: 4px; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 6px;">
+              <button class="mini active" id="btnPreviewShowTransferred" style="padding: 2px 6px; font-size: 10px;">Transferred</button>
+              <button class="mini" id="btnPreviewShowSource" style="padding: 2px 6px; font-size: 10px;">Source Sheet</button>
+            </div>
+          </div>
+
+          <div class="pixel-zoom-controls" style="display: flex; gap: 6px; align-items: center;">
+            <button class="mini" id="pixelZoomOutBtn" title="Zoom Out">-</button>
+            <span id="pixelZoomLevel" style="font-size: 11px; color: var(--muted); font-family: monospace;">400%</span>
+            <button class="mini" id="pixelZoomInBtn" title="Zoom In">+</button>
+            <button class="mini" id="gridToggleBtn" style="margin-left: 6px;">Grid: ON</button>
+            <button class="mini" id="pixelSeamPreviewBtn" style="margin-left: 6px; display: none;">Seam Preview: OFF</button>
+            <button class="mini primary" id="pixelNormalizeTriggerBtn" style="margin-left: 6px; display: none;">Re-normalize</button>
+          </div>
+        </div>
+
+        <!-- Editor Toolbar (Phase 7) -->
+        <div id="pixelEditorToolbar" style="display: none; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4); padding: 6px 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(85,241,255,0.15);">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="mini active" id="btnEditorPencil" title="Pencil Tool" style="padding: 4px 8px;">✏️ Pencil</button>
+            <button class="mini" id="btnEditorEraser" title="Eraser Tool" style="padding: 4px 8px;">🧼 Eraser</button>
+            <button class="mini" id="btnEditorBucket" title="Paint Bucket (Fill)" style="padding: 4px 8px;">🪣 Bucket</button>
+            <button class="mini" id="btnEditorPicker" title="Color Eyedropper" style="padding: 4px 8px;">🧪 Picker</button>
+            <button class="mini" id="btnEditorLine" title="Line Tool" style="padding: 4px 8px;">Line</button>
+            <button class="mini" id="btnEditorRect" title="Rectangle Tool" style="padding: 4px 8px;">Rect</button>
+            <button class="mini" id="btnEditorSelect" title="Selection Tool" style="padding: 4px 8px;">Select</button>
+            <button class="mini" id="btnEditorMove" title="Move Selected Pixels" style="padding: 4px 8px;">Move</button>
+            <button class="mini" id="btnEditorMask" title="AI Mask Brush" style="padding: 4px 8px;">🎭 AI Mask</button>
+            <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
+            <button class="mini" id="btnEditorUndo" title="Undo Edit" style="padding: 4px 8px;">↩️ Undo</button>
+            <button class="mini" id="btnEditorRedo" title="Redo Edit" style="padding: 4px 8px;">↪️ Redo</button>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="mini" id="btnEditorImport" title="Import PNG into editor">Import PNG</button>
+            <input id="pixelEditorImportInput" type="file" accept="image/png,image/webp,image/jpeg" style="display: none;" />
+            <button class="mini" id="btnEditorExport" title="Export edited PNG">Export PNG</button>
+            <button class="mini" id="btnEditorVersion" title="Save current edit as a named version">Save Version</button>
+            <button class="mini ghost" id="btnEditorCancel">Cancel</button>
+            <button class="mini primary" id="btnEditorSave" style="font-weight: 700;">Save Edits</button>
+          </div>
+        </div>
+
+        <!-- AI Inpaint Toolbar Controls (Phase 8) -->
+        <div id="pixelInpaintToolbar" style="display: none; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(85,241,255,0.15); gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+            <span style="font-size: 11px; text-transform: uppercase; color: var(--cyan); white-space: nowrap;">Inpaint Prompt:</span>
+            <input type="text" id="pixelInpaintPrompt" placeholder="change helmet to blue wizard hood..." style="flex: 1; height: 28px; font-size: 12px; padding: 4px 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15);" />
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; text-transform: none; margin: 0;">
+              Brush:
+              <input type="range" id="pixelInpaintBrushSize" min="1" max="10" step="1" value="2" style="width: 60px;" oninput="document.getElementById('pixelInpaintBrushSizeVal').textContent = this.value" />
+              <span id="pixelInpaintBrushSizeVal" style="font-family: monospace; font-size: 11px; min-width: 12px;">2</span>
+            </label>
+            <label style="font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; text-transform: none; margin: 0;">
+              Opacity:
+              <input type="range" id="pixelInpaintMaskOpacity" min="0.1" max="1" step="0.1" value="0.8" style="width: 60px;" />
+            </label>
+            <label style="font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; text-transform: none; margin: 0;">
+              Variants:
+              <input type="number" id="pixelInpaintVariantCount" min="1" max="6" value="1" style="width: 44px; height: 28px; padding: 2px 4px;" />
+            </label>
+            <button class="mini" id="btnEditorCompareInpaint" type="button" title="Hold to compare against the saved pre-inpaint image">Before</button>
+            <button class="mini primary" id="btnEditorRunInpaint" style="font-weight: 700;">Run AI Edit</button>
+          </div>
+        </div>
+
+        <!-- Interactive Preview Box -->
+        <div class="pixel-preview-viewport checkerboard" style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: auto; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: #000;">
+          <div id="pixelSpriteContainer" style="image-rendering: pixelated; position: relative; width: 128px; height: 128px; transition: transform 0.1s ease;">
+            <svg id="pixelGridOverlay" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display: block; stroke: rgba(255,255,255,0.15); stroke-width: 0.5px;">
+              <!-- Grid lines generated via script -->
+            </svg>
+            <div id="pixelSpriteFallback" style="color: rgba(255,255,255,0.25); text-align: center; font-size: 12px; padding: 20px;">No asset selected. Generate or select a profile to begin.</div>
+            <img id="pixelSpriteImg" style="width: 100%; height: 100%; display: none; object-fit: contain;" alt="Selected pixel asset" />
+            <canvas id="pixelEditorCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; display: none;"></canvas>
+            <canvas id="pixelMaskCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; display: none; pointer-events: none; opacity: 0.8;"></canvas>
+
+            <!-- Interactive skeletal bone overlays -->
+            <div id="pixelRigOverlayContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none;">
+              <!-- Head joint handle -->
+              <div class="rig-joint-handle" id="handleHead" style="position: absolute; top: 35%; left: 50%; width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: auto; cursor: crosshair; box-shadow: 0 0 4px var(--cyan);"></div>
+              <!-- Left arm joint handle -->
+              <div class="rig-joint-handle" id="handleArmLeft" style="position: absolute; top: 50%; left: 30%; width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: auto; cursor: crosshair; box-shadow: 0 0 4px var(--cyan);"></div>
+              <!-- Right arm joint handle -->
+              <div class="rig-joint-handle" id="handleArmRight" style="position: absolute; top: 50%; left: 70%; width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: auto; cursor: crosshair; box-shadow: 0 0 4px var(--cyan);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dry-Run Execution Plan Panel (Interactive Details) -->
+      <div class="card pixel-plan-panel" id="pixelPlanPanel" style="padding: 18px; border: 1px solid rgba(85, 241, 255, 0.15); border-radius: 12px; display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h3 style="font-size: 14px; font-weight: 700; color: var(--cyan); margin: 0;">Plan</h3>
+          <button class="mini" id="pixelClosePlanBtn">Dismiss</button>
+        </div>
+        <div style="font-family: monospace; font-size: 11px; color: var(--text); background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; max-height: 150px; overflow-y: auto;">
+          <div style="margin-bottom: 4px;"><strong>Expanded prompt:</strong> <span id="pixelPlanPrompt"></span></div>
+          <div style="margin-bottom: 4px;"><strong>Provider payload:</strong> <span id="pixelPlanPayload"></span></div>
+          <div style="margin-bottom: 4px;"><strong>Processing pipeline:</strong></div>
+          <ul id="pixelPlanPipeline" style="margin: 0; padding-left: 16px;"></ul>
+        </div>
+      </div>
+
+      <div class="card pixel-failure-panel" id="pixelFailurePanel" style="padding: 16px; border: 1px solid rgba(255, 107, 107, 0.35); border-radius: 12px; background: rgba(36, 12, 18, 0.75); display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+          <div>
+            <h3 id="pixelFailureTitle" style="font-size: 14px; font-weight: 700; color: #ff8a8a; margin: 0 0 6px 0;">Pixel Studio issue</h3>
+            <p id="pixelFailureWhat" style="margin: 0 0 6px 0; color: #f4dada; font-size: 12px; line-height: 1.4;"></p>
+            <p id="pixelFailureFix" style="margin: 0; color: #f7c7c7; font-size: 12px; line-height: 1.4;"></p>
+          </div>
+          <button class="mini" id="pixelFailureDismissBtn" type="button">Dismiss</button>
+        </div>
+      </div>
+
+      <!-- Gallery (Cohesive Sets) -->
+      <div class="card pixel-studio-gallery-card" style="height: 270px; display: flex; flex-direction: column; padding: 18px; border: 1px solid rgba(85, 241, 255, 0.1); border-radius: 12px; background: rgba(10, 14, 28, 0.8);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+          <h3 style="font-size: 14px; font-weight: 700; color: #fff; margin: 0;">Generated asset gallery</h3>
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <input id="pixelHistorySearchInput" type="search" placeholder="Search history..." style="width: 142px; height: 26px; font-size: 11px; padding: 4px 8px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.16); color: var(--text); border-radius: 6px;" />
+            <select id="pixelHistoryTypeFilter" style="width: 108px; height: 26px; font-size: 11px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.16); color: var(--text); border-radius: 6px;">
+              <option value="">All types</option>
+              <option value="characters">Characters</option>
+              <option value="items">Items</option>
+              <option value="tilesets">Tilesets</option>
+              <option value="ui_icons">UI Icons</option>
+              <option value="portraits">Portraits</option>
+            </select>
+            <button class="mini" id="pixelLoadHistoryBtn" type="button">History</button>
+          </div>
+        </div>
+        <div id="pixelGalleryContainer" style="flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; overflow-y: auto; align-content: start;">
+          <!-- Empty State -->
+          <div id="pixelGalleryEmptyState" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted);">
+            <svg style="width: 32px; height: 32px; margin-bottom: 6px; stroke: currentColor; fill: none; stroke-width: 1.5;" viewBox="0 0 24 24">
+              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span style="font-size: 12px;">Gallery empty. Save a style profile or build a plan to start.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Inspector -->
+    <div class="card pixel-studio-inspector" style="display: flex; flex-direction: column; gap: 14px; padding: 18px; background: rgba(14, 19, 35, 0.94); border: 1px solid rgba(85, 241, 255, 0.15); border-radius: 12px;">
+      <h3 style="font-size: 15px; font-weight: 700; color: var(--cyan); margin-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 6px;">Asset inspector</h3>
+
+      <!-- Metadata Panel -->
+      <div class="inspector-section">
+        <h4 style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px;">Metadata</h4>
+        <div style="font-size: 12px; color: var(--text); display: flex; flex-direction: column; gap: 4px;">
+          <div><strong>Asset ID:</strong> <span id="inspectorAssetId">—</span></div>
+          <div><strong>Mode:</strong> <span id="inspectorMode">—</span></div>
+          <div id="inspectorRoleRow" style="display: none;"><strong>Role:</strong> <span id="inspectorRole">—</span></div>
+          <div><strong>Dimensions:</strong> <span id="inspectorDimensions">—</span></div>
+          <div><strong>Model:</strong> <span id="inspectorModel">—</span></div>
+          <div id="inspectorLoraRow" style="display: none;"><strong>LoRA:</strong> <span id="inspectorLoraDetails">—</span></div>
+        </div>
+      </div>
+
+      <!-- Palette Panel -->
+      <div class="inspector-section">
+        <h4 style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px;">Quantized palette</h4>
+        <div id="inspectorPaletteColors" style="display: flex; flex-wrap: wrap; gap: 4px; min-height: 40px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+          <div style="color: var(--muted); font-size: 11px;">No palette loaded</div>
+        </div>
+      </div>
+
+      <!-- QA summary Panel -->
+      <div class="inspector-section">
+        <h4 style="font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px;">Quality gates (QA)</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+            <span>Color count</span>
+            <span id="qaColorCountBadge" class="badge">N/A</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+            <span>Alpha transparency</span>
+            <span id="qaAlphaBadge" class="badge">N/A</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+            <span>Anti-alias blur</span>
+            <span id="qaBlurBadge" class="badge">N/A</span>
+          </div>
+          <!-- Rotation Consistency scores -->
+          <div id="qaConsistencyRows" style="display: none; flex-direction: column; gap: 6px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Palette similarity</span>
+              <span id="qaPaletteSimilarity" style="font-family: monospace; font-size: 11px; color: var(--cyan);">N/A</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Height similarity</span>
+              <span id="qaHeightSimilarity" style="font-family: monospace; font-size: 11px; color: var(--cyan);">N/A</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Overall score</span>
+              <span id="qaOverallSimilarity" class="badge">N/A</span>
+            </div>
+          </div>
+          <!-- Tileset Seam Check scores (Phase 6) -->
+          <div id="qaSeamRows" style="display: none; flex-direction: column; gap: 6px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Horizontal Seam</span>
+              <span id="qaHorizSeam" style="font-family: monospace; font-size: 11px; color: var(--cyan);">N/A</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Vertical Seam</span>
+              <span id="qaVertSeam" style="font-family: monospace; font-size: 11px; color: var(--cyan);">N/A</span>
+            </div>
+          </div>
+          <!-- Animation QA Scores (Phase 8) -->
+          <div id="qaAnimationRows" style="display: none; flex-direction: column; gap: 6px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Bbox Jitter</span>
+              <span id="qaBboxJitter" style="font-family: monospace; font-size: 11px; color: var(--cyan);">N/A</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Palette Drift</span>
+              <span id="qaPaletteDrift" style="font-family: monospace; font-size: 11px; color: var(--cyan);">N/A</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+              <span>Loop Continuity</span>
+              <span id="qaLoopContinuity" style="font-family: monospace; font-size: 11px; color: var(--cyan);">N/A</span>
+            </div>
+          </div>
+          <div id="pixelVisualQaPanel" class="pixel-visual-qa-panel">
+            <div class="pixel-visual-qa-head">
+              <span>Visual QA report</span>
+              <span id="pixelVisualQaScore" class="badge">N/A</span>
+            </div>
+            <div id="pixelVisualQaRows" class="pixel-visual-qa-rows">
+              <div class="pixel-visual-qa-empty">Select an asset to inspect QA.</div>
+            </div>
+            <button class="mini" id="inspectorRefreshQaBtn" type="button" disabled>Refresh QA report</button>
+            <button class="mini" id="inspectorOpenQaPageBtn" type="button" disabled>Open QA page</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Panel -->
+      <div class="inspector-section" style="margin-top: auto; display: flex; flex-direction: column; gap: 8px;">
+        <button class="ghost" id="inspectorUseAsStyleBtn" type="button" disabled style="width: 100%;">Use as style reference</button>
+        <button class="ghost" id="inspectorGenerateLikeBtn" type="button" disabled style="width: 100%;">Generate more like this</button>
+        <button class="ghost" id="inspectorReskinBtn" type="button" disabled style="width: 100%;">Reskin variations</button>
+        <button class="ghost" id="inspectorMatchStyleBtn" type="button" disabled style="width: 100%;">Make match project style</button>
+        <button class="ghost" id="inspectorApplyPartBtn" type="button" disabled style="width: 100%;">Apply outfit / part</button>
+        <button class="ghost" id="inspectorRepairTileBtn" type="button" disabled style="width: 100%; display: none;">Repair tile seams</button>
+        <button class="ghost" id="inspectorCleanupBtn" type="button" disabled style="width: 100%;">Cleanup selected asset</button>
+        <button class="ghost" id="inspectorEditBtn" type="button" disabled style="width: 100%;">Paint & Edit Pixel</button>
+        <button class="ghost" id="inspectorExportBtn" type="button" disabled style="width: 100%;">Export Game Release</button>
+        <button class="ghost" id="inspectorExportPackBtn" type="button" disabled style="width: 100%; display: none;">Export Complete Pack (.ZIP)</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Reskin Variations Modal Dialog -->
+  <div id="pixelReskinModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="reskinModalTitle" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6);">
+    <div class="result-modal-backdrop" id="pixelReskinModalBackdrop" style="position: absolute; top:0; left:0; width:100%; height:100%;"></div>
+    <section class="result-dialog" style="position: relative; max-width: 640px; width: 92vw; background: #0f1322; border: 1px solid rgba(85,241,255,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="result-dialog-head" style="margin-bottom: 16px;">
+        <h2 id="reskinModalTitle" style="font-size: 18px; font-weight: bold; color: var(--cyan); margin: 0;">Reskin variations</h2>
+      </div>
+
+      <form id="pixelReskinForm" style="display: flex; flex-direction: column; gap: 12px;">
+        <label>Theme or palette
+          <input type="text" id="pixelReskinPrompt" placeholder="ice blue, fire red, royal gold, poison green..." required style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Variants
+          <input type="number" id="pixelReskinCount" value="6" min="1" max="12" style="width:100%; margin-top:4px;" />
+        </label>
+        <div id="pixelReskinVariantGrid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-height: 40px;"></div>
+        <div class="button-row" style="justify-content: flex-end; margin-top: 8px;">
+          <button type="button" class="ghost" id="pixelReskinCancelBtn">Close</button>
+          <button type="submit" class="primary" id="pixelReskinGenerateBtn">Generate Reskins</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- Apply Outfit / Part Modal Dialog -->
+  <div id="pixelPartApplyModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="partApplyModalTitle" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6);">
+    <div class="result-modal-backdrop" id="pixelPartApplyModalBackdrop" style="position: absolute; top:0; left:0; width:100%; height:100%;"></div>
+    <section class="result-dialog" style="position: relative; max-width: 640px; width: 92vw; background: #0f1322; border: 1px solid rgba(85,241,255,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="result-dialog-head" style="margin-bottom: 16px;">
+        <h2 id="partApplyModalTitle" style="font-size: 18px; font-weight: bold; color: var(--cyan); margin: 0;">Apply outfit or part</h2>
+      </div>
+
+      <form id="pixelPartApplyForm" style="display: flex; flex-direction: column; gap: 12px;">
+        <label>Part or outfit
+          <input type="text" id="pixelPartPrompt" placeholder="iron chest armor, blue hood, leather boots..." required style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Optional part/reference image
+          <input type="file" id="pixelPartImageInput" accept="image/png,image/webp,image/jpeg" style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Variants
+          <input type="number" id="pixelPartVariantCount" value="3" min="1" max="6" style="width:100%; margin-top:4px;" />
+        </label>
+        <div id="pixelPartVariantGrid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-height: 40px;"></div>
+        <div class="button-row" style="justify-content: flex-end; margin-top: 8px;">
+          <button type="button" class="ghost" id="pixelPartApplyCancelBtn">Close</button>
+          <button type="submit" class="primary" id="pixelPartApplyGenerateBtn">Generate Variants</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- Style Profile Modal Dialog -->
+  <div id="pixelStyleModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="styleModalTitle" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6);">
+    <div class="result-modal-backdrop" id="pixelStyleModalBackdrop" style="position: absolute; top:0; left:0; width:100%; height:100%;"></div>
+    <section class="result-dialog" style="position: relative; max-width: 480px; width: 90vw; background: #0f1322; border: 1px solid rgba(85,241,255,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="result-dialog-head" style="margin-bottom: 16px;">
+        <h2 id="styleModalTitle" style="font-size: 18px; font-weight: bold; color: var(--cyan); margin: 0;">New style profile</h2>
+      </div>
+
+      <form id="pixelStyleForm" style="display: flex; flex-direction: column; gap: 12px;">
+        <label>Profile name
+          <input type="text" id="pixelStyleName" placeholder="e.g. Cozy 16-bit RPG" required style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Outline hint
+          <input type="text" id="pixelStyleOutline" placeholder="e.g. dark one-pixel outline" style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Shading hint
+          <input type="text" id="pixelStyleShading" placeholder="e.g. limited 16-bit cel shading" style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Camera/Perspective hint
+          <input type="text" id="pixelStyleCamera" placeholder="e.g. orthographic sprite view" style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Palette colors (Hex comma-separated list)
+          <input type="text" id="pixelStylePalette" placeholder="e.g. #1b1b1b, #ffffff" style="width:100%; margin-top:4px;" />
+        </label>
+
+        <!-- LoRA Integration (Phase 4) -->
+        <div style="display: grid; grid-template-columns: 1fr 120px; gap: 10px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 4px;">
+          <label>Fine-tuned LoRA model
+            <select id="pixelStyleLoraSelect" style="width:100%; margin-top:4px;">
+              <option value="">-- No LoRA --</option>
+            </select>
+          </label>
+          <label>LoRA Weight
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+              <input type="range" id="pixelStyleLoraWeight" min="0.1" max="1.5" step="0.05" value="1.0" style="flex: 1;" oninput="document.getElementById('pixelStyleLoraWeightVal').textContent = this.value" />
+              <span id="pixelStyleLoraWeightVal" style="font-family: monospace; font-size: 11px; min-width: 28px; text-align: right;">1.0</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="result-actions" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button class="ghost" id="pixelStyleCancelBtn" type="button">Cancel</button>
+          <button class="primary" type="submit">Save Profile</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- Export Modal Dialog (Phase 5) -->
+  <div id="pixelExportModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6);">
+    <div class="result-modal-backdrop" id="pixelExportModalBackdrop" style="position: absolute; top:0; left:0; width:100%; height:100%;"></div>
+    <section class="result-dialog" style="position: relative; max-width: 400px; width: 90vw; background: #0f1322; border: 1px solid rgba(85,241,255,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="result-dialog-head" style="margin-bottom: 16px;">
+        <h2 id="exportModalTitle" style="font-size: 18px; font-weight: bold; color: var(--cyan); margin: 0;">Export Asset Spritesheet</h2>
+      </div>
+
+      <form id="pixelExportForm" style="display: flex; flex-direction: column; gap: 12px;">
+        <input type="hidden" id="pixelExportBatchId" value="" />
+        <label>Target Game Engine
+          <select id="pixelExportEngineSelect" style="width:100%; margin-top:4px;">
+            <option value="godot" selected>Godot Engine (Grid aligned + .import)</option>
+            <option value="unity">Unity Engine (Grid meta slices)</option>
+            <option value="aseprite">Aseprite (JSON Map + tags)</option>
+          </select>
+        </label>
+
+        <div class="result-actions" style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button class="ghost" id="pixelExportCancelBtn" type="button">Cancel</button>
+          <button class="primary" type="submit" style="font-weight: 700;">Export & Download ZIP</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</section>

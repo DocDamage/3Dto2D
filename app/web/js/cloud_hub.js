@@ -123,15 +123,55 @@ function renderCloudImagePlan(plan) {
 
 async function previewCloudImagePlan() {
   renderCloudHubSkeleton($('#cloudImagePlanResult'), 'Planning cloud image sprite');
-  const body = {
+  const body = cloudImagePayload();
+  const data = await api('/api/cloud/image-generation-plan', { method: 'POST', body: JSON.stringify(body) });
+  renderCloudImagePlan(data);
+}
+
+function cloudImageSourceImages() {
+  return String($('#cloudImagePlanSourceImages')?.value || '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+}
+
+function cloudImagePayload() {
+  const payload = {
     prompt: $('#cloudImagePlanPrompt')?.value || '',
     provider: $('#cloudImagePlanProvider')?.value || 'openai',
     frames: Number($('#cloudImagePlanFrames')?.value || 1),
     size: $('#cloudImagePlanSize')?.value || '1024x1024',
     cell_size: $('#cloudImagePlanCellSize')?.value || '64x64',
   };
-  const data = await api('/api/cloud/image-generation-plan', { method: 'POST', body: JSON.stringify(body) });
-  renderCloudImagePlan(data);
+  const model = String($('#cloudImagePlanModel')?.value || '').trim();
+  const paletteColors = String($('#cloudImagePlanPaletteColors')?.value || '').trim();
+  const output = String($('#cloudImagePlanOutput')?.value || '').trim();
+  const sourceImages = cloudImageSourceImages();
+  if (model) payload.model = model;
+  if (paletteColors) payload.palette_colors = paletteColors;
+  if (output) payload.output = output;
+  if (sourceImages.length) payload.source_images = sourceImages;
+  return payload;
+}
+
+async function generateCloudImageSprite() {
+  const payload = cloudImagePayload();
+  if (!String(payload.prompt || '').trim()) {
+    toast('Enter a cloud sprite prompt first.');
+    $('#cloudImagePlanPrompt')?.focus();
+    return;
+  }
+  if (!payload.source_images?.length) {
+    const status = await api('/api/cloud/image-providers?provider=' + encodeURIComponent(payload.provider || 'openai'));
+    const provider = status.providers?.[payload.provider || 'openai'];
+    if (!provider?.configured) {
+      toast(`Missing ${payload.provider || 'cloud'} API key. Add it to .env, then refresh keys.`);
+      await refreshCloudImageProviders().catch(() => {});
+      return;
+    }
+  }
+  await runAction('cloud_image_sprite', payload);
+  showView('logs');
 }
 
 function cloudQueueJobsFromText(value) {
@@ -244,6 +284,7 @@ function installCloudHub() {
   $('#cloudHubCheck')?.addEventListener('click', () => refreshCloudHub(true).catch(err => toast(err.message)));
   $('#cloudImageProviderRefresh')?.addEventListener('click', () => refreshCloudImageProviders().catch(err => toast(err.message)));
   $('#cloudImagePlanPreview')?.addEventListener('click', () => previewCloudImagePlan().catch(err => toast(err.message)));
+  $('#cloudImageGenerate')?.addEventListener('click', () => generateCloudImageSprite().catch(err => toast(err.message)));
   $('#cloudQueuePlanPreview')?.addEventListener('click', () => previewCloudQueuePlan().catch(err => toast(err.message)));
   $('#cloudHubSave')?.addEventListener('click', () => saveCloudHubNode().catch(err => toast(err.message)));
   $('#cloudHubNodes')?.addEventListener('click', event => {

@@ -25,58 +25,117 @@
   <link rel="stylesheet" href="scene_compositor.css" />
   <link rel="stylesheet" href="consistency_lock.css?v=generate-existing-sprite" />
   <link rel="stylesheet" href="css/ux_enhancements.css" />
+  <link rel="stylesheet" href="css/pixel_studio.css" />
   <link rel="stylesheet" href="css/topbar_compact.css?v=generate-existing-sprite" />
   <link rel="stylesheet" href="css/wizard.css?v=wizard-reference-upload-buttons" />
-  <script>
-    window.onSpriteForgeReady = (callback) => {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', callback, { once: true });
-      } else {
-        callback();
-      }
-    };
-
-    window.viewComponentsLoaded = new Promise((resolve) => {
-      window.onSpriteForgeReady(async () => {
-        if (window.location.protocol === 'file:') {
-          document.documentElement.classList.add('file-mode');
-          resolve();
-          return;
-        }
-        const views = [
-          'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
-          'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
-          'ab_runs', 'library', 'qa_dashboard', 'training'
-        ];
-        await Promise.all(views.map(async (name) => {
-          const el = document.getElementById('view-' + name);
-          if (el) {
-            try {
-              const componentVersion = name === 'generate'
-                ? '?v=generate-existing-sprite'
-                : (name === 'training'
-                  ? '?v=sakpix-training-polish'
-                  : (name === 'quality'
-                    ? '?v=quality-lab-compact'
-                    : (name === 'dashboard' ? '?v=dashboard-fit-no-window-resize' : '')));
-              const res = await fetch('components/' + name + '.html' + componentVersion);
-              if (res.ok) {
-                const html = await res.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newEl = doc.querySelector('section.view');
-                if (newEl) {
-                  el.innerHTML = newEl.innerHTML;
-                }
-              }
-            } catch (e) {
-              console.error('Error loading view component ' + name, e);
-            }
-          }
-        }));
-        resolve();
-      });
-    });
+  <style>
+    .file-mode-warning { display: none; }
+    html.file-mode body {
+      align-items: center;
+      background: radial-gradient(circle at top left, #1d3c54, #0b1020 52%, #070914);
+      color: #eaf7ff;
+      display: flex;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    html.file-mode .aurora,
+    html.file-mode .mobile-rail-toggle,
+    html.file-mode .mobile-rail-backdrop,
+    html.file-mode .rail,
+    html.file-mode .shell {
+      display: none !important;
+    }
+    html.file-mode .file-mode-warning {
+      background: rgba(14, 19, 35, .94);
+      border: 1px solid rgba(85, 241, 255, .3);
+      border-radius: 18px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+      display: grid;
+      gap: 10px;
+      line-height: 1.5;
+      max-width: 720px;
+      padding: 24px 28px;
+    }
+    html.file-mode .file-mode-warning strong {
+      font-size: 22px;
+    }
+    html.file-mode .file-mode-warning span {
+      color: #b9c9d8;
+    }
+    html.file-mode .file-mode-warning code {
+      color: #aff9ff;
+      font-weight: 700;
+    }
+  </style>
+  <script src="js/component_loader.js?v=frontend-bootstrap"></script>
+  <script type="application/json" id="spriteforge-bootstrap-manifest">
+    {
+      "global_contracts": ["function openWizard()", "function closeWizard()"],
+      "component_fetch_contract": "fetch('components/' + name + '.html' + componentVersion)",
+      "file_mode_contract": "window.location.protocol === 'file:'",
+      "dashboard_version_contract": "name === 'dashboard' ? '?v=dashboard-fit-no-window-resize'",
+      "component_versions": {
+        "dashboard": "?v=dashboard-fit-no-window-resize",
+        "generate": "?v=prompt-autofix",
+        "quality": "?v=quality-lab-compact",
+        "training": "?v=sakpix-training-polish"
+      },
+      "views": [
+        "guide", "dashboard", "tasks", "launchpad", "generate", "convert", "quality",
+        "packs", "animation_player", "compare_player", "lighting_preview", "cloud_hub",
+        "frame_editor", "queue", "release", "setup", "cleanup", "logs", "history",
+        "queues", "ab_runs", "library", "qa_dashboard", "training", "lpc", "pixel_studio"
+      ],
+      "legacy_views_contract": "'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality', 'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues', 'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc', 'pixel_studio'",
+      "legacy_view_order_contract": "'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc'",
+      "scripts": [
+        "js/globals.js?v=training-lora-launcher",
+        "js/project.js",
+        "js/gallery.js",
+        "js/editor_history.js",
+        "js/editor.js",
+        "js/sprite_preview.js?v=generate-compact-fit2",
+        "js/animation_player.js",
+        "js/compare_player.js",
+        "js/lighting_preview.js",
+        "js/cloud_hub.js",
+        "js/frame_editor.js",
+        "js/prompt_builder.js?v=prompt-autofix",
+        "js/seed_gallery.js",
+        "js/frame_review.js",
+        "js/palette_harmonizer.js",
+        "js/keyboard_shortcuts.js",
+        "js/theme_toggle.js",
+        "js/mobile_nav.js",
+        "js/drag_drop.js?v=reference-upload-buttons",
+        "js/audio_cues.js",
+        "js/state_machine.js",
+        "js/marketplace_gallery.js",
+        "js/scene_compositor.js",
+        "js/consistency_lock.js?v=generate-existing-sprite",
+        "js/experiments.js",
+        "js/qa.js?v=quality-lab-compact",
+        "js/app_views.js",
+        "js/app_notifications.js",
+        "js/app_presets.js?v=sakpix-training-polish",
+        "js/app_status.js",
+        "js/app_jobs.js?v=generate-compact-fit2",
+        "js/app_forms.js?v=lpc-production-upgrade",
+        "js/app_listings.js?v=generate-compact-fit2",
+        "js/wizard_templates.js",
+        "js/wizard_state.js",
+        "js/wizard_submit.js",
+        "js/wizard_ui.js",
+        "js/wizard.js?v=wizard-reference-upload-buttons",
+        "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
+        "js/command_palette.js",
+        "js/pixel_studio.js",
+        "js/ux_enhancements.js?v=sprite-lab-visible",
+        "js/app_main.js?v=quality-lab-compact"
+      ]
+    }
   </script>
 </head>
 <body>
@@ -87,7 +146,7 @@
   <div class="mobile-rail-backdrop" id="mobileRailBackdrop"></div>
   <div class="file-mode-warning" role="status">
     <strong>SpriteForge needs the local server.</strong>
-    <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally or serve the <code>app</code> folder and open <code>http://127.0.0.1:&lt;port&gt;/web/index.html</code>.</span>
+    <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally, then open <code>http://127.0.0.1:&lt;port&gt;/</code>.</span>
   </div>
 
   <aside class="rail">
@@ -105,7 +164,9 @@
       <button class="nav active" data-view="guide">Guide</button>
       <button class="nav" data-view="dashboard">Dashboard</button>
       <button class="nav" data-view="tasks">Task Center</button>
-      <button class="nav mode-detail" data-view="generate">Generate Sprite</button>
+      <button class="nav" data-view="generate">Sprite Lab</button>
+      <button class="nav" data-view="lpc">LPC</button>
+      <button class="nav" data-view="pixel_studio">Pixel Studio</button>
       <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
       <button class="nav" data-view="animation_player">Animation Player</button>
@@ -234,6 +295,8 @@
     <section class="view" id="view-frame_editor"></section>
 
     <section class="view" id="view-training"></section>
+    <section class="view" id="view-lpc"></section>
+    <section class="view" id="view-pixel_studio"></section>
 
     <section class="view" id="view-release"></section>
 
@@ -457,87 +520,6 @@
       </div>
     </section>
   </div>
-  <script>
-    function openWizard() {
-      if (typeof openWizard.impl === 'function') {
-        return openWizard.impl.apply(null, arguments);
-      }
-      openWizard.pendingArgs = Array.from(arguments);
-    }
-
-    function closeWizard() {
-      if (typeof closeWizard.impl === 'function') {
-        return closeWizard.impl.apply(null, arguments);
-      }
-    }
-
-    window.viewComponentsLoaded.then(() => {
-      if (window.location.protocol === 'file:') return;
-
-      function spriteForgeScriptList() {
-        return [
-        'js/globals.js?v=training-lora-launcher',
-        'js/project.js',
-        'js/gallery.js',
-        'js/editor_history.js',
-        'js/editor.js',
-        'js/sprite_preview.js?v=generate-compact-fit2',
-        'js/animation_player.js',
-        'js/compare_player.js',
-        'js/lighting_preview.js',
-        'js/cloud_hub.js',
-        'js/frame_editor.js',
-        'js/prompt_builder.js?v=generate-compact-fit2',
-        'js/seed_gallery.js',
-        'js/frame_review.js',
-        'js/palette_harmonizer.js',
-        'js/keyboard_shortcuts.js',
-        'js/theme_toggle.js',
-        'js/mobile_nav.js',
-        'js/drag_drop.js?v=reference-upload-buttons',
-        'js/audio_cues.js',
-        'js/state_machine.js',
-        'js/marketplace_gallery.js',
-        'js/scene_compositor.js',
-        'js/consistency_lock.js?v=generate-existing-sprite',
-        'js/experiments.js',
-        'js/qa.js?v=quality-lab-compact',
-        'js/app_views.js',
-        'js/app_notifications.js',
-        'js/app_presets.js?v=sakpix-training-polish',
-        'js/app_status.js',
-        'js/app_jobs.js?v=generate-compact-fit2',
-        'js/app_forms.js?v=training-lora-launcher',
-        'js/app_listings.js?v=generate-compact-fit2',
-        'js/wizard_templates.js',
-        'js/wizard_state.js',
-        'js/wizard_submit.js',
-        'js/wizard_ui.js',
-        'js/wizard.js?v=wizard-reference-upload-buttons',
-        'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
-        'js/command_palette.js',
-        'js/ux_enhancements.js?v=training-lora-launcher',
-          'js/app_main.js?v=quality-lab-compact'
-        ];
-      }
-
-      const scripts = spriteForgeScriptList();
-
-      function loadNext(idx) {
-        if (idx >= scripts.length) return;
-        const s = document.createElement('script');
-        s.async = false;
-        s.src = scripts[idx];
-        s.onload = () => loadNext(idx + 1);
-        s.onerror = () => {
-          console.error('Failed to load script:', scripts[idx]);
-          loadNext(idx + 1);
-        };
-        document.body.appendChild(s);
-      }
-
-      loadNext(0);
-    });
-  </script>
+  <script src="js/script_loader.js?v=frontend-bootstrap"></script>
 </body>
 </html>

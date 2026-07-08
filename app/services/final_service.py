@@ -39,6 +39,68 @@ def safe_name(value: str) -> str:
     out = "".join(ch if ch.isalnum() or ch in "._- " else "_" for ch in value).strip().replace(" ", "_")
     return out or "spriteforge"
 
+def qa_report_candidates(folder: Path) -> List[Path]:
+    return [
+        folder / "qa_report.json",
+        folder / "qa" / "qa_report.json",
+        folder / "quality_report.json",
+        folder / "quality" / "quality_report.json",
+    ]
+
+def first_qa_report(folder: Path) -> Optional[Path]:
+    for candidate in qa_report_candidates(folder):
+        if candidate.exists():
+            return candidate
+    return None
+
+def qa_report_score(data: Dict[str, Any]) -> Any:
+    summary = data.get("summary") if isinstance(data.get("summary"), dict) else {}
+    for value in (
+        data.get("overall_score"),
+        data.get("score"),
+        summary.get("overall_score"),
+        summary.get("score"),
+    ):
+        if value is not None:
+            return value
+    return None
+
+def qa_score_for_folder(folder: Path, initial: Optional[Dict[str, Any]] = None) -> Any:
+    if initial:
+        score = qa_report_score(initial)
+        if score is not None:
+            return score
+    for candidate in qa_report_candidates(folder):
+        data = load_json(candidate, {}) if candidate.exists() else {}
+        score = qa_report_score(data)
+        if score is not None:
+            return score
+    return None
+
+def qa_report_metrics(data: Dict[str, Any]) -> Dict[str, Any]:
+    metrics = data.get("metrics") if isinstance(data.get("metrics"), dict) else {}
+    normalized = dict(metrics)
+    for key in (
+        "frame_count",
+        "cell_width",
+        "cell_height",
+        "fps",
+        "bottom_jitter_px",
+        "center_jitter_px",
+        "height_jitter_px",
+        "width_jitter_px",
+        "color_drift",
+        "duplicate_adjacent_frames",
+        "empty_frames",
+    ):
+        if key in data and key not in normalized:
+            normalized[key] = data[key]
+    if "foot_y_stdev_px" not in normalized and "bottom_jitter_px" in normalized:
+        normalized["foot_y_stdev_px"] = normalized["bottom_jitter_px"]
+    if "brightness_stdev" not in normalized and "color_drift" in normalized:
+        normalized["brightness_stdev"] = normalized["color_drift"]
+    return normalized
+
 def run_capture(cmd: Sequence[str], timeout: float = 30.0) -> Tuple[int, str]:
     try:
         p = subprocess.run(list(map(str, cmd)), cwd=str(ROOT), capture_output=True, text=True, timeout=timeout)
@@ -77,14 +139,23 @@ def model_tier_status() -> Dict[str, Any]:
 def find_sprite_dirs(root: Path = OUTPUT) -> List[Path]:
     if not root.exists():
         return []
-    return sorted({p.parent for p in root.rglob("sheet.json")}, key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+    from services.ci_check_service import ci_ignore_reason, is_sprite_output_dir
+
+    return sorted(
+        {
+            p.parent
+            for p in root.rglob("sheet.json")
+            if is_sprite_output_dir(p.parent) and not ci_ignore_reason(p.parent)
+        },
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        reverse=True,
+    )
 
 def sprite_record(folder: Path) -> Dict[str, Any]:
     meta = load_json(folder / "sheet.json", {}) or {}
     frames_dir = folder / "frames_processed"
-    qa_json = folder / "qa_report.json"
-    quality_json = folder / "quality_report.json"
-    qa = load_json(qa_json, None) or load_json(quality_json, None) or {}
+    qa_file = first_qa_report(folder)
+    qa = load_json(qa_file, None) if qa_file else {}
     frame_count = meta.get("frame_count") or len(list(frames_dir.glob("*.png"))) if frames_dir.exists() else meta.get("frame_count")
     files = {
         "sheet": (folder / "sheet.png").exists(),
@@ -94,7 +165,7 @@ def sprite_record(folder: Path) -> Dict[str, Any]:
         "frames": frames_dir.exists(),
     }
     complete = files["sheet"] and files["json"] and bool(frame_count)
-    qa_score = qa.get("score") or qa.get("overall_score") or qa.get("grade")
+    qa_score = qa_score_for_folder(folder, qa)
     return {
         "name": folder.name,
         "path": rel(folder),
@@ -383,9 +454,7 @@ def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
         if not preview_gif.exists():
             warnings.append(f"Sprite '{name}': Missing preview.gif.")
             
-        qa_json = folder / "qa_report.json"
-        quality_json = folder / "quality_report.json"
-        qa_file = qa_json if qa_json.exists() else (quality_json if quality_json.exists() else None)
+        qa_file = first_qa_report(folder)
         
         gates = get_project_quality_gates(folder)
         
@@ -395,7 +464,7 @@ def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
             try:
                 import numpy as np
                 qa_data = json.loads(qa_file.read_text(encoding="utf-8"))
-                metrics = qa_data.get("metrics", {})
+                metrics = qa_report_metrics(qa_data)
                 
                 drift = metrics.get("foot_y_stdev_px", 0.0)
                 max_drift = gates.get("max_foot_drift")
@@ -436,7 +505,7 @@ def check_release_quality_gates(sprite_dirs: List[Path]) -> Dict[str, Any]:
                 if max_clean is not None and cleanliness > float(max_clean):
                     errors.append(f"Sprite '{name}': Alpha noise ratio {cleanliness:.4f} exceeds cleanliness gate threshold {max_clean}.")
                     
-                score = qa_data.get("score")
+                score = qa_score_for_folder(folder, qa_data)
                 if score is not None:
                     if float(score) < 75.0:
                         errors.append(f"Sprite '{name}': Failed QA gate (score {score} is below 75).")

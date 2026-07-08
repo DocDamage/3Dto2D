@@ -355,13 +355,77 @@ def quality_report(sprite_dir: Path, output: Optional[Path], fail_under: Optiona
     return summary
 
 
-def batch_quality(root: Path, glob_pattern: str, output: Optional[Path], fail_under: Optional[float]) -> None:
+def write_batch_junit(rows: Sequence[Dict[str, Any]], path: Path, fail_under: Optional[float]) -> None:
+    import xml.etree.ElementTree as ET
+    from datetime import datetime
+
+    threshold = float(fail_under) if fail_under is not None else None
+
+    def row_failed(row: Dict[str, Any]) -> bool:
+        if row.get("error"):
+            return True
+        return threshold is not None and float(row.get("score", 0) or 0) < threshold
+
+    failures = [row for row in rows if row_failed(row)]
+    suite = ET.Element("testsuite", {
+        "name": "SpriteForge Quality Batch",
+        "tests": str(len(rows)),
+        "failures": str(len(failures)),
+        "errors": "0",
+        "skipped": "0",
+        "time": "0",
+        "timestamp": datetime.now().isoformat(),
+    })
+
+    for row in rows:
+        sprite_dir = str(row.get("sprite_dir") or "unknown")
+        case = ET.SubElement(suite, "testcase", {
+            "classname": "SpriteForgeQuality",
+            "name": Path(sprite_dir).name or sprite_dir,
+            "time": "0",
+        })
+        if row_failed(row):
+            score = float(row.get("score", 0) or 0)
+            message = row.get("error") or (
+                f"Score {score:.1f} below threshold {float(threshold or 0):.1f}"
+            )
+            failure = ET.SubElement(case, "failure", {
+                "message": str(message),
+                "type": "QualityGate",
+            })
+            failure.text = json.dumps(row, indent=2, ensure_ascii=False)
+        else:
+            props = ET.SubElement(case, "properties")
+            for key in ["score", "grade", "frame_count", "fps"]:
+                if row.get(key) is not None:
+                    ET.SubElement(props, "property", {"name": key, "value": str(row.get(key))})
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tree = ET.ElementTree(suite)
+    ET.indent(tree, space="  ")
+    tree.write(str(path), encoding="utf-8", xml_declaration=True)
+
+
+def batch_quality(
+    root: Path,
+    glob_pattern: str,
+    output: Optional[Path],
+    fail_under: Optional[float],
+    junit_xml: Optional[Path] = None,
+) -> None:
+    from services.ci_check_service import ci_ignore_reason, is_sprite_output_dir
+
     root = root.resolve()
     targets = []
     for meta in root.rglob("sheet.json"):
+        if not is_sprite_output_dir(meta.parent):
+            continue
         if glob_pattern and not meta.parent.match(glob_pattern):
             # pathlib match checks from the right side; keep broad default behavior.
             pass
+        if ci_ignore_reason(meta.parent):
+            print(f"\nSkipping quarantined sprite output {meta.parent}")
+            continue
         targets.append(meta.parent)
     if not targets:
         raise RuntimeError(f"No SpriteForge sheet.json files found under {root}")
@@ -383,8 +447,12 @@ def batch_quality(root: Path, glob_pattern: str, output: Optional[Path], fail_un
         w.writeheader()
         for row in rows:
             w.writerow({k: row.get(k) for k in keys})
+    if junit_xml:
+        write_batch_junit(rows, junit_xml, fail_under)
     failures = [r for r in rows if fail_under is not None and float(r.get("score", 0)) < fail_under]
     print(f"\nBatch report: {out / 'batch_quality.json'}")
+    if junit_xml:
+        print(f"JUnit report: {junit_xml}")
     if failures:
         print(f"{len(failures)} sprite output(s) under threshold {fail_under}.")
         raise SystemExit(2)
@@ -396,15 +464,8 @@ def cmd_quality(args: argparse.Namespace) -> int:
     # README-facing command: default reports go into sprite_dir/quality.
     if not getattr(args, "output", None):
         args.output = str(Path(args.sprite_dir).resolve() / "quality")
-    # Fill optional args used by cmd_check when called through the compatibility alias.
-    for name, default in [
-        ("alpha_threshold", 8), ("bottom_jitter_warn", 4.0), ("center_jitter_warn", 24.0),
-        ("loop_diff_warn", 32.0), ("jump_diff_warn", 55.0), ("min_frames", 4),
-        ("thumb", 144), ("columns", 6), ("strict", False), ("fail_on_warn", False),
-    ]:
-        if not hasattr(args, name):
-            setattr(args, name, default)
-    return cmd_check(args)
+    quality_report(Path(args.sprite_dir), Path(args.output), getattr(args, "fail_under", None))
+    return 0
 
 
 def cmd_batch(args: argparse.Namespace) -> int:
@@ -449,7 +510,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--glob", default="*")
     s.add_argument("--output", default=None)
     s.add_argument("--fail-under", type=float, default=None)
-    s.set_defaults(func=lambda a: batch_quality(Path(a.root), a.glob, Path(a.output) if a.output else None, a.fail_under))
+    s.add_argument("--junit-xml", default=None, help="Write JUnit XML report for CI dashboards")
+    s.set_defaults(func=lambda a: batch_quality(
+        Path(a.root),
+        a.glob,
+        Path(a.output) if a.output else None,
+        a.fail_under,
+        Path(a.junit_xml) if a.junit_xml else None,
+    ))
 
     return p
 

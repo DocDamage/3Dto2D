@@ -123,3 +123,24 @@ def test_experiment_clear_api_scopes_to_project(tmp_path, monkeypatch, flask_cli
     assert data["removed"] == 1
     assert ExperimentService.get_run(hero_id) is None
     assert ExperimentService.get_run(other_id) is not None
+
+
+def test_experiment_clear_rejects_unresolved_project_scope(tmp_path, monkeypatch, flask_client):
+    import services.experiment_service as es_mod
+    from services.experiment_service import ExperimentService
+
+    monkeypatch.setattr(es_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "history.json")
+
+    run_id = ExperimentService.append_run(
+        prompt="other",
+        project_name="other",
+        project_path="projects/other/spriteforge_project.json",
+        project_root="projects/other",
+    )
+
+    response = flask_client.get("/api/experiments/clear?project=projects%2Fmissing%2Fspriteforge_project.json")
+
+    assert response.status_code == 400
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is False
+    assert ExperimentService.get_run(run_id) is not None

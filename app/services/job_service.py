@@ -73,7 +73,7 @@ class JobRunner:
 
     def _set_reported_progress(self, inner_pct: float) -> None:
         stage = str(self.job.get("stage") or "")
-        if stage in {"wan_sampling", "queued_comfy", JobStage.STARTING} or any("generate-sprite" in str(c) for c in self.cmd):
+        if stage in {"wan_sampling", "queued_comfy", JobStage.STARTING} or any(str(c) in {"generate-sprite", "generate-batch"} for c in self.cmd):
             whole = 18.0 + (max(0.0, min(100.0, inner_pct)) * 0.42)
         else:
             whole = inner_pct
@@ -238,7 +238,7 @@ class JobRunner:
         if not sprite_folder:
             return
         self.job.setdefault("metadata", {})["sprite_folder"] = sprite_folder
-        if not any("generate-sprite" in str(c) or "generate_sprite" in str(c) for c in self.cmd):
+        if not any(str(c) in {"generate-sprite", "generate-batch", "generate_sprite"} for c in self.cmd):
             return
         try:
             from services.generation_intelligence import build_visual_report, summarize_qa_gates
@@ -263,7 +263,7 @@ class JobRunner:
             logger.warning("Could not build visual report for job %s: %s", self.job_id, exc)
 
     def _record_followup_data(self, exit_code: int) -> None:
-        if exit_code == 0 and any("generate-sprite" in str(c) or "generate_sprite" in str(c) for c in self.cmd):
+        if exit_code == 0 and any(str(c) in {"generate-sprite", "generate-batch", "generate_sprite"} for c in self.cmd):
             try:
                 from services.experiment_service import ExperimentService as _ES
 

@@ -7,7 +7,7 @@ import sys
 import time
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from services.shell_service import ensure_venv, git_clone_or_pull, install_requirements, run
 from services.model_install_service import manifests_for_install_tier
@@ -25,7 +25,7 @@ def venv_python(venv: Path) -> Path:
     return _vp(venv)
 
 
-def comfy_python(cfg: spriteforge_commands.Config) -> Path:
+def comfy_python(cfg: Any) -> Path:
     from spriteforge_commands import comfy_python as _cp
     return _cp(cfg)
 

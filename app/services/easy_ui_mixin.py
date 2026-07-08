@@ -184,8 +184,9 @@ class EasyUiMixin:
 
         self.make_text_row(form, "Character", self.character_var, 0)
         ttk.Label(form, text="Action").grid(row=1, column=0, sticky="w", pady=3)
-        ttk.Combobox(form, textvariable=self.action_var, values=list((self.presets.get("actions") or {}).keys()), state="readonly").grid(row=1, column=1, sticky="ew", pady=3)
-        from spriteforge_prompts import DIRECTIONS
+        from spriteforge_prompts import ACTION_TEMPLATES, DIRECTIONS
+        action_values = sorted(ACTION_TEMPLATES.keys()) or list((self.presets.get("actions") or {}).keys())
+        ttk.Combobox(form, textvariable=self.action_var, values=action_values, state="readonly").grid(row=1, column=1, sticky="ew", pady=3)
         ttk.Label(form, text="Direction").grid(row=2, column=0, sticky="w", pady=3)
         ttk.Combobox(form, textvariable=self.direction_var, values=list(DIRECTIONS.keys()), state="readonly").grid(row=2, column=1, sticky="ew", pady=3)
         ttk.Label(form, text="Profile").grid(row=3, column=0, sticky="w", pady=3)

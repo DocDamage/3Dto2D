@@ -160,6 +160,7 @@ function applyGoalDefaults(goalName) {
     if (form.querySelector('[name="default_actions"]')) form.querySelector('[name="default_actions"]').value = 'idle,walk,attack_light,hurt,death';
     if (form.querySelector('[name="default_directions"]')) form.querySelector('[name="default_directions"]').value = 'iso_front_left,iso_front_right,iso_back_left,iso_back_right';
   }
+  if (typeof syncGenerateChoiceChecksFromHidden === 'function') syncGenerateChoiceChecksFromHidden();
   toast(`Applied defaults for: ${goalName.replace('_', ' ').toUpperCase()}`);
 }
 
@@ -412,6 +413,7 @@ function applyArchetype(arc) {
   if (arc.palette_hint && form.querySelector('[name="pixel_cleanup"]')) {
     form.querySelector('[name="pixel_cleanup"]').checked = true;
   }
+  if (typeof syncGenerateChoiceChecksFromHidden === 'function') syncGenerateChoiceChecksFromHidden();
   if (typeof refreshGeneratePromptPreview === 'function') refreshGeneratePromptPreview();
   updateSelectedArchetypePanel(arc);
   
@@ -460,12 +462,17 @@ function initPresetBindings() {
       if (p.fps !== undefined) form.querySelector('[name="fps"]').value = p.fps;
       if (p.cell_size !== undefined) form.querySelector('[name="cell_size"]').value = p.cell_size;
       if (p.negative !== undefined) form.querySelector('[name="negative"]').value = p.negative;
+      if (p.reference_image !== undefined && form.querySelector('[name="reference_image"]')) form.querySelector('[name="reference_image"]').value = p.reference_image;
+      if (p.style_image !== undefined && form.querySelector('[name="style_image"]')) form.querySelector('[name="style_image"]').value = p.style_image;
       
       if (p.qa_threshold_loop_rmse !== undefined) form.querySelector('[name="qa_threshold_loop_rmse"]').value = p.qa_threshold_loop_rmse;
       if (p.qa_threshold_foot_drift !== undefined) form.querySelector('[name="qa_threshold_foot_drift"]').value = p.qa_threshold_foot_drift;
       if (p.qa_threshold_center_drift !== undefined) form.querySelector('[name="qa_threshold_center_drift"]').value = p.qa_threshold_center_drift;
       if (p.default_actions !== undefined) form.querySelector('[name="default_actions"]').value = p.default_actions;
       if (p.default_directions !== undefined) form.querySelector('[name="default_directions"]').value = p.default_directions;
+      if (typeof syncGenerateChoiceChecksFromHidden === 'function') syncGenerateChoiceChecksFromHidden();
+      if (typeof refreshGenerateReferencePreview === 'function') refreshGenerateReferencePreview();
+      if (typeof refreshGeneratePromptPreview === 'function') refreshGeneratePromptPreview();
       
       $('#presetName').value = name;
       toast(`Preset '${name}' loaded`);

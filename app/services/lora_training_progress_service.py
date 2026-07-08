@@ -94,7 +94,10 @@ def _sample_images(root: Path, run_dir: Path) -> List[Dict[str, Any]]:
 
 def _checkpoints(root: Path, run_dir: Path) -> List[Dict[str, Any]]:
     rows = []
-    for path in sorted(run_dir.glob("*.safetensors")) + sorted(run_dir.glob("*.pt")):
+    checkpoint_paths = []
+    for suffix in ("*.safetensors", "*.pt", "*.ckpt"):
+        checkpoint_paths.extend(sorted(run_dir.glob(suffix)))
+    for path in sorted(checkpoint_paths, key=lambda item: item.stat().st_mtime):
         rows.append({
             "name": path.name,
             "path": path.resolve().relative_to(root.resolve()).as_posix(),

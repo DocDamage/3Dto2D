@@ -58,6 +58,20 @@ def test_get_project_config(client):
     assert "max_foot_drift" in data["quality_gates"]
 
 
+def test_project_config_error_uses_standard_api_shape(client, monkeypatch):
+    from services.project_service import ProjectService
+
+    monkeypatch.setattr(ProjectService, "get_active_project", staticmethod(lambda: None))
+
+    response = client.get("/api/project/config")
+
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["ok"] is False
+    assert data["message"] == "No active project"
+    assert "code" in data
+
+
 def test_post_project_config(client):
     """POST /api/project/config updates config parameters."""
     payload = {
@@ -90,6 +104,11 @@ def test_prompt_builder_options(client):
     assert response.status_code == 200
     data = json.loads(response.data.decode("utf-8"))
     assert "walk" in data["actions"]
+    assert "t_pose" in data["actions"]
+    assert "a_pose" in data["actions"]
+    assert "spin_attack" in data["actions"]
+    assert "summon" in data["actions"]
+    assert len(data["actions"]) > 40
     assert "heroic" in data["body_styles"]
 
 
@@ -363,6 +382,34 @@ def test_prompt_lint_api(client):
         content_type="application/json"
     )
     assert response_err.status_code == 400
+
+
+def test_prompt_autofix_api(client):
+    """POST /api/prompt/autofix applies sprite-safe prompt fixes."""
+    response = client.post(
+        "/api/prompt/autofix",
+        data=json.dumps({
+            "character": "hero knight",
+            "sprite_action": "walk",
+            "direction": "right",
+            "style": "fantasy RPG",
+            "negative": "",
+        }),
+        content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    data = json.loads(response.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert "locked camera" in data["prompt"]
+    assert "plain bright green chroma key background" in data["prompt"]
+    assert "walking" in data["prompt"]
+    assert "camera movement" in data["negative"]
+    assert data["lint_after"]["score"] >= data["lint_before"]["score"]
+
+    response_get = client.get("/api/prompt/autofix")
+    assert response_get.status_code == 400
+    assert response_get.get_json()["ok"] is False
 
 
 def test_archetypes_api(client):

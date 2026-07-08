@@ -1,3 +1,5 @@
+# Runtime dependency mirror for local launchers.
+# Keep this list aligned with [project].dependencies in ../pyproject.toml.
 pillow>=10.0.0
 numpy>=1.24.0
 opencv-python>=4.8.0

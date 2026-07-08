@@ -180,7 +180,7 @@ class SpriteSAM2Service:
                     # Create binary mask: pixels that are definitely or probably foreground
                     mask = np.where((gc_mask == cv2.GC_FGD) | (gc_mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
                 except Exception as exc:
-                    logger.debug("GrabCut refinement failed for frame %s; using alpha fallback mask: %s", frame.name, exc)
+                    logger.debug("GrabCut refinement failed for frame %s; using alpha fallback mask: %s", item.name, exc)
                     mask = (alpha > 10).astype(np.uint8) * 255
             else:
                 mask = (alpha > 10).astype(np.uint8) * 255

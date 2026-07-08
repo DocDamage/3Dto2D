@@ -9,6 +9,87 @@ from typing import Any, Dict, List, Optional
 
 from spriteforge_utils import ROOT, load_json
 
+CI_IGNORE_MARKERS = ("ci_ignore.json", ".spriteforge_ci_ignore")
+NON_SPRITE_OUTPUT_DIRS = {
+    "jobs",
+    "packs",
+    "temp",
+    "sprite_compare",
+    "qa",
+    "quality",
+    "godot_export",
+    "unity_export",
+    "unreal_export",
+    "animated_exports",
+    "skeletal_export",
+}
+
+
+def is_sprite_output_dir(sprite_dir: Path) -> bool:
+    return sprite_dir.name not in NON_SPRITE_OUTPUT_DIRS and (sprite_dir / "sheet.json").exists()
+
+
+def ci_ignore_reason(sprite_dir: Path) -> Optional[str]:
+    for marker_name in CI_IGNORE_MARKERS:
+        marker = sprite_dir / marker_name
+        if not marker.exists():
+            continue
+        if marker.suffix == ".json":
+            data = load_json(marker, {})
+            return str(data.get("reason") or "Sprite output is quarantined from CI quality gates.")
+        text = marker.read_text(encoding="utf-8", errors="replace").strip()
+        return text or "Sprite output is quarantined from CI quality gates."
+    return None
+
+
+def _numeric_score(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _score_from_report(data: Dict[str, Any]) -> float:
+    summary = data.get("summary") if isinstance(data.get("summary"), dict) else {}
+    return _numeric_score(
+        data.get("overall_score")
+        or data.get("score")
+        or summary.get("overall_score")
+        or summary.get("score")
+    )
+
+
+def _quality_score(sprite_dir: Path, sheet: Dict[str, Any]) -> Dict[str, Any]:
+    extra = sheet.get("extra", {}) if isinstance(sheet.get("extra"), dict) else {}
+    qa = extra.get("qa", {}) if isinstance(extra.get("qa"), dict) else {}
+    score = _numeric_score(qa.get("overall_score") or qa.get("score"))
+    if score:
+        return {"score": score, "details": qa, "source": "sheet.extra.qa"}
+
+    for report_path in [
+        sprite_dir / "qa_report.json",
+        sprite_dir / "quality_report.json",
+        sprite_dir / "quality" / "quality_report.json",
+    ]:
+        if not report_path.exists():
+            continue
+        report = load_json(report_path, {})
+        score = _score_from_report(report)
+        if score:
+            return {"score": score, "details": report, "source": str(report_path)}
+
+    try:
+        import contextlib
+        import io
+        from spriteforge_quality import quality_report
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            report = quality_report(sprite_dir, sprite_dir / "quality", None)
+        score = _score_from_report(report)
+        return {"score": score, "details": report, "source": "computed"}
+    except Exception as exc:
+        return {"score": 0.0, "details": {"error": str(exc)}, "source": "error"}
+
 
 def ci_check_directory(
     root_dir: Path,
@@ -20,8 +101,6 @@ def ci_check_directory(
     
     Returns non-zero exit code if any sprite fails below threshold.
     """
-    import xml.etree.ElementTree as ET
-    
     results: List[Dict[str, Any]] = []
     total_score = 0.0
     passed = 0
@@ -32,16 +111,28 @@ def ci_check_directory(
     sprite_dirs = []
     for d in root_dir.rglob("sheet.json"):
         sprite_dir = d.parent
-        if sprite_dir.name not in {"jobs", "packs", "temp", "sprite_compare"}:
+        if is_sprite_output_dir(sprite_dir):
             sprite_dirs.append(sprite_dir)
     
     if not sprite_dirs:
         # Look one level deeper
         for d in root_dir.iterdir():
-            if d.is_dir() and (d / "sheet.json").exists():
+            if d.is_dir() and is_sprite_output_dir(d):
                 sprite_dirs.append(d)
     
     for sprite_dir in sorted(sprite_dirs):
+        ignore_reason = ci_ignore_reason(sprite_dir)
+        if ignore_reason:
+            skipped += 1
+            results.append({
+                "name": sprite_dir.name,
+                "path": str(sprite_dir),
+                "status": "skipped",
+                "reason": ignore_reason,
+                "score": 0,
+            })
+            continue
+
         sheet = load_json(sprite_dir / "sheet.json")
         if not sheet:
             skipped += 1
@@ -53,22 +144,8 @@ def ci_check_directory(
             })
             continue
         
-        # Extract QA scores from metadata
-        extra = sheet.get("extra", {})
-        qa = extra.get("qa", {})
-        overall = qa.get("overall_score", 0)
-        
-        if not overall:
-            # Try alternate locations
-            qa_report = load_json(sprite_dir / "qa_report.json", {})
-            overall = qa_report.get("overall_score", 0) or qa.get("overall_score", 0)
-        
-        if not overall:
-            # Try loading from quality report
-            quality_path = sprite_dir / "quality_report.json"
-            if quality_path.exists():
-                quality = load_json(quality_path, {})
-                overall = quality.get("score", 0)
+        qa_result = _quality_score(sprite_dir, sheet)
+        overall = float(qa_result["score"])
         
         passed_threshold = overall >= fail_under
         total_score += overall
@@ -89,7 +166,8 @@ def ci_check_directory(
             "frame_count": sheet.get("frame_count", 0),
             "fps": sheet.get("fps", 0),
             "animation": sheet.get("animation", "unknown"),
-            "qa_details": qa,
+            "qa_details": qa_result["details"],
+            "qa_source": qa_result["source"],
         })
     
     total = passed + failed + skipped
@@ -113,6 +191,7 @@ def ci_check_directory(
     
     # Write JSON if requested
     if output_json:
+        output_json.parent.mkdir(parents=True, exist_ok=True)
         output_json.write_text(
             json.dumps(summary, indent=2, ensure_ascii=False),
             encoding="utf-8"
@@ -198,7 +277,12 @@ def run_ci_check(args: Optional[List[str]] = None) -> int:
     )
     
     opts = parser.parse_args(args)
-    root_path = (ROOT / opts.root).resolve()
+    root_arg = Path(opts.root)
+    root_path = root_arg.resolve() if root_arg.is_absolute() else (ROOT / root_arg).resolve()
+    if not root_path.exists() and not root_arg.is_absolute():
+        repo_relative = (ROOT.parent / root_arg).resolve()
+        if repo_relative.exists():
+            root_path = repo_relative
     
     if not root_path.exists():
         print(f"Error: Directory not found: {root_path}", file=sys.stderr)
@@ -223,10 +307,10 @@ def run_ci_check(args: Optional[List[str]] = None) -> int:
         print(f"Average Score: {summary['average_score']:.1f}/100")
     
     if summary["all_passed"]:
-        print("CI Check: PASSED ✓")
+        print("CI Check: PASSED")
         return 0
     else:
-        print(f"CI Check: FAILED ✗ ({summary['failed']} below threshold)", file=sys.stderr)
+        print(f"CI Check: FAILED ({summary['failed']} below threshold)", file=sys.stderr)
         return 1
 
 

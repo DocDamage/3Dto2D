@@ -276,6 +276,26 @@ def write_html_report(report: Dict[str, Any], out: Path, contact_name: str = "qa
 </body></html>""", encoding="utf-8")
 
 
+def cmd_report(args: argparse.Namespace) -> None:
+    src = Path(args.input).resolve()
+    frames, meta = load_input(src)
+    report = analyze_frames(
+        frames,
+        meta,
+        duplicate_threshold=args.duplicate_threshold,
+        loop_rmse_threshold=args.loop_rmse_threshold,
+        foot_drift_threshold=args.foot_drift_threshold,
+        center_drift_threshold=args.center_drift_threshold,
+    )
+    out_dir = Path(args.output).resolve() if args.output else src / "qa"
+    ensure_dir(out_dir)
+    (out_dir / "qa_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    make_contact_sheet(frames, out_dir / "qa_contact_sheet.jpg", thumb=args.thumb)
+    write_html_report(report, out_dir / "qa_report.html")
+    print(f"QA report: {out_dir / 'qa_report.html'}")
+    print(json.dumps(report["metrics"], indent=2))
+
+
 from services.sprite_qc_commands import (
     rmse,
     solidify_transparent_rgb,

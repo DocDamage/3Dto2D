@@ -35,7 +35,13 @@ def test_api_token_protection_blocks_post_requests(client):
     data = json.loads(response.data.decode("utf-8"))
     assert "Unauthorized" in data["message"]
 
-def test_api_token_protection_allows_valid_token(client):
+def test_api_token_protection_allows_valid_token(client, tmp_path, monkeypatch):
+    import services.project_service as project_service
+
+    monkeypatch.setattr(project_service, "ROOT", tmp_path)
+    monkeypatch.setattr(project_service, "PROJECTS_DIR", tmp_path / "projects")
+    monkeypatch.setattr(project_service, "STATE_PATH", tmp_path / "output" / "projects" / "project_state.json")
+
     # Fetch token first
     resp_token = client.get("/api/auth/token")
     token = json.loads(resp_token.data.decode("utf-8"))["token"]

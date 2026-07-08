@@ -32,6 +32,19 @@
         </div>
       </div>
 
+      <div class="card provider-keys-card mb-24">
+        <div class="card-head">
+          <div>
+            <h3>API Keys & Free Image Providers</h3>
+            <p class="description">Store provider keys locally in .env. Configured keys are detected without showing secret values.</p>
+          </div>
+          <button class="mini" id="refreshProviderKeys" type="button">Refresh</button>
+        </div>
+        <div class="provider-key-grid" id="providerKeyGrid">
+          <div class="empty compact">Loading providers...</div>
+        </div>
+      </div>
+
       <div class="setup-grid">
         <button class="setup-card primary-install" data-run="install_all"><span>01</span><b>Install Everything: Safe Wan 2.1</b><small>Recommended first install: ComfyUI, WAN nodes, Manager, and Wan 2.1 1.3B files.</small></button>
         <button class="setup-card primary-install" data-run="install_advanced"><span>02</span><b>Add Better Mode: Wan 2.2 5B</b><small>Advanced local add-on for better quality/motion after the safe setup works.</small></button>

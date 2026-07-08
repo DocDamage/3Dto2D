@@ -42,6 +42,16 @@ ACTION_TEMPLATES: Dict[str, Dict[str, object]] = {
         "frames": 24,
         "pose": "idle",
     },
+    "t_pose": {
+        "motion": "static T-pose reference frame, arms extended horizontally, legs straight, neutral expression, no animation smear",
+        "frames": 1,
+        "pose": "t_pose",
+    },
+    "a_pose": {
+        "motion": "static A-pose reference frame, arms angled slightly downward from shoulders, legs straight, neutral stance, no animation smear",
+        "frames": 1,
+        "pose": "a_pose",
+    },
     "walk": {
         "motion": "clean walk cycle loop, alternating legs, stable torso, readable foot contact poses",
         "frames": 32,

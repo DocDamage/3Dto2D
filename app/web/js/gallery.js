@@ -10,6 +10,7 @@ function renderProjectSummary(workspace){
 
 function renderOutputs(outputs){
   currentOutputs = outputs || [];
+  const savedPath = localStorage.getItem('spriteforgeSelectedSpriteDir') || localStorage.getItem('spriteforgeLastPreviewPath') || '';
   if ($('#stat-outputs')) $('#stat-outputs').textContent = currentOutputs.length;
   const onboardingCard = document.getElementById('wizOnboardingCard');
   if (onboardingCard) {
@@ -34,6 +35,7 @@ function renderOutputs(outputs){
     const card = document.createElement('article');
     card.className = 'sprite-card';
     card.dataset.path = o.path || '';
+    if (savedPath && o.path === savedPath) card.classList.add('selected');
     const sheetUrl = o.sheet_url || o.preview_url || '';
     const hoverUrl = o.preview_url && o.preview_url !== sheetUrl ? o.preview_url : '';
     if (sheetUrl) {
@@ -75,6 +77,7 @@ function renderOutputs(outputs){
   $$('.sprite-card', g).forEach(card=>card.addEventListener('click',(e)=>{
     if (e.target.closest('[data-preview-path]')) return;
     selectedSpriteDir=card.dataset.path;
+    localStorage.setItem('spriteforgeSelectedSpriteDir', selectedSpriteDir);
     $('#qualitySpriteDir').value=selectedSpriteDir;
     if($('#releaseSprites') && !$('#releaseSprites').value.includes(selectedSpriteDir)){
       $('#releaseSprites').value = ($('#releaseSprites').value ? $('#releaseSprites').value+'\n' : '') + selectedSpriteDir;
@@ -89,9 +92,15 @@ function renderOutputs(outputs){
     openResultPreview(e.currentTarget.dataset.previewPath);
   }));
   if (typeof renderGuidedGallery === 'function') renderGuidedGallery(currentOutputs);
+  if (savedPath && currentOutputs.some(o => o.path === savedPath)) {
+    selectedSpriteDir = savedPath;
+    if ($('#qualitySpriteDir')) $('#qualitySpriteDir').value = savedPath;
+  }
 }
 async function loadSpriteDetails(path) {
   if (!path) return;
+  selectedSpriteDir = path;
+  localStorage.setItem('spriteforgeSelectedSpriteDir', path);
   try {
     const meta = await api('/file/' + path + '/sheet.json');
     $('#inspect-folder-name').textContent = path;

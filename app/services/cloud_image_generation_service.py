@@ -4,6 +4,8 @@ import base64
 import json
 import os
 import time
+import urllib.error
+import urllib.request
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -34,6 +36,57 @@ DEFAULT_NEGATIVE = (
     "sprite sheet grid, text, watermark, cropped feet, floor shadow"
 )
 DEFAULT_KEY_COLOR = "#ff00ff"
+
+PROVIDER_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "huggingface": {
+        "label": "Hugging Face",
+        "env_names": ("HUGGINGFACE_API_KEY", "HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"),
+        "free_tier": True,
+        "image_generation": "Many Spaces and Inference providers have free/community options; availability depends on the model.",
+    },
+    "openai": {
+        "label": "OpenAI",
+        "env_names": ("OPENAI_API_KEY", "SPRITEFORGE_OPENAI_API_KEY"),
+        "free_tier": False,
+        "image_generation": "Supported for paid image models when an API key has image access.",
+    },
+    "gemini": {
+        "label": "Google / Gemini",
+        "env_names": ("GEMINI_API_KEY", "GOOGLE_API_KEY", "SPRITEFORGE_GEMINI_API_KEY"),
+        "free_tier": True,
+        "image_generation": "Often has a developer free tier subject to regional/model limits.",
+    },
+    "anthropic": {
+        "label": "Anthropic",
+        "env_names": ("ANTHROPIC_API_KEY",),
+        "free_tier": False,
+        "image_generation": "Useful for prompt help; Anthropic is not a native image-generation provider here.",
+    },
+    "moonshot": {
+        "label": "Moonshot / Kimi",
+        "env_names": ("MOONSHOT_API_KEY", "KIMI_API_KEY"),
+        "free_tier": True,
+        "image_generation": "Useful for prompt help; image generation depends on currently available Kimi-compatible endpoints.",
+    },
+    "glm": {
+        "label": "GLM / Zhipu",
+        "env_names": ("GLM_API_KEY", "ZHIPUAI_API_KEY"),
+        "free_tier": True,
+        "image_generation": "Some accounts expose image models or trials; availability depends on region/account.",
+    },
+    "deepseek": {
+        "label": "DeepSeek",
+        "env_names": ("DEEPSEEK_API_KEY",),
+        "free_tier": False,
+        "image_generation": "Prompt/text provider; no native image generation is wired here.",
+    },
+    "grok": {
+        "label": "Grok / xAI",
+        "env_names": ("XAI_API_KEY", "GROK_API_KEY"),
+        "free_tier": False,
+        "image_generation": "Prompt/text provider; image availability depends on xAI account/API access.",
+    },
+}
 
 
 def load_local_env(root: Path = ROOT) -> Dict[str, str]:
@@ -67,25 +120,39 @@ def resolve_api_key(provider: str) -> str:
 
 
 def provider_key_names(provider: str) -> Tuple[str, ...]:
+    return tuple(PROVIDER_REGISTRY.get(provider.lower().strip(), {}).get("env_names", ()))
+
+
+def provider_registry() -> Dict[str, Dict[str, Any]]:
     return {
-        "openai": ("OPENAI_API_KEY", "SPRITEFORGE_OPENAI_API_KEY"),
-        "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY", "SPRITEFORGE_GEMINI_API_KEY"),
-    }.get(provider.lower().strip(), ())
+        key: {
+            "provider": key,
+            "label": value["label"],
+            "env_names": list(value["env_names"]),
+            "free_tier": bool(value.get("free_tier")),
+            "image_generation": value.get("image_generation", ""),
+        }
+        for key, value in PROVIDER_REGISTRY.items()
+    }
 
 
 def cloud_image_provider_status(provider: Optional[str] = None) -> Dict[str, Any]:
     load_local_env()
-    providers = [provider.lower().strip()] if provider else ["openai", "gemini"]
+    providers = [provider.lower().strip()] if provider else list(PROVIDER_REGISTRY.keys())
     rows = {}
     for name in providers:
+        info = PROVIDER_REGISTRY.get(name, {"label": name, "env_names": (), "free_tier": False})
         key_names = provider_key_names(name)
         configured_name = next((key for key in key_names if os.environ.get(key)), "")
         rows[name] = {
             "provider": name,
+            "label": info.get("label", name),
             "ok": bool(configured_name),
             "configured": bool(configured_name),
             "env_names": list(key_names),
             "configured_env_name": configured_name,
+            "free_tier": bool(info.get("free_tier")),
+            "image_generation": info.get("image_generation", ""),
             "message": "API key configured locally." if configured_name else "Missing local API key.",
         }
     return {
@@ -94,6 +161,59 @@ def cloud_image_provider_status(provider: Optional[str] = None) -> Dict[str, Any
         "local_env_supported": True,
         "local_env_files": [".env", "app/.env"],
     }
+
+
+def save_provider_api_key(provider: str, api_key: str, root: Path = ROOT) -> Dict[str, Any]:
+    provider = provider.lower().strip()
+    api_key = str(api_key or "").strip()
+    key_names = provider_key_names(provider)
+    if not key_names:
+        raise ValueError(f"Unsupported provider: {provider}")
+    if len(api_key) < 6:
+        raise ValueError("API key looks too short.")
+    env_path = root / ".env"
+    existing: Dict[str, str] = {}
+    order: List[str] = []
+    if env_path.exists():
+        for raw in env_path.read_text(encoding="utf-8").splitlines():
+            if "=" not in raw or raw.strip().startswith("#"):
+                continue
+            key, value = raw.split("=", 1)
+            key = key.strip()
+            if key and key not in existing:
+                order.append(key)
+                existing[key] = value.strip()
+    target = key_names[0]
+    if target not in order:
+        order.append(target)
+    existing[target] = api_key
+    env_path.write_text("\n".join(f"{key}={existing[key]}" for key in order if key in existing) + "\n", encoding="utf-8")
+    os.environ[target] = api_key
+    return {"provider": provider, "env_name": target, "configured": True}
+
+
+def delete_provider_api_key(provider: str, root: Path = ROOT) -> Dict[str, Any]:
+    provider = provider.lower().strip()
+    key_names = set(provider_key_names(provider))
+    if not key_names:
+        raise ValueError(f"Unsupported provider: {provider}")
+    env_path = root / ".env"
+    removed: List[str] = []
+    lines: List[str] = []
+    if env_path.exists():
+        for raw in env_path.read_text(encoding="utf-8").splitlines():
+            key = raw.split("=", 1)[0].strip() if "=" in raw else ""
+            if key in key_names:
+                removed.append(key)
+                os.environ.pop(key, None)
+                continue
+            lines.append(raw)
+        env_path.write_text("\n".join(lines).rstrip() + ("\n" if lines else ""), encoding="utf-8")
+    for key in key_names:
+        if key in os.environ:
+            removed.append(key)
+            os.environ.pop(key, None)
+    return {"provider": provider, "removed": sorted(set(removed))}
 
 
 def hardened_prompt(user_prompt: str, constraints: str = DEFAULT_CONSTRAINTS, negative: str = DEFAULT_NEGATIVE) -> str:
@@ -178,12 +298,38 @@ def _gemini_generate(prompt: str, model: str, size: str) -> Image.Image:
         raise RuntimeError("Gemini image generation needs the optional google-genai package.")
 
 
+def _huggingface_generate(prompt: str, model: str, size: str) -> Image.Image:
+    api_key = resolve_api_key("huggingface")
+    model = model or "stabilityai/stable-diffusion-xl-base-1.0"
+    request = urllib.request.Request(
+        f"https://api-inference.huggingface.co/models/{model}",
+        data=json.dumps({"inputs": prompt}).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "image/png",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Hugging Face image generation failed: {detail or exc.reason}") from exc
+    out = Image.open(BytesIO(raw)).convert("RGBA")
+    width, height = parse_cell_size(size, out.size)
+    return out.resize((width, height), Image.Resampling.LANCZOS) if out.size != (width, height) else out
+
+
 def generate_cloud_image(provider: str, prompt: str, model: Optional[str], size: str) -> Image.Image:
     provider = provider.lower().strip()
     if provider == "openai":
         return _openai_generate(prompt, model or "gpt-image-1", size)
     if provider == "gemini":
         return _gemini_generate(prompt, model or "imagen-3.0-generate-002", size)
+    if provider == "huggingface":
+        return _huggingface_generate(prompt, model or "stabilityai/stable-diffusion-xl-base-1.0", size)
     raise ValueError(f"Unsupported cloud image provider: {provider}")
 
 
@@ -243,7 +389,7 @@ def build_cloud_generation_plan(
 ) -> Dict[str, Any]:
     """Return a secret-safe dry-run plan for cloud image sprite generation."""
     provider = provider.lower().strip()
-    if provider not in {"openai", "gemini"}:
+    if provider not in PROVIDER_REGISTRY:
         raise ValueError(f"Unsupported cloud image provider: {provider}")
     cell = parse_cell_size(cell_size)
     source_images = list(source_images or [])
@@ -259,7 +405,7 @@ def build_cloud_generation_plan(
     return {
         "schema": "spriteforge.cloud_generation_plan.v1",
         "provider": provider,
-        "model": model or ("gpt-image-1" if provider == "openai" else "imagen-3.0-generate-002"),
+        "model": model or ("gpt-image-1" if provider == "openai" else "imagen-3.0-generate-002" if provider == "gemini" else "stabilityai/stable-diffusion-xl-base-1.0" if provider == "huggingface" else "provider-default"),
         "provider_configured": bool(provider_status.get("configured")),
         "configured_env_name": provider_status.get("configured_env_name", ""),
         "secret_values_exposed": False,
@@ -380,7 +526,13 @@ def build_cloud_sprite_sheet(
     raw_images = _load_source_images(source_images or [])
     prompts: List[str] = []
     source = "local_images" if raw_images else "cloud_api"
-    resolved_model = model or ("gpt-image-1" if provider.lower().strip() == "openai" else "imagen-3.0-generate-002")
+    resolved_provider = provider.lower().strip()
+    resolved_model = model or (
+        "gpt-image-1" if resolved_provider == "openai"
+        else "imagen-3.0-generate-002" if resolved_provider == "gemini"
+        else "stabilityai/stable-diffusion-xl-base-1.0" if resolved_provider == "huggingface"
+        else "provider-default"
+    )
     if raw_images:
         frame_count = len(raw_images)
     else:

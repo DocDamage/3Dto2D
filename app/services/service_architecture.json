@@ -66,6 +66,7 @@
       "name": "training",
       "files": [
         "training_dataset_service.py",
+        "lpc_parts_service.py",
         "tile_training_dataset_service.py",
         "lora_training_service.py",
         "lora_training_progress_service.py",

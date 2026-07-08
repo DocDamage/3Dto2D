@@ -24,7 +24,7 @@
             <small id="trainingDatasetDropHint">Tip: copy a folder path from Explorer, click here, then paste.</small>
           </div>
           <label>Purchased sprite folder
-            <input name="source_dir" placeholder="C:\Users\dferr\Downloads\SakPix characters" />
+            <input name="source_dir" placeholder="input/sprites/sakpix_characters" />
           </label>
           <div class="row">
             <label>Trigger token
@@ -59,7 +59,7 @@
             <h3>Auto-Tile Dataset</h3>
           </div>
           <label>Purchased tile-set folder
-            <input name="source_dir" placeholder="G:\All 2D Assets Stay Here\SakPix\Stage Assets" />
+            <input name="source_dir" placeholder="CuteSCKR_uncut" />
           </label>
           <div class="row">
             <label>Trigger token
@@ -94,6 +94,161 @@
             <button class="primary big" type="submit">Build Auto-Tile Dataset</button>
             <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
           </div>
+        </form>
+
+        <form class="card form" id="lpcPartsForm">
+          <div class="card-head">
+            <h3>LPC Parts Catalog</h3>
+          </div>
+          <label>Universal LPC folder
+            <input name="source_dir" value="input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator" />
+          </label>
+          <div class="row">
+            <label>Trigger token
+              <input name="trigger" value="lpc_parts" />
+            </label>
+            <label>Max dataset samples
+              <input name="max_samples" value="0" />
+            </label>
+          </div>
+          <label>Output folder
+            <input name="output" placeholder="Optional. Catalog defaults to app/output/lpc_parts; dataset defaults to training_datasets." />
+          </label>
+          <div class="button-row form-actions-tight">
+            <button class="ghost big" type="button" id="scanLpcParts">Scan Parts</button>
+            <button class="primary big" type="button" id="buildLpcPartDataset">Build Part Dataset</button>
+            <button class="ghost big" type="button" data-open="output/lpc_parts">Open LPC Catalog</button>
+          </div>
+          <div id="lpcPartsPreview" class="training-dataset-preview empty compact">Scan Universal LPC to index paper-doll layers by category, body type, action, and layer order before composition or LoRA training.</div>
+        </form>
+
+        <form class="card form" id="lpcComposerForm">
+          <div class="card-head">
+            <h3>LPC Composer</h3>
+          </div>
+          <label>Universal LPC folder
+            <input name="source_dir" value="input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator" />
+          </label>
+          <div class="row">
+            <label>Character name
+              <input name="compose_name" value="lpc_test_character" />
+            </label>
+            <label>Action
+              <select name="compose_action">
+                <option value="idle" selected>Idle</option>
+                <option value="walk">Walk</option>
+                <option value="run">Run</option>
+                <option value="slash">Slash</option>
+                <option value="cast">Cast</option>
+                <option value="shoot">Shoot</option>
+                <option value="thrust">Thrust</option>
+                <option value="hurt">Hurt</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Body type
+              <select name="body_type">
+                <option value="male" selected>Male</option>
+                <option value="female">Female</option>
+                <option value="child">Child</option>
+                <option value="teen">Teen</option>
+                <option value="muscular">Muscular</option>
+                <option value="thin">Thin</option>
+              </select>
+            </label>
+            <label>Output folder
+              <input name="compose_output" placeholder="Optional. Defaults to app/output/lpc_composed/name." />
+            </label>
+          </div>
+          <div class="row compact-fields">
+            <label>Hair match<input name="part_hair" list="lpcHairOptions" data-lpc-option-input="hair" placeholder="plain, curly, braid, long" /></label>
+            <label>Torso match<input name="part_torso" list="lpcTorsoOptions" data-lpc-option-input="torso" placeholder="shirt, chainmail, plate, robe" /></label>
+          </div>
+          <div class="row compact-fields">
+            <label>Legs match<input name="part_legs" list="lpcLegsOptions" data-lpc-option-input="legs" placeholder="pants, skirt, plate" /></label>
+            <label>Feet match<input name="part_feet" list="lpcFeetOptions" data-lpc-option-input="feet" placeholder="shoes, boots" /></label>
+          </div>
+          <div class="row compact-fields">
+            <label>Weapon match<input name="part_weapons" list="lpcWeaponsOptions" data-lpc-option-input="weapons" placeholder="sword, bow, dagger" /></label>
+            <label>Extra parts<input name="parts" placeholder="cape:blue; hat:hood; shoulders:plate" /></label>
+          </div>
+          <datalist id="lpcHairOptions"></datalist>
+          <datalist id="lpcTorsoOptions"></datalist>
+          <datalist id="lpcLegsOptions"></datalist>
+          <datalist id="lpcFeetOptions"></datalist>
+          <datalist id="lpcWeaponsOptions"></datalist>
+          <div class="button-row form-actions-tight">
+            <button class="ghost big" type="button" id="loadLpcComposerOptions">Load Pickers</button>
+            <button class="primary big" type="button" id="composeLpcCharacter">Compose Character</button>
+            <button class="ghost big" type="button" data-open="output/lpc_composed">Open Composed Folder</button>
+          </div>
+          <div id="lpcComposerPreview" class="training-dataset-preview empty compact">Compose a whole LPC spritesheet from selected paper-doll layers, then use that output for previews, packs, or composed-character training.</div>
+        </form>
+
+        <form class="card form" id="lpcBatchComposerForm">
+          <div class="card-head">
+            <h3>LPC Batch Composer</h3>
+          </div>
+          <label>Universal LPC folder
+            <input name="source_dir" value="input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator" />
+          </label>
+          <div class="row">
+            <label>Count
+              <input name="batch_count" type="number" min="1" max="1000" value="24" />
+            </label>
+            <label>Action
+              <select name="batch_action">
+                <option value="idle" selected>Idle</option>
+                <option value="walk">Walk</option>
+                <option value="run">Run</option>
+                <option value="slash">Slash</option>
+                <option value="cast">Cast</option>
+                <option value="shoot">Shoot</option>
+                <option value="thrust">Thrust</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Body type
+              <select name="body_type">
+                <option value="male" selected>Male</option>
+                <option value="female">Female</option>
+                <option value="child">Child</option>
+                <option value="teen">Teen</option>
+                <option value="muscular">Muscular</option>
+                <option value="thin">Thin</option>
+              </select>
+            </label>
+            <label>Seed
+              <input name="batch_seed" placeholder="Optional" />
+            </label>
+          </div>
+          <label>Layer categories
+            <input name="batch_categories" value="hair,torso,legs,feet" />
+          </label>
+          <div class="row compact-fields">
+            <label>Actions set
+              <input name="batch_actions" value="idle,walk,slash,cast" />
+            </label>
+            <label>Body set
+              <input name="batch_body_types" value="male,female" />
+            </label>
+          </div>
+          <label>QA minimum layers
+            <input name="min_layers" type="number" min="1" max="12" value="3" />
+          </label>
+          <label>Output dataset folder
+            <input name="batch_output" placeholder="Optional. Defaults to app/output/training_datasets/lpc_composed_..." />
+          </label>
+          <div class="button-row form-actions-tight">
+            <button class="primary big" type="button" id="composeLpcBatch">Build Random Batch</button>
+            <button class="ghost big" type="button" id="qaLpcBatch" disabled>Run Dataset QA</button>
+            <button class="ghost big" type="button" id="useLpcBatchForLora" disabled>Use For LoRA</button>
+            <button class="primary big" type="button" id="prepareLpcLoraRun" disabled>Prepare LPC LoRA Run</button>
+            <button class="ghost big" type="button" data-open="output/training_datasets">Open Datasets Folder</button>
+          </div>
+          <div id="lpcBatchPreview" class="training-dataset-preview empty compact">Generate random LPC composed sheets with exact captions for LoRA training.</div>
         </form>
       </div>
     </section>
@@ -174,7 +329,10 @@
       <section class="card training-progress-card">
         <div class="card-head">
           <h3>Training Progress</h3>
-          <button class="mini" id="refreshLoraProgress" type="button">Refresh</button>
+          <div class="button-row inline-actions">
+            <button class="mini" id="refreshLoraProgress" type="button">Refresh</button>
+            <button class="mini" id="registerLoraCheckpoint" type="button">Register Checkpoint</button>
+          </div>
         </div>
         <label>Run folder
           <input id="loraProgressPath" placeholder="output/training_runs/sakpix_sprite_lora" />

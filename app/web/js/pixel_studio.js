@@ -1160,10 +1160,23 @@
     const recipeExportBtn = $('#pixelRecipeExportBtn');
     const recipeImportBtn = $('#pixelRecipeImportBtn');
     const recipeImportInput = $('#pixelRecipeImportInput');
+    const recipeSearchInput = $('#pixelRecipeSearchInput');
+    const recipeSourceFilter = $('#pixelRecipeSourceFilter');
+    const recipeTypeFilter = $('#pixelRecipeTypeFilter');
 
     if (recipeSelect) {
-      recipeSelect.addEventListener('change', renderSelectedRecipeMeta);
+      recipeSelect.addEventListener('change', () => {
+        renderSelectedRecipeMeta();
+        renderRecipeCards();
+      });
     }
+
+    [recipeSearchInput, recipeSourceFilter, recipeTypeFilter].forEach(control => {
+      if (control) {
+        control.addEventListener('input', renderRecipeCards);
+        control.addEventListener('change', renderRecipeCards);
+      }
+    });
 
     if (recipeSaveBtn) {
       recipeSaveBtn.addEventListener('click', async () => {
@@ -1783,22 +1796,96 @@
       if (res.ok && res.recipes) {
         const current = selectEl.value;
         pixelRecipes = res.recipes;
-        selectEl.innerHTML = '';
-        res.recipes.forEach(recipe => {
-          const opt = document.createElement('option');
-          opt.value = recipe.recipe_id;
-          const count = (recipe.items || []).reduce((total, item) => total + (item.count || 1), 0);
-          opt.textContent = `${recipe.name} (${count} assets)`;
-          selectEl.appendChild(opt);
-        });
+        renderRecipeSelectOptions();
         if (current && res.recipes.some(recipe => recipe.recipe_id === current)) {
           selectEl.value = current;
         }
         renderSelectedRecipeMeta();
+        renderRecipeCards();
       }
     } catch (err) {
       console.error('Error loading recipes:', err);
     }
+  }
+
+  function recipeAssetCount(recipe) {
+    return (recipe.items || []).reduce((total, item) => total + (item.count || 1), 0);
+  }
+
+  function renderRecipeSelectOptions() {
+    const selectEl = $('#pixelPackRecipeSelect');
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    pixelRecipes.forEach(recipe => {
+      const opt = document.createElement('option');
+      opt.value = recipe.recipe_id;
+      opt.textContent = `${recipe.name} (${recipeAssetCount(recipe)} assets)`;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function filteredRecipes() {
+    const query = ($('#pixelRecipeSearchInput')?.value || '').toLowerCase().trim();
+    const source = $('#pixelRecipeSourceFilter')?.value || 'all';
+    const type = $('#pixelRecipeTypeFilter')?.value || 'all';
+    return pixelRecipes.filter(recipe => {
+      if (source !== 'all' && recipe.source !== source) return false;
+      if (type !== 'all' && !(recipe.items || []).some(item => item.type === type)) return false;
+      if (!query) return true;
+      const haystack = [
+        recipe.name,
+        recipe.description,
+        recipe.recipe_id,
+        recipe.source,
+        ...(recipe.tags || []),
+        ...(recipe.items || []).flatMap(item => [item.type, item.prompt])
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+
+  function renderRecipeCards() {
+    const grid = $('#pixelRecipeCardGrid');
+    const selectEl = $('#pixelPackRecipeSelect');
+    if (!grid || !selectEl) return;
+    const recipes = filteredRecipes();
+    grid.innerHTML = '';
+    if (recipes.length === 0) {
+      grid.innerHTML = '<div class="pixel-recipe-empty">No recipes match those filters.</div>';
+      return;
+    }
+    recipes.forEach(recipe => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = `pixel-recipe-card ${recipe.recipe_id === selectEl.value ? 'active' : ''}`;
+      const tags = (recipe.tags || []).slice(0, 4).map(tag => `<span>${escapeHtml(tag)}</span>`).join('');
+      const types = [...new Set((recipe.items || []).map(item => item.type))].slice(0, 4).join(', ');
+      card.innerHTML = `
+        <div class="pixel-recipe-card-title">
+          <span>${escapeHtml(recipe.name || recipe.recipe_id)}</span>
+          <span>${recipeAssetCount(recipe)}</span>
+        </div>
+        <div class="pixel-recipe-card-meta">${escapeHtml(recipe.source || 'recipe')} - ${escapeHtml(types || 'mixed')}</div>
+        <div class="pixel-recipe-card-desc">${escapeHtml(recipe.description || 'Saved Pixel Studio recipe.')}</div>
+        <div class="pixel-recipe-card-tags">${tags}</div>
+      `;
+      card.addEventListener('click', () => {
+        selectEl.value = recipe.recipe_id;
+        renderSelectedRecipeMeta();
+        renderRecipeCards();
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[char]));
   }
 
   function renderSelectedRecipeMeta() {

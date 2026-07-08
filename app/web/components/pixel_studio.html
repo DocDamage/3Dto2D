@@ -219,6 +219,34 @@
               <option value="ui_hud_pack">UI HUD Pack (6 assets)</option>
             </select>
           </label>
+          <div class="pixel-recipe-discovery-controls">
+            <input id="pixelRecipeSearchInput" type="search" placeholder="Search recipes, tags, prompts..." />
+            <div class="pixel-recipe-filter-row">
+              <select id="pixelRecipeSourceFilter">
+                <option value="all">All sources</option>
+                <option value="built_in">Built-in</option>
+                <option value="user">Saved</option>
+              </select>
+              <select id="pixelRecipeTypeFilter">
+                <option value="all">All types</option>
+                <option value="characters">Characters</option>
+                <option value="creatures">Creatures</option>
+                <option value="items">Items</option>
+                <option value="weapons">Weapons</option>
+                <option value="potions">Potions</option>
+                <option value="ui_icons">UI Icons</option>
+                <option value="tilesets">Tilesets</option>
+                <option value="backgrounds">Backgrounds</option>
+              </select>
+            </div>
+          </div>
+          <div id="pixelRecipeCardGrid" class="pixel-recipe-card-grid"></div>
+          <div id="pixelRecipeTutorialCards" class="pixel-recipe-tutorial-cards">
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_asset">First asset</button>
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_tileset">First tileset</button>
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_animation">First animation</button>
+            <button class="pixel-recipe-tutorial-card" type="button" data-pixel-workflow="first_pack">First pack</button>
+          </div>
           <div id="pixelRecipeMeta" style="font-size: 11px; line-height: 1.35; color: var(--muted); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px;">Recipe details load here.</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
             <button class="mini" id="pixelRecipeSaveBtn" type="button">Save recipe</button>

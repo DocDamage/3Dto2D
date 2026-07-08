@@ -112,7 +112,7 @@ Common Pixel Studio workflows:
 - **Generate more like this** seeds the prompt from the selected asset.
 - **Reskin variations** quickly creates multiple palette/theme variants from the selected asset, then applies only the accepted variant as a versioned edit.
 - **Make match project style** compares the selected asset to the active style profile and updates the style score panel.
-- **Cohesive Pack Builder** generates built-in or user-saved recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
+- **Cohesive Pack Builder** lets you search/filter built-in or user-saved recipe cards, select a template, generate the pack, and export a ZIP with assets, sidecars, manifest, and `catalog.html`.
 - **Recipe controls** let you preview the pack queue, save the current settings as a local recipe, import recipe JSON, and export recipe JSON for reuse.
 - **Failure panel** explains common Pixel Studio issues such as missing provider keys, unsupported inpaint providers, non-square images, too many colors, missing alpha, style mismatch, or tile seam failure.
 - Generated assets are also saved into the active project Library when Pixel Studio receives a project name, so project-specific assets can be reused outside the Pixel Studio tab.

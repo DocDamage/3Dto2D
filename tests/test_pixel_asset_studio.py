@@ -1357,6 +1357,14 @@ def test_pixel_studio_polish_ui_assets():
     assert "/api/pixel-assets/edit/save" in js
     assert "/api/pixel-assets/version/save" in js
     assert 'id="pixelRecipeImportBtn"' in html
+    assert 'id="pixelRecipeSearchInput"' in html
+    assert 'id="pixelRecipeSourceFilter"' in html
+    assert 'id="pixelRecipeTypeFilter"' in html
+    assert 'id="pixelRecipeCardGrid"' in html
+    assert 'id="pixelRecipeTutorialCards"' in html
+    assert "renderRecipeCards" in js
+    assert "filteredRecipes" in js
+    assert "escapeHtml" in js
     assert "/api/pixel-assets/recipes/import" in js
     assert 'id="inspectorApplyPartBtn"' in html
     assert 'id="pixelPartApplyModal"' in html

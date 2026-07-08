@@ -109,7 +109,7 @@ Use **Pixel Studio** when you want MagicPixel-style game asset workflows directl
 *   Build 4-direction or 8-direction character sheets, tile atlases with seam QA, text-to-animation sheets, animation transfers from an existing sheet, and lightweight skeleton/rig renders.
 *   Edit assets in-browser with pencil, eraser, fill, picker, line, rectangle, selection/move, PNG import/export, version saves, provider-aware AI inpainting fallback plans, mask opacity, before/after inpaint compare, fast reskin batches, and variant-first outfit/part application workflows.
 *   Extract a style profile from any selected asset, then reuse that palette/style memory for matching future generations.
-*   Use **Cohesive Pack Builder** to generate built-in or saved recipe packs such as RPG, dungeon crawler, platformer, potion shop, or UI HUD packs, then export the whole pack as a ZIP with a browsable HTML catalog.
+*   Use **Cohesive Pack Builder** to search/filter built-in or saved recipe cards such as RPG, dungeon crawler, platformer, potion shop, or UI HUD packs, then export the whole pack as a ZIP with a browsable HTML catalog.
 *   Save current Pixel Studio settings as reusable local recipes, import recipe JSON, and export recipe JSON for sharing or backup.
 *   Pixel Studio sidecars link into SpriteForge experiment memory, and project-scoped generations are also added to the active project Library.
 *   The local CuteSCKR tile corpus can be prepared as an auto-tile LoRA dataset with trigger `cutesckr_tiles`; SpriteForge registers the resulting native adapter as the default `tile_style`.

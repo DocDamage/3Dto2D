@@ -170,6 +170,11 @@
     loadLoras();
     loadRecipes();
 
+    const styleSelect = $('#pixelStyleProfileSelect');
+    if (styleSelect) {
+      styleSelect.addEventListener('change', () => compareActiveAssetToStyle());
+    }
+
     // Style profile dialog events
     const createStyleBtn = $('#pixelCreateStyleBtn');
     const styleModal = $('#pixelStyleModal');
@@ -996,6 +1001,39 @@
       });
     }
 
+    const generateLikeBtn = $('#inspectorGenerateLikeBtn');
+    if (generateLikeBtn) {
+      generateLikeBtn.addEventListener('click', () => {
+        if (!activeAsset) {
+          toast('Select an asset first.');
+          return;
+        }
+        const promptEl = $('#pixelPrompt');
+        if (promptEl) promptEl.value = `${activeAsset.prompt || activeAsset.asset_type}, matching selected asset palette and silhouette`;
+        if ($('#pixelActiveMode')) $('#pixelActiveMode').value = activeAsset.asset_type || $('#pixelActiveMode').value;
+        if ($('#pixelBatchCount')) $('#pixelBatchCount').value = '4';
+        toast('Prompt seeded from selected asset.');
+      });
+    }
+
+    const matchStyleBtn = $('#inspectorMatchStyleBtn');
+    if (matchStyleBtn) {
+      matchStyleBtn.addEventListener('click', async () => {
+        if (!activeAsset) {
+          toast('Select an asset first.');
+          return;
+        }
+        const styleId = $('#pixelStyleProfileSelect')?.value || '';
+        if (!styleId) {
+          toast('Choose a style profile first.');
+          return;
+        }
+        await compareActiveAssetToStyle(true);
+        const promptEl = $('#pixelPrompt');
+        if (promptEl) promptEl.value = `${activeAsset.prompt || activeAsset.asset_type}, match selected project style profile`;
+      });
+    }
+
     if (playPauseBtn) {
       playPauseBtn.addEventListener('click', () => {
         if (!activeAnimation) return;
@@ -1637,6 +1675,7 @@
 
     syncComparePreview();
     populateInspector(asset);
+    compareActiveAssetToStyle();
   }
 
   function syncComparePreview() {
@@ -1812,8 +1851,51 @@
 
     // Actions
     $('#inspectorUseAsStyleBtn').disabled = false;
+    $('#inspectorGenerateLikeBtn').disabled = false;
+    $('#inspectorMatchStyleBtn').disabled = false;
     $('#inspectorEditBtn').disabled = false;
     $('#inspectorExportBtn').disabled = false;
+  }
+
+  async function compareActiveAssetToStyle(showToast) {
+    if (!activeAsset) return;
+    const styleId = $('#pixelStyleProfileSelect')?.value || '';
+    const consistencyRows = $('#qaConsistencyRows');
+    if (!styleId) {
+      if (consistencyRows && !(activeBatch && activeBatch.qa && activeBatch.qa.consistency_scores)) {
+        consistencyRows.style.display = 'none';
+      }
+      return;
+    }
+
+    try {
+      const res = await api('/api/pixel-assets/style/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset_id: activeAsset.asset_id,
+          style_id: styleId
+        })
+      });
+      if (!res.ok) {
+        if (showToast) showPixelFailure(res.message);
+        return;
+      }
+      const match = res.match;
+      if (consistencyRows) consistencyRows.style.display = 'flex';
+      $('#qaPaletteSimilarity').textContent = `${(match.palette_overlap * 100).toFixed(0)}%`;
+      $('#qaHeightSimilarity').textContent = `${(match.size_match * 100).toFixed(0)}%`;
+      const overallEl = $('#qaOverallSimilarity');
+      if (overallEl) {
+        overallEl.textContent = `${(match.overall * 100).toFixed(0)}%`;
+        overallEl.className = match.ok ? 'badge qa-pass' : 'badge qa-warn';
+      }
+      if (showToast) {
+        toast(match.ok ? 'Selected asset matches the project style.' : 'Selected asset may need style repair.');
+      }
+    } catch (err) {
+      if (showToast) showPixelFailure(err.message);
+    }
   }
 
   async function triggerReNormalization() {

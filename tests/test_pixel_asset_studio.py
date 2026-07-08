@@ -604,6 +604,17 @@ def test_style_extraction_endpoint(client):
     assert style_data["style"]["name"] == "Silver Dagger Style"
     assert style_data["style"]["palette"]
 
+    compare = client.post(
+        "/api/pixel-assets/style/compare",
+        data=json.dumps({"asset_id": asset_id, "style_id": style_data["style"]["style_id"]}),
+        content_type="application/json"
+    )
+    assert compare.status_code == 200
+    compare_data = json.loads(compare.data.decode("utf-8"))
+    assert compare_data["ok"] is True
+    assert compare_data["match"]["schema"] == "spriteforge.pixel_style_match.v1"
+    assert compare_data["match"]["overall"] >= 0.9
+
 def test_inpaint_service_mock(tmp_path):
     # Setup test asset
     asset_id = "pxa_test_inpaint"
@@ -1074,3 +1085,7 @@ def test_pixel_studio_polish_ui_assets():
     assert "showPixelFailure" in js
     assert "/api/pixel-assets/failure/explain" in js
     assert "applyPixelWorkflow" in js
+    assert 'id="inspectorGenerateLikeBtn"' in html
+    assert 'id="inspectorMatchStyleBtn"' in html
+    assert "/api/pixel-assets/style/compare" in js
+    assert "compareActiveAssetToStyle" in js

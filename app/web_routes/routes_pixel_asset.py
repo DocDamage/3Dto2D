@@ -72,6 +72,15 @@ def extract_pixel_style():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
 
+@routes_pixel_asset.route("/api/pixel-assets/style/compare", methods=["POST"])
+def compare_pixel_style():
+    body = request.json or {}
+    try:
+        match = PixelStyleService.compare_asset_to_style(body)
+        return jsonify({"ok": True, "match": match})
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 @routes_pixel_asset.route("/api/pixel-assets/history", methods=["GET"])
 def get_pixel_history():
     try:

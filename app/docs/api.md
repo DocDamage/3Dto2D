@@ -616,6 +616,24 @@ Create a reusable style profile from an existing Pixel Studio asset or workspace
 }
 ```
 
+### `POST /api/pixel-assets/style/compare`
+
+Score a Pixel Studio asset against a saved style profile.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "style_id": "style_project"
+}
+```
+
+**Response includes:**
+- `palette_overlap`
+- `size_match`
+- `overall`
+- `recommendation`
+
 ### `GET /api/pixel-assets/history`
 
 Return saved Pixel Studio asset metadata records.

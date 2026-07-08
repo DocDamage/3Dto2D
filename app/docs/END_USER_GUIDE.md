@@ -103,6 +103,8 @@ Common Pixel Studio workflows:
 - **Animation Transfer** applies an existing sheet layout to a new prompt/style.
 - **Skeleton & Rigging** renders simple keyframed rig motion into a sheet.
 - **Use as style reference** extracts palette and style hints from a selected asset so future assets can match it.
+- **Generate more like this** seeds the prompt from the selected asset.
+- **Make match project style** compares the selected asset to the active style profile and updates the style score panel.
 - **Cohesive Pack Builder** generates built-in or user-saved recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
 - **Recipe controls** let you preview the pack queue, save the current settings as a local recipe, and export recipe JSON for reuse.
 - **Failure panel** explains common Pixel Studio issues such as missing provider keys, unsupported inpaint providers, non-square images, too many colors, missing alpha, style mismatch, or tile seam failure.

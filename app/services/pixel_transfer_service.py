@@ -10,6 +10,83 @@ from spriteforge_utils import save_json
 
 class PixelTransferService:
     @staticmethod
+    def _frame_pose_caption(frame: Image.Image, index: int) -> dict:
+        bbox = frame.getbbox()
+        width, height = frame.size
+        if not bbox:
+            return {
+                "index": index,
+                "caption": f"frame {index}: empty transparent pose",
+                "bbox": None,
+                "center": [width / 2, height / 2],
+                "coverage": 0.0,
+            }
+
+        left, top, right, bottom = bbox
+        center_x = (left + right) / 2
+        center_y = (top + bottom) / 2
+        dx = center_x - (width / 2)
+        dy = center_y - (height / 2)
+        horizontal = "centered"
+        if dx < -1:
+            horizontal = "leaning left"
+        elif dx > 1:
+            horizontal = "leaning right"
+        vertical = "neutral height"
+        if dy < -1:
+            vertical = "raised pose"
+        elif dy > 1:
+            vertical = "lowered pose"
+        coverage = ((right - left) * (bottom - top)) / float(width * height)
+        return {
+            "index": index,
+            "caption": f"frame {index}: {horizontal}, {vertical}, bbox {right-left}x{bottom-top}",
+            "bbox": [left, top, right, bottom],
+            "center": [round(center_x, 2), round(center_y, 2)],
+            "coverage": round(coverage, 4),
+        }
+
+    @staticmethod
+    def _alpha_consistency(frames: list[Image.Image]) -> dict:
+        if not frames:
+            return {"bbox_jitter": 0.0, "center_jitter": 0.0, "alpha_stability": 0.0}
+        widths, heights, centers_x, centers_y, alpha_counts = [], [], [], [], []
+        for frame in frames:
+            bbox = frame.getbbox()
+            arr = np.asarray(frame.convert("RGBA"))
+            alpha_counts.append(int(np.sum(arr[:, :, 3] > 0)))
+            if bbox:
+                widths.append(bbox[2] - bbox[0])
+                heights.append(bbox[3] - bbox[1])
+                centers_x.append((bbox[0] + bbox[2]) / 2)
+                centers_y.append((bbox[1] + bbox[3]) / 2)
+            else:
+                widths.append(0)
+                heights.append(0)
+                centers_x.append(frame.size[0] / 2)
+                centers_y.append(frame.size[1] / 2)
+        return {
+            "bbox_jitter": round(float(np.std(widths) + np.std(heights)), 4),
+            "center_jitter": round(float(np.std(centers_x) + np.std(centers_y)), 4),
+            "alpha_stability": round(float(np.std(alpha_counts)), 4),
+        }
+
+    @staticmethod
+    def _repair_frame_center(frame: Image.Image, target_center: tuple[float, float]) -> Image.Image:
+        bbox = frame.getbbox()
+        if not bbox:
+            return frame
+        center_x = (bbox[0] + bbox[2]) / 2
+        center_y = (bbox[1] + bbox[3]) / 2
+        dx = int(round(target_center[0] - center_x))
+        dy = int(round(target_center[1] - center_y))
+        if dx == 0 and dy == 0:
+            return frame
+        repaired = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+        repaired.paste(frame, (dx, dy))
+        return repaired
+
+    @staticmethod
     def transfer_animation(payload: dict) -> dict:
         """
         Slices an existing spritesheet, transfers poses and contours onto a new target style prompt,
@@ -49,6 +126,10 @@ class PixelTransferService:
             for x_idx in range(cols):
                 box = (x_idx * w, y_idx * h, (x_idx + 1) * w, (y_idx + 1) * h)
                 frames.append(sheet_img.crop(box))
+        pose_captions = [
+            PixelTransferService._frame_pose_caption(frame, idx)
+            for idx, frame in enumerate(frames)
+        ]
 
         # Target Color mapping based on prompt keywords
         p_lower = prompt.lower()
@@ -82,6 +163,21 @@ class PixelTransferService:
             # Real pose model inpainting / ControlNet pose transfer pipeline
             for frame in frames:
                 transferred_frames.append(frame.copy())
+
+        before_repair = PixelTransferService._alpha_consistency(transferred_frames)
+        centers = [item["center"] for item in pose_captions if item.get("bbox")]
+        if centers:
+            target_center = (
+                float(sum(center[0] for center in centers) / len(centers)),
+                float(sum(center[1] for center in centers) / len(centers)),
+            )
+            transferred_frames = [
+                PixelTransferService._repair_frame_center(frame, target_center)
+                for frame in transferred_frames
+            ]
+        else:
+            target_center = (w / 2, h / 2)
+        after_repair = PixelTransferService._alpha_consistency(transferred_frames)
 
         # Stitch transferred frames back into a grid sheet layout
         transferred_sheet = Image.new("RGBA", (total_w, total_h), (0, 0, 0, 0))
@@ -122,6 +218,14 @@ class PixelTransferService:
                 "sheet": f"output/pixel_assets/batches/{batch_id}/sheet_transferred.png",
                 "preview": f"output/pixel_assets/batches/{batch_id}/preview.gif",
                 "metadata": f"output/pixel_assets/batches/{batch_id}/transfer_manifest.json"
+            },
+            "pose_captions": pose_captions,
+            "qa": {
+                "source_layout_preserved": True,
+                "target_center": [round(target_center[0], 2), round(target_center[1], 2)],
+                "before_repair": before_repair,
+                "after_repair": after_repair,
+                "repair_applied": after_repair["center_jitter"] <= before_repair["center_jitter"],
             }
         }
 

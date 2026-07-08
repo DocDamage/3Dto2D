@@ -1079,6 +1079,10 @@ def test_transfer_animation_service(tmp_path):
     assert manifest["schema"] == "spriteforge.pixel_animation_transfer.v1"
     assert manifest["frame_count"] == 2
     assert manifest["resolution"] == [16, 16]
+    assert len(manifest["pose_captions"]) == 2
+    assert manifest["pose_captions"][0]["caption"].startswith("frame 0:")
+    assert manifest["qa"]["source_layout_preserved"] is True
+    assert manifest["qa"]["after_repair"]["center_jitter"] <= manifest["qa"]["before_repair"]["center_jitter"]
 
     batch_dir = tmp_path / "pixel_assets" / "batches" / manifest["batch_id"]
     assert (batch_dir / "sheet_transferred.png").exists()

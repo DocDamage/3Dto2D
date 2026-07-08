@@ -900,6 +900,7 @@ Generate an animation sheet plus GIF, APNG, and animated WebP previews from an a
 ### `POST /api/pixel-assets/animation-transfer`
 
 Transfer an existing sheet layout/motion to a new prompt/style.
+The transfer manifest includes `pose_captions` for each source frame and `qa.before_repair` / `qa.after_repair` consistency metrics from the centering repair pass.
 
 **Request Body:**
 ```json

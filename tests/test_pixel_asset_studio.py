@@ -27,6 +27,7 @@ from services.pixel_recipe_service import PixelRecipeService
 from services.pixel_style_service import PixelStyleService
 from services.pixel_asset_memory_service import PixelAssetMemoryService
 from services.pixel_part_apply_service import PixelPartApplyService
+from services.pixel_reskin_service import PixelReskinService
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_web import app
 
@@ -80,6 +81,10 @@ def mock_pixel_paths(tmp_path, monkeypatch):
     import services.pixel_part_apply_service as ppa_srv_mod
     monkeypatch.setattr(ppa_srv_mod, "ROOT", tmp_path)
     monkeypatch.setattr(ppa_srv_mod, "ASSETS_DIR", assets)
+
+    import services.pixel_reskin_service as reskin_srv_mod
+    monkeypatch.setattr(reskin_srv_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(reskin_srv_mod, "ASSETS_DIR", assets)
 
     import services.pixel_recipe_service as recipe_mod
     monkeypatch.setattr(recipe_mod, "RECIPES_DIR", temp_root / "recipes")
@@ -786,6 +791,54 @@ def test_part_apply_variants_and_accept_endpoint(client):
     assert accept_data["asset"]["part_apply_history"][0]["label"] == "gold chest armor"
     assert accept_data["asset"]["versions"][0]["label"] == "before gold chest armor"
 
+def test_reskin_variants_and_accept_endpoint(client):
+    response = client.post(
+        "/api/pixel-assets/generate",
+        data=json.dumps({
+            "asset_type": "items",
+            "prompt": "small shield",
+            "resolution": "32x32",
+            "palette_size": "16",
+            "provider": "openai",
+            "count": 1,
+            "mock": True
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    asset = json.loads(response.data.decode("utf-8"))["assets"][0]
+
+    reskin_res = client.post(
+        "/api/pixel-assets/reskin",
+        data=json.dumps({
+            "asset_id": asset["asset_id"],
+            "prompt": "ice blue variant",
+            "count": 4,
+            "mock": True
+        }),
+        content_type="application/json"
+    )
+    assert reskin_res.status_code == 200
+    reskin_data = json.loads(reskin_res.data.decode("utf-8"))
+    assert reskin_data["ok"] is True
+    assert reskin_data["manifest"]["schema"] == "spriteforge.pixel_reskin.v1"
+    assert len(reskin_data["variants"]) == 4
+
+    accept_res = client.post(
+        "/api/pixel-assets/reskin/accept",
+        data=json.dumps({
+            "asset_id": asset["asset_id"],
+            "variant_path": reskin_data["variants"][0]["path"],
+            "label": "ice blue variant"
+        }),
+        content_type="application/json"
+    )
+    assert accept_res.status_code == 200
+    accept_data = json.loads(accept_res.data.decode("utf-8"))
+    assert accept_data["ok"] is True
+    assert accept_data["asset"]["reskin_history"][0]["label"] == "ice blue variant"
+    assert accept_data["asset"]["versions"][0]["label"] == "before ice blue variant"
+
 def test_animation_generation_service(tmp_path):
     # Setup test asset
     asset_id = "pxa_test_animate"
@@ -1200,3 +1253,9 @@ def test_pixel_studio_polish_ui_assets():
     assert "/api/pixel-assets/part/apply" in js
     assert "/api/pixel-assets/part/accept" in js
     assert "renderPartVariants" in js
+    assert 'id="inspectorReskinBtn"' in html
+    assert 'id="pixelReskinModal"' in html
+    assert 'id="pixelReskinVariantGrid"' in html
+    assert "/api/pixel-assets/reskin" in js
+    assert "/api/pixel-assets/reskin/accept" in js
+    assert "renderReskinVariants" in js

@@ -766,6 +766,33 @@ Accept one generated part variant and apply it to `asset.png`. The previous asse
 }
 ```
 
+### `POST /api/pixel-assets/reskin`
+
+Create fast non-destructive palette/theme variations from an existing pixel asset.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "prompt": "ice blue variant",
+  "count": 6,
+  "mock": true
+}
+```
+
+### `POST /api/pixel-assets/reskin/accept`
+
+Accept one reskin variant and apply it to `asset.png`. The previous asset image is copied into `versions/`, and the sidecar receives `reskin_history`.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "variant_path": "output/pixel_assets/assets/pxa_123/reskin_variants/reskin_abc/reskin_abc_v1.png",
+  "label": "ice blue variant"
+}
+```
+
 ### `POST /api/pixel-assets/animate`
 
 Generate an animation sheet and GIF preview from an asset.

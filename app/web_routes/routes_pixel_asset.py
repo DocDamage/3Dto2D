@@ -344,6 +344,26 @@ def accept_pixel_part_variant():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 400
 
+@routes_pixel_asset.route("/api/pixel-assets/reskin", methods=["POST"])
+def reskin_pixel_asset():
+    body = request.json or {}
+    try:
+        from services.pixel_reskin_service import PixelReskinService
+        result = PixelReskinService.create_variants(body)
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_pixel_asset.route("/api/pixel-assets/reskin/accept", methods=["POST"])
+def accept_pixel_reskin_variant():
+    body = request.json or {}
+    try:
+        from services.pixel_reskin_service import PixelReskinService
+        result = PixelReskinService.accept_variant(body)
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 @routes_pixel_asset.route("/api/pixel-assets/animate", methods=["POST"])
 def animate_pixel_asset():
     body = request.json or {}

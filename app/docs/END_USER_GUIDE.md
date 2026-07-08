@@ -105,6 +105,7 @@ Common Pixel Studio workflows:
 - **Skeleton & Rigging** renders simple keyframed rig motion into a sheet.
 - **Use as style reference** extracts palette and style hints from a selected asset so future assets can match it.
 - **Generate more like this** seeds the prompt from the selected asset.
+- **Reskin variations** quickly creates multiple palette/theme variants from the selected asset, then applies only the accepted variant as a versioned edit.
 - **Make match project style** compares the selected asset to the active style profile and updates the style score panel.
 - **Cohesive Pack Builder** generates built-in or user-saved recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
 - **Recipe controls** let you preview the pack queue, save the current settings as a local recipe, import recipe JSON, and export recipe JSON for reuse.

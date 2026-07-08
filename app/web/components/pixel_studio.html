@@ -502,6 +502,7 @@
       <div class="inspector-section" style="margin-top: auto; display: flex; flex-direction: column; gap: 8px;">
         <button class="ghost" id="inspectorUseAsStyleBtn" type="button" disabled style="width: 100%;">Use as style reference</button>
         <button class="ghost" id="inspectorGenerateLikeBtn" type="button" disabled style="width: 100%;">Generate more like this</button>
+        <button class="ghost" id="inspectorReskinBtn" type="button" disabled style="width: 100%;">Reskin variations</button>
         <button class="ghost" id="inspectorMatchStyleBtn" type="button" disabled style="width: 100%;">Make match project style</button>
         <button class="ghost" id="inspectorApplyPartBtn" type="button" disabled style="width: 100%;">Apply outfit / part</button>
         <button class="ghost" id="inspectorEditBtn" type="button" disabled style="width: 100%;">Paint & Edit Pixel</button>
@@ -510,6 +511,30 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Reskin Variations Modal Dialog -->
+  <div id="pixelReskinModal" class="result-modal hidden" role="dialog" aria-modal="true" aria-labelledby="reskinModalTitle" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6);">
+    <div class="result-modal-backdrop" id="pixelReskinModalBackdrop" style="position: absolute; top:0; left:0; width:100%; height:100%;"></div>
+    <section class="result-dialog" style="position: relative; max-width: 640px; width: 92vw; background: #0f1322; border: 1px solid rgba(85,241,255,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="result-dialog-head" style="margin-bottom: 16px;">
+        <h2 id="reskinModalTitle" style="font-size: 18px; font-weight: bold; color: var(--cyan); margin: 0;">Reskin variations</h2>
+      </div>
+
+      <form id="pixelReskinForm" style="display: flex; flex-direction: column; gap: 12px;">
+        <label>Theme or palette
+          <input type="text" id="pixelReskinPrompt" placeholder="ice blue, fire red, royal gold, poison green..." required style="width:100%; margin-top:4px;" />
+        </label>
+        <label>Variants
+          <input type="number" id="pixelReskinCount" value="6" min="1" max="12" style="width:100%; margin-top:4px;" />
+        </label>
+        <div id="pixelReskinVariantGrid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-height: 40px;"></div>
+        <div class="button-row" style="justify-content: flex-end; margin-top: 8px;">
+          <button type="button" class="ghost" id="pixelReskinCancelBtn">Close</button>
+          <button type="submit" class="primary" id="pixelReskinGenerateBtn">Generate Reskins</button>
+        </div>
+      </form>
+    </section>
   </div>
 
   <!-- Apply Outfit / Part Modal Dialog -->

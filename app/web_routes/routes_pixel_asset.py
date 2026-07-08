@@ -156,6 +156,16 @@ def normalize_pixel_asset():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 
+@routes_pixel_asset.route("/api/pixel-assets/cleanup", methods=["POST"])
+def cleanup_pixel_asset():
+    body = request.json or {}
+    try:
+        from services.pixel_cleanup_service import PixelCleanupService
+        result = PixelCleanupService.cleanup_asset(body)
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 @routes_pixel_asset.route("/api/pixel-assets/directions", methods=["POST"])
 def generate_pixel_directions():
     body = request.json or {}

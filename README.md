@@ -105,7 +105,7 @@ Use **Pixel Studio** when you want MagicPixel-style game asset workflows directl
 
 *   Generate pixel-art characters, creatures, items, weapons, potions, UI icons, tilesets, and backgrounds from a prompt, reference image, style profile, and provider.
 *   Use asset-specific controls for characters, creatures, items, weapons, potions, UI, tilesets, and backgrounds. These controls expand prompts through editable JSON configs in `app/config/pixel_asset_modes.json` and `app/config/pixel_prompt_templates.json`.
-*   Normalize outputs to game-ready pixel constraints: fixed canvas size, palette reduction, transparent background, nearest-neighbor scaling, and sidecar metadata.
+*   Normalize and clean outputs to game-ready pixel constraints: fixed canvas size, palette reduction, transparent background, nearest-neighbor scaling, version backups, and sidecar metadata.
 *   Build 4-direction or 8-direction character sheets, tile atlases with seam QA, text-to-animation sheets, animation transfers from an existing sheet, and lightweight skeleton/rig renders.
 *   Edit assets in-browser with pencil, eraser, fill, picker, line, rectangle, selection/move, PNG import/export, version saves, mock AI inpainting, fast reskin batches, and variant-first outfit/part application workflows.
 *   Extract a style profile from any selected asset, then reuse that palette/style memory for matching future generations.

@@ -28,6 +28,7 @@ from services.pixel_style_service import PixelStyleService
 from services.pixel_asset_memory_service import PixelAssetMemoryService
 from services.pixel_part_apply_service import PixelPartApplyService
 from services.pixel_reskin_service import PixelReskinService
+from services.pixel_cleanup_service import PixelCleanupService
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_web import app
 
@@ -85,6 +86,10 @@ def mock_pixel_paths(tmp_path, monkeypatch):
     import services.pixel_reskin_service as reskin_srv_mod
     monkeypatch.setattr(reskin_srv_mod, "ROOT", tmp_path)
     monkeypatch.setattr(reskin_srv_mod, "ASSETS_DIR", assets)
+
+    import services.pixel_cleanup_service as cleanup_srv_mod
+    monkeypatch.setattr(cleanup_srv_mod, "ROOT", tmp_path)
+    monkeypatch.setattr(cleanup_srv_mod, "ASSETS_DIR", assets)
 
     import services.pixel_recipe_service as recipe_mod
     monkeypatch.setattr(recipe_mod, "RECIPES_DIR", temp_root / "recipes")
@@ -261,6 +266,45 @@ def test_normalize_endpoint(client, tmp_path):
     assert data["ok"] is True
     assert "normalized_path" in data
     assert data["resolution"] == [16, 16]
+
+def test_cleanup_selected_asset_endpoint(client):
+    response = client.post(
+        "/api/pixel-assets/generate",
+        data=json.dumps({
+            "asset_type": "items",
+            "prompt": "white background coin",
+            "resolution": "32x32",
+            "palette_size": "16",
+            "provider": "openai",
+            "count": 1,
+            "mock": True
+        }),
+        content_type="application/json"
+    )
+    assert response.status_code == 200
+    asset = json.loads(response.data.decode("utf-8"))["assets"][0]
+
+    cleanup = client.post(
+        "/api/pixel-assets/cleanup",
+        data=json.dumps({
+            "asset_id": asset["asset_id"],
+            "resolution": "16x16",
+            "max_colors": 8,
+            "remove_background": True,
+            "clean_alpha": True,
+            "quantize_palette": True,
+            "remove_islands": True,
+            "outline": "none"
+        }),
+        content_type="application/json"
+    )
+    assert cleanup.status_code == 200
+    data = json.loads(cleanup.data.decode("utf-8"))
+    assert data["ok"] is True
+    assert data["asset"]["resolution"] == [16, 16]
+    assert data["asset"]["palette"]["max_colors"] == 8
+    assert data["asset"]["versions"][0]["label"] == "before cleanup"
+    assert data["asset"]["cleanup_history"][0]["after_color_count"] <= 8
 
 def test_direction_service_logic():
     # 1. Test get direction suffixes
@@ -1259,3 +1303,6 @@ def test_pixel_studio_polish_ui_assets():
     assert "/api/pixel-assets/reskin" in js
     assert "/api/pixel-assets/reskin/accept" in js
     assert "renderReskinVariants" in js
+    assert 'id="inspectorCleanupBtn"' in html
+    assert "/api/pixel-assets/cleanup" in js
+    assert "cleanupSelectedAsset" in js

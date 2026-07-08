@@ -723,6 +723,24 @@ Copy the current `asset.png` into the asset's `versions/` folder and append vers
 }
 ```
 
+### `POST /api/pixel-assets/cleanup`
+
+Run one-click cleanup on a selected Pixel Studio asset. This removes obvious corner-color backgrounds, snaps to the requested resolution, cleans alpha, clamps palette colors, removes small islands, updates QA/palette sidecar fields, and stores the previous `asset.png` in `versions/`.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "remove_background": true,
+  "resolution": "32x32",
+  "clean_alpha": true,
+  "quantize_palette": true,
+  "max_colors": 24,
+  "remove_islands": true,
+  "outline": "none"
+}
+```
+
 ### `POST /api/pixel-assets/inpaint`
 
 Apply a masked edit workflow to an existing pixel asset.

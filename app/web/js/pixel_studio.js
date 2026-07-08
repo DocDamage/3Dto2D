@@ -1291,6 +1291,11 @@
       });
     }
 
+    const cleanupBtn = $('#inspectorCleanupBtn');
+    if (cleanupBtn) {
+      cleanupBtn.addEventListener('click', cleanupSelectedAsset);
+    }
+
     const matchStyleBtn = $('#inspectorMatchStyleBtn');
     if (matchStyleBtn) {
       matchStyleBtn.addEventListener('click', async () => {
@@ -2188,6 +2193,7 @@
     $('#inspectorReskinBtn').disabled = false;
     $('#inspectorMatchStyleBtn').disabled = false;
     $('#inspectorApplyPartBtn').disabled = false;
+    $('#inspectorCleanupBtn').disabled = false;
     $('#inspectorEditBtn').disabled = false;
     $('#inspectorExportBtn').disabled = false;
   }
@@ -2388,6 +2394,42 @@
         activeAsset.outputs.png = res.normalized_path;
         currentCompareMode = 'normalized';
         syncComparePreview();
+      } else {
+        showPixelFailure(res.message);
+      }
+    } catch (err) {
+      showPixelFailure(err.message);
+    }
+  }
+
+  async function cleanupSelectedAsset() {
+    if (!activeAsset) {
+      toast('Select an asset first.');
+      return;
+    }
+    const payload = {
+      asset_id: activeAsset.asset_id,
+      remove_background: true,
+      resolution: $('#pixelResolutionSelect')?.value || activeAsset.resolution?.join('x') || '32x32',
+      clean_alpha: $('#pixelCleanAlphaToggle')?.checked ?? true,
+      quantize_palette: $('#pixelQuantizeToggle')?.checked ?? true,
+      max_colors: $('#pixelPaletteSizeSelect')?.value || activeAsset.palette?.max_colors || 24,
+      remove_islands: $('#pixelRemoveIslandsToggle')?.checked ?? true,
+      min_island_size: 2,
+      outline: $('#pixelOutlineSelect')?.value || 'none'
+    };
+    toast('Cleaning selected pixel asset...');
+    try {
+      const res = await api('/api/pixel-assets/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        activeAsset = res.asset;
+        currentCompareMode = 'normalized';
+        toast('Cleanup completed and previous image versioned.');
+        selectAsset(activeAsset);
       } else {
         showPixelFailure(res.message);
       }

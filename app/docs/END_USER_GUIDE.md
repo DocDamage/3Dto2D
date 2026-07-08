@@ -95,6 +95,7 @@ Common Pixel Studio workflows:
 - **Workflow shortcut buttons** set up the first asset, first tileset, first animation, or first pack starting point.
 - **Generate** creates individual pixel assets, writes metadata sidecars, and records them in SpriteForge experiment memory.
 - **Normalize** enforces fixed pixel canvas, palette, alpha, outline, and cleanup rules.
+- **Cleanup selected asset** removes obvious solid backgrounds, snaps to the active pixel resolution, clamps the palette, updates QA, and stores the previous image as a version.
 - **Directions** builds 1, 4, or 8-direction character sheets and consistency scores.
 - **Tileset** creates top-down, side-scroller, or isometric tile roles with seam checks.
 - **Edit** opens the browser pixel editor with pencil, eraser, fill, picker, line, rectangle, selection, move, import PNG, export PNG, save edits, and save version controls.

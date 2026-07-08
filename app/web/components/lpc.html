@@ -7,9 +7,14 @@
       </div>
       <div class="lpc-title-actions">
         <label>Palette
-          <select id="lpcPalette"><option>Default</option></select>
+          <select id="lpcPalette"><option value="default">Default</option></select>
+        </label>
+        <label>Recipe
+          <select id="lpcPresetSelect"><option value="">Unsaved</option></select>
         </label>
         <button class="mini" id="lpcLoadPickers" type="button">Load Pickers</button>
+        <button class="mini" id="lpcSavePreset" type="button">Save Recipe</button>
+        <button class="mini" id="lpcDeletePreset" type="button">Delete Recipe</button>
       </div>
     </header>
 
@@ -59,6 +64,8 @@
           <button class="mini" id="lpcZoomIn" type="button">+</button>
           <span id="lpcZoomLabel">300%</span>
         </div>
+        <div class="lpc-rules-panel" id="lpcRulesPanel"></div>
+        <div class="lpc-batch-gallery" id="lpcBatchGallery"></div>
       </section>
 
       <form class="lpc-panel" id="lpcRightPanel">
@@ -83,6 +90,8 @@
       <label class="checkbox-line"><input id="lpcShowBody" type="checkbox" checked /> Show Body</label>
       <label class="checkbox-line"><input id="lpcShowAddons" type="checkbox" checked /> Show Body Addons</label>
       <label class="checkbox-line"><input id="lpcCastShadow" type="checkbox" /> Cast Shadow</label>
+      <label class="lpc-batch-count">Batch <input id="lpcBatchCount" type="number" min="1" max="1000" value="48" /></label>
+      <button class="mini" id="lpcCheckRules" type="button">Check Rules</button>
       <button class="mini primary" id="lpcComposeCharacter" type="button">Compose</button>
       <button class="mini" id="lpcBuildBatch" type="button">Build Batch</button>
       <button class="mini" id="lpcRunQa" type="button" disabled>Run QA</button>

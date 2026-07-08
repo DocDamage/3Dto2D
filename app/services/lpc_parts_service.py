@@ -13,12 +13,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from PIL import Image
+from PIL import ImageEnhance
 
 from spriteforge_utils import IMAGE_SUFFIXES, ROOT, safe_name
 
 
 DEFAULT_OUTPUT = ROOT / "output" / "lpc_parts"
 DEFAULT_LPC_SOURCE = ROOT / "input" / "lpc_assets" / "Universal-LPC-Spritesheet-Character-Generator"
+LPC_PRESETS_PATH = ROOT / "config" / "lpc_presets.json"
+LPC_CATALOG_VERSION = 2
 
 LPC_ACTION_ALIASES = {
     "backslash": "back_slash",
@@ -27,28 +30,65 @@ LPC_ACTION_ALIASES = {
     "spellcast": "cast",
 }
 
+LPC_ACTIONS = {
+    "back_slash", "cast", "climb", "combat_idle", "emote", "half_slash",
+    "hurt", "idle", "jump", "run", "shoot", "sit", "slash", "thrust", "walk",
+}
+
 LPC_BODY_TYPES = {
     "adult", "child", "female", "male", "muscular", "pregnant", "teen", "thin",
 }
 
+LPC_CATEGORY_ALIASES = {
+    "ammo": "quiver",
+    "back": "backpack",
+    "beard": "beards",
+    "beards": "beards",
+    "belt": "torso",
+    "facial_hair": "beards",
+    "mainhand": "weapon",
+    "offhand": "shield",
+    "weapon": "weapon",
+    "weapons": "weapon",
+}
+
+LPC_PALETTES = {
+    "default": {"label": "Default", "brightness": 1.0, "contrast": 1.0, "color": 1.0, "rgb": (1.0, 1.0, 1.0)},
+    "sunlit": {"label": "Sunlit", "brightness": 1.08, "contrast": 1.06, "color": 1.08, "rgb": (1.05, 1.0, 0.92)},
+    "moonlit": {"label": "Moonlit", "brightness": 0.92, "contrast": 1.08, "color": 0.92, "rgb": (0.82, 0.9, 1.12)},
+    "ember": {"label": "Ember", "brightness": 1.0, "contrast": 1.12, "color": 1.15, "rgb": (1.15, 0.88, 0.75)},
+    "ghost": {"label": "Ghost", "brightness": 1.16, "contrast": 0.86, "color": 0.45, "rgb": (0.82, 0.95, 1.12)},
+    "shadow": {"label": "Shadow", "brightness": 0.74, "contrast": 1.18, "color": 0.82, "rgb": (0.86, 0.9, 1.0)},
+}
+
 LPC_LAYER_ORDER = [
+    "shadow",
     "body",
     "head",
     "eyes",
+    "beards",
     "facial",
     "hair",
     "legs",
     "feet",
+    "dress",
     "torso",
     "arms",
     "shoulders",
     "neck",
     "cape",
-    "back",
+    "backpack",
     "hat",
-    "weapons",
+    "shield",
+    "quiver",
+    "weapon",
     "tools",
 ]
+
+
+def _canonical_category(category: str) -> str:
+    key = str(category or "").strip().lower().replace("-", "_").replace(" ", "_")
+    return LPC_CATEGORY_ALIASES.get(key, key)
 
 
 def _spritesheets_root(root: Path) -> Path:
@@ -101,15 +141,26 @@ def _normalize_action(stem: str) -> str:
     return LPC_ACTION_ALIASES.get(action, action)
 
 
+def _infer_action(pieces: List[str], fallback: str) -> str:
+    for piece in reversed(pieces):
+        action = _normalize_action(piece)
+        if action in LPC_ACTIONS:
+            return action
+    return _normalize_action(fallback)
+
+
 def _infer_part(root: Path, path: Path) -> Dict[str, Any]:
     rel = path.relative_to(root)
     pieces = list(rel.parts)
-    category = pieces[0] if pieces else "parts"
-    action = _normalize_action(path.stem)
+    category = _canonical_category(pieces[0] if pieces else "parts")
+    action = _infer_action(pieces, path.stem)
     variant_parts = pieces[1:-1]
     body_type = next((part for part in reversed(variant_parts) if part.lower() in LPC_BODY_TYPES), "")
     layer_phase = next((part for part in reversed(variant_parts) if part.lower() in {"fg", "bg"}), "")
-    label_bits = [part for part in variant_parts if part.lower() not in LPC_BODY_TYPES and part.lower() not in {"fg", "bg"}]
+    label_bits = [
+        part for part in variant_parts
+        if part.lower() not in LPC_BODY_TYPES and part.lower() not in {"fg", "bg"} and _normalize_action(part) not in LPC_ACTIONS
+    ]
     variant = " ".join(label_bits) or category
     return {
         "id": safe_name("__".join(rel.with_suffix("").parts)),
@@ -129,6 +180,14 @@ def _thumbnail_data_uri(path: Path, size: int = 96) -> str:
     img.thumbnail((size, size), Image.Resampling.NEAREST)
     buffer = BytesIO()
     img.save(buffer, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
+def _image_data_uri(image: Image.Image, size: int = 160) -> str:
+    preview = image.copy().convert("RGBA")
+    preview.thumbnail((size, size), Image.Resampling.NEAREST)
+    buffer = BytesIO()
+    preview.save(buffer, format="PNG")
     return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
@@ -157,7 +216,10 @@ def _load_or_scan_catalog(source_dir: Path | str) -> Dict[str, Any]:
     if catalog_path.exists():
         try:
             catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-            if Path(str(catalog.get("source_dir") or "")).resolve() == source:
+            if (
+                Path(str(catalog.get("source_dir") or "")).resolve() == source
+                and int(catalog.get("catalog_version") or 0) == LPC_CATALOG_VERSION
+            ):
                 return catalog
         except (OSError, json.JSONDecodeError, ValueError):
             return scan_lpc_parts(source, thumbnail_limit=0)
@@ -201,6 +263,9 @@ def _layer_order(part: Dict[str, Any]) -> int:
     try:
         return int(part.get("layer_order"))
     except (TypeError, ValueError):
+        category = _canonical_category(str(part.get("category") or ""))
+        if category in LPC_LAYER_ORDER:
+            return LPC_LAYER_ORDER.index(category)
         return 999
 
 
@@ -225,6 +290,7 @@ def _find_lpc_part(
     body_type: str,
     query: str = "",
 ) -> Dict[str, Any] | None:
+    category = _canonical_category(category)
     tokens = _selection_tokens(query)
     candidates: List[Tuple[Tuple[int, int, int, int, str], Dict[str, Any]]] = []
     for part in catalog.get("parts") or []:
@@ -260,6 +326,7 @@ def _candidate_lpc_parts(
     action: str,
     body_type: str,
 ) -> List[Dict[str, Any]]:
+    category = _canonical_category(category)
     candidates: List[Dict[str, Any]] = []
     seen: set[str] = set()
     for part in catalog.get("parts") or []:
@@ -278,10 +345,30 @@ def _candidate_lpc_parts(
     return candidates
 
 
-def _parse_part_selection(value: str | Dict[str, Any] | None) -> Dict[str, str]:
+def _parse_part_selection(value: str | Dict[str, Any] | List[Any] | None) -> List[Tuple[str, str]]:
+    entries: List[Tuple[str, str]] = []
     if isinstance(value, dict):
-        return {str(k).strip(): str(v).strip() for k, v in value.items() if str(k).strip() and str(v).strip()}
-    result: Dict[str, str] = {}
+        for key, raw in value.items():
+            category = _canonical_category(str(key).split("__", 1)[0])
+            values = raw if isinstance(raw, list) else [raw]
+            for item in values:
+                query = str(item).strip()
+                if category and query:
+                    entries.append((category, query))
+        return entries
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                category = _canonical_category(str(item.get("category") or item.get("slot") or ""))
+                query = str(item.get("query") or item.get("value") or "").strip()
+                if category and query:
+                    entries.append((category, query))
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                category = _canonical_category(str(item[0]))
+                query = str(item[1]).strip()
+                if category and query:
+                    entries.append((category, query))
+        return entries
     for item in str(value or "").split(";"):
         if not item.strip():
             continue
@@ -291,11 +378,260 @@ def _parse_part_selection(value: str | Dict[str, Any] | None) -> Dict[str, str]:
             category, query = item.split("=", 1)
         else:
             continue
-        category = category.strip()
+        category = _canonical_category(category)
         query = query.strip()
         if category and query:
-            result[category] = query
-    return result
+            entries.append((category, query))
+    return entries
+
+
+def _selection_manifest(entries: List[Tuple[str, str]]) -> Dict[str, Any]:
+    selections: Dict[str, Any] = {}
+    for category, query in entries:
+        if category not in selections:
+            selections[category] = query
+        elif isinstance(selections[category], list):
+            selections[category].append(query)
+        else:
+            selections[category] = [selections[category], query]
+    return selections
+
+
+def _matching_parts_any_context(catalog: Dict[str, Any], category: str, query: str) -> List[Dict[str, Any]]:
+    category = _canonical_category(category)
+    tokens = _selection_tokens(query)
+    matches: List[Dict[str, Any]] = []
+    for part in catalog.get("parts") or []:
+        if part.get("category") != category or int(part.get("unreadable") or 0):
+            continue
+        text = _part_search_text(part)
+        if tokens and not all(token in text for token in tokens):
+            continue
+        matches.append(part)
+    return matches
+
+
+def _explain_missing_part(
+    catalog: Dict[str, Any],
+    category: str,
+    query: str,
+    action: str,
+    body_type: str,
+) -> Dict[str, Any]:
+    matches = _matching_parts_any_context(catalog, category, query)
+    actions = sorted({str(part.get("action") or "") for part in matches if part.get("action")})
+    bodies = sorted({str(part.get("body_type") or "") for part in matches if part.get("body_type")})
+    severity = "error" if category == "body" and query == "bodies" else "warn"
+    if not matches:
+        message = f"No LPC {category} layer matches '{query}'."
+        suggestion = "Load pickers and choose one of the indexed options for this category."
+    elif action not in actions:
+        message = f"{category}:{query} exists, but not for the {action} action."
+        suggestion = f"Try one of: {', '.join(actions[:8])}."
+    elif bodies and not any(_body_compatible(body_type, body) for body in bodies):
+        message = f"{category}:{query} exists for {', '.join(bodies[:8])}, not {body_type}."
+        suggestion = "Switch body type or choose a body-compatible layer."
+    else:
+        message = f"{category}:{query} exists but could not be matched to this sheet."
+        suggestion = "Check for size mismatches or foreground/background split variants."
+    return {
+        "severity": severity,
+        "category": category,
+        "query": query,
+        "message": message,
+        "suggestion": suggestion,
+        "available_actions": actions[:20],
+        "available_body_types": bodies[:20],
+    }
+
+
+def lpc_rules_report(
+    source_dir: Path | str,
+    action: str = "idle",
+    body_type: str = "male",
+    selections: str | Dict[str, Any] | List[Any] | None = None,
+    include_body: bool = True,
+) -> Dict[str, Any]:
+    catalog = _load_or_scan_catalog(source_dir)
+    action = _normalize_action(action or "idle")
+    body_type = str(body_type or "male").strip().lower()
+    entries = _parse_part_selection(selections)
+    if include_body and not any(category == "body" and query == "bodies" for category, query in entries):
+        entries.insert(0, ("body", "bodies"))
+
+    issues: List[Dict[str, Any]] = []
+    resolved: List[Dict[str, Any]] = []
+    seen_layer_keys: set[str] = set()
+    for category, query in entries:
+        part = _find_lpc_part(catalog, category, action, body_type, query)
+        if not part:
+            issues.append(_explain_missing_part(catalog, category, query, action, body_type))
+            continue
+        key = str(part.get("relative_path") or part.get("id") or "")
+        if key in seen_layer_keys:
+            issues.append({
+                "severity": "info",
+                "category": category,
+                "query": query,
+                "message": f"{category}:{query} resolves to a layer already selected.",
+                "suggestion": "Pick a different variant if you expected another visible layer.",
+            })
+            continue
+        seen_layer_keys.add(key)
+        resolved.append({
+            "category": category,
+            "query": query,
+            "variant": part.get("variant") or "",
+            "action": part.get("action") or "",
+            "body_type": part.get("body_type") or "",
+            "relative_path": part.get("relative_path") or "",
+        })
+
+    if include_body and not any(item["category"] == "body" and item["query"] == "bodies" for item in resolved):
+        issues.append({
+            "severity": "error",
+            "category": "body",
+            "query": "bodies",
+            "message": f"No base body was found for {body_type}/{action}.",
+            "suggestion": "Choose a different body type or action before composing.",
+        })
+
+    return {
+        "ok": not any(issue["severity"] == "error" for issue in issues),
+        "schema": "spriteforge.lpc_rules_report.v1",
+        "source_dir": catalog.get("source_dir"),
+        "action": action,
+        "body_type": body_type,
+        "selections": _selection_manifest(entries),
+        "resolved": resolved,
+        "issues": issues,
+    }
+
+
+def _apply_lpc_palette(sheet: Image.Image, palette: str) -> Image.Image:
+    palette_id = str(palette or "default").strip().lower()
+    settings = LPC_PALETTES.get(palette_id)
+    if not settings or palette_id == "default":
+        return sheet
+    img = sheet.convert("RGBA")
+    alpha = img.getchannel("A")
+    rgb = img.convert("RGB")
+    rgb = ImageEnhance.Brightness(rgb).enhance(float(settings.get("brightness", 1.0)))
+    rgb = ImageEnhance.Contrast(rgb).enhance(float(settings.get("contrast", 1.0)))
+    rgb = ImageEnhance.Color(rgb).enhance(float(settings.get("color", 1.0)))
+    rm, gm, bm = settings.get("rgb", (1.0, 1.0, 1.0))
+    channels = rgb.split()
+    tinted = Image.merge("RGB", tuple(
+        channel.point(lambda px, factor=factor: max(0, min(255, int(px * factor))))
+        for channel, factor in zip(channels, (rm, gm, bm))
+    ))
+    tinted.putalpha(alpha)
+    return tinted
+
+
+def lpc_palette_options() -> Dict[str, Any]:
+    return {
+        "ok": True,
+        "schema": "spriteforge.lpc_palette_options.v1",
+        "palettes": [
+            {"id": key, "label": str(value.get("label") or key.title())}
+            for key, value in LPC_PALETTES.items()
+        ],
+    }
+
+
+def _read_lpc_presets() -> Dict[str, Any]:
+    if not LPC_PRESETS_PATH.exists():
+        return {"schema": "spriteforge.lpc_presets.v1", "presets": []}
+    try:
+        data = json.loads(LPC_PRESETS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {"schema": "spriteforge.lpc_presets.v1", "presets": []}
+    presets = data.get("presets") if isinstance(data.get("presets"), list) else []
+    return {"schema": "spriteforge.lpc_presets.v1", "presets": presets}
+
+
+def _write_lpc_presets(data: Dict[str, Any]) -> None:
+    LPC_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LPC_PRESETS_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def list_lpc_presets() -> Dict[str, Any]:
+    data = _read_lpc_presets()
+    return {"ok": True, "path": str(LPC_PRESETS_PATH), **data}
+
+
+def save_lpc_preset(payload: Dict[str, Any]) -> Dict[str, Any]:
+    name = safe_name(str(payload.get("name") or payload.get("compose_name") or "lpc_preset")).strip("_")
+    if not name:
+        raise ValueError("Preset name is required.")
+    entries = _parse_part_selection(payload.get("selections"))
+    if not entries and payload.get("parts"):
+        entries = _parse_part_selection(payload.get("parts"))
+    preset = {
+        "id": name,
+        "name": name,
+        "label": str(payload.get("label") or payload.get("name") or name).strip() or name,
+        "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "action": _normalize_action(str(payload.get("action") or payload.get("compose_action") or "idle")),
+        "body_type": str(payload.get("body_type") or "male").strip().lower(),
+        "palette": str(payload.get("palette") or "default").strip().lower(),
+        "include_body": str(payload.get("include_body", True)).lower() not in {"0", "false", "no"},
+        "selections": [{"category": category, "query": query} for category, query in entries],
+    }
+    data = _read_lpc_presets()
+    presets = [item for item in data["presets"] if item.get("id") != name]
+    presets.append(preset)
+    presets.sort(key=lambda item: str(item.get("label") or item.get("id") or ""))
+    data["presets"] = presets
+    _write_lpc_presets(data)
+    return {"ok": True, "schema": "spriteforge.lpc_preset.v1", "preset": preset, "path": str(LPC_PRESETS_PATH)}
+
+
+def delete_lpc_preset(preset_id: str) -> Dict[str, Any]:
+    target = safe_name(str(preset_id or "")).strip("_")
+    if not target:
+        raise ValueError("Preset id is required.")
+    data = _read_lpc_presets()
+    before = len(data["presets"])
+    data["presets"] = [item for item in data["presets"] if item.get("id") != target]
+    _write_lpc_presets(data)
+    return {"ok": len(data["presets"]) != before, "removed": before - len(data["presets"]), "path": str(LPC_PRESETS_PATH)}
+
+
+def preview_lpc_dataset(dataset_dir: Path | str, limit: int = 12) -> Dict[str, Any]:
+    root = Path(dataset_dir).resolve()
+    manifest_path = root / "manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Missing LPC batch manifest: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    samples = manifest.get("samples") if isinstance(manifest.get("samples"), list) else []
+    preview: List[Dict[str, Any]] = []
+    for sample in samples[: max(1, min(48, int(limit or 12)))]:
+        image_path = Path(str(sample.get("training_image") or sample.get("sheet") or ""))
+        item = {
+            "name": str(sample.get("name") or image_path.stem or "sample"),
+            "caption": str(sample.get("caption") or ""),
+            "sheet": str(sample.get("sheet") or ""),
+            "training_image": str(image_path),
+            "layers": len(sample.get("layers") or []),
+            "action": str(sample.get("action") or ""),
+            "body_type": str(sample.get("body_type") or ""),
+        }
+        try:
+            if image_path.exists():
+                item["thumbnail_data_uri"] = _thumbnail_data_uri(image_path, size=160)
+        except Exception:
+            item["thumbnail_data_uri"] = ""
+        preview.append(item)
+    return {
+        "ok": True,
+        "schema": "spriteforge.lpc_dataset_preview.v1",
+        "dataset_dir": str(root),
+        "sample_count": int(manifest.get("sample_count") or len(samples)),
+        "preview_count": len(preview),
+        "samples": preview,
+    }
 
 
 def _compose_layers(layers: List[Dict[str, Any]]) -> Tuple[Image.Image, List[Dict[str, Any]]]:
@@ -333,10 +669,13 @@ def _write_composition(
     action: str,
     body_type: str,
     character_name: str,
-    selections: Dict[str, str],
+    selections: Dict[str, Any],
     missing: List[Dict[str, str]] | None = None,
+    palette: str = "default",
+    rules: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
+    sheet = _apply_lpc_palette(sheet, palette)
     sheet_path = out / "sheet.png"
     sheet.save(sheet_path)
     meta = _sheet_metadata(sheet, action, character_name)
@@ -352,8 +691,10 @@ def _write_composition(
         "name": character_name,
         "action": action,
         "body_type": body_type,
+        "palette": palette if palette in LPC_PALETTES else "default",
         "selections": selections,
         "missing": missing or [],
+        "rules": rules or {},
         "layers": used_layers,
         "frame_width": meta["frame_width"],
         "frame_height": meta["frame_height"],
@@ -392,29 +733,42 @@ def compose_lpc_character(
     output_dir: Path | str | None = None,
     action: str = "idle",
     body_type: str = "male",
-    selections: str | Dict[str, Any] | None = None,
+    selections: str | Dict[str, Any] | List[Any] | None = None,
     name: str = "",
+    include_body: bool = True,
+    palette: str = "default",
 ) -> Dict[str, Any]:
     catalog = _load_or_scan_catalog(source_dir)
     action = _normalize_action(action or "idle")
     body_type = str(body_type or "male").strip().lower()
-    chosen = _parse_part_selection(selections)
-    chosen.setdefault("body", "bodies")
+    chosen_entries = _parse_part_selection(selections)
+    if include_body and not any(category == "body" and query == "bodies" for category, query in chosen_entries):
+        chosen_entries.insert(0, ("body", "bodies"))
     selected_layers: List[Dict[str, Any]] = []
     missing: List[Dict[str, str]] = []
 
-    for category, query in chosen.items():
+    for category, query in chosen_entries:
         part = _find_lpc_part(catalog, category, action, body_type, query)
         if part:
             selected_layers.append(part)
         else:
             missing.append({"category": category, "query": query})
+    rules = lpc_rules_report(
+        source_dir,
+        action=action,
+        body_type=body_type,
+        selections=chosen_entries,
+        include_body=False,
+    )
 
     selected_layers.sort(key=lambda part: (_layer_order(part), _phase_rank(part), str(part.get("relative_path") or "")))
     sheet, used_layers = _compose_layers(selected_layers)
     character_name = safe_name(name or f"lpc_{body_type}_{action}_{int(time.time())}")
     out = Path(output_dir).resolve() if output_dir else ROOT / "output" / "lpc_composed" / character_name
-    return _write_composition(sheet, used_layers, catalog, out, action, body_type, character_name, chosen, missing)
+    return _write_composition(
+        sheet, used_layers, catalog, out, action, body_type, character_name,
+        _selection_manifest(chosen_entries), missing, palette=palette, rules=rules,
+    )
 
 
 def lpc_catalog_options(
@@ -423,23 +777,31 @@ def lpc_catalog_options(
     limit_per_category: int = 240,
 ) -> Dict[str, Any]:
     catalog = _load_or_scan_catalog(source_dir)
-    wanted = categories or ["hair", "torso", "legs", "feet", "weapons", "hat", "cape", "shoulders"]
-    options: Dict[str, List[Dict[str, str]]] = {category: [] for category in wanted}
-    seen: Dict[str, set[str]] = {category: set() for category in wanted}
+    requested = categories or ["hair", "torso", "legs", "feet", "weapon", "hat", "cape", "shoulders"]
+    category_pairs = [(category, _canonical_category(category)) for category in requested]
+    options: Dict[str, List[Dict[str, str]]] = {category: [] for category, _canonical in category_pairs}
+    seen: Dict[str, set[str]] = {category: set() for category, _canonical in category_pairs}
+    aliases_by_canonical: Dict[str, List[str]] = {}
+    for requested_category, canonical in category_pairs:
+        aliases_by_canonical.setdefault(canonical, []).append(requested_category)
     for part in catalog.get("parts") or []:
         category = str(part.get("category") or "")
-        if category not in options:
+        output_categories = aliases_by_canonical.get(_canonical_category(category), [])
+        if not output_categories:
             continue
         variant = str(part.get("variant") or "").strip()
-        if not variant or variant in seen[category]:
+        if not variant:
             continue
-        seen[category].add(variant)
-        options[category].append({
-            "value": variant,
-            "label": variant,
-            "body_type": str(part.get("body_type") or ""),
-            "sample_action": str(part.get("action") or ""),
-        })
+        for output_category in output_categories:
+            if variant in seen[output_category]:
+                continue
+            seen[output_category].add(variant)
+            options[output_category].append({
+                "value": variant,
+                "label": variant,
+                "body_type": str(part.get("body_type") or ""),
+                "sample_action": str(part.get("action") or ""),
+            })
     for category in options:
         options[category] = sorted(options[category], key=lambda item: item["label"])[: max(1, limit_per_category)]
     return {
@@ -465,11 +827,12 @@ def compose_lpc_batch(
     categories: List[str] | None = None,
     seed: int | None = None,
     trigger: str = "lpc_composed",
+    palette: str = "default",
 ) -> Dict[str, Any]:
     catalog = _load_or_scan_catalog(source_dir)
     requested_actions = [_normalize_action(item) for item in _csv_items(actions, [action or "idle"])]
     requested_body_types = [item.lower() for item in _csv_items(body_types, [body_type or "male"])]
-    wanted = categories or ["hair", "torso", "legs", "feet"]
+    wanted = [_canonical_category(category) for category in (categories or ["hair", "torso", "legs", "feet"])]
     rng = random.Random(seed)
     out = Path(output_dir).resolve() if output_dir else ROOT / "output" / "training_datasets" / f"lpc_composed_{int(time.time())}"
     out.mkdir(parents=True, exist_ok=True)
@@ -521,7 +884,7 @@ def compose_lpc_batch(
             continue
         name = safe_name(f"lpc_{item_body}_{item_action}_{len(samples) + 1:04d}")
         sample_out = out / name
-        manifest = _write_composition(sheet, used_layers, catalog, sample_out, item_action, item_body, name, selections)
+        manifest = _write_composition(sheet, used_layers, catalog, sample_out, item_action, item_body, name, selections, palette=palette)
         caption = ", ".join([
             trigger,
             "LPC composed character spritesheet",
@@ -558,6 +921,7 @@ def compose_lpc_batch(
         "body_types": requested_body_types,
         "categories": wanted,
         "seed": seed,
+        "palette": palette if palette in LPC_PALETTES else "default",
         "dataset_kind": "lpc_composed",
         "images_dir": str(images_dir),
         "captions_dir": str(captions_dir),
@@ -775,6 +1139,7 @@ def scan_lpc_parts(
 
     manifest = {
         "schema": "spriteforge.lpc_parts_catalog.v1",
+        "catalog_version": LPC_CATALOG_VERSION,
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "source_dir": str(source),
         "spritesheets_dir": str(spritesheets),

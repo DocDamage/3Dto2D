@@ -569,6 +569,7 @@ button {
   align-items: center;
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .lpc-title-actions label,
@@ -626,7 +627,7 @@ button {
   align-items: center;
   display: grid;
   gap: 10px;
-  grid-template-rows: auto minmax(260px, 1fr) auto;
+  grid-template-rows: auto minmax(260px, 1fr) auto auto auto;
   min-width: 0;
 }
 
@@ -671,6 +672,107 @@ button {
 
 .lpc-zoom-row input {
   width: 220px;
+}
+
+.lpc-batch-count {
+  align-items: center;
+  color: #fff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 8px;
+}
+
+.lpc-batch-count input {
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 7px;
+  width: 72px;
+}
+
+.lpc-rules-panel {
+  display: grid;
+  gap: 6px;
+  max-height: 140px;
+  overflow: auto;
+}
+
+.lpc-rule-item {
+  background: rgba(0, 0, 0, .2);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-left: 4px solid var(--lpc-blue);
+  border-radius: 6px;
+  color: #fff;
+  display: grid;
+  font-size: 12px;
+  gap: 2px;
+  line-height: 1.35;
+  padding: 7px 9px;
+}
+
+.lpc-rule-item.warn {
+  border-left-color: var(--lpc-gold);
+}
+
+.lpc-rule-item.error {
+  border-left-color: #ff5f73;
+}
+
+.lpc-rule-item small {
+  color: rgba(255, 255, 255, .76);
+}
+
+.lpc-batch-gallery {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  max-height: 250px;
+  overflow: auto;
+}
+
+.lpc-sample-card {
+  background: rgba(0, 0, 0, .2);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 6px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px;
+}
+
+.lpc-sample-card img {
+  aspect-ratio: 1 / 1;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,.07) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,.07) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,.07) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.07) 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+  image-rendering: pixelated;
+  object-fit: contain;
+  width: 100%;
+}
+
+.lpc-sample-card b,
+.lpc-sample-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lpc-sample-card b {
+  color: #fff;
+  font-size: 11px;
+}
+
+.lpc-sample-card small {
+  color: rgba(255, 255, 255, .72);
+  font-size: 10px;
 }
 
 .lpc-status {

@@ -437,9 +437,27 @@ async function removeProviderKey(provider) {
 
 const DEDICATED_LPC_CATEGORIES = [
   'body', 'hair', 'eyes', 'facial', 'beards', 'head', 'torso', 'arms',
-  'waist', 'legs', 'feet', 'hat', 'backpack', 'back', 'weapons', 'shield',
-  'ammo'
+  'legs', 'feet', 'hat', 'backpack', 'weapon', 'shield', 'quiver', 'cape',
+  'shoulders', 'neck', 'dress'
 ];
+
+const DEDICATED_LPC_SLOT_ALIASES = {
+  ammo: 'quiver',
+  back: 'backpack',
+  mainhand: 'weapon',
+  weapons: 'weapon',
+  offhand: 'shield',
+  waist: 'torso',
+};
+
+function dedicatedLpcCanonicalSlot(slot) {
+  const key = String(slot || '').trim().toLowerCase().replace(/[-\s]+/g, '_');
+  return DEDICATED_LPC_SLOT_ALIASES[key] || key;
+}
+
+function dedicatedLpcCurrentPalette() {
+  return $('#lpcPalette')?.value || 'default';
+}
 
 function dedicatedLpcStatus(text) {
   const target = $('#lpcStatus');
@@ -497,23 +515,112 @@ async function loadDedicatedLpcPickers(opts = {}) {
     })
   });
   $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
-    dedicatedLpcFillSelect(select, data.options?.[select.dataset.lpcSlot]);
+    const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+    dedicatedLpcFillSelect(select, data.options?.[slot] || data.options?.[select.dataset.lpcSlot]);
   });
   if (!opts.silent) toast('LPC picker options loaded.');
   dedicatedLpcStatus(`${data.part_count || 0} LPC parts indexed across ${(data.categories || []).length} categories.`);
 }
 
+async function loadDedicatedLpcPalettes() {
+  const select = $('#lpcPalette');
+  if (!select) return;
+  try {
+    const data = await api('/api/lpc/palettes');
+    const current = select.value || 'default';
+    clearNode(select);
+    (data.palettes || []).forEach(palette => {
+      const option = document.createElement('option');
+      option.value = palette.id || 'default';
+      option.textContent = palette.label || palette.id || 'Default';
+      select.appendChild(option);
+    });
+    if ([...select.options].some(option => option.value === current)) select.value = current;
+  } catch (err) {
+    console.warn('Could not load LPC palettes:', err);
+  }
+}
+
+async function loadDedicatedLpcPresets() {
+  const select = $('#lpcPresetSelect');
+  if (!select) return;
+  try {
+    const data = await api('/api/lpc/presets');
+    const current = select.value;
+    clearNode(select);
+    const base = document.createElement('option');
+    base.value = '';
+    base.textContent = 'Unsaved';
+    select.appendChild(base);
+    (data.presets || []).forEach(preset => {
+      const option = document.createElement('option');
+      option.value = preset.id || preset.name || '';
+      option.textContent = preset.label || preset.name || preset.id || 'Recipe';
+      option.dataset.preset = JSON.stringify(preset);
+      select.appendChild(option);
+    });
+    if ([...select.options].some(option => option.value === current)) select.value = current;
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not load LPC recipes.');
+  }
+}
+
+function dedicatedLpcSetSelectValue(select, value) {
+  if (!select || !value) return false;
+  if (![...select.options].some(option => option.value === value)) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  }
+  select.value = value;
+  return true;
+}
+
+function applyDedicatedLpcPreset() {
+  const option = $('#lpcPresetSelect')?.selectedOptions?.[0];
+  if (!option?.dataset.preset) return;
+  const preset = JSON.parse(option.dataset.preset);
+  if ($('#lpcAction')) $('#lpcAction').value = preset.action || 'idle';
+  if ($('#lpcPalette')) $('#lpcPalette').value = preset.palette || 'default';
+  if ($('#lpcCharacterName')) $('#lpcCharacterName').value = preset.label || preset.name || 'lpc_character';
+  if ($('#lpcShowBody')) $('#lpcShowBody').checked = preset.include_body !== false;
+  const bodyType = preset.body_type || 'male';
+  if (['male', 'female'].includes(bodyType)) {
+    if ($('#lpcGender')) $('#lpcGender').value = bodyType;
+    if ($('#lpcBody')) $('#lpcBody').value = 'regular';
+  } else if ($('#lpcBody')) {
+    $('#lpcBody').value = bodyType;
+  }
+  $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => { select.value = ''; });
+  const used = new Set();
+  (preset.selections || []).forEach(selection => {
+    const category = dedicatedLpcCanonicalSlot(selection.category);
+    const query = String(selection.query || '').trim();
+    if (!category || !query || (category === 'body' && query === 'bodies')) return;
+    const candidates = $$('[data-lpc-slot]', $('#view-lpc')).filter(select => {
+      if (used.has(select)) return false;
+      const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+      const hint = String(select.dataset.lpcQuery || '').toLowerCase();
+      return slot === category && (!hint || query.toLowerCase().includes(hint) || !selection.query);
+    });
+    const target = candidates[0] || $$('[data-lpc-slot]', $('#view-lpc')).find(select => !used.has(select) && dedicatedLpcCanonicalSlot(select.dataset.lpcSlot) === category);
+    if (target && dedicatedLpcSetSelectValue(target, query)) used.add(target);
+  });
+  dedicatedLpcStatus(`Recipe loaded: ${preset.label || preset.name || preset.id}.`);
+}
+
 function dedicatedLpcSelectionPayload() {
-  const selections = {};
+  const selections = [];
   const selectedBody = $('#lpcBody')?.value || 'regular';
   const gender = $('#lpcGender')?.value || 'male';
   const body = selectedBody === 'regular' ? gender : selectedBody;
   $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
-    const slot = select.dataset.lpcSlot;
+    const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
     const value = String(select.value || '').trim();
-    if (!slot || !value || selections[slot]) return;
+    if (!slot || !value) return;
     if (!$('#lpcShowAddons')?.checked && slot === 'body') return;
-    selections[slot] = value;
+    selections.push({ category: slot, query: value });
   });
   return {
     source_dir: $('#lpcSourceDir')?.value || '',
@@ -521,8 +628,48 @@ function dedicatedLpcSelectionPayload() {
     action: $('#lpcAction')?.value || 'idle',
     body_type: body,
     compose_name: $('#lpcCharacterName')?.value || 'lpc_character',
+    include_body: !!$('#lpcShowBody')?.checked,
+    palette: dedicatedLpcCurrentPalette(),
     selections,
   };
+}
+
+function renderDedicatedLpcRules(data) {
+  const panel = $('#lpcRulesPanel');
+  if (!panel) return;
+  clearNode(panel);
+  const issues = data.issues || [];
+  if (!issues.length) {
+    const row = document.createElement('div');
+    row.className = 'lpc-rule-item';
+    appendText(row, 'b', `${(data.resolved || []).length} layer choices compatible`);
+    appendText(row, 'small', `${data.body_type || 'body'} · ${data.action || 'idle'}`);
+    panel.appendChild(row);
+    return;
+  }
+  issues.slice(0, 8).forEach(issue => {
+    const row = document.createElement('div');
+    row.className = `lpc-rule-item ${issue.severity || ''}`;
+    appendText(row, 'b', issue.message || 'LPC rule issue');
+    if (issue.suggestion) appendText(row, 'small', issue.suggestion);
+    panel.appendChild(row);
+  });
+}
+
+async function checkDedicatedLpcRules(opts = {}) {
+  const payload = dedicatedLpcSelectionPayload();
+  if (!payload.source_dir) {
+    toast('Choose the Universal LPC folder first.');
+    return null;
+  }
+  if (!opts.silent) dedicatedLpcStatus('Checking LPC layer rules...');
+  const data = await api('/api/lpc/rules', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  renderDedicatedLpcRules(data);
+  if (!opts.silent) dedicatedLpcStatus(data.ok ? 'LPC selections are compatible.' : 'LPC selections need attention.');
+  return data;
 }
 
 function dedicatedLpcRenderComposition(data) {
@@ -552,6 +699,7 @@ async function composeDedicatedLpcCharacter() {
       body: JSON.stringify(payload)
     });
     dedicatedLpcRenderComposition(data);
+    if (data.rules) renderDedicatedLpcRules(data.rules);
     toast('LPC character composed.');
   } catch (err) {
     dedicatedLpcStatus(err.message || 'Could not compose LPC character.');
@@ -559,12 +707,32 @@ async function composeDedicatedLpcCharacter() {
   }
 }
 
+function renderDedicatedLpcBatchGallery(data) {
+  const gallery = $('#lpcBatchGallery');
+  if (!gallery) return;
+  clearNode(gallery);
+  (data.samples || []).slice(0, 12).forEach(sample => {
+    const card = document.createElement('article');
+    card.className = 'lpc-sample-card';
+    if (sample.thumbnail_data_uri) {
+      const img = document.createElement('img');
+      img.src = sample.thumbnail_data_uri;
+      img.alt = sample.name || 'LPC sample';
+      card.appendChild(img);
+    }
+    appendText(card, 'b', sample.name || 'sample');
+    appendText(card, 'small', `${sample.body_type || ''} ${sample.action || ''}`.trim() || `${sample.layers || 0} layers`);
+    gallery.appendChild(card);
+  });
+}
+
 function dedicatedLpcBatchCategories() {
   const picked = new Set();
   $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
-    if (select.dataset.lpcSlot && select.dataset.lpcSlot !== 'body') picked.add(select.dataset.lpcSlot);
+    const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+    if (slot && slot !== 'body') picked.add(slot);
   });
-  return [...picked].filter(category => ['hair', 'torso', 'legs', 'feet', 'weapons', 'hat', 'arms', 'waist', 'shield', 'backpack'].includes(category));
+  return [...picked].filter(category => ['hair', 'torso', 'legs', 'feet', 'weapon', 'hat', 'arms', 'shield', 'backpack', 'quiver', 'cape', 'shoulders', 'neck', 'dress'].includes(category));
 }
 
 function dedicatedLpcSetBatchState(datasetDir, qaOk = false) {
@@ -592,16 +760,18 @@ async function buildDedicatedLpcBatch() {
       method: 'POST',
       body: JSON.stringify({
         source_dir: payload.source_dir,
-        batch_count: 48,
+        batch_count: Math.max(1, Math.min(1000, Number($('#lpcBatchCount')?.value || 48))),
         batch_action: payload.action,
         batch_actions: 'idle,walk,slash,cast',
         body_type: payload.body_type,
         batch_body_types: 'male,female',
         batch_categories: dedicatedLpcBatchCategories(),
+        palette: dedicatedLpcCurrentPalette(),
         trigger: 'lpc_composed',
       })
     });
     dedicatedLpcSetBatchState(data.output_dir || '', false);
+    renderDedicatedLpcBatchGallery(data);
     const sample = (data.samples || [])[0];
     if (sample?.thumbnail_data_uri) {
       const img = $('#lpcPreviewImage');
@@ -614,6 +784,19 @@ async function buildDedicatedLpcBatch() {
   } catch (err) {
     dedicatedLpcStatus(err.message || 'Could not build LPC batch.');
     toast(err.message || 'Could not build LPC batch.');
+  }
+}
+
+async function refreshDedicatedLpcBatchPreview(datasetDir) {
+  if (!datasetDir) return;
+  try {
+    const data = await api('/api/lpc/dataset-preview', {
+      method: 'POST',
+      body: JSON.stringify({ dataset_dir: datasetDir, limit: 12 })
+    });
+    renderDedicatedLpcBatchGallery(data);
+  } catch (err) {
+    console.warn('Could not refresh LPC batch preview:', err);
   }
 }
 
@@ -631,12 +814,51 @@ async function qaDedicatedLpcBatch() {
       body: JSON.stringify({ dataset_dir: datasetDir, min_layers: 3 })
     });
     dedicatedLpcSetBatchState(data.dataset_dir || datasetDir, !!data.ok);
+    await refreshDedicatedLpcBatchPreview(data.dataset_dir || datasetDir);
     const issueText = (data.issues || []).slice(0, 3).map(issue => `${issue.severity}: ${issue.message}`).join(' · ');
     dedicatedLpcStatus(`${data.ok ? 'QA passed' : 'QA needs attention'} · ${data.sample_count || 0} samples · ${data.image_count || 0} images${issueText ? ' · ' + issueText : ''}`);
     toast(data.ok ? 'LPC dataset QA passed.' : 'LPC dataset QA found issues.');
   } catch (err) {
     dedicatedLpcStatus(err.message || 'Dataset QA failed.');
     toast(err.message || 'Dataset QA failed.');
+  }
+}
+
+async function saveDedicatedLpcPreset() {
+  const payload = dedicatedLpcSelectionPayload();
+  const name = $('#lpcCharacterName')?.value || 'lpc_character';
+  try {
+    const data = await api('/api/lpc/presets', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, name, label: name })
+    });
+    await loadDedicatedLpcPresets();
+    if ($('#lpcPresetSelect')) $('#lpcPresetSelect').value = data.preset?.id || '';
+    dedicatedLpcStatus(`Recipe saved: ${data.preset?.label || name}.`);
+    toast('LPC recipe saved.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not save LPC recipe.');
+    toast(err.message || 'Could not save LPC recipe.');
+  }
+}
+
+async function deleteDedicatedLpcPreset() {
+  const id = $('#lpcPresetSelect')?.value || '';
+  if (!id) {
+    toast('Choose a saved recipe first.');
+    return;
+  }
+  try {
+    await api('/api/lpc/presets/delete', {
+      method: 'POST',
+      body: JSON.stringify({ id })
+    });
+    await loadDedicatedLpcPresets();
+    dedicatedLpcStatus('Recipe deleted.');
+    toast('LPC recipe deleted.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not delete LPC recipe.');
+    toast(err.message || 'Could not delete LPC recipe.');
   }
 }
 
@@ -664,6 +886,13 @@ function initDedicatedLpcTab() {
     dedicatedLpcStatus(err.message || 'Could not load LPC pickers.');
     toast(err.message || 'Could not load LPC pickers.');
   }));
+  $('#lpcPresetSelect')?.addEventListener('change', applyDedicatedLpcPreset);
+  $('#lpcSavePreset')?.addEventListener('click', saveDedicatedLpcPreset);
+  $('#lpcDeletePreset')?.addEventListener('click', deleteDedicatedLpcPreset);
+  $('#lpcCheckRules')?.addEventListener('click', () => checkDedicatedLpcRules().catch(err => {
+    dedicatedLpcStatus(err.message || 'Could not check LPC rules.');
+    toast(err.message || 'Could not check LPC rules.');
+  }));
   $('#lpcComposeCharacter')?.addEventListener('click', composeDedicatedLpcCharacter);
   $('#lpcBuildBatch')?.addEventListener('click', buildDedicatedLpcBatch);
   $('#lpcRunQa')?.addEventListener('click', qaDedicatedLpcBatch);
@@ -676,6 +905,8 @@ function initDedicatedLpcTab() {
     dedicatedLpcSetZoom(Number($('#lpcZoom')?.value || 3) + (event.deltaY < 0 ? 0.25 : -0.25));
   }, { passive: false });
   dedicatedLpcSetZoom($('#lpcZoom')?.value || 3);
+  loadDedicatedLpcPalettes();
+  loadDedicatedLpcPresets();
   loadDedicatedLpcPickers({ silent: true }).catch(() => dedicatedLpcStatus('Ready. Load pickers when the LPC folder is available.'));
 }
 

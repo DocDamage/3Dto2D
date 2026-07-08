@@ -26,6 +26,8 @@ from services.training_dataset_service import preview_training_dataset
 from services.lpc_parts_service import (
     scan_lpc_parts, build_lpc_part_dataset, compose_lpc_character,
     lpc_catalog_options, compose_lpc_batch, qa_lpc_dataset, lpc_lora_prefill,
+    lpc_rules_report, lpc_palette_options, list_lpc_presets, save_lpc_preset,
+    delete_lpc_preset, preview_lpc_dataset,
 )
 from services.architecture_status_service import architecture_status
 from services.advisor_service import advise as advisor_advise
@@ -202,6 +204,8 @@ def post_lpc_compose():
             body_type=str(body.get("body_type") or "male"),
             selections=selections,
             name=str(body.get("compose_name") or body.get("name") or ""),
+            include_body=str(body.get("include_body", body.get("show_body", True))).lower() not in {"0", "false", "no"},
+            palette=str(body.get("palette") or "default"),
         ))
     except FileNotFoundError as exc:
         return jsonify({"ok": False, "message": str(exc)}), 404
@@ -232,6 +236,56 @@ def post_lpc_options():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 
+@routes_misc.route("/api/lpc/palettes", methods=["GET"])
+def get_lpc_palettes():
+    return jsonify(lpc_palette_options())
+
+@routes_misc.route("/api/lpc/rules", methods=["POST"])
+def post_lpc_rules():
+    body = request.json or {}
+    source_dir = str(body.get("source_dir") or "").strip()
+    if not source_dir:
+        return jsonify({"ok": False, "message": "source_dir is required"}), 400
+    include_body = str(body.get("include_body", body.get("show_body", True))).lower() not in {"0", "false", "no"}
+    try:
+        return jsonify(lpc_rules_report(
+            source_dir,
+            action=str(body.get("compose_action") or body.get("action") or "idle"),
+            body_type=str(body.get("body_type") or "male"),
+            selections=body.get("selections") if isinstance(body.get("selections"), (dict, list)) else str(body.get("parts") or ""),
+            include_body=include_body,
+        ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/presets", methods=["GET"])
+def get_lpc_presets():
+    return jsonify(list_lpc_presets())
+
+@routes_misc.route("/api/lpc/presets", methods=["POST"])
+def post_lpc_preset():
+    body = request.json or {}
+    try:
+        return jsonify(save_lpc_preset(body))
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/presets/delete", methods=["POST"])
+def post_lpc_preset_delete():
+    body = request.json or {}
+    try:
+        return jsonify(delete_lpc_preset(str(body.get("id") or body.get("name") or "")))
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
 @routes_misc.route("/api/lpc/batch-compose", methods=["POST"])
 def post_lpc_batch_compose():
     body = request.json or {}
@@ -253,7 +307,23 @@ def post_lpc_batch_compose():
             categories=list(categories) if isinstance(categories, list) else None,
             seed=int(body.get("batch_seed")) if str(body.get("batch_seed") or "").strip() else None,
             trigger=str(body.get("trigger") or "lpc_composed"),
+            palette=str(body.get("palette") or "default"),
         ))
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 500
+
+@routes_misc.route("/api/lpc/dataset-preview", methods=["POST"])
+def post_lpc_dataset_preview():
+    body = request.json or {}
+    dataset_dir = str(body.get("dataset_dir") or body.get("batch_output") or body.get("output_dir") or "").strip()
+    if not dataset_dir:
+        return jsonify({"ok": False, "message": "dataset_dir is required"}), 400
+    try:
+        return jsonify(preview_lpc_dataset(dataset_dir, limit=int(body.get("limit") or 12)))
     except FileNotFoundError as exc:
         return jsonify({"ok": False, "message": str(exc)}), 404
     except ValueError as exc:

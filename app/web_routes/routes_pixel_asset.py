@@ -187,6 +187,24 @@ def get_pixel_loras():
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 
+@routes_pixel_asset.route("/api/pixel-assets/providers/capabilities", methods=["GET"])
+def get_pixel_provider_capabilities():
+    try:
+        from services.pixel_provider_capability_service import pixel_provider_capabilities
+        provider = request.args.get("provider", "")
+        return jsonify(pixel_provider_capabilities(provider or None))
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+@routes_pixel_asset.route("/api/pixel-assets/providers/plan", methods=["POST"])
+def plan_pixel_provider_workflow():
+    body = request.json or {}
+    try:
+        from services.pixel_provider_capability_service import provider_workflow_plan
+        return jsonify(provider_workflow_plan(body))
+    except Exception as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
 @routes_pixel_asset.route("/api/pixel-assets/export", methods=["GET"])
 def export_pixel_batch():
     batch_id = request.args.get("batch_id", "")

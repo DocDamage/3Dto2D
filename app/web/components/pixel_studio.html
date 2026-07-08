@@ -234,9 +234,16 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <label>Provider
           <select id="pixelProviderSelect" style="width: 100%; margin-top: 4px;">
+            <option value="local_mock">Local fallback</option>
+            <option value="comfyui">ComfyUI Local</option>
             <option value="openai">OpenAI</option>
             <option value="gemini">Gemini</option>
             <option value="huggingface">Hugging Face</option>
+            <option value="anthropic">Anthropic Prompt Help</option>
+            <option value="moonshot">Moonshot / Kimi</option>
+            <option value="glm">GLM</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="grok">Grok / xAI</option>
           </select>
         </label>
         <label id="pixelDirectionsLabel">Directions
@@ -246,6 +253,10 @@
             <option value="8">8 Directions</option>
           </select>
         </label>
+      </div>
+      <div id="pixelProviderCapabilityPanel" class="pixel-provider-capability-panel">
+        <div id="pixelProviderCapabilityBadges" class="pixel-provider-capability-badges"></div>
+        <div id="pixelProviderCapabilityMessage" class="pixel-provider-capability-message">Checking provider...</div>
       </div>
 
       <!-- Batch count selector -->

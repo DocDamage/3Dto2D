@@ -142,6 +142,50 @@
   border: 1px solid rgba(255, 165, 2, 0.3);
 }
 
+.pixel-provider-capability-panel {
+  border: 1px solid rgba(85, 241, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pixel-provider-capability-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pixel-provider-capability-badge {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pixel-provider-capability-badge.ready {
+  color: #2ed573;
+  border-color: rgba(46, 213, 115, 0.35);
+  background: rgba(46, 213, 115, 0.12);
+}
+
+.pixel-provider-capability-badge.limited {
+  color: #ffa502;
+  border-color: rgba(255, 165, 2, 0.35);
+  background: rgba(255, 165, 2, 0.12);
+}
+
+.pixel-provider-capability-message {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 /* Style Dialog modal style overrides */
 .result-modal-backdrop {
   background: rgba(5, 7, 16, 0.85);

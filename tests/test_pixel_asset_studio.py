@@ -29,6 +29,10 @@ from services.pixel_asset_memory_service import PixelAssetMemoryService
 from services.pixel_part_apply_service import PixelPartApplyService
 from services.pixel_reskin_service import PixelReskinService
 from services.pixel_cleanup_service import PixelCleanupService
+from services.pixel_provider_capability_service import (
+    pixel_provider_capabilities,
+    provider_workflow_plan,
+)
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_web import app
 
@@ -1264,11 +1268,52 @@ def test_pixel_failure_explainers_and_endpoint(client):
     assert data["ok"] is True
     assert data["explainer"]["code"] == "pixel_no_alpha"
 
+def test_pixel_provider_capabilities_and_plan_endpoint(client, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    capabilities = pixel_provider_capabilities()
+    assert capabilities["schema"] == "spriteforge.pixel_provider_capabilities.v1"
+    assert capabilities["providers"]["local_mock"]["configured"] is True
+    assert capabilities["providers"]["openai"]["capabilities"]["inpaint"] is True
+    assert capabilities["providers"]["anthropic"]["capabilities"]["prompt_help"] is True
+    assert capabilities["providers"]["anthropic"]["capabilities"]["generate"] is False
+
+    local_plan = provider_workflow_plan({"provider": "local_mock", "workflow": "inpaint"})
+    assert local_plan["status"] == "ready"
+    assert local_plan["mock_recommended"] is True
+
+    openai_plan = provider_workflow_plan({"provider": "openai", "workflow": "inpaint"})
+    assert openai_plan["status"] in {"missing_key", "provider_capable_not_wired"}
+    assert openai_plan["fallback_provider"] == "local_mock"
+
+    response = client.get("/api/pixel-assets/providers/capabilities")
+    assert response.status_code == 200
+    api_caps = json.loads(response.data.decode("utf-8"))
+    assert api_caps["ok"] is True
+    assert "huggingface" in api_caps["providers"]
+
+    plan_response = client.post(
+        "/api/pixel-assets/providers/plan",
+        data=json.dumps({"provider": "gemini", "workflow": "inpaint"}),
+        content_type="application/json",
+    )
+    assert plan_response.status_code == 200
+    api_plan = json.loads(plan_response.data.decode("utf-8"))
+    assert api_plan["status"] == "unsupported"
+    assert api_plan["mock_recommended"] is True
+
 def test_pixel_studio_polish_ui_assets():
     html = (APP / "web" / "components" / "pixel_studio.html").read_text(encoding="utf-8")
     js = (APP / "web" / "js" / "pixel_studio.js").read_text(encoding="utf-8")
+    css = (APP / "web" / "css" / "pixel_studio.css").read_text(encoding="utf-8")
 
     assert 'id="pixelWorkflowCards"' in html
+    assert 'id="pixelProviderCapabilityPanel"' in html
+    assert 'value="local_mock"' in html
+    assert 'value="comfyui"' in html
+    assert "/api/pixel-assets/providers/capabilities" in js
+    assert "/api/pixel-assets/providers/plan" in js
+    assert "provider_capable_not_wired" in js
+    assert ".pixel-provider-capability-panel" in css
     assert 'data-pixel-workflow="first_asset"' in html
     assert 'id="pixelFailurePanel"' in html
     assert "showPixelFailure" in js

@@ -107,7 +107,7 @@ Use **Pixel Studio** when you want MagicPixel-style game asset workflows directl
 *   Use asset-specific controls for characters, creatures, items, weapons, potions, UI, tilesets, and backgrounds. These controls expand prompts through editable JSON configs in `app/config/pixel_asset_modes.json` and `app/config/pixel_prompt_templates.json`.
 *   Normalize and clean outputs to game-ready pixel constraints: fixed canvas size, palette reduction, transparent background, nearest-neighbor scaling, version backups, and sidecar metadata.
 *   Build 4-direction or 8-direction character sheets, tile atlases with seam QA, text-to-animation sheets, animation transfers from an existing sheet, and lightweight skeleton/rig renders.
-*   Edit assets in-browser with pencil, eraser, fill, picker, line, rectangle, selection/move, PNG import/export, version saves, mock AI inpainting, fast reskin batches, and variant-first outfit/part application workflows.
+*   Edit assets in-browser with pencil, eraser, fill, picker, line, rectangle, selection/move, PNG import/export, version saves, provider-aware AI inpainting fallback plans, fast reskin batches, and variant-first outfit/part application workflows.
 *   Extract a style profile from any selected asset, then reuse that palette/style memory for matching future generations.
 *   Use **Cohesive Pack Builder** to generate built-in or saved recipe packs such as RPG, dungeon crawler, platformer, potion shop, or UI HUD packs, then export the whole pack as a ZIP with a browsable HTML catalog.
 *   Save current Pixel Studio settings as reusable local recipes, import recipe JSON, and export recipe JSON for sharing or backup.
@@ -117,7 +117,7 @@ Use **Pixel Studio** when you want MagicPixel-style game asset workflows directl
 Pixel Studio outputs are written under `app/output/pixel_assets/` with per-asset JSON metadata, batch manifests, style profiles, recipes, and pack manifests.
 
 ### 6. Cloud Image Providers and API Keys
-Open **Setup** or **Cloud Hub** to inspect cloud image provider readiness and save local API keys. Supported provider slots include Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Free-tier availability depends on each provider and model account; SpriteForge reports provider capability but does not guarantee quota or pricing.
+Open **Setup**, **Cloud Hub**, or the **Pixel Studio** provider panel to inspect provider readiness and save local API keys. Supported provider slots include local fallback, local ComfyUI, Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Free-tier availability depends on each provider and model account; SpriteForge reports provider capability, whether a local key is configured, and whether Pixel Studio will use the selected provider or a local fallback.
 
 ---
 

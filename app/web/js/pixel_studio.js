@@ -8,6 +8,8 @@
   let styleProfiles = [];
   let pixelRecipes = [];
   let pixelModeConfigs = {};
+  let pixelProviderCapabilities = {};
+  let activeProviderCapability = null;
   let currentCompareMode = 'normalized'; // 'normalized', 'raw', 'transferred', 'source'
   let currentViewMode = 'sheet'; // 'sheet' or 'single'
 
@@ -173,10 +175,16 @@
     loadStyles();
     loadLoras();
     loadRecipes();
+    loadPixelProviderCapabilities();
 
     const styleSelect = $('#pixelStyleProfileSelect');
     if (styleSelect) {
       styleSelect.addEventListener('change', () => compareActiveAssetToStyle());
+    }
+
+    const providerSelect = $('#pixelProviderSelect');
+    if (providerSelect) {
+      providerSelect.addEventListener('change', () => updateProviderCapabilityPanel());
     }
 
     // Style profile dialog events
@@ -761,6 +769,15 @@
         toast("Running AI Edit inpainting...");
 
         try {
+          const providerPlan = await planPixelProviderWorkflow('inpaint');
+          if (providerPlan.status === 'missing_key') {
+            toast(`Using local fallback: ${providerPlan.action}`);
+          } else if (providerPlan.status === 'provider_capable_not_wired') {
+            toast('Provider supports masked edits, but this route is using local fallback until its adapter is wired.');
+          } else if (providerPlan.status === 'unsupported') {
+            toast('Provider does not support masked edits here. Using local fallback.');
+          }
+
           const res = await api('/api/pixel-assets/inpaint', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -769,7 +786,9 @@
               image_data: dataUrl,
               mask_data: maskUrl,
               prompt: promptVal,
-              mock: true
+              provider: providerPlan.provider,
+              fallback_provider: providerPlan.fallback_provider,
+              mock: providerPlan.mock_recommended
             })
           });
 
@@ -1763,6 +1782,83 @@
     } catch (err) {
       console.error('Error loading LoRAs:', err);
     }
+  }
+
+  async function loadPixelProviderCapabilities() {
+    try {
+      const res = await api('/api/pixel-assets/providers/capabilities');
+      if (!res.ok) {
+        throw new Error(res.message || 'Could not load provider capabilities.');
+      }
+      pixelProviderCapabilities = res.providers || {};
+      hydrateProviderSelectOptions();
+      updateProviderCapabilityPanel();
+    } catch (err) {
+      const messageEl = $('#pixelProviderCapabilityMessage');
+      if (messageEl) messageEl.textContent = err.message || 'Provider capability check failed.';
+    }
+  }
+
+  function hydrateProviderSelectOptions() {
+    const selectEl = $('#pixelProviderSelect');
+    if (!selectEl || !pixelProviderCapabilities) return;
+    const current = selectEl.value || 'local_mock';
+    const ordered = ['local_mock', 'comfyui', 'openai', 'gemini', 'huggingface', 'anthropic', 'moonshot', 'glm', 'deepseek', 'grok'];
+    selectEl.innerHTML = '';
+    ordered.filter(provider => pixelProviderCapabilities[provider]).forEach(provider => {
+      const row = pixelProviderCapabilities[provider];
+      const opt = document.createElement('option');
+      opt.value = provider;
+      opt.textContent = row.label || provider;
+      selectEl.appendChild(opt);
+    });
+    if (pixelProviderCapabilities[current]) {
+      selectEl.value = current;
+    } else {
+      selectEl.value = pixelProviderCapabilities.openai ? 'openai' : Object.keys(pixelProviderCapabilities)[0] || '';
+    }
+  }
+
+  function updateProviderCapabilityPanel() {
+    const selectEl = $('#pixelProviderSelect');
+    const badgesEl = $('#pixelProviderCapabilityBadges');
+    const messageEl = $('#pixelProviderCapabilityMessage');
+    if (!selectEl || !badgesEl || !messageEl) return;
+    const provider = selectEl.value || 'local_mock';
+    const row = pixelProviderCapabilities[provider];
+    activeProviderCapability = row || null;
+    badgesEl.innerHTML = '';
+    if (!row) {
+      messageEl.textContent = 'Provider capability data is not loaded yet.';
+      return;
+    }
+
+    const caps = row.capabilities || {};
+    ['generate', 'edit', 'inpaint', 'prompt_help'].forEach(name => {
+      const badge = document.createElement('span');
+      const supported = Boolean(caps[name]);
+      badge.className = `pixel-provider-capability-badge ${supported ? 'ready' : 'limited'}`;
+      badge.textContent = `${supported ? 'yes' : 'no'} ${name.replace('_', ' ')}`;
+      badgesEl.appendChild(badge);
+    });
+
+    const freeText = row.local ? 'local' : (row.free_tier ? 'free/trial possible' : 'paid/keyed');
+    const configuredText = row.configured || row.local ? 'configured' : 'missing key';
+    const limitText = row.limits && row.limits.length ? ` ${row.limits[0]}` : '';
+    messageEl.textContent = `${row.label || provider}: ${configuredText}, ${freeText}.${limitText}`;
+  }
+
+  async function planPixelProviderWorkflow(workflow) {
+    const provider = ($('#pixelProviderSelect') && $('#pixelProviderSelect').value) || 'local_mock';
+    const res = await api('/api/pixel-assets/providers/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, workflow })
+    });
+    if (!res.ok) {
+      throw new Error(res.message || `Could not plan ${workflow} provider workflow.`);
+    }
+    return res;
   }
 
   async function runGenerationFlow(dryRun) {

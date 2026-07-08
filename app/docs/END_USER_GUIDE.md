@@ -81,7 +81,7 @@ For the local `CuteSCKR_uncut` tile corpus, use the trigger token `cutesckr_tile
 
 ## Cloud provider keys
 
-Open **Setup** or **Cloud Hub** to add local API keys for Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Keys are stored locally in the app environment file. Free/community image generation depends on the provider, region, account, model, and current quota.
+Open **Setup**, **Cloud Hub**, or the **Pixel Studio** provider panel to add or inspect local API keys for local fallback, local ComfyUI, Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Keys are stored locally in the app environment file. Free/community image generation depends on the provider, region, account, model, and current quota. Pixel Studio shows whether each provider can generate, edit, inpaint, or help with prompts, and it will show when a local fallback is being used.
 
 ## Pixel Studio workflow
 
@@ -91,7 +91,7 @@ Use **Pixel Studio** for MagicPixel-style asset creation:
 2. Choose an asset type such as character, creature, item, weapon, potion, UI icon, tileset, or background.
 3. Enter a prompt, optional reference image, resolution, palette size, provider, and style profile.
 4. Use **Asset Details** to choose type-specific controls such as weapon class/material/effects, potion bottle/liquid/rarity, character pose/outfit, creature species, UI border, or tileset perspective.
-5. Generate assets in mock mode for fast local previews or use a configured provider for real image generation.
+5. Review the provider capability panel, then generate assets in local fallback mode for fast previews or use a configured provider for real image generation where the adapter is wired.
 6. Use the gallery and inspector to normalize, edit, inpaint, animate, export, or reuse outputs.
 
 Common Pixel Studio workflows:
@@ -103,7 +103,7 @@ Common Pixel Studio workflows:
 - **Directions** builds 1, 4, or 8-direction character sheets and consistency scores.
 - **Tileset** creates top-down, side-scroller, or isometric tile roles with seam checks.
 - **Edit** opens the browser pixel editor with pencil, eraser, fill, picker, line, rectangle, selection, move, import PNG, export PNG, save edits, and save version controls.
-- **Inpaint** applies a masked edit workflow while preserving pixel metadata.
+- **Inpaint** applies a masked edit workflow while preserving pixel metadata. If the selected provider does not support masked edits, is missing a key, or is capable but not wired through the current Pixel Studio adapter, the provider plan explains the fallback before running.
 - **Apply outfit / part** generates multiple non-destructive armor, clothing, weapon, hat, or accessory variants for the selected sprite, then applies only the accepted variant as a versioned edit.
 - **Animate** generates a spritesheet and GIF preview from a selected asset.
 - **Animation Transfer** applies an existing sheet layout to a new prompt/style.

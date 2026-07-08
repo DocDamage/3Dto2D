@@ -612,6 +612,16 @@ def test_tileset_generation_endpoint(client):
     assert asset["role"] == "ground"
     assert "seam_check" in asset["qa"]
 
+    godot_zip = PixelExportService.export_batch_to_zip(data["batch_id"], "godot")
+    with zipfile.ZipFile(godot_zip, "r") as zf:
+        members = zf.namelist()
+        assert "godot_tileset.json" in members
+        tileset_meta = json.loads(zf.read("godot_tileset.json").decode("utf-8"))
+        assert tileset_meta["schema"] == "spriteforge.godot_tileset_metadata.v1"
+        assert tileset_meta["tile_size"] == [16, 16]
+        assert tileset_meta["tiles"][0]["role"] == "ground"
+        assert "atlas_coords" in tileset_meta["tiles"][0]
+
 def test_tileset_repair_endpoint_versions_and_improves_seams(client):
     import sys
     routes_module = sys.modules["web_routes.routes_pixel_asset"]

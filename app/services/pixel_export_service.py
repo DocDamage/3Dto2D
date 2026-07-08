@@ -38,8 +38,8 @@ class PixelExportService:
         
         # If sheet files do not exist, we construct them from batch manifest
         manifest_path = batch_dir / "batch_manifest.json"
+        manifest = load_json(manifest_path, {}) if manifest_path.exists() else {}
         if manifest_path.exists() and (not sheet_png_path.exists() or not sheet_json_path.exists()):
-            manifest = load_json(manifest_path, {})
             asset_ids = manifest.get("asset_ids", [])
             
             frame_items = []
@@ -134,6 +134,42 @@ class PixelExportService:
                 f"detect_3d/compress_to=1\n",
                 encoding="utf-8"
             )
+
+            if manifest.get("asset_type") == "tileset":
+                tileset_meta = {
+                    "schema": "spriteforge.godot_tileset_metadata.v1",
+                    "batch_id": batch_id,
+                    "tileset_type": manifest.get("tileset_type", "tileset"),
+                    "texture": "sheet.png",
+                    "tile_size": [frame_width, frame_height],
+                    "columns": columns,
+                    "rows": rows,
+                    "godot_resource_hint": {
+                        "resource": "TileSet",
+                        "source_type": "TileSetAtlasSource",
+                        "texture": "res://sheet.png",
+                        "texture_region_size": [frame_width, frame_height],
+                    },
+                    "tiles": [
+                        {
+                            "id": frame.get("index", idx),
+                            "role": frame.get("role") or frame.get("name") or f"tile_{idx}",
+                            "asset_id": frame.get("asset_id"),
+                            "atlas_coords": [
+                                int(frame.get("x", 0)) // max(int(frame.get("w", frame_width) or frame_width), 1),
+                                int(frame.get("y", 0)) // max(int(frame.get("h", frame_height) or frame_height), 1),
+                            ],
+                            "region": {
+                                "x": frame.get("x", 0),
+                                "y": frame.get("y", 0),
+                                "w": frame.get("w", frame_width),
+                                "h": frame.get("h", frame_height),
+                            },
+                        }
+                        for idx, frame in enumerate(sheet_meta.get("frames", []))
+                    ],
+                }
+                save_json(staging_dir / "godot_tileset.json", tileset_meta)
 
         elif engine_type == "unity":
             meta_file = staging_dir / "sheet.png.meta"

@@ -739,6 +739,7 @@ Generate a 1, 4, or 8-direction character sheet.
 ### `GET /api/pixel-assets/export?batch_id=<id>&engine=godot|unity|aseprite`
 
 Export a Pixel Studio batch as a ZIP for the requested engine/tool.
+Godot exports for tileset batches include `godot_tileset.json` with tile size, atlas coordinates, roles, and `TileSetAtlasSource` setup hints.
 
 ### `POST /api/pixel-assets/tileset`
 

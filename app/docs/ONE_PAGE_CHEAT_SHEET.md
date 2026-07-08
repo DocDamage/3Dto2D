@@ -68,13 +68,27 @@ Free/community availability depends on each provider account and model
 
 ```text
 Pixel Studio -> choose asset type -> prompt/reference/style -> Generate
+Provider panel -> confirm generate/edit/inpaint/prompt-help support before running
 Normalize for fixed size, palette, alpha, and cleanup
 Directions for 1/4/8-direction sheets
 Tileset for tile roles and seam QA
+Paint & Edit -> AI Mask -> set opacity/variants -> Run AI Edit
+Hold Before to compare against the saved pre-inpaint image
 Animate / Transfer / Rig for motion sheets
 Use as style reference -> reuse palette/style memory
-Save recipe -> reuse current settings later
+Visual QA report -> review palette, alpha, sharpness, seam, style, and edit trace gates
+Search/filter recipe cards -> reuse built-in or saved recipes
+Save/import/export recipe JSON -> reuse or share current settings
 Cohesive Pack Builder -> Generate Complete Pack -> Export Complete Pack ZIP
+```
+
+## Pixel Studio first workflows
+
+```text
+First asset: Characters -> prompt -> Plan -> Generate -> Visual QA report
+First tileset: Tilesets -> choose tileset type -> Generate -> Seam Preview
+First animation: select asset -> Animation Settings -> Animate Selected Sprite
+First pack: Cohesive Pack Builder -> recipe card -> Generate Complete Pack -> Export Complete Pack ZIP
 ```
 
 ## Best output folder files

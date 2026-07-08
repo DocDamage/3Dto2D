@@ -89,6 +89,41 @@ Use the one-click repair actions in **Quality Lab**, or use:
 python spriteforge_unified.py autofix-sprite --input output\YOUR_SPRITE --output output\YOUR_SPRITE_fixed --stabilize-anchor --drop-loop-duplicate --deflicker
 ```
 
+## Pixel Studio provider or AI edit is unavailable
+
+Open **Pixel Studio** and check the provider capability panel before generating. It reports whether the selected provider can generate, edit, inpaint, or help with prompts.
+
+If it says a key is missing, open **Setup** or **Cloud Hub** and save the provider key locally. If it says the provider is capable but not wired for that Pixel Studio workflow, use the local fallback or local ComfyUI until that adapter is enabled.
+
+## Pixel Studio inpaint output is not what you expected
+
+Use **Paint & Edit Pixel**, choose **AI Mask**, then:
+
+```text
+Increase mask opacity to inspect the painted area
+Keep variants low for local fallback tests
+Hold Before to compare against the pre-inpaint image
+Run Visual QA report after accepting the result
+```
+
+The asset sidecar records the original image, mask, result, prompt, provider, fallback, and version entry under `inpaint_history`.
+
+## Pixel Studio Visual QA warns about an asset
+
+Use the inspector's **Visual QA report**. Common fixes:
+
+```text
+Palette count warning -> Cleanup selected asset or reduce palette size
+Alpha/background warning -> Cleanup selected asset
+Sharpness warning -> Re-normalize with nearest-neighbor cleanup
+Tile seam warning -> enable Seam Preview and regenerate/cleanup tile edges
+Style match warning -> Make match project style or choose a closer style profile
+```
+
+## Pixel Studio recipes or packs do not show up
+
+Use the Cohesive Pack Builder search/filter controls. Set source to **All sources** and type to **All types** if a recipe disappears. Imported recipe JSON must use schema `spriteforge.pixel_recipe.v1` and at least one supported item type.
+
 ## Need help debugging
 
 Run:

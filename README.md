@@ -112,6 +112,7 @@ Use **Pixel Studio** when you want MagicPixel-style game asset workflows directl
 *   Use **Cohesive Pack Builder** to generate built-in or saved recipe packs such as RPG, dungeon crawler, platformer, potion shop, or UI HUD packs, then export the whole pack as a ZIP with a browsable HTML catalog.
 *   Save current Pixel Studio settings as reusable local recipes, import recipe JSON, and export recipe JSON for sharing or backup.
 *   Pixel Studio sidecars link into SpriteForge experiment memory, and project-scoped generations are also added to the active project Library.
+*   The local CuteSCKR tile corpus can be prepared as an auto-tile LoRA dataset with trigger `cutesckr_tiles`; SpriteForge registers the resulting native adapter as the default `tile_style`.
 
 Pixel Studio outputs are written under `app/output/pixel_assets/` with per-asset JSON metadata, batch manifests, style profiles, recipes, and pack manifests.
 

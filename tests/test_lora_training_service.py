@@ -311,3 +311,37 @@ def test_lora_training_native_run_executes_without_external_trainer(tmp_path):
     assert metadata["dataset_provenance"]["dataset_dir"] == str(dataset.resolve())
     assert metadata["token_profile"]
     assert metadata["palette_profile"]
+
+
+def test_lora_training_native_autotile_registers_tile_style(tmp_path):
+    from services.lora_training_service import build_lora_training_run
+    from services.trained_lora_registry_service import load_registry
+
+    dataset = _write_dataset(tmp_path)
+    manifest_path = dataset / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["dataset_kind"] = "autotile"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    output = tmp_path / "runs" / "native_tiles"
+    registry = tmp_path / "trained_loras.json"
+
+    result = build_lora_training_run(
+        dataset_dir=dataset,
+        output_dir=output,
+        name="native_tiles",
+        model_family="sdxl",
+        trainer="kohya",
+        trainer_dir=tmp_path / "missing_external_trainer",
+        base_model="stabilityai/stable-diffusion-xl-base-1.0",
+        trigger="tile_style_token",
+        mode="run",
+        native_only=True,
+        registry_path=registry,
+    )
+
+    native_artifact = Path(result["native_artifact"])
+    registry_data = load_registry(registry_path=registry)
+    assert registry_data["defaults"]["tile_style"]["filename"] == native_artifact.name
+    assert registry_data["defaults"]["tile_style"]["trigger"] == "tile_style_token"
+    assert "character_style" not in registry_data["defaults"]

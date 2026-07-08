@@ -75,6 +75,10 @@ Use the dedicated **LPC** tab when you want a paper-doll character builder like 
 
 Use **Training Lab -> LPC** for advanced catalog scans, LPC parts datasets, direct composer inputs, and LoRA handoff controls.
 
+## CuteSCKR tile training
+
+For the local `CuteSCKR_uncut` tile corpus, use the trigger token `cutesckr_tiles`. SpriteForge can build an auto-tile dataset under `app/output/training_datasets/`, register the native style adapter as the default `tile_style`, and prepare a Kohya SDXL run under `app/output/training_runs/`. These generated datasets, trainer installs, and model artifacts remain local and are ignored by Git.
+
 ## Cloud provider keys
 
 Open **Setup** or **Cloud Hub** to add local API keys for Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Keys are stored locally in the app environment file. Free/community image generation depends on the provider, region, account, model, and current quota.

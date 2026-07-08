@@ -104,6 +104,7 @@ def _trainer_workdir(trainer: str, trainer_root: Path) -> Path:
 def _training_python(trainer_root: Path) -> Path:
     candidates = [
         trainer_root / ".venv" / "Scripts" / "python.exe",
+        trainer_root.parent / "kohya_ss" / ".venv" / "Scripts" / "python.exe",
         trainer_root.parent / ".venv" / "Scripts" / "python.exe",
         COMFY_PYTHON,
         Path(sys.executable),
@@ -357,8 +358,11 @@ def _run_native_training(
     }
     artifact_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
 
+    dataset_kind = str(dataset_manifest.get("dataset_kind") or "").strip().lower()
+    registry_role = "tile_style" if dataset_kind in {"autotile", "tiles", "tileset", "tile_training"} else "character_style"
+
     set_default_lora(
-        role="character_style",
+        role=registry_role,
         filename=artifact_path.name,
         label=f"{name} (Native)",
         trigger=trigger,

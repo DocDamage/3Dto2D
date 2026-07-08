@@ -63,9 +63,10 @@
         "js/wizard_ui.js",
         "js/wizard.js?v=wizard-reference-upload-buttons",
         "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
-        "js/command_palette.js"
+        "js/command_palette.js",
+        "js/pixel_studio.js"
       ],
-      "purpose": "View rendering, forms, jobs, dashboard, wizard, history, QA, and command palette."
+      "purpose": "View rendering, forms, jobs, dashboard, wizard, history, QA, Pixel Studio, and command palette."
     },
     {
       "layer": "bootstrap",

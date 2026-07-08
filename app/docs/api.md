@@ -491,6 +491,228 @@ Preview the hardened prompts and post-processing plan for a cloud image generati
 
 ---
 
+## Pixel Studio
+
+Pixel Studio endpoints power prompt/reference pixel assets, normalization, direction sheets, tilesets, edit/inpaint, animation, transfer, rigging, and pack export.
+
+### `GET /api/pixel-assets/modes`
+
+Return supported Pixel Studio asset modes.
+
+**Response:**
+```json
+{
+  "ok": true,
+  "modes": ["characters", "creatures", "items", "weapons", "potions", "ui_icons", "tilesets", "backgrounds"]
+}
+```
+
+### `POST /api/pixel-assets/generate`
+
+Generate a batch of pixel assets or return a dry-run plan.
+
+**Request Body:**
+```json
+{
+  "asset_type": "weapons",
+  "prompt": "golden bow",
+  "resolution": "24x24",
+  "palette_size": "16",
+  "provider": "openai",
+  "count": 2,
+  "style_profile_id": "style_fantasy",
+  "mock": true
+}
+```
+
+Use `"dry_run": true` to return a prompt/provider plan without writing assets.
+
+### `POST /api/pixel-assets/normalize`
+
+Normalize an existing image to pixel-art constraints.
+
+**Request Body:**
+```json
+{
+  "path": "output/pixel_assets/assets/pxa_123/raw.png",
+  "resolution": "16x16",
+  "clean_alpha": true,
+  "quantize_palette": true,
+  "max_colors": 8,
+  "remove_islands": true,
+  "min_island_size": 2,
+  "outline": "none"
+}
+```
+
+### `GET /api/pixel-assets/style/list`
+
+List saved Pixel Studio style profiles.
+
+### `POST /api/pixel-assets/style/save`
+
+Save a Pixel Studio style profile.
+
+**Request Body:**
+```json
+{
+  "name": "Cozy RPG",
+  "outline_hint": "dark one-pixel outline",
+  "shading_hint": "limited 16-bit cel shading",
+  "camera_hint": "orthographic sprite view",
+  "lora_name": "cozy-rpg-lora",
+  "lora_weight": 0.8,
+  "base_model": "stable-diffusion-xl"
+}
+```
+
+### `GET /api/pixel-assets/history`
+
+Return saved Pixel Studio asset metadata records.
+
+### `GET /api/pixel-assets/loras`
+
+Return built-in Pixel Studio LoRA presets for style/profile controls.
+
+### `POST /api/pixel-assets/directions`
+
+Generate a 1, 4, or 8-direction character sheet.
+
+**Request Body:**
+```json
+{
+  "prompt": "elf rogue",
+  "resolution": "32x32",
+  "palette_size": 16,
+  "provider": "gemini",
+  "count": 4,
+  "mock": true
+}
+```
+
+**Response includes:**
+- `batch_id`
+- `assets`
+- `manifest`
+- `consistency_scores`
+
+### `GET /api/pixel-assets/export?batch_id=<id>&engine=godot|unity|aseprite`
+
+Export a Pixel Studio batch as a ZIP for the requested engine/tool.
+
+### `POST /api/pixel-assets/tileset`
+
+Generate a top-down, side-scroller, or isometric tileset with seam checks.
+
+**Request Body:**
+```json
+{
+  "prompt": "ruins cobblestone",
+  "tileset_type": "side-scroller",
+  "resolution": "16x16",
+  "palette_size": 16,
+  "provider": "gemini",
+  "mock": true
+}
+```
+
+### `POST /api/pixel-assets/edit`
+
+Save a browser-edited pixel asset image.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "image_data": "data:image/png;base64,..."
+}
+```
+
+### `POST /api/pixel-assets/inpaint`
+
+Apply a masked edit workflow to an existing pixel asset.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "image_data": "data:image/png;base64,...",
+  "mask_data": "data:image/png;base64,...",
+  "prompt": "make it gold color",
+  "mock": true
+}
+```
+
+### `POST /api/pixel-assets/animate`
+
+Generate an animation sheet and GIF preview from an asset.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "action_type": "run",
+  "frame_count": 6,
+  "fps": 12,
+  "mock": true
+}
+```
+
+### `POST /api/pixel-assets/animation-transfer`
+
+Transfer an existing sheet layout/motion to a new prompt/style.
+
+**Request Body:**
+```json
+{
+  "source_sheet_path": "input/source_sheet.png",
+  "rows": 1,
+  "cols": 2,
+  "prompt": "change to blue wizard",
+  "mock": true
+}
+```
+
+### `POST /api/pixel-assets/rig/render`
+
+Render a lightweight skeleton/bone rig animation from an existing asset.
+
+**Request Body:**
+```json
+{
+  "asset_id": "pxa_123",
+  "bones": [],
+  "keyframes": [],
+  "frame_count": 4,
+  "mock": true
+}
+```
+
+### `POST /api/pixel-assets/pack/generate`
+
+Generate a cohesive asset pack from a predefined recipe.
+
+**Request Body:**
+```json
+{
+  "recipe_type": "rpg_starter",
+  "style_profile_id": "style_fantasy",
+  "mock": true
+}
+```
+
+Supported recipes include:
+- `rpg_starter`
+- `dungeon_crawler`
+- `platformer_starter`
+- `potion_shop`
+
+### `GET /api/pixel-assets/pack/export?pack_id=<id>`
+
+Export a generated Pixel Studio pack as a ZIP containing asset PNGs, sidecar metadata, `pack_manifest.json`, and `catalog.html`.
+
+---
+
 ## Experiments & A/B Runs
 
 ### `GET /api/experiments`

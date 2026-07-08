@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="scene_compositor.css" />
   <link rel="stylesheet" href="consistency_lock.css?v=generate-existing-sprite" />
   <link rel="stylesheet" href="css/ux_enhancements.css" />
+  <link rel="stylesheet" href="css/pixel_studio.css" />
   <link rel="stylesheet" href="css/topbar_compact.css?v=generate-existing-sprite" />
   <link rel="stylesheet" href="css/wizard.css?v=wizard-reference-upload-buttons" />
   <style>
@@ -87,7 +88,7 @@
         const views = [
           'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
           'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history', 'queues',
-          'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc'
+          'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc', 'pixel_studio'
         ];
         await Promise.all(views.map(async (name) => {
           const el = document.getElementById('view-' + name);
@@ -148,6 +149,7 @@
       <button class="nav" data-view="tasks">Task Center</button>
       <button class="nav" data-view="generate">Sprite Lab</button>
       <button class="nav" data-view="lpc">LPC</button>
+      <button class="nav" data-view="pixel_studio">Pixel Studio</button>
       <button class="nav mode-detail" data-view="convert">Convert Video</button>
       <button class="nav" data-view="quality">Quality Lab</button>
       <button class="nav" data-view="animation_player">Animation Player</button>
@@ -277,6 +279,7 @@
 
     <section class="view" id="view-training"></section>
     <section class="view" id="view-lpc"></section>
+    <section class="view" id="view-pixel_studio"></section>
 
     <section class="view" id="view-release"></section>
 
@@ -559,8 +562,9 @@
         'js/wizard.js?v=wizard-reference-upload-buttons',
         'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
         'js/command_palette.js',
+        'js/pixel_studio.js',
         'js/ux_enhancements.js?v=sprite-lab-visible',
-          'js/app_main.js?v=quality-lab-compact'
+        'js/app_main.js?v=quality-lab-compact'
         ];
       }
 

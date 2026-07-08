@@ -100,7 +100,18 @@ SpriteForge now includes a dedicated **LPC** tab for Universal LPC paper-doll as
 
 The LPC source assets are local-only and are not bundled into release ZIPs or pushed as generated output.
 
-### 5. Cloud Image Providers and API Keys
+### 5. Create Pixel Assets, Tiles, Animations, and Packs
+Use **Pixel Studio** when you want MagicPixel-style game asset workflows directly inside SpriteForge:
+
+*   Generate pixel-art characters, creatures, items, weapons, potions, UI icons, tilesets, and backgrounds from a prompt, reference image, style profile, and provider.
+*   Normalize outputs to game-ready pixel constraints: fixed canvas size, palette reduction, transparent background, nearest-neighbor scaling, and sidecar metadata.
+*   Build 4-direction or 8-direction character sheets, tile atlases with seam QA, text-to-animation sheets, animation transfers from an existing sheet, and lightweight skeleton/rig renders.
+*   Edit assets in-browser, run mock AI inpainting/edit workflows, and export Godot, Unity, or Aseprite ZIP packages from generated batches.
+*   Use **Cohesive Pack Builder** to generate recipe-based starter packs such as RPG, dungeon crawler, platformer, or potion shop packs, then export the whole pack as a ZIP with a browsable HTML catalog.
+
+Pixel Studio outputs are written under `app/output/pixel_assets/` with per-asset JSON metadata, batch manifests, and pack manifests.
+
+### 6. Cloud Image Providers and API Keys
 Open **Setup** or **Cloud Hub** to inspect cloud image provider readiness and save local API keys. Supported provider slots include Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Free-tier availability depends on each provider and model account; SpriteForge reports provider capability but does not guarantee quota or pricing.
 
 ---

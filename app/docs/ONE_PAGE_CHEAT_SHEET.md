@@ -64,6 +64,17 @@ Save local keys for Hugging Face, OpenAI, Google/Gemini, Anthropic, Kimi, GLM, D
 Free/community availability depends on each provider account and model
 ```
 
+## Pixel Studio
+
+```text
+Pixel Studio -> choose asset type -> prompt/reference/style -> Generate
+Normalize for fixed size, palette, alpha, and cleanup
+Directions for 1/4/8-direction sheets
+Tileset for tile roles and seam QA
+Animate / Transfer / Rig for motion sheets
+Cohesive Pack Builder -> Generate Complete Pack -> Export Complete Pack ZIP
+```
+
 ## Best output folder files
 
 ```text

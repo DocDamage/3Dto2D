@@ -79,6 +79,38 @@ Use **Training Lab -> LPC** for advanced catalog scans, LPC parts datasets, dire
 
 Open **Setup** or **Cloud Hub** to add local API keys for Hugging Face, OpenAI, Google/Gemini, Anthropic, Moonshot/Kimi, GLM, DeepSeek, and Grok/xAI. Keys are stored locally in the app environment file. Free/community image generation depends on the provider, region, account, model, and current quota.
 
+## Pixel Studio workflow
+
+Use **Pixel Studio** for MagicPixel-style asset creation:
+
+1. Open **Pixel Studio**.
+2. Choose an asset type such as character, creature, item, weapon, potion, UI icon, tileset, or background.
+3. Enter a prompt, optional reference image, resolution, palette size, provider, and style profile.
+4. Generate assets in mock mode for fast local previews or use a configured provider for real image generation.
+5. Use the gallery and inspector to normalize, edit, inpaint, animate, export, or reuse outputs.
+
+Common Pixel Studio workflows:
+
+- **Generate** creates individual pixel assets and writes metadata sidecars.
+- **Normalize** enforces fixed pixel canvas, palette, alpha, outline, and cleanup rules.
+- **Directions** builds 1, 4, or 8-direction character sheets and consistency scores.
+- **Tileset** creates top-down, side-scroller, or isometric tile roles with seam checks.
+- **Edit** saves an in-browser pixel edit as a new asset version.
+- **Inpaint** applies a masked edit workflow while preserving pixel metadata.
+- **Animate** generates a spritesheet and GIF preview from a selected asset.
+- **Animation Transfer** applies an existing sheet layout to a new prompt/style.
+- **Skeleton & Rigging** renders simple keyframed rig motion into a sheet.
+- **Cohesive Pack Builder** generates recipe packs and exports a ZIP with assets, sidecars, manifest, and `catalog.html`.
+
+Pixel Studio files are saved under:
+
+```text
+app/output/pixel_assets/assets/
+app/output/pixel_assets/batches/
+app/output/pixel_assets/packs/
+app/output/pixel_assets/styles/
+```
+
 ## Existing video conversion
 
 Use the **Convert Video** tab if you already have a WAN/ComfyUI `.mp4`, `.webm`, or `.mov`.

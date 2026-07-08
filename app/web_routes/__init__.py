@@ -5,5 +5,10 @@ from .routes_sprites import routes_sprites
 from .routes_misc import routes_misc
 from .routes_static import routes_static
 from .routes_onboarding import routes_onboarding
+from .routes_pixel_asset import routes_pixel_asset
 
-__all__ = ["routes_jobs", "routes_projects", "routes_sprites", "routes_misc", "routes_static", "routes_onboarding"]
+__all__ = [
+    "routes_jobs", "routes_projects", "routes_sprites",
+    "routes_misc", "routes_static", "routes_onboarding",
+    "routes_pixel_asset"
+]

@@ -636,7 +636,18 @@ Score a Pixel Studio asset against a saved style profile.
 
 ### `GET /api/pixel-assets/history`
 
-Return saved Pixel Studio asset metadata records.
+Return saved Pixel Studio asset metadata records plus linked experiment-memory rows.
+
+**Response:**
+```json
+{
+  "ok": true,
+  "history": [{ "schema": "spriteforge.pixel_asset.v1" }],
+  "experiment_history": [{ "job_id": "pixel_asset:pxa_123" }]
+}
+```
+
+Generated Pixel Studio assets also write a `memory` block into their sidecar with the linked `experiment_run_id` and, when a project name is supplied, the `library_asset_id`.
 
 ### `GET /api/pixel-assets/loras`
 

@@ -14,6 +14,7 @@ from services.pixel_asset_schema import (
 )
 from services.cloud_image_generation_service import build_cloud_generation_plan, generate_cloud_image, resolve_api_key
 from services.pixel_normalization_service import PixelNormalizationService
+from services.pixel_asset_memory_service import PixelAssetMemoryService
 
 # Define output folders relative to OUTPUT (app/output)
 OUTPUT = ROOT / "output"
@@ -391,6 +392,11 @@ class PixelAssetService:
 
             meta_path = asset_dir / "pixel_asset.json"
             save_json(meta_path, meta_data)
+
+            memory = PixelAssetMemoryService.remember_asset(meta_data, params)
+            if memory:
+                meta_data["memory"] = memory
+                save_json(meta_path, meta_data)
 
             asset_ids.append(asset_id)
             assets_metadata.append(meta_data)

@@ -10,6 +10,7 @@ from services.pixel_export_service import PixelExportService
 from services.pixel_tileset_service import PixelTilesetService
 from services.pixel_recipe_service import PixelRecipeService
 from services.pixel_style_service import PixelStyleService
+from services.pixel_asset_memory_service import PixelAssetMemoryService
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_utils import load_json, ROOT, save_json
 
@@ -93,7 +94,9 @@ def get_pixel_history():
                     history.append(data)
             except (OSError, json.JSONDecodeError, ValueError):
                 continue
-        return jsonify({"ok": True, "history": history})
+        history = sorted(history, key=lambda item: item.get("created_at", ""), reverse=True)
+        experiment_history = PixelAssetMemoryService.pixel_experiment_rows()
+        return jsonify({"ok": True, "history": history, "experiment_history": experiment_history})
     except Exception as exc:
         return jsonify({"ok": False, "message": str(exc)}), 500
 

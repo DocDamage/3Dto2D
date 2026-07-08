@@ -111,6 +111,7 @@ Use **Pixel Studio** when you want MagicPixel-style game asset workflows directl
 *   Extract a style profile from any selected asset, then reuse that palette/style memory for matching future generations.
 *   Use **Cohesive Pack Builder** to generate built-in or saved recipe packs such as RPG, dungeon crawler, platformer, potion shop, or UI HUD packs, then export the whole pack as a ZIP with a browsable HTML catalog.
 *   Save current Pixel Studio settings as reusable local recipes, import recipe JSON, and export recipe JSON for sharing or backup.
+*   Pixel Studio sidecars link into SpriteForge experiment memory, and project-scoped generations are also added to the active project Library.
 
 Pixel Studio outputs are written under `app/output/pixel_assets/` with per-asset JSON metadata, batch manifests, style profiles, recipes, and pack manifests.
 

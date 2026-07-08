@@ -25,6 +25,7 @@ from services.pixel_rig_service import PixelRigService
 from services.pixel_pack_service import PixelPackService
 from services.pixel_recipe_service import PixelRecipeService
 from services.pixel_style_service import PixelStyleService
+from services.pixel_asset_memory_service import PixelAssetMemoryService
 from services.failure_explainer_service import explain_pixel_failure
 from spriteforge_web import app
 
@@ -77,6 +78,12 @@ def mock_pixel_paths(tmp_path, monkeypatch):
 
     import services.pixel_recipe_service as recipe_mod
     monkeypatch.setattr(recipe_mod, "RECIPES_DIR", temp_root / "recipes")
+
+    import services.experiment_service as exp_mod
+    monkeypatch.setattr(exp_mod, "EXPERIMENT_PATH", tmp_path / "experiments" / "experiment_history.json")
+
+    import services.web_helpers_library as library_mod
+    monkeypatch.setattr(library_mod, "ROOT", tmp_path)
 
     import sys
     routes_module = sys.modules.get("web_routes.routes_pixel_asset")
@@ -166,7 +173,7 @@ def test_missing_key_error_handling(client):
     assert data["ok"] is False
     assert "Key Validation Failed" in data["message"]
 
-def test_real_generation_mock_mode(client):
+def test_real_generation_mock_mode(client, tmp_path):
     payload = {
         "asset_type": "weapons",
         "prompt": "golden bow",
@@ -174,6 +181,7 @@ def test_real_generation_mock_mode(client):
         "palette_size": "16",
         "provider": "openai",
         "count": 2,
+        "project_name": "Memory Test",
         "mock": True # Request mock procedurally generated assets
     }
     response = client.post(
@@ -190,6 +198,23 @@ def test_real_generation_mock_mode(client):
     assert asset["schema"] == "spriteforge.pixel_asset.v1"
     assert asset["resolution"] == [24, 24]
     assert len(asset["palette"]["colors"]) > 0
+    assert asset["memory"]["experiment_run_id"]
+    assert asset["memory"]["library_asset_id"] == asset["asset_id"]
+
+    experiment_rows = PixelAssetMemoryService.pixel_experiment_rows()
+    assert len(experiment_rows) == 2
+    assert experiment_rows[0]["pixel_asset"]["kind"] == "pixel_asset"
+
+    library_path = tmp_path / "projects" / "Memory_Test" / "library.json"
+    library = json.loads(library_path.read_text(encoding="utf-8"))
+    assert len(library) == 2
+    assert library[0]["category"] == "pixel_asset"
+
+    history_response = client.get("/api/pixel-assets/history")
+    assert history_response.status_code == 200
+    history_data = json.loads(history_response.data.decode("utf-8"))
+    assert len(history_data["history"]) == 2
+    assert len(history_data["experiment_history"]) == 2
 
 def test_normalize_endpoint(client, tmp_path):
     # Save a test raw image to normalize

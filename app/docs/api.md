@@ -883,7 +883,7 @@ Accept one reskin variant and apply it to `asset.png`. The previous asset image 
 
 ### `POST /api/pixel-assets/animate`
 
-Generate an animation sheet and GIF preview from an asset.
+Generate an animation sheet plus GIF, APNG, and animated WebP previews from an asset.
 
 **Request Body:**
 ```json

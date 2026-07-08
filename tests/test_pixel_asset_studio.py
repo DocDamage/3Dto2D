@@ -992,7 +992,12 @@ def test_animation_generation_service(tmp_path):
     batch_dir = tmp_path / "pixel_assets" / "batches" / manifest["batch_id"]
     assert (batch_dir / "sheet.png").exists()
     assert (batch_dir / "preview.gif").exists()
+    assert (batch_dir / "preview.png").exists()
+    assert (batch_dir / "preview.webp").exists()
     assert (batch_dir / "animation.json").exists()
+    assert manifest["outputs"]["gif"].endswith("preview.gif")
+    assert manifest["outputs"]["apng"].endswith("preview.png")
+    assert manifest["outputs"]["webp"].endswith("preview.webp")
 
     # Confirm QA scores are calculated
     qa = manifest["qa"]

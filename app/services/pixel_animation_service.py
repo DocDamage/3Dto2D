@@ -76,8 +76,10 @@ class PixelAnimationService:
         sheet_path = batch_dir / "sheet.png"
         sheet_img.save(sheet_path)
 
-        # Compile looping animated GIF preview
+        # Compile looping animated previews
         gif_path = batch_dir / "preview.gif"
+        apng_path = batch_dir / "preview.png"
+        webp_path = batch_dir / "preview.webp"
         duration_ms = int(1000 / fps)
         frames[0].save(
             gif_path,
@@ -86,6 +88,26 @@ class PixelAnimationService:
             duration=duration_ms,
             loop=0,
             disposal=2 # clear frame backgrounds
+        )
+        frames[0].save(
+            apng_path,
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration_ms,
+            loop=0,
+            disposal=2,
+            format="PNG",
+        )
+        frames[0].save(
+            webp_path,
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration_ms,
+            loop=0,
+            lossless=True,
+            quality=100,
+            method=6,
+            format="WEBP",
         )
 
         # Calculate Frame Consistency QA Checks
@@ -143,6 +165,9 @@ class PixelAnimationService:
             "outputs": {
                 "sheet": f"output/pixel_assets/batches/{batch_id}/sheet.png",
                 "preview": f"output/pixel_assets/batches/{batch_id}/preview.gif",
+                "gif": f"output/pixel_assets/batches/{batch_id}/preview.gif",
+                "apng": f"output/pixel_assets/batches/{batch_id}/preview.png",
+                "webp": f"output/pixel_assets/batches/{batch_id}/preview.webp",
                 "metadata": f"output/pixel_assets/batches/{batch_id}/animation.json"
             },
             "qa": {

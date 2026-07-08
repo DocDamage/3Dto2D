@@ -99,6 +99,8 @@ First pack: Cohesive Pack Builder -> recipe card -> Generate Complete Pack -> Ex
 sheet.png
 sheet.json
 preview.gif
+preview.png
+preview.webp
 report.html
 ```
 

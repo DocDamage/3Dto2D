@@ -20,10 +20,13 @@
       "files": [
         "js/sprite_preview.js?v=generate-compact-fit2",
         "js/animation_player.js",
+        "js/play_workbench.js",
         "js/compare_player.js",
         "js/lighting_preview.js",
         "js/cloud_hub.js",
         "js/frame_editor.js",
+        "js/production_studio.js",
+        "js/aaa_studio.js",
         "js/prompt_builder.js?v=prompt-autofix",
         "js/seed_gallery.js",
         "js/frame_review.js",
@@ -71,10 +74,12 @@
     {
       "layer": "bootstrap",
       "files": [
+        "js/consumer_experience.js?v=creator-journey",
+        "js/playful_console.js?v=forge-guide-workshop",
         "js/ux_enhancements.js?v=sprite-lab-visible",
         "js/app_main.js?v=quality-lab-compact"
       ],
-      "purpose": "Final UX wrappers and application startup. Must stay last until ES module migration is complete."
+      "purpose": "Consumer journey, playful guide/workshop feedback, final UX wrappers, and application startup. Must stay last until ES module migration is complete."
     }
   ],
   "lazy_scripts": {

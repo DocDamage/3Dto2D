@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spriteforge.local/schemas/asset-record.v1.json",
+  "title": "SpriteForge Asset Record",
+  "type": "object",
+  "required": ["schema", "schema_version", "asset_id", "project_id", "name", "asset_type"],
+  "properties": {
+    "schema": {"const": "spriteforge.asset.v1"},
+    "schema_version": {"const": 1},
+    "asset_id": {"type": "string", "minLength": 1},
+    "project_id": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1},
+    "asset_type": {"type": "string", "minLength": 1},
+    "current_revision_id": {"type": ["string", "null"]},
+    "role": {"type": "string"}, "action": {"type": "string"},
+    "direction": {"type": "string"}, "variant": {"type": "string"}
+  }
+}

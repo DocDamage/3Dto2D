@@ -15,8 +15,8 @@
   };
 
   const views = [
-    'guide', 'dashboard', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
-    'packs', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub',
+    'guide', 'dashboard', 'production', 'aaa_studio', 'tasks', 'launchpad', 'generate', 'convert', 'quality',
+    'packs', 'animation_player', 'play_workbench', 'compare_player', 'lighting_preview', 'cloud_hub',
     'frame_editor', 'queue', 'release', 'setup', 'cleanup', 'logs', 'history',
     'queues', 'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc', 'pixel_studio',
   ];

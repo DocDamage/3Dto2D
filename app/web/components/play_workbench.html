@@ -1,0 +1,66 @@
+<section class="view play-workbench-view" id="view-play_workbench">
+  <div class="panel-head play-workbench-head">
+    <div>
+      <p class="eyebrow">Instant Playtest</p>
+      <h2>Play Workbench</h2>
+      <p class="description">Try your newest character in a tiny diorama. Move around, test the animation, and see how it feels in play.</p>
+    </div>
+    <button class="mini" id="playWorkbenchRefreshBtn" type="button">Load newest creation</button>
+  </div>
+
+  <div class="play-workbench-layout">
+    <aside class="play-workbench-controls card" aria-label="Play workbench controls">
+      <label for="playWorkbenchSpriteSelect">Character
+        <select id="playWorkbenchSpriteSelect">
+          <option value="">Finding your latest creation…</option>
+        </select>
+      </label>
+
+      <div class="play-workbench-asset-meta" aria-label="Loaded sprite details">
+        <div><span>Source</span><b id="playWorkbenchSource">Safe fallback</b></div>
+        <div><span>Frames</span><b id="playWorkbenchFrames">1</b></div>
+        <div><span>Cell</span><b id="playWorkbenchCell">—</b></div>
+      </div>
+
+      <fieldset class="play-workbench-actions">
+        <legend>Try a move</legend>
+        <div class="button-row" role="group" aria-label="Animation clips">
+          <button class="mini play-workbench-clip active" type="button" data-workbench-clip="idle" aria-pressed="true">Idle</button>
+          <button class="mini play-workbench-clip" type="button" data-workbench-clip="walk" aria-pressed="false">Walk</button>
+          <button class="mini play-workbench-clip play-workbench-attack" type="button" data-workbench-clip="attack" aria-pressed="false">Attack</button>
+        </div>
+      </fieldset>
+
+      <label class="switch play-workbench-gamepad"><input type="checkbox" id="playWorkbenchGamepadToggle" checked /><span></span>Use gamepad</label>
+      <p class="play-workbench-gamepad-status" id="playWorkbenchGamepadStatus">Gamepad ready to connect</p>
+
+      <div class="play-workbench-key-help">
+        <div><kbd>WASD</kbd><span>or arrow keys to move</span></div>
+        <div><kbd>Space</kbd><span>or J to attack</span></div>
+        <div><kbd>R</kbd><span>return to the center</span></div>
+      </div>
+    </aside>
+
+    <section class="play-workbench-stage card" aria-labelledby="playWorkbenchStageTitle">
+      <div class="play-workbench-stage-bar">
+        <div>
+          <span class="play-workbench-live-dot" aria-hidden="true"></span>
+          <b id="playWorkbenchStageTitle">Emberleaf Glade</b>
+        </div>
+        <span id="playWorkbenchClipLabel">Idle</span>
+      </div>
+      <div class="play-workbench-canvas-shell">
+        <canvas
+          id="playWorkbenchCanvas"
+          width="800"
+          height="450"
+          tabindex="0"
+          role="application"
+          aria-label="Playable sprite diorama. Use WASD or arrow keys to move and Space or J to attack."
+        ></canvas>
+        <div class="play-workbench-canvas-hint" aria-hidden="true">Click the scene, then play</div>
+      </div>
+      <p class="play-workbench-status" id="playWorkbenchStatus" role="status" aria-live="polite">Preparing a safe preview…</p>
+    </section>
+  </div>
+</section>

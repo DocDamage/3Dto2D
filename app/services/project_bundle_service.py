@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import shutil
 import stat
@@ -118,6 +119,25 @@ def _unique_destination(projects_dir: Path, project_name: str) -> Path:
     return candidate
 
 
+def _validate_managed_objects(project_dir: Path) -> None:
+    """Reject tampered content-addressed payloads before publishing an import."""
+    objects_dir = project_dir / ".spriteforge" / "objects"
+    if not objects_dir.exists():
+        return
+    for path in objects_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        expected = path.name.lower()
+        if len(expected) != 64 or any(char not in "0123456789abcdef" for char in expected):
+            raise ValueError(f"Managed object has an invalid content hash name: {path.name}")
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != expected:
+            raise ValueError(f"Managed object failed content-hash verification: {path.name}")
+
+
 def import_project_bundle(file_stream: BinaryIO, filename: str, projects_dir: Path) -> Dict[str, Any]:
     projects_dir.mkdir(parents=True, exist_ok=True)
     staging_dir = projects_dir / f".import_{uuid.uuid4().hex}"
@@ -144,6 +164,7 @@ def import_project_bundle(file_stream: BinaryIO, filename: str, projects_dir: Pa
                     shutil.copyfileobj(source, output, length=1024 * 1024)
             if not (staging_dir / "spriteforge_project.json").is_file():
                 raise ValueError("Extracted project manifest is missing.")
+            _validate_managed_objects(staging_dir)
             os.replace(staging_dir, destination)
         return {"project_dir": destination, "manifest": manifest}
     except zipfile.BadZipFile as exc:

@@ -29,6 +29,9 @@ def log(msg: str):
         pass
 
 def get_venv_python() -> Path:
+    bundled = str(os.environ.get("SPRITEFORGE_RUNTIME_PYTHON") or "").strip()
+    if bundled and Path(bundled).is_file():
+        return Path(bundled)
     if os.name == "nt":
         return ROOT / ".venv" / "Scripts" / "python.exe"
     else:
@@ -101,7 +104,8 @@ def main():
             
     # 2. Check if pip and requirements are installed
     deps_flag = ROOT / ".deps_installed_v12"
-    if not deps_flag.exists():
+    bundled_runtime = bool(str(os.environ.get("SPRITEFORGE_RUNTIME_PYTHON") or "").strip())
+    if not deps_flag.exists() and not bundled_runtime:
         log("Installing/Upgrading requirements...")
         try:
             venv_python = get_venv_python()

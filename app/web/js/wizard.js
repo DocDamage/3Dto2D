@@ -13,6 +13,7 @@
     robot: 'single full body robot mech character, readable mechanical silhouette, bold armor shapes, clean silhouette, consistent materials',
   };
   let currentStep = window.SpriteForgeWizardStateConfig?.initialStep || 1;
+  let wizardPreviousFocus = null;
   const STORAGE_KEY = window.SpriteForgeWizardStateConfig?.storageKey || 'spriteforge_wizard_state';
 
   // Modal elements
@@ -30,6 +31,27 @@
     skipBtn = document.getElementById('wizardSkipBtn');
 
     if (!modal || !form) return;
+
+    modal.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeWizard();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(modal.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+        .filter(item => item.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
 
     stepperIndicators = Array.from(modal.querySelectorAll('.wizard-step-indicator'));
     stepPanels = Array.from(modal.querySelectorAll('.wizard-step-panel'));
@@ -428,7 +450,12 @@
       loadWizardHtml().then(() => openWizard(initialGoal)).catch(e => console.error('Error opening wizard:', e));
       return;
     }
+    wizardPreviousFocus = document.activeElement;
     modal.classList.remove('hidden');
+    const main = document.getElementById('mainContent');
+    const rail = document.querySelector('.rail');
+    if (main && 'inert' in main) main.inert = true;
+    if (rail && 'inert' in rail) rail.inert = true;
 
     if (initialGoal) {
       const radio = form.querySelector(`input[name="wiz_goal"][value="${initialGoal}"]`);
@@ -447,11 +474,23 @@
     // Trigger pre-filled templates preview
     updatePromptPreview();
     updateVisualizerGrid();
+    const title = document.getElementById('wizardTitle');
+    if (title) {
+      title.setAttribute('tabindex', '-1');
+      requestAnimationFrame(() => title.focus());
+    }
   }
 
   function closeWizard() {
     if (!modal) return;
     modal.classList.add('hidden');
+    modal.classList.remove('consumer-show-advanced');
+    const main = document.getElementById('mainContent');
+    const rail = document.querySelector('.rail');
+    if (main && 'inert' in main) main.inert = false;
+    if (rail && 'inert' in rail) rail.inert = window.matchMedia('(max-width: 760px)').matches && !document.body.classList.contains('mobile-rail-open');
+    if (wizardPreviousFocus && typeof wizardPreviousFocus.focus === 'function') wizardPreviousFocus.focus();
+    wizardPreviousFocus = null;
   }
 
   function saveWizardState() {

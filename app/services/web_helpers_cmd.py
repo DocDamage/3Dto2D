@@ -18,6 +18,7 @@ from services.web_path_proxy import ROOT, OUTPUT, INPUT, UPLOADS
 logger = logging.getLogger(__name__)
 
 ALL_DIRECTIONS = ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]
+RELEASE_TARGETS = {"godot", "unity", "unreal", "png", "web"}
 SPRITEFORGE_REQUIREMENTS = "../requirements-lock.txt" if (ROOT.parent / "requirements-lock.txt").exists() else "requirements.txt"
 
 
@@ -600,7 +601,20 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         if not sprites:
             raise ValueError("No sprite outputs selected for release package.")
         name = safe_name(str(payload.get("name") or "sprite_release"))
-        cmd = [PYTHON, "spriteforge_unified.py", "release-package", "--name", name, "--zip"]
+        consumer_target = str(payload.get("consumer_target") or "godot").strip().lower()
+        if consumer_target not in RELEASE_TARGETS:
+            allowed = ", ".join(sorted(RELEASE_TARGETS))
+            raise ValueError(f"Unsupported release target. Choose one of: {allowed}.")
+        cmd = [
+            PYTHON,
+            "spriteforge_unified.py",
+            "release-package",
+            "--name",
+            name,
+            "--target",
+            consumer_target,
+            "--zip",
+        ]
         if project_meta:
             cmd += ["--project", str(ROOT / project_meta["project_path"])]
             if not str(payload.get("output") or "").strip():

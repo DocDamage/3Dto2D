@@ -8,9 +8,17 @@ echo ==== SpriteForge v12 bootstrap start %DATE% %TIME% ====>> "%LOG%"
 
 set "PYLAUNCH="
 
+:: Signed distributions include a self-contained runtime.
+if exist "..\runtime\python.exe" (
+  set "PYLAUNCH=..\runtime\python.exe"
+  set "SPRITEFORGE_RUNTIME_PYTHON=%CD%\..\runtime\python.exe"
+)
+
 :: Check for py launcher or python in path
-py -3.12 --version >nul 2>nul
-if not errorlevel 1 ( set "PYLAUNCH=py -3.12" )
+if not defined PYLAUNCH (
+  py -3.12 --version >nul 2>nul
+  if not errorlevel 1 ( set "PYLAUNCH=py -3.12" )
+)
 if not defined PYLAUNCH (
   py -3.11 --version >nul 2>nul
   if not errorlevel 1 ( set "PYLAUNCH=py -3.11" )

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2021" Version="1.2.0.0" Uri="https://updates.example.invalid/SpriteForge.appinstaller">
+  <MainPackage Name="SpriteForge.Studio" Publisher="CN=SPRITEFORGE_PUBLISHER" Version="1.2.0.0" ProcessorArchitecture="x64" Uri="https://updates.example.invalid/SpriteForgeStudio.msix" />
+  <UpdateSettings><OnLaunch HoursBetweenUpdateChecks="8" ShowPrompt="true" UpdateBlocksActivation="false" /><AutomaticBackgroundTask /><ForceUpdateFromAnyVersion>true</ForceUpdateFromAnyVersion></UpdateSettings>
+</AppInstaller>

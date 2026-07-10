@@ -1470,7 +1470,7 @@ function initFormBindings() {
   }
 
   // Generation form
-  if ($('#generateForm')) $('#generateForm').addEventListener('submit',e=>{ e.preventDefault(); syncGenerateChoices(); runAction('generate_sprite', formData(e.currentTarget)); showView('logs'); });
+  if ($('#generateForm')) $('#generateForm').addEventListener('submit',e=>{ e.preventDefault(); syncGenerateChoices(); runAction('generate_sprite', formData(e.currentTarget)); showView(document.body.classList.contains('mode-simple') ? 'tasks' : 'logs'); });
   if ($('#generateForm')) {
     loadGenerateActionChoices();
     $('#generateForm').addEventListener('change', event => {
@@ -1623,7 +1623,7 @@ function initFormBindings() {
   if ($('#applyLoraGpuDefaults')) $('#applyLoraGpuDefaults').addEventListener('click', applyLoraGpuDefaults);
 
   // Release and queue forms
-  if ($('#releaseForm')) $('#releaseForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('release_package', formData(e.currentTarget)); showView('logs'); });
+  if ($('#releaseForm')) $('#releaseForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('release_package', formData(e.currentTarget)); showView(document.body.classList.contains('mode-simple') ? 'tasks' : 'logs'); });
   if ($('#queueForm')) $('#queueForm').addEventListener('submit',e=>{ e.preventDefault(); runAction('queue_create', formData(e.currentTarget)); showView('logs'); });
 
   // Dropzone

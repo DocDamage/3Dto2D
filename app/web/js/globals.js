@@ -219,6 +219,9 @@ function showView(name){
   if (name === 'tasks-parent') name = 'tasks';
   if (name === 'quality-parent') name = 'quality';
 
+  const requestedParent = window.SUBVIEW_PARENTS[name] || name;
+  if (!name || !document.getElementById('view-' + requestedParent)) name = 'guide';
+
   const parentName = window.SUBVIEW_PARENTS[name] || name;
   if (document.body) {
     document.body.dataset.activeView = name;
@@ -268,6 +271,11 @@ function showView(name){
   // Store for API polling context
   localStorage.setItem('activeView', name);
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  const shell = document.querySelector('.shell');
+  if (shell) {
+    shell.scrollTop = 0;
+    shell.scrollLeft = 0;
+  }
 
   if (name === 'library' && typeof refreshLibrary === 'function') refreshLibrary();
   if (name === 'qa_dashboard') {

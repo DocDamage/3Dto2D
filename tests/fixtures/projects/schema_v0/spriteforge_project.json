@@ -1,0 +1,5 @@
+{
+  "name": "legacy_v0",
+  "actions": ["idle"],
+  "directions": ["right"]
+}

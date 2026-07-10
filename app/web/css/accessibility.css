@@ -248,6 +248,20 @@ input:focus, select:focus, textarea:focus, button:focus {
   outline: 2px solid var(--cyan) !important;
   outline-offset: 1px;
 }
+#aaaCanvas:focus-visible,
+#aaaCurveCanvas:focus-visible {
+  outline: 3px solid var(--cyan) !important;
+  outline-offset: 3px;
+}
+.aaa-layer-row,
+.aaa-timeline button,
+.aaa-tabs button {
+  min-height: 36px;
+}
+@media (forced-colors: active) {
+  #aaaCanvas, #aaaCurveCanvas { border: 2px solid CanvasText; }
+  .aaa-layer-row.active { outline: 3px solid Highlight; }
+}
 .sprite-card:focus, .setup-card:focus, .choice-card:focus-within {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;

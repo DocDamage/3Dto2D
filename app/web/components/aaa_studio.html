@@ -1,0 +1,62 @@
+<section class="view aaa-studio-view" id="view-aaa_studio">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Creative Studio</p>
+      <h2>Animation Studio</h2>
+      <p class="description">Draw, animate, and refine your character in one place.</p>
+    </div>
+    <div class="button-row">
+      <span class="badge mode-expert" id="aaaRendererBadge">renderer: probing</span>
+      <button class="mini mode-detail" id="aaaSaveWorkspaceBtn" type="button">Save workspace</button>
+      <button class="mini primary" id="aaaSaveDocumentBtn" type="button" aria-label="Save revision">Save</button>
+    </div>
+  </div>
+  <div class="aaa-menubar aaa-simple-tools" role="toolbar" aria-label="Drawing and animation tools">
+    <button type="button" data-aaa-tool="brush" aria-pressed="true" title="Brush (B)">Brush</button>
+    <button type="button" data-aaa-tool="eraser" aria-pressed="false" title="Eraser (E)">Eraser</button>
+    <button type="button" data-aaa-tool="anchor" aria-pressed="false">Anchor</button>
+    <button type="button" data-aaa-tool="hitbox" aria-pressed="false">Hitbox</button>
+    <button type="button" id="aaaPlayBtn" aria-pressed="false">Play</button>
+    <button type="button" id="aaaOnionBtn" aria-pressed="false" title="Show the previous and next frames (O)">Onion skin</button>
+    <label>Zoom<input id="aaaZoom" type="range" min="1" max="16" value="4" /></label>
+    <label>Frame<input id="aaaFrame" type="number" min="0" value="0" /></label>
+  </div>
+  <div class="aaa-workspace" id="aaaWorkspace">
+    <aside class="card aaa-panel aaa-assets-panel" data-panel="assets">
+      <div class="card-head"><h3>Animations</h3><button class="mini" id="aaaNewDocumentBtn" type="button" aria-label="New">New animation</button></div>
+      <select id="aaaDocumentSelect" aria-label="Creative document"><option value="">Choose an animation</option></select>
+      <div id="aaaDocumentInfo" class="description">Create an animation to begin drawing.</div>
+    </aside>
+    <section class="card aaa-panel aaa-canvas-panel" data-panel="canvas">
+      <canvas id="aaaCanvas" width="768" height="512" tabindex="0" aria-label="Layered sprite editing canvas"></canvas>
+      <div id="aaaCanvasStatus" role="status" aria-live="polite">Choose or create an animation.</div>
+    </section>
+    <aside class="card aaa-panel aaa-layers-panel" data-panel="layers">
+      <div class="card-head"><h3>Layers</h3><button class="mini" id="aaaAddLayerBtn" type="button" aria-label="Add">Add layer</button></div>
+      <div id="aaaLayerTree" role="tree"></div>
+      <label>Blend<select id="aaaBlendMode"><option>normal</option><option>multiply</option><option>screen</option><option>overlay</option><option>add</option></select></label>
+      <label>Opacity<input id="aaaLayerOpacity" type="range" min="0" max="1" step="0.05" value="1" /></label>
+    </aside>
+    <section class="card aaa-panel aaa-timeline-panel" data-panel="timeline">
+      <div class="card-head"><h3>Animation frames</h3><button class="mini" id="aaaAddKeyBtn" type="button" aria-label="Add key">Add keyframe</button></div>
+      <div id="aaaTimeline" class="aaa-timeline" role="listbox" aria-label="Animation timeline"></div>
+      <canvas id="aaaCurveCanvas" width="700" height="120" aria-label="Animation curve editor"></canvas>
+    </section>
+    <aside class="card aaa-panel aaa-inspector-panel mode-detail" data-panel="inspector">
+      <div class="aaa-tabs" role="tablist" aria-label="Studio tools">
+        <button data-aaa-tab="studio" role="tab" aria-selected="true">Comments</button>
+        <button data-aaa-tab="pipeline" role="tab" aria-selected="false">Engine link</button>
+        <button data-aaa-tab="farm" role="tab" aria-selected="false">Processing</button>
+        <button data-aaa-tab="art" role="tab" aria-selected="false">Style guide</button>
+      </div>
+      <div id="aaaInspector">
+        <h3>Comments</h3>
+        <label>Local user<input id="aaaUserId" value="local" /></label>
+        <label>Comment<textarea id="aaaComment" rows="3"></textarea></label>
+        <button class="mini" id="aaaCommentBtn" type="button">Comment on frame</button>
+        <button class="mini" id="aaaReviewBtn" type="button">Request review</button>
+        <pre class="terminal small" id="aaaInspectorStatus">Choose an animation.</pre>
+      </div>
+    </aside>
+  </div>
+</section>

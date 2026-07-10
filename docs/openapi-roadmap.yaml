@@ -1,0 +1,148 @@
+openapi: 3.0.3
+info:
+  title: SpriteForge Asset Production API
+  version: 1.0.0
+paths:
+  /api/assets:
+    get:
+      summary: List canonical project assets
+      parameters:
+        - {name: project, in: query, schema: {type: string}}
+        - {name: limit, in: query, schema: {type: integer, maximum: 1000}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0}}
+      responses: {'200': {description: Asset page}}
+    post:
+      summary: Create a logical asset
+      responses: {'201': {description: Asset created}, '400': {description: Invalid record}}
+  /api/assets/{asset_id}:
+    get:
+      summary: Read an asset and its immutable history
+      parameters: [{name: asset_id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Asset history}, '404': {description: Not found}}
+  /api/assets/{asset_id}/revisions:
+    post:
+      summary: Commit a new asset revision
+      parameters: [{name: asset_id, in: path, required: true, schema: {type: string}}]
+      responses: {'201': {description: Revision committed}, '409': {description: Revision conflict}}
+  /api/assets/{asset_id}/restore:
+    post:
+      summary: Restore the current pointer without deleting history
+      parameters: [{name: asset_id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Revision restored}}
+  /api/revisions/{revision_id}/validate:
+    post:
+      summary: Run the shared QA registry, using cached results when unchanged
+      parameters: [{name: revision_id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Machine-readable QA report}}
+  /api/qa/rules:
+    get:
+      summary: List stable QA rule definitions
+      responses: {'200': {description: Rule registry}}
+  /api/projects/integrity:
+    get:
+      summary: Verify SQLite and content-addressed object integrity
+      responses: {'200': {description: Healthy}, '409': {description: Integrity failure}}
+  /api/features:
+    get:
+      summary: Resolve application, project, and environment feature flags
+      responses: {'200': {description: Resolved flags}}
+  /api/animation/{asset_id}/workspace:
+    get:
+      summary: Load persistent animation workspace state
+      responses: {'200': {description: Workspace state}}
+    put:
+      summary: Commit timing, clips, anchors, hitboxes, onion skin, and viewport as a revision
+      responses: {'200': {description: Immutable revision committed}}
+  /api/batches:
+    post:
+      summary: Plan and persist a generation matrix
+      responses: {'201': {description: Matrix experiment created}}
+  /api/workflows/validate:
+    post:
+      summary: Preflight a typed acyclic workflow
+      responses: {'200': {description: Validation report}}
+  /api/workflows/{workflow_id}/runs:
+    post:
+      summary: Run or resume a cached workflow
+      responses: {'200': {description: Run completed}, '202': {description: Waiting for provider or approval}}
+  /api/production/dashboard:
+    get:
+      summary: Aggregate project readiness from canonical records
+      responses: {'200': {description: Production dashboard}}
+  /api/recovery/snapshots:
+    get:
+      summary: List verified recovery snapshots
+      responses: {'200': {description: Snapshot list}}
+    post:
+      summary: Create an atomic project recovery snapshot
+      responses: {'201': {description: Snapshot created}}
+  /api/batches/{experiment_id}/cells/{cell_id}/submit:
+    post:
+      summary: Submit a matrix cell through the persistent provider-neutral job service
+      responses: {'202': {description: Cell job queued}}
+  /api/workflows/runs/{run_id}/synchronize:
+    post:
+      summary: Synchronize a provider job and resume valid downstream workflow nodes
+      responses: {'200': {description: Run advanced}, '202': {description: Provider still running}}
+  /api/export-presets/preview:
+    post:
+      summary: Preview a deterministic export file tree and size
+      responses: {'200': {description: Export preview}}
+  /api/export-presets/export:
+    post:
+      summary: Validate, stage, and atomically publish a versioned preset export
+      responses: {'201': {description: Export published}}
+  /api/updates/apply:
+    post:
+      summary: Apply a staged update with health-check rollback
+      responses: {'200': {description: Update healthy}}
+  /api/updates/rollback:
+    post:
+      summary: Restore a recorded previous application state
+      responses: {'200': {description: Update rolled back}}
+  /api/releases/readiness:
+    post:
+      summary: Evaluate installer, signing, and clean-machine evidence gates
+      responses: {'200': {description: Release readiness report}}
+  /api/creative-documents:
+    get:
+      summary: List canonical layered creative documents
+      responses: {'200': {description: Creative document list}}
+    post:
+      summary: Create an immutable layered creative document
+      responses: {'201': {description: Document created}}
+  /api/creative-documents/{document_id}:
+    get:
+      summary: Load a creative document revision
+      responses: {'200': {description: Creative document}, '404': {description: Not found}}
+    put:
+      summary: Commit a document revision using optimistic concurrency
+      responses: {'200': {description: Revision committed}, '409': {description: Revision conflict}}
+  /api/studio/assets/{asset_id}/comments:
+    post:
+      summary: Add a frame or region anchored review comment
+      responses: {'201': {description: Comment created}}
+  /api/studio/assets/{asset_id}/review:
+    post:
+      summary: Transition an asset revision through review
+      responses: {'200': {description: Review state updated}, '403': {description: Insufficient role}}
+  /api/integrations/{engine}/events:
+    post:
+      summary: Publish an asset revision to an engine live-link feed
+      responses: {'201': {description: Live-link event published}}
+  /api/interchange/report:
+    post:
+      summary: Report preserved and lossy features for an interchange operation
+      responses: {'200': {description: Interchange loss report}}
+  /api/farm/route:
+    post:
+      summary: Route work by capability, VRAM, quota, and current load
+      responses: {'200': {description: Worker lease}, '409': {description: No eligible worker}}
+  /api/art-direction/analytics:
+    get:
+      summary: Aggregate completeness, approval, yield, duration, and cost signals
+      responses: {'200': {description: Production analytics}}
+  /api/telemetry/events:
+    post:
+      summary: Record a bounded privacy-redacted local telemetry event
+      responses: {'201': {description: Telemetry event recorded}}

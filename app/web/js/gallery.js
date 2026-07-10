@@ -16,12 +16,12 @@ function renderOutputs(outputs){
   if (onboardingCard) {
     if (currentOutputs.length === 0) {
       document.getElementById('onboardingTitle').textContent = 'Ready for your first sprite?';
-      document.getElementById('onboardingText').textContent = 'Click "Create Sprite" or launch the wizard below. We will guide you through character descriptions, action loops, and set up your ComfyUI generation automatically.';
-      document.getElementById('onboardingCtaBtn').textContent = 'Launch Wizard';
+      document.getElementById('onboardingText').textContent = 'Choose “Create a character” and we’ll guide you from the first idea to a finished animation.';
+      document.getElementById('onboardingCtaBtn').textContent = 'Start creating';
     } else {
-      document.getElementById('onboardingTitle').textContent = 'Continue Sprite Forge';
-      document.getElementById('onboardingText').textContent = `You have generated ${currentOutputs.length} sprite(s) in this project workspace. Open the Quality Lab to review them or export your sprite sheets in the Release view.`;
-      document.getElementById('onboardingCtaBtn').textContent = 'Create Another';
+      document.getElementById('onboardingTitle').textContent = 'Keep creating';
+      document.getElementById('onboardingText').textContent = `This project has ${currentOutputs.length} creation${currentOutputs.length === 1 ? '' : 's'}. Review the movement, make another, or export when it feels right.`;
+      document.getElementById('onboardingCtaBtn').textContent = 'Create another';
     }
   }
   const g=$('#gallery');
@@ -29,6 +29,7 @@ function renderOutputs(outputs){
   if(!currentOutputs.length){
     appendText(g, 'div', 'No sprite outputs yet. Run the demo or make a sprite.', 'empty');
     if (typeof renderGuidedGallery === 'function') renderGuidedGallery(currentOutputs);
+    window.ConsumerExperience?.refreshFromOutputs(currentOutputs);
     return;
   }
   currentOutputs.slice(0,12).forEach(o => {
@@ -92,6 +93,7 @@ function renderOutputs(outputs){
     openResultPreview(e.currentTarget.dataset.previewPath);
   }));
   if (typeof renderGuidedGallery === 'function') renderGuidedGallery(currentOutputs);
+  window.ConsumerExperience?.refreshFromOutputs(currentOutputs);
   if (savedPath && currentOutputs.some(o => o.path === savedPath)) {
     selectedSpriteDir = savedPath;
     if ($('#qualitySpriteDir')) $('#qualitySpriteDir').value = savedPath;

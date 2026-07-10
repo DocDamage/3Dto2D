@@ -4,12 +4,17 @@
   function renderWizardStep(options) {
     const step = Math.max(1, Math.min(4, Number(options.step) || 1));
     options.stepPanels.forEach(panel => {
-      panel.classList.toggle('active', parseInt(panel.dataset.wizPanel) === step);
+      const active = parseInt(panel.dataset.wizPanel) === step;
+      panel.classList.toggle('active', active);
+      panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+      if ('inert' in panel) panel.inert = !active;
     });
     options.stepperIndicators.forEach(ind => {
       const stepNum = parseInt(ind.dataset.wizStep);
       ind.classList.toggle('active', stepNum === step);
       ind.classList.toggle('completed', stepNum < step);
+      if (stepNum === step) ind.setAttribute('aria-current', 'step');
+      else ind.removeAttribute('aria-current');
     });
     options.backBtn.disabled = step === 1;
     if (step === 4) {

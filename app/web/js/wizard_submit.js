@@ -37,11 +37,11 @@
       quality_check: true
     };
 
-    if (context.goal === 'pack') return { action: 'queue_create', view: 'queues', payload };
+    if (context.goal === 'pack') return { action: 'queue_create', view: 'tasks', payload };
     if (context.goal === 'convert') {
       return {
         action: 'convert_video',
-        view: 'logs',
+        view: 'tasks',
         payload: {
           input: context.video,
           fps: 12,
@@ -56,11 +56,11 @@
     if (context.goal === 'release') {
       return {
         action: 'release_package',
-        view: 'logs',
+        view: 'tasks',
         payload: { name: `${name}_sprite_pack`, sprites: context.selectedSpriteDir || '' }
       };
     }
-    return { action: 'generate_sprite', view: 'logs', payload };
+    return { action: 'generate_sprite', view: 'tasks', payload };
   }
 
   function evaluateWizardPreflight(statusData) {
@@ -72,10 +72,10 @@
       job: !(statusData.job && statusData.job.running)
     };
     const reasons = [];
-    if (!checks.comfy) reasons.push('ComfyUI is offline.');
-    if (!checks.models) reasons.push('Models are not downloaded.');
-    if (!checks.disk) reasons.push('Free space is below 5 GB.');
-    if (!checks.job) reasons.push('Another task is already running.');
+    if (!checks.comfy) reasons.push('The creation engine needs to be started in Settings.');
+    if (!checks.models) reasons.push('SpriteForge is still finishing its art-tool setup.');
+    if (!checks.disk) reasons.push('At least 5 GB of free space is needed.');
+    if (!checks.job) reasons.push('Another creation is already in progress.');
     return { unknown: false, checks, reasons, ok: reasons.length === 0 };
   }
 

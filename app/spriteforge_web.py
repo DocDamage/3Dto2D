@@ -21,7 +21,7 @@ from services.job_service import JobService
 from services.logging_service import configure_logging
 from services.api_auth_service import validate_token
 from web_helpers import ROOT, WEB, LOGS, OUTPUT, INPUT
-from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static, routes_onboarding, routes_pixel_asset
+from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static, routes_onboarding, routes_pixel_asset, routes_assets, routes_production, routes_aaa, routes_assistant
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
@@ -67,6 +67,10 @@ app.register_blueprint(routes_misc)
 app.register_blueprint(routes_static)
 app.register_blueprint(routes_onboarding)
 app.register_blueprint(routes_pixel_asset)
+app.register_blueprint(routes_assets)
+app.register_blueprint(routes_production)
+app.register_blueprint(routes_aaa)
+app.register_blueprint(routes_assistant)
 
 def find_free_port(preferred: int) -> int:
     for port in [preferred, 8766, 8767, 8877, 8899, 0]:

@@ -111,7 +111,7 @@ def test_experiment_clear_api_scopes_to_project(tmp_path, monkeypatch, flask_cli
         } if value else None),
     )
 
-    response = flask_client.get("/api/experiments/clear?project=projects%2Fhero%2Fspriteforge_project.json")
+    response = flask_client.post("/api/experiments/clear?project=projects%2Fhero%2Fspriteforge_project.json")
     if response.status_code == 405: # if it was a POST route originally
         response = flask_client.post(
             "/api/experiments/clear?project=projects%2Fhero%2Fspriteforge_project.json",
@@ -138,7 +138,7 @@ def test_experiment_clear_rejects_unresolved_project_scope(tmp_path, monkeypatch
         project_root="projects/other",
     )
 
-    response = flask_client.get("/api/experiments/clear?project=projects%2Fmissing%2Fspriteforge_project.json")
+    response = flask_client.post("/api/experiments/clear?project=projects%2Fmissing%2Fspriteforge_project.json")
 
     assert response.status_code == 400
     data = json.loads(response.data.decode("utf-8"))

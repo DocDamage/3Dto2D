@@ -92,6 +92,7 @@
       "legacy_view_order_contract": "'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc'",
       "scripts": [
         "js/globals.js?v=training-lora-launcher",
+        "js/view_lifecycle.js",
         "js/project.js",
         "js/gallery.js",
         "js/editor_history.js",
@@ -131,7 +132,6 @@
         "js/wizard.js?v=wizard-reference-upload-buttons",
         "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
         "js/command_palette.js",
-        "js/pixel_studio.js",
         "js/ux_enhancements.js?v=sprite-lab-visible",
         "js/app_main.js?v=quality-lab-compact"
       ]
@@ -207,11 +207,11 @@
         <h1>Build game-ready sprite animations.</h1>
       </div>
       <div class="topbar-controls">
-        <div class="status-row">
+        <div class="status-row" role="status" aria-live="polite" aria-atomic="true">
           <div class="chip" id="chip-gpu">GPU: checking…</div>
           <div class="chip" id="chip-comfy">ComfyUI: checking…</div>
           <div class="chip" id="chip-models">WAN models: checking…</div>
-          <button class="icon-btn notification-trigger" id="notificationTrigger" title="Open Notifications">
+          <button class="icon-btn notification-trigger" id="notificationTrigger" title="Open Notifications" aria-label="Open notifications">
             <svg class="icon-svg" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
             <span class="badge" id="notificationBadge">0</span>
           </button>
@@ -219,7 +219,7 @@
       </div>
       <div class="project-strip">
         <label>Project<select id="projectSelect"><option value="">No project</option></select></label>
-        <input id="projectNameInput" placeholder="New project name" />
+        <input id="projectNameInput" placeholder="New project name" aria-label="New project name" />
         <button class="mini" id="createProjectBtn" type="button">Create</button>
         <div class="project-summary" id="projectSummary">Global workspace</div>
       </div>
@@ -497,7 +497,7 @@
 
 
   <div id="wizardContainer"></div>
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
   <div id="shortcutCheatSheet" class="shortcut-cheat-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="shortcutCheatSheetTitle">
     <button class="shortcut-cheat-sheet-backdrop" type="button" data-shortcut-help-close aria-label="Close shortcut help"></button>
     <section class="shortcut-cheat-sheet-card">

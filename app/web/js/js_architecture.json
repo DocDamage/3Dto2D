@@ -7,6 +7,7 @@
       "layer": "core",
       "files": [
         "js/globals.js?v=training-lora-launcher",
+        "js/view_lifecycle.js",
         "js/project.js",
         "js/gallery.js",
         "js/editor_history.js",
@@ -63,8 +64,7 @@
         "js/wizard_ui.js",
         "js/wizard.js?v=wizard-reference-upload-buttons",
         "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
-        "js/command_palette.js",
-        "js/pixel_studio.js"
+        "js/command_palette.js"
       ],
       "purpose": "View rendering, forms, jobs, dashboard, wizard, history, QA, Pixel Studio, and command palette."
     },
@@ -77,6 +77,9 @@
       "purpose": "Final UX wrappers and application startup. Must stay last until ES module migration is complete."
     }
   ],
+  "lazy_scripts": {
+    "pixel_studio": "js/pixel_studio.js"
+  },
   "known_global_contracts": [
     "globals.js exports api(), showView(), runAction(), openResultPreview(), and shared DOM helpers.",
     "app_main.js is the terminal bootstrap script and depends on earlier view/init functions.",

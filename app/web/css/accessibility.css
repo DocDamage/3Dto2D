@@ -261,3 +261,20 @@ input:focus, select:focus, textarea:focus, button:focus {
   *,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
   .view{opacity:1!important;transform:none!important}
 }
+
+@media (max-width: 760px) {
+  .view.active button,
+  .view.active select,
+  .view.active textarea,
+  .view.active input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  .topbar button,
+  .topbar select,
+  .topbar input {
+    min-height: 44px;
+  }
+
+  .view.active label:has(> input[type="checkbox"]),
+  .view.active label:has(> input[type="radio"]) {
+    min-height: 44px;
+  }
+}

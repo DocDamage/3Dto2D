@@ -15,6 +15,7 @@
   window.spriteForgeScriptList = function spriteForgeScriptList() {
     return [
       'js/globals.js?v=training-lora-launcher',
+      'js/view_lifecycle.js',
       'js/project.js',
       'js/gallery.js',
       'js/editor_history.js',
@@ -54,7 +55,6 @@
       'js/wizard.js?v=wizard-reference-upload-buttons',
       'js/app_dashboard.js?v=dashboard-fit-no-window-resize',
       'js/command_palette.js',
-      'js/pixel_studio.js',
       'js/ux_enhancements.js?v=sprite-lab-visible',
       'js/app_main.js?v=quality-lab-compact',
     ];

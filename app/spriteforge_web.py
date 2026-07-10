@@ -24,11 +24,13 @@ from web_helpers import ROOT, WEB, LOGS, OUTPUT, INPUT
 from web_routes import routes_jobs, routes_projects, routes_sprites, routes_misc, routes_static, routes_onboarding, routes_pixel_asset
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
+
+SAFE_HTTP_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 @app.before_request
 def verify_api_token():
-    # Only protect POST requests (allow GET and OPTIONS for simplicity)
-    if request.method == "POST":
+    if request.method not in SAFE_HTTP_METHODS:
         # Skip validation during tests unless specifically requested
         if app.config.get("TESTING") and not request.headers.get("X-Force-Token-Check"):
             return
@@ -40,6 +42,22 @@ def verify_api_token():
                 pass
         if not validate_token(token):
             return jsonify({"ok": False, "message": "Unauthorized: Invalid or missing session token."}), 401
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    )
+    return response
 
 # Register Blueprints
 app.register_blueprint(routes_jobs)

@@ -27,7 +27,7 @@ from services.lpc_parts_service import (
     scan_lpc_parts, build_lpc_part_dataset, compose_lpc_character,
     lpc_catalog_options, compose_lpc_batch, qa_lpc_dataset, lpc_lora_prefill,
     lpc_rules_report, lpc_palette_options, list_lpc_presets, save_lpc_preset,
-    delete_lpc_preset, preview_lpc_dataset,
+    delete_lpc_preset, preview_lpc_dataset, bake_lpc_editor_layers,
 )
 from services.architecture_status_service import architecture_status
 from services.advisor_service import advise as advisor_advise
@@ -38,6 +38,7 @@ from services.generation_intelligence import (
 )
 from services.prompt_linter_service import lint_prompt, lint_from_payload, quick_score, autofix_from_payload
 from services.api_auth_service import get_session_token
+from services.project_path_service import ProjectPaths
 from services.feature_capability_service import capability_report
 from web_helpers import (
     ROOT, UPLOADS, OUTPUT, LOGS, PYTHON, ALLOWED_SUBDIRS, VIDEO_SUFFIXES, IMAGE_SUFFIXES,
@@ -199,7 +200,7 @@ def post_lpc_compose():
     if not source_dir:
         return jsonify({"ok": False, "message": "source_dir is required"}), 400
     selections = body.get("selections")
-    if not isinstance(selections, dict):
+    if not isinstance(selections, (dict, list)):
         selections = str(body.get("parts") or "").strip()
     try:
         return jsonify(compose_lpc_character(
@@ -211,6 +212,7 @@ def post_lpc_compose():
             name=str(body.get("compose_name") or body.get("name") or ""),
             include_body=str(body.get("include_body", body.get("show_body", True))).lower() not in {"0", "false", "no"},
             palette=str(body.get("palette") or "default"),
+            preview_direction=str(body.get("preview_direction") or "front"),
         ))
     except FileNotFoundError as exc:
         return _misc_route_error(exc)
@@ -233,6 +235,34 @@ def post_lpc_options():
             source_dir,
             categories=list(categories) if isinstance(categories, list) else None,
             limit_per_category=int(body.get("limit_per_category") or 240),
+            action=str(body.get("action") or body.get("compose_action") or "idle"),
+            body_type=str(body.get("body_type") or "male"),
+        ))
+    except FileNotFoundError as exc:
+        return _misc_route_error(exc)
+    except ValueError as exc:
+        return _misc_route_error(exc, status=400)
+    except Exception as exc:
+        return _misc_route_error(exc)
+
+@routes_misc.route("/api/lpc/bake-edits", methods=["POST"])
+def post_lpc_bake_edits():
+    body = request.json or {}
+    try:
+        sheet_value = str(body.get("sheet") or body.get("sheet_path") or "").strip()
+        sheet_path = ProjectPaths.resolve_root_path(sheet_value)
+        if not ProjectPaths.is_relative_to(sheet_path, Path(ROOT)):
+            raise ValueError("LPC editor sheet must stay inside the SpriteForge workspace.")
+        output_value = str(body.get("output_dir") or "").strip()
+        output_path = ProjectPaths.resolve_root_path(output_value) if output_value else None
+        if output_path is not None and not ProjectPaths.is_relative_to(output_path, Path(ROOT)):
+            raise ValueError("LPC editor output must stay inside the SpriteForge workspace.")
+        return jsonify(bake_lpc_editor_layers(
+            str(sheet_path),
+            body.get("layers") if isinstance(body.get("layers"), list) else [],
+            output_dir=output_path,
+            name=str(body.get("name") or "lpc_edited"),
+            preview_direction=str(body.get("preview_direction") or "front"),
         ))
     except FileNotFoundError as exc:
         return _misc_route_error(exc)
@@ -920,7 +950,7 @@ def pick_experiment_winner():
         note=str(body.get("note") or ""),
     ))
 
-@routes_misc.route("/api/experiments/clear", methods=["GET", "POST"])
+@routes_misc.route("/api/experiments/clear", methods=["POST"])
 def clear_experiments():
     body = request.get_json(silent=True) or {}
     keep_starred = bool(body.get("keep_starred", True))

@@ -42,10 +42,12 @@
 
   // Pack Builder states (Phase 12)
   let activePack = null;
+  let initialized = false;
 
   function initPixelStudio() {
     const viewEl = $('#view-pixel_studio');
-    if (!viewEl) return;
+    if (!viewEl || initialized) return;
+    initialized = true;
 
     // Bind Mode tab clicks
     $$('[data-mode-tab]').forEach(btn => {
@@ -2158,7 +2160,10 @@
       pipelineEl.innerHTML = '';
       plan.cloud_plan.processing_steps.forEach(step => {
         const li = document.createElement('li');
-        li.innerHTML = `<strong>${step.name}:</strong> ${step.detail}`;
+        const name = document.createElement('strong');
+        name.textContent = `${step.name || 'Step'}:`;
+        li.appendChild(name);
+        li.appendChild(document.createTextNode(` ${step.detail || ''}`));
         pipelineEl.appendChild(li);
       });
     }
@@ -2196,10 +2201,13 @@
       else if (prompt.includes("back view")) label = "Back";
       else if (prompt.includes("left side")) label = "Left";
 
-      card.innerHTML = `
-        <img src="${imgPath}" alt="" />
-        <span>${label}</span>
-      `;
+      const thumbnail = document.createElement('img');
+      thumbnail.src = imgPath;
+      thumbnail.alt = String(label || 'Pixel asset preview');
+      const caption = document.createElement('span');
+      caption.textContent = String(label || `Asset #${idx + 1}`);
+      card.appendChild(thumbnail);
+      card.appendChild(caption);
 
       card.addEventListener('click', () => {
         if (isEditing) {
@@ -2847,6 +2855,17 @@
       showPixelFailure(err.message);
     }
   }
+
+  window.SpriteForge?.views?.register('pixel_studio', {
+    activate: initPixelStudio,
+    deactivate: () => {
+      clearInterval(animInterval);
+      animInterval = null;
+      isPlaying = false;
+      const playPauseBtn = $('#pixelAnimPlayPause');
+      if (playPauseBtn) playPauseBtn.textContent = '▶️ Play';
+    },
+  });
 
   if (window.onSpriteForgeReady) {
     window.onSpriteForgeReady(initPixelStudio);

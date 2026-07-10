@@ -450,9 +450,33 @@ const DEDICATED_LPC_SLOT_ALIASES = {
   waist: 'torso',
 };
 
+const DEDICATED_LPC_RACE_TOKENS = [
+  'alien', 'boarman', 'frankenstein', 'goblin', 'human', 'jack', 'lizard',
+  'minotaur', 'mouse', 'orc', 'pig', 'rabbit', 'rat', 'sheep', 'skeleton',
+  'troll', 'vampire', 'wartotaur', 'wolf', 'zombie'
+];
+
 function dedicatedLpcCanonicalSlot(slot) {
   const key = String(slot || '').trim().toLowerCase().replace(/[-\s]+/g, '_');
   return DEDICATED_LPC_SLOT_ALIASES[key] || key;
+}
+
+function dedicatedLpcBodyType() {
+  const selectedBody = $('#lpcBody')?.value || 'regular';
+  const gender = $('#lpcGender')?.value || 'male';
+  return selectedBody === 'regular' ? gender : selectedBody;
+}
+
+function dedicatedLpcRaceKey() {
+  const value = String($('[data-lpc-query="heads"]', $('#view-lpc'))?.value || 'human').toLowerCase();
+  const tokens = value.replace(/^heads\s+/, '').split(/\s+/).filter(Boolean);
+  return tokens.find(token => DEDICATED_LPC_RACE_TOKENS.includes(token)) || 'human';
+}
+
+function dedicatedLpcRaceCompatible(option, raceKey) {
+  const words = `${option.value || ''} ${option.label || ''}`.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const taggedRace = DEDICATED_LPC_RACE_TOKENS.find(token => words.includes(token));
+  return !taggedRace || taggedRace === raceKey;
 }
 
 function dedicatedLpcCurrentPalette() {
@@ -464,14 +488,412 @@ function dedicatedLpcStatus(text) {
   if (target) target.textContent = text || 'Ready.';
 }
 
+let dedicatedLpcPreviewTimer = null;
+let dedicatedLpcPreviewBusy = false;
+let dedicatedLpcQueuedPreview = false;
+let dedicatedLpcInitialPreviewDone = false;
+let dedicatedLpcAnimationTimer = null;
+let dedicatedLpcAnimationImage = null;
+let dedicatedLpcAnimationData = null;
+let dedicatedLpcAnimationFrame = 0;
+let dedicatedLpcAnimationPlaying = true;
+let dedicatedLpcPreviewPan = { x: 0, y: 0 };
+let dedicatedLpcPreviewDrag = null;
+let dedicatedLpcEditorPointer = null;
+let dedicatedLpcEditor = {
+  activeMode: 'preview',
+  layerIndex: 0,
+  layers: []
+};
+
+const DEDICATED_LPC_DIRECTION_ROWS = {
+  back: 0,
+  up: 0,
+  left: 1,
+  front: 2,
+  down: 2,
+  right: 3,
+};
+
+const DEDICATED_LPC_EDITOR_DIRECTIONS = ['back', 'left', 'front', 'right'];
+
 function dedicatedLpcSetZoom(value) {
   const slider = $('#lpcZoom');
-  const img = $('#lpcPreviewImage');
   const label = $('#lpcZoomLabel');
   const next = Math.max(1, Math.min(8, Number(value) || 3));
   if (slider) slider.value = String(next);
-  if (img) img.style.transform = `scale(${next})`;
   if (label) label.textContent = `${Math.round(next * 100)}%`;
+  dedicatedLpcApplyPreviewTransform();
+}
+
+function dedicatedLpcFps() {
+  return Math.max(1, Math.min(24, Number($('#lpcFps')?.value || 6) || 6));
+}
+
+function dedicatedLpcFrameRow(direction, rows) {
+  const row = DEDICATED_LPC_DIRECTION_ROWS[String(direction || 'front').toLowerCase()] ?? 2;
+  return Math.min(Math.max(0, row), Math.max(0, rows - 1));
+}
+
+function dedicatedLpcApplyPreviewTransform() {
+  const canvas = $('#lpcPreviewCanvas');
+  const zoom = Math.max(1, Math.min(8, Number($('#lpcZoom')?.value || 3) || 3));
+  if (canvas) canvas.style.transform = `translate(${dedicatedLpcPreviewPan.x}px, ${dedicatedLpcPreviewPan.y}px) scale(${zoom})`;
+}
+
+function dedicatedLpcSetPlaying(playing) {
+  dedicatedLpcAnimationPlaying = !!playing;
+  const button = $('#lpcPlayPause');
+  if (button) button.textContent = dedicatedLpcAnimationPlaying ? 'Pause' : 'Play';
+  dedicatedLpcRestartAnimationTimer();
+}
+
+function dedicatedLpcFreshSheetUrl(data) {
+  const base = data?.sheet_url || (data?.sheet ? `/file/${data.sheet}` : '');
+  if (!base) return '';
+  const version = encodeURIComponent(`${data.created_at || ''}:${data.frame_count || ''}:${Date.now()}`);
+  return `${base}${base.includes('?') ? '&' : '?'}v=${version}`;
+}
+
+function dedicatedLpcDrawFrame() {
+  const canvas = $('#lpcPreviewCanvas');
+  const ctx = canvas?.getContext('2d');
+  const data = dedicatedLpcAnimationData;
+  const image = dedicatedLpcAnimationImage;
+  if (!canvas || !ctx || !data || !image || !image.complete || !image.naturalWidth) return;
+  const frameWidth = Math.max(1, Number(data.frame_width || 64) || 64);
+  const frameHeight = Math.max(1, Number(data.frame_height || 64) || 64);
+  const columns = Math.max(1, Number(data.columns || Math.floor(image.naturalWidth / frameWidth) || 1));
+  const rows = Math.max(1, Math.floor(image.naturalHeight / frameHeight) || 1);
+  const row = dedicatedLpcFrameRow(data.preview_direction || $('#lpcDirection')?.value || 'front', rows);
+  dedicatedLpcAnimationFrame = dedicatedLpcAnimationFrame % columns;
+  canvas.width = frameWidth;
+  canvas.height = frameHeight;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, frameWidth, frameHeight);
+  ctx.drawImage(
+    image,
+    dedicatedLpcAnimationFrame * frameWidth,
+    row * frameHeight,
+    frameWidth,
+    frameHeight,
+    0,
+    0,
+    frameWidth,
+    frameHeight
+  );
+  dedicatedLpcRenderEditorLayers(ctx, data.preview_direction || $('#lpcDirection')?.value || 'front', dedicatedLpcAnimationFrame);
+  dedicatedLpcRenderEditor();
+}
+
+function dedicatedLpcFrameMetrics() {
+  const data = dedicatedLpcAnimationData || {};
+  const image = dedicatedLpcAnimationImage;
+  const frameWidth = Math.max(1, Number(data.frame_width || 64) || 64);
+  const frameHeight = Math.max(1, Number(data.frame_height || 64) || 64);
+  const columns = Math.max(1, Number(data.columns || Math.floor((image?.naturalWidth || frameWidth) / frameWidth) || 1));
+  const rows = Math.max(1, Math.floor((image?.naturalHeight || frameHeight) / frameHeight) || 1);
+  const direction = $('#lpcDirection')?.value || data.preview_direction || 'front';
+  return { frameWidth, frameHeight, columns, rows, direction, row: dedicatedLpcFrameRow(direction, rows) };
+}
+
+function dedicatedLpcEnsureEditorLayer() {
+  if (!dedicatedLpcEditor.layers.length) {
+    dedicatedLpcEditor.layers.push({
+      id: `layer_${Date.now()}`,
+      name: 'Edit Layer 1',
+      visible: true,
+      frames: {}
+    });
+    dedicatedLpcEditor.layerIndex = 0;
+  }
+  return dedicatedLpcEditor.layers[dedicatedLpcEditor.layerIndex] || dedicatedLpcEditor.layers[0];
+}
+
+function dedicatedLpcEditorFrameKey(direction, frameIndex) {
+  return `${direction || 'front'}:${Math.max(0, Number(frameIndex) || 0)}`;
+}
+
+function dedicatedLpcEditorEnsureCanvas(layer, direction, frameIndex) {
+  const { frameWidth, frameHeight } = dedicatedLpcFrameMetrics();
+  const key = dedicatedLpcEditorFrameKey(direction, frameIndex);
+  let canvas = layer.frames[key];
+  if (!canvas || canvas.width !== frameWidth || canvas.height !== frameHeight) {
+    canvas = document.createElement('canvas');
+    canvas.width = frameWidth;
+    canvas.height = frameHeight;
+    layer.frames[key] = canvas;
+  }
+  return canvas;
+}
+
+function dedicatedLpcEditorTargetDirections() {
+  return $('#lpcEditorApplyDirections')?.value === 'all'
+    ? DEDICATED_LPC_EDITOR_DIRECTIONS
+    : [$('#lpcDirection')?.value || 'front'];
+}
+
+function dedicatedLpcRenderEditorLayers(ctx, direction, frameIndex) {
+  dedicatedLpcEditor.layers.forEach(layer => {
+    if (!layer.visible) return;
+    const layerCanvas = layer.frames[dedicatedLpcEditorFrameKey(direction, frameIndex)];
+    if (layerCanvas) ctx.drawImage(layerCanvas, 0, 0);
+  });
+}
+
+function dedicatedLpcRenderEditor() {
+  const canvas = $('#lpcEditorCanvas');
+  const ctx = canvas?.getContext('2d');
+  const data = dedicatedLpcAnimationData;
+  const image = dedicatedLpcAnimationImage;
+  if (!canvas || !ctx) return;
+  const { frameWidth, frameHeight, direction, row } = dedicatedLpcFrameMetrics();
+  canvas.width = frameWidth;
+  canvas.height = frameHeight;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, frameWidth, frameHeight);
+  if (data && image && image.complete && image.naturalWidth) {
+    ctx.drawImage(
+      image,
+      dedicatedLpcAnimationFrame * frameWidth,
+      row * frameHeight,
+      frameWidth,
+      frameHeight,
+      0,
+      0,
+      frameWidth,
+      frameHeight
+    );
+  }
+  dedicatedLpcRenderEditorLayers(ctx, direction, dedicatedLpcAnimationFrame);
+}
+
+function dedicatedLpcPaintEditorPixel(x, y) {
+  const layer = dedicatedLpcEnsureEditorLayer();
+  const { frameWidth, frameHeight } = dedicatedLpcFrameMetrics();
+  const size = Math.max(1, Math.min(8, Number($('#lpcEditorSize')?.value || 1) || 1));
+  const half = Math.floor(size / 2);
+  const tool = $('#lpcEditorTool')?.value || 'brush';
+  const color = $('#lpcEditorColor')?.value || '#f2a23a';
+  const frameIndex = dedicatedLpcAnimationFrame;
+  const points = [{ x, y }];
+  if ($('#lpcEditorMirror')?.checked) points.push({ x: frameWidth - 1 - x, y });
+  dedicatedLpcEditorTargetDirections().forEach(direction => {
+    const layerCanvas = dedicatedLpcEditorEnsureCanvas(layer, direction, frameIndex);
+    const layerCtx = layerCanvas.getContext('2d');
+    layerCtx.imageSmoothingEnabled = false;
+    layerCtx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    layerCtx.fillStyle = color;
+    points.forEach(point => {
+      const left = Math.max(0, Math.min(frameWidth - size, point.x - half));
+      const top = Math.max(0, Math.min(frameHeight - size, point.y - half));
+      layerCtx.fillRect(left, top, size, size);
+    });
+    layerCtx.globalCompositeOperation = 'source-over';
+  });
+  dedicatedLpcRenderEditor();
+}
+
+function dedicatedLpcEditorPointFromEvent(event) {
+  const canvas = $('#lpcEditorCanvas');
+  if (!canvas) return null;
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor(((event.clientX - rect.left) / rect.width) * canvas.width);
+  const y = Math.floor(((event.clientY - rect.top) / rect.height) * canvas.height);
+  if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+  return { x, y };
+}
+
+function dedicatedLpcBeginEditorStroke(event) {
+  if (dedicatedLpcEditor.activeMode !== 'editor') return;
+  const point = dedicatedLpcEditorPointFromEvent(event);
+  if (!point) return;
+  event.preventDefault();
+  dedicatedLpcSetPlaying(false);
+  event.currentTarget?.setPointerCapture?.(event.pointerId);
+  dedicatedLpcEditorPointer = event.pointerId;
+  dedicatedLpcPaintEditorPixel(point.x, point.y);
+}
+
+function dedicatedLpcMoveEditorStroke(event) {
+  if (dedicatedLpcEditorPointer !== event.pointerId) return;
+  const point = dedicatedLpcEditorPointFromEvent(event);
+  if (point) {
+    event.preventDefault();
+    dedicatedLpcPaintEditorPixel(point.x, point.y);
+  }
+}
+
+function dedicatedLpcEndEditorStroke(event) {
+  if (dedicatedLpcEditorPointer !== null && event.pointerId && dedicatedLpcEditorPointer !== event.pointerId) return;
+  dedicatedLpcEditorPointer = null;
+}
+
+function dedicatedLpcRenderLayerList() {
+  const list = $('#lpcEditorLayerList');
+  if (!list) return;
+  dedicatedLpcEnsureEditorLayer();
+  clearNode(list);
+  dedicatedLpcEditor.layers.forEach((layer, index) => {
+    const row = document.createElement('label');
+    row.className = `lpc-layer-row${index === dedicatedLpcEditor.layerIndex ? ' active' : ''}`;
+    const visible = document.createElement('input');
+    visible.type = 'checkbox';
+    visible.checked = layer.visible !== false;
+    visible.addEventListener('change', () => {
+      layer.visible = visible.checked;
+      dedicatedLpcRenderEditor();
+    });
+    const name = document.createElement('button');
+    name.type = 'button';
+    name.className = 'mini';
+    name.textContent = layer.name;
+    name.addEventListener('click', () => {
+      dedicatedLpcEditor.layerIndex = index;
+      dedicatedLpcRenderLayerList();
+      dedicatedLpcRenderEditor();
+    });
+    row.append(visible, name);
+    list.prepend(row);
+  });
+}
+
+function dedicatedLpcAddEditorLayer() {
+  dedicatedLpcEditor.layers.push({
+    id: `layer_${Date.now()}_${dedicatedLpcEditor.layers.length + 1}`,
+    name: `Edit Layer ${dedicatedLpcEditor.layers.length + 1}`,
+    visible: true,
+    frames: {}
+  });
+  dedicatedLpcEditor.layerIndex = dedicatedLpcEditor.layers.length - 1;
+  dedicatedLpcRenderLayerList();
+  dedicatedLpcRenderEditor();
+}
+
+function dedicatedLpcClearEditorLayer() {
+  const layer = dedicatedLpcEnsureEditorLayer();
+  layer.frames = {};
+  dedicatedLpcRenderLayerList();
+  dedicatedLpcRenderEditor();
+}
+
+function dedicatedLpcResetEditorLayers() {
+  dedicatedLpcEditor.layers = [];
+  dedicatedLpcEditor.layerIndex = 0;
+  dedicatedLpcRenderLayerList();
+  dedicatedLpcRenderEditor();
+}
+
+function dedicatedLpcSerializeEditorLayers() {
+  return dedicatedLpcEditor.layers.map(layer => ({
+    name: layer.name,
+    visible: layer.visible !== false,
+    frames: Object.entries(layer.frames || {}).map(([key, canvas]) => {
+      const [direction, frame] = key.split(':');
+      return {
+        direction: direction || 'front',
+        frame: Number(frame || 0) || 0,
+        png: canvas.toDataURL('image/png')
+      };
+    })
+  })).filter(layer => layer.frames.length);
+}
+
+async function dedicatedLpcBakeEditorLayers() {
+  const data = dedicatedLpcAnimationData || {};
+  const sheet = data.sheet || data.sheet_path || '';
+  const layers = dedicatedLpcSerializeEditorLayers();
+  if (!sheet) {
+    toast('Compose the LPC character before baking edits.');
+    return;
+  }
+  if (!layers.length) {
+    toast('Draw something in the editor before baking.');
+    return;
+  }
+  dedicatedLpcStatus('Baking LPC editor layers...');
+  try {
+    const baked = await api('/api/lpc/bake-edits', {
+      method: 'POST',
+      body: JSON.stringify({
+        sheet,
+        layers,
+        name: `${$('#lpcCharacterName')?.value || data.name || 'lpc_character'}_edited`,
+        preview_direction: $('#lpcDirection')?.value || 'front'
+      })
+    });
+    dedicatedLpcResetEditorLayers();
+    dedicatedLpcLoadAnimation(baked);
+    dedicatedLpcStatus(`${baked.name || 'LPC edits'} baked · ${baked.applied_frames || 0} edited frames · ${baked.sheet || ''}`);
+    toast('LPC edits baked to output.');
+  } catch (err) {
+    dedicatedLpcStatus(err.message || 'Could not bake LPC edits.');
+    toast(err.message || 'Could not bake LPC edits.');
+  }
+}
+
+function dedicatedLpcDownloadEditorFrame() {
+  dedicatedLpcRenderEditor();
+  const canvas = $('#lpcEditorCanvas');
+  if (!canvas) return;
+  const link = document.createElement('a');
+  const name = `${$('#lpcCharacterName')?.value || 'lpc'}_${$('#lpcDirection')?.value || 'front'}_${dedicatedLpcAnimationFrame}.png`
+    .replace(/[^a-z0-9._-]+/gi, '_');
+  link.download = name;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function dedicatedLpcSetMode(mode) {
+  dedicatedLpcEditor.activeMode = mode === 'editor' ? 'editor' : 'preview';
+  $$('.lpc-mode-tab', $('#view-lpc')).forEach(button => {
+    const active = button.dataset.lpcMode === dedicatedLpcEditor.activeMode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  [['preview', '#lpcPreviewPanel'], ['editor', '#lpcEditorPanel']].forEach(([panelMode, selector]) => {
+    const panel = $(selector);
+    if (panel) panel.hidden = panelMode !== dedicatedLpcEditor.activeMode;
+  });
+  dedicatedLpcRenderEditor();
+}
+
+function dedicatedLpcRestartAnimationTimer() {
+  clearInterval(dedicatedLpcAnimationTimer);
+  dedicatedLpcAnimationTimer = null;
+  const data = dedicatedLpcAnimationData;
+  const image = dedicatedLpcAnimationImage;
+  const frameWidth = Math.max(1, Number(data?.frame_width || 64) || 64);
+  const columns = Math.max(1, Number(data?.columns || Math.floor((image?.naturalWidth || frameWidth) / frameWidth) || 1));
+  if (!dedicatedLpcAnimationPlaying || columns <= 1) return;
+  dedicatedLpcAnimationTimer = setInterval(() => {
+    dedicatedLpcAnimationFrame = (dedicatedLpcAnimationFrame + 1) % columns;
+    dedicatedLpcDrawFrame();
+  }, Math.round(1000 / dedicatedLpcFps()));
+}
+
+function dedicatedLpcLoadAnimation(data) {
+  dedicatedLpcAnimationData = data;
+  dedicatedLpcAnimationFrame = 0;
+  clearInterval(dedicatedLpcAnimationTimer);
+  const fallback = $('#lpcPreviewImage');
+  if (fallback) {
+    fallback.src = data.preview_frame_data_uri || data.thumbnail_data_uri || '';
+    fallback.alt = data.name || 'Composed LPC character';
+  }
+  const sheetUrl = dedicatedLpcFreshSheetUrl(data);
+  if (!sheetUrl) {
+    dedicatedLpcAnimationImage = null;
+    dedicatedLpcDrawFrame();
+    return;
+  }
+  const image = new Image();
+  dedicatedLpcAnimationImage = image;
+  image.onload = () => {
+    dedicatedLpcDrawFrame();
+    dedicatedLpcRestartAnimationTimer();
+  };
+  image.src = sheetUrl;
 }
 
 function dedicatedLpcFillSelect(select, options) {
@@ -491,6 +913,11 @@ function dedicatedLpcFillSelect(select, options) {
     ? source.filter(option => `${option.value || ''} ${option.label || ''}`.toLowerCase().includes(query))
     : source;
   if (query && !filtered.length) filtered = source;
+  const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
+  if (select.dataset.lpcQuery !== 'heads' && ['body', 'head'].includes(slot)) {
+    const raceKey = dedicatedLpcRaceKey();
+    filtered = filtered.filter(option => dedicatedLpcRaceCompatible(option, raceKey));
+  }
   filtered.forEach(option => {
     const value = String(option.value || option.label || '').trim();
     if (!value) return;
@@ -512,6 +939,8 @@ async function loadDedicatedLpcPickers(opts = {}) {
       source_dir: sourceDir,
       categories: DEDICATED_LPC_CATEGORIES,
       limit_per_category: 420,
+      action: $('#lpcAction')?.value || 'idle',
+      body_type: dedicatedLpcBodyType(),
     })
   });
   $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
@@ -520,6 +949,21 @@ async function loadDedicatedLpcPickers(opts = {}) {
   });
   if (!opts.silent) toast('LPC picker options loaded.');
   dedicatedLpcStatus(`${data.part_count || 0} LPC parts indexed across ${(data.categories || []).length} categories.`);
+}
+
+async function refreshDedicatedLpcContext() {
+  await loadDedicatedLpcPickers({ silent: true });
+  scheduleDedicatedLpcPreview(120);
+}
+
+function scheduleDedicatedLpcPreview(delay = 450) {
+  if (!$('#view-lpc')) return;
+  clearTimeout(dedicatedLpcPreviewTimer);
+  dedicatedLpcPreviewTimer = setTimeout(() => {
+    composeDedicatedLpcCharacter({ silent: true, reason: 'preview' }).catch(err => {
+      dedicatedLpcStatus(err.message || 'Could not refresh LPC preview.');
+    });
+  }, delay);
 }
 
 async function loadDedicatedLpcPalettes() {
@@ -593,6 +1037,8 @@ function applyDedicatedLpcPreset() {
     $('#lpcBody').value = bodyType;
   }
   $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => { select.value = ''; });
+  const raceSelect = $('[data-lpc-query="heads"]', $('#view-lpc'));
+  dedicatedLpcSetSelectValue(raceSelect, 'human');
   const used = new Set();
   (preset.selections || []).forEach(selection => {
     const category = dedicatedLpcCanonicalSlot(selection.category);
@@ -612,9 +1058,7 @@ function applyDedicatedLpcPreset() {
 
 function dedicatedLpcSelectionPayload() {
   const selections = [];
-  const selectedBody = $('#lpcBody')?.value || 'regular';
-  const gender = $('#lpcGender')?.value || 'male';
-  const body = selectedBody === 'regular' ? gender : selectedBody;
+  const body = dedicatedLpcBodyType();
   $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
     const slot = dedicatedLpcCanonicalSlot(select.dataset.lpcSlot);
     const value = String(select.value || '').trim();
@@ -626,6 +1070,7 @@ function dedicatedLpcSelectionPayload() {
     source_dir: $('#lpcSourceDir')?.value || '',
     compose_action: $('#lpcAction')?.value || 'idle',
     action: $('#lpcAction')?.value || 'idle',
+    preview_direction: $('#lpcDirection')?.value || 'front',
     body_type: body,
     compose_name: $('#lpcCharacterName')?.value || 'lpc_character',
     include_body: !!$('#lpcShowBody')?.checked,
@@ -673,26 +1118,27 @@ async function checkDedicatedLpcRules(opts = {}) {
 }
 
 function dedicatedLpcRenderComposition(data) {
-  const img = $('#lpcPreviewImage');
   const empty = $('#lpcPreviewEmpty');
-  if (img) {
-    img.src = data.thumbnail_data_uri || (data.sheet ? `/file/${data.sheet}` : '');
-    img.alt = data.name || 'Composed LPC character';
-  }
-  if (empty) empty.style.display = data.thumbnail_data_uri || data.sheet ? 'none' : '';
+  dedicatedLpcLoadAnimation(data);
+  if (empty) empty.style.display = data.preview_frame_data_uri || data.thumbnail_data_uri || data.sheet ? 'none' : '';
   const layers = (data.layers || []).map(layer => `${layer.category}:${layer.variant || layer.relative_path}`).slice(0, 8);
   const missing = (data.missing || []).map(item => `${item.category}:${item.query}`).slice(0, 4);
-  dedicatedLpcStatus(`${data.name || 'LPC character'} composed · ${data.action || 'idle'} · ${data.layers?.length || 0} layers · ${data.frame_count || 0} frames${layers.length ? ' · ' + layers.join(', ') : ''}${missing.length ? ' · Missing: ' + missing.join(', ') : ''}`);
+  dedicatedLpcStatus(`${data.name || 'LPC character'} composed · ${data.action || 'idle'} · ${data.preview_direction || 'front'} · ${data.layers?.length || 0} layers · ${data.frame_count || 0} frames${layers.length ? ' · ' + layers.join(', ') : ''}${missing.length ? ' · Missing: ' + missing.join(', ') : ''}`);
   dedicatedLpcSetZoom($('#lpcZoom')?.value || 3);
 }
 
-async function composeDedicatedLpcCharacter() {
+async function composeDedicatedLpcCharacter(opts = {}) {
   const payload = dedicatedLpcSelectionPayload();
   if (!payload.source_dir) {
-    toast('Choose the Universal LPC folder first.');
+    if (!opts.silent) toast('Choose the Universal LPC folder first.');
     return;
   }
-  dedicatedLpcStatus('Composing LPC character...');
+  if (dedicatedLpcPreviewBusy) {
+    dedicatedLpcQueuedPreview = true;
+    return;
+  }
+  dedicatedLpcPreviewBusy = true;
+  dedicatedLpcStatus(opts.silent ? 'Refreshing LPC preview...' : 'Composing LPC character...');
   try {
     const data = await api('/api/lpc/compose', {
       method: 'POST',
@@ -700,10 +1146,16 @@ async function composeDedicatedLpcCharacter() {
     });
     dedicatedLpcRenderComposition(data);
     if (data.rules) renderDedicatedLpcRules(data.rules);
-    toast('LPC character composed.');
+    if (!opts.silent) toast('LPC character composed.');
   } catch (err) {
     dedicatedLpcStatus(err.message || 'Could not compose LPC character.');
-    toast(err.message || 'Could not compose LPC character.');
+    if (!opts.silent) toast(err.message || 'Could not compose LPC character.');
+  } finally {
+    dedicatedLpcPreviewBusy = false;
+    if (dedicatedLpcQueuedPreview) {
+      dedicatedLpcQueuedPreview = false;
+      scheduleDedicatedLpcPreview(120);
+    }
   }
 }
 
@@ -893,21 +1345,104 @@ function initDedicatedLpcTab() {
     dedicatedLpcStatus(err.message || 'Could not check LPC rules.');
     toast(err.message || 'Could not check LPC rules.');
   }));
-  $('#lpcComposeCharacter')?.addEventListener('click', composeDedicatedLpcCharacter);
+  $('#lpcComposeCharacter')?.addEventListener('click', () => composeDedicatedLpcCharacter());
   $('#lpcBuildBatch')?.addEventListener('click', buildDedicatedLpcBatch);
   $('#lpcRunQa')?.addEventListener('click', qaDedicatedLpcBatch);
   $('#lpcPrepareLora')?.addEventListener('click', prepareDedicatedLpcLora);
+  $$('.lpc-mode-tab', $('#view-lpc')).forEach(button => {
+    button.addEventListener('click', () => dedicatedLpcSetMode(button.dataset.lpcMode));
+  });
+  $('#lpcEditorAddLayer')?.addEventListener('click', dedicatedLpcAddEditorLayer);
+  $('#lpcEditorClearLayer')?.addEventListener('click', dedicatedLpcClearEditorLayer);
+  $('#lpcEditorBake')?.addEventListener('click', dedicatedLpcBakeEditorLayers);
+  $('#lpcEditorDownloadFrame')?.addEventListener('click', dedicatedLpcDownloadEditorFrame);
+  ['#lpcEditorTool', '#lpcEditorColor', '#lpcEditorSize', '#lpcEditorMirror', '#lpcEditorApplyDirections'].forEach(selector => {
+    $(selector)?.addEventListener('input', dedicatedLpcRenderEditor);
+    $(selector)?.addEventListener('change', dedicatedLpcRenderEditor);
+  });
+  $('#lpcEditorCanvas')?.addEventListener('pointerdown', dedicatedLpcBeginEditorStroke);
+  $('#lpcEditorCanvas')?.addEventListener('pointermove', dedicatedLpcMoveEditorStroke);
+  $('.lpc-stage', $('#view-lpc'))?.addEventListener('pointerdown', dedicatedLpcBeginEditorStroke, true);
+  $('.lpc-stage', $('#view-lpc'))?.addEventListener('pointermove', dedicatedLpcMoveEditorStroke, true);
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
+    $('#lpcEditorCanvas')?.addEventListener(type, dedicatedLpcEndEditorStroke);
+    $('.lpc-stage', $('#view-lpc'))?.addEventListener(type, dedicatedLpcEndEditorStroke, true);
+  });
+  [
+    '#lpcGender',
+    '#lpcBody',
+    '#lpcAction',
+    '[data-lpc-query="heads"]',
+  ].forEach(selector => $(selector, $('#view-lpc'))?.addEventListener('change', () => {
+    refreshDedicatedLpcContext().catch(err => dedicatedLpcStatus(err.message || 'Could not refresh LPC pickers.'));
+  }));
+  [
+    '#lpcDirection',
+    '#lpcPalette',
+    '#lpcShowBody',
+    '#lpcShowAddons',
+    '#lpcCastShadow',
+  ].forEach(selector => $(selector)?.addEventListener('change', () => scheduleDedicatedLpcPreview()));
+  $$('[data-lpc-slot]', $('#view-lpc')).forEach(select => {
+    select.addEventListener('change', () => scheduleDedicatedLpcPreview());
+  });
   $('#lpcZoom')?.addEventListener('input', event => dedicatedLpcSetZoom(event.currentTarget.value));
   $('#lpcZoomOut')?.addEventListener('click', () => dedicatedLpcSetZoom(Number($('#lpcZoom')?.value || 3) - 0.25));
   $('#lpcZoomIn')?.addEventListener('click', () => dedicatedLpcSetZoom(Number($('#lpcZoom')?.value || 3) + 0.25));
+  $('#lpcPlayPause')?.addEventListener('click', () => dedicatedLpcSetPlaying(!dedicatedLpcAnimationPlaying));
+  $('#lpcFps')?.addEventListener('input', event => {
+    const label = $('#lpcFpsLabel');
+    if (label) label.textContent = `${dedicatedLpcFps()} fps`;
+    dedicatedLpcRestartAnimationTimer();
+  });
+  $('#lpcResetView')?.addEventListener('click', () => {
+    dedicatedLpcPreviewPan = { x: 0, y: 0 };
+    dedicatedLpcSetZoom(3);
+  });
   $('#lpcPreviewWindow')?.addEventListener('wheel', event => {
     event.preventDefault();
     dedicatedLpcSetZoom(Number($('#lpcZoom')?.value || 3) + (event.deltaY < 0 ? 0.25 : -0.25));
   }, { passive: false });
+  $('#lpcPreviewWindow')?.addEventListener('pointerdown', event => {
+    const target = $('#lpcPreviewWindow');
+    if (!target) return;
+    target.classList.add('dragging');
+    target.setPointerCapture?.(event.pointerId);
+    dedicatedLpcPreviewDrag = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      panX: dedicatedLpcPreviewPan.x,
+      panY: dedicatedLpcPreviewPan.y,
+    };
+  });
+  $('#lpcPreviewWindow')?.addEventListener('pointermove', event => {
+    if (!dedicatedLpcPreviewDrag || dedicatedLpcPreviewDrag.pointerId !== event.pointerId) return;
+    dedicatedLpcPreviewPan = {
+      x: dedicatedLpcPreviewDrag.panX + event.clientX - dedicatedLpcPreviewDrag.x,
+      y: dedicatedLpcPreviewDrag.panY + event.clientY - dedicatedLpcPreviewDrag.y,
+    };
+    dedicatedLpcApplyPreviewTransform();
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
+    $('#lpcPreviewWindow')?.addEventListener(type, event => {
+      if (dedicatedLpcPreviewDrag && event.pointerId && dedicatedLpcPreviewDrag.pointerId !== event.pointerId) return;
+      dedicatedLpcPreviewDrag = null;
+      $('#lpcPreviewWindow')?.classList.remove('dragging');
+    });
+  });
   dedicatedLpcSetZoom($('#lpcZoom')?.value || 3);
+  dedicatedLpcRenderLayerList();
+  dedicatedLpcSetMode('preview');
   loadDedicatedLpcPalettes();
   loadDedicatedLpcPresets();
-  loadDedicatedLpcPickers({ silent: true }).catch(() => dedicatedLpcStatus('Ready. Load pickers when the LPC folder is available.'));
+  loadDedicatedLpcPickers({ silent: true })
+    .then(() => {
+      if (dedicatedLpcInitialPreviewDone) return null;
+      dedicatedLpcInitialPreviewDone = true;
+      return composeDedicatedLpcCharacter({ silent: true, reason: 'initial' });
+    })
+    .catch(() => dedicatedLpcStatus('Ready. Load pickers when the LPC folder is available.'));
 }
 
 function initFormBindings() {

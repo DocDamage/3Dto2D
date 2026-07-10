@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 set "PY=python"
-if exist ".venv\Scripts\python.exe" set "PY=.venv\Scripts\python.exe"
+if exist "app\.venv\Scripts\python.exe" set "PY=app\.venv\Scripts\python.exe"
 
 echo SpriteForge LPC release confidence check
 echo.

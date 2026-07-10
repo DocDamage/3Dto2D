@@ -49,14 +49,15 @@ async function getSessionToken() {
 }
 
 async function api(path, opts={}){
-  const key = path.split('?')[0];
-  if (apiControllers[key]) {
+  const method = String(opts.method || 'GET').toUpperCase();
+  const cancelPrevious = opts.cancelPrevious ?? (method === 'GET' || method === 'HEAD');
+  const key = String(opts.requestKey || path);
+  if (cancelPrevious && apiControllers[key]) {
     try { apiControllers[key].abort(); } catch(e) {}
   }
   const controller = new AbortController();
-  apiControllers[key] = controller;
+  if (cancelPrevious) apiControllers[key] = controller;
   try {
-    const method = String(opts.method || 'GET').toUpperCase();
     const headers = new Headers(opts.headers || {});
     if (method !== 'GET' && method !== 'HEAD' && !headers.has('X-SF-Token')) {
       headers.set('X-SF-Token', await getSessionToken());
@@ -64,7 +65,8 @@ async function api(path, opts={}){
     if (typeof opts.body === 'string' && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
-    const r=await fetch(path, { ...opts, headers, signal: controller.signal });
+    const { cancelPrevious: _cancelPrevious, requestKey: _requestKey, ...fetchOptions } = opts;
+    const r=await fetch(path, { ...fetchOptions, headers, signal: controller.signal });
     const txt=await r.text();
     let data={};
     try{data=JSON.parse(txt)}catch{data={text:txt}}
@@ -72,11 +74,11 @@ async function api(path, opts={}){
     return data;
   } catch(err) {
     if (err.name === 'AbortError') {
-      return new Promise(() => {});
+      return { ok: false, aborted: true };
     }
     throw err;
   } finally {
-    if (apiControllers[key] === controller) {
+    if (cancelPrevious && apiControllers[key] === controller) {
       delete apiControllers[key];
     }
   }
@@ -213,6 +215,7 @@ window.NAV_VIEW_MAP = {
 };
 
 function showView(name){
+  const previousView = document.body?.dataset.activeView || '';
   if (name === 'tasks-parent') name = 'tasks';
   if (name === 'quality-parent') name = 'quality';
 
@@ -275,6 +278,7 @@ function showView(name){
   if (name === 'animation_player' && typeof refreshAnimationPlayerSprites === 'function') refreshAnimationPlayerSprites();
   if (name === 'compare_player' && typeof refreshComparePlayerSprites === 'function') refreshComparePlayerSprites();
   if (name === 'frame_editor' && typeof refreshFrameEditorSprites === 'function') refreshFrameEditorSprites();
+  window.SpriteForge?.views?.transition(name, previousView);
 }
 
 // Hash routing — browser back/forward navigates between tabs

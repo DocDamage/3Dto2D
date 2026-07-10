@@ -8,6 +8,11 @@ import urllib.request
 
 from spriteforge_utils import ROOT
 
+
+def dependency_requirements_file() -> Path:
+    locked = ROOT.parent / "requirements-lock.txt"
+    return locked if locked.exists() else ROOT / "requirements.txt"
+
 def get_log_path() -> Path:
     logs_dir = ROOT / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -32,7 +37,8 @@ def get_venv_python() -> Path:
 def _load_comfy_config() -> tuple[Path, str, int]:
     config_path = ROOT / "config" / "spriteforge_config.json"
     data = json.loads(config_path.read_text(encoding="utf-8"))
-    comfy_dir = Path(str(data.get("paths", {}).get("comfyui_dir", "vendor/ComfyUI")))
+    comfy_override = str(os.environ.get("SPRITEFORGE_COMFYUI_DIR") or "").strip()
+    comfy_dir = Path(comfy_override or str(data.get("paths", {}).get("comfyui_dir", "vendor/ComfyUI")))
     if not comfy_dir.is_absolute():
         comfy_dir = ROOT / comfy_dir
     comfy = data.get("comfy", {})
@@ -102,7 +108,7 @@ def main():
             # Upgrade pip
             subprocess.run([str(venv_python), "-m", "pip", "install", "--upgrade", "pip"], check=True)
             # Install requirements
-            subprocess.run([str(venv_python), "-m", "pip", "install", "-r", str(ROOT / "requirements.txt")], check=True)
+            subprocess.run([str(venv_python), "-m", "pip", "install", "-r", str(dependency_requirements_file())], check=True)
             deps_flag.write_text("ok", encoding="utf-8")
             log("Dependencies installed successfully.")
         except Exception as e:

@@ -18,6 +18,7 @@ from services.web_path_proxy import ROOT, OUTPUT, INPUT, UPLOADS
 logger = logging.getLogger(__name__)
 
 ALL_DIRECTIONS = ["front", "front_right", "right", "back_right", "back", "back_left", "left", "front_left"]
+SPRITEFORGE_REQUIREMENTS = "../requirements-lock.txt" if (ROOT.parent / "requirements-lock.txt").exists() else "requirements.txt"
 
 
 def _csv_values(value: Any, default: Optional[Sequence[str]] = None) -> List[str]:
@@ -30,6 +31,14 @@ def _expand_directions(value: Any, default: Optional[Sequence[str]] = None) -> L
     if any(direction.lower() == "all" for direction in directions):
         return list(ALL_DIRECTIONS)
     return directions
+
+
+def _reference_capable_wan_workflow(tier: str) -> str:
+    if str(tier or "").strip() == "wan22_5b":
+        candidate = ROOT / "workflows" / "wan22_ti2v_5b_ipadapter_api.json"
+        if candidate.exists():
+            return "workflows/wan22_ti2v_5b_ipadapter_api.json"
+    return ""
 
 
 def _is_relative_to(path: Path, base: Path) -> bool:
@@ -150,15 +159,11 @@ def _apply_project_palette_lock(payload: Dict[str, Any]) -> None:
         payload["pixel_cleanup_colors"] = str(lock.get("colors_limit") or len(lock.get("colors") or []) or 32)
 
 
-def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
-    action = str(payload.get("action") or "")
-    project_meta = ProjectService.metadata_for_path(str(payload.get("active_project") or "")) or {}
-    if project_meta:
-        payload.update(project_meta)
-    table = {
+def _static_action_commands(payload: Dict[str, Any]) -> Dict[str, Tuple[str, List[str]]]:
+    return {
         "install_all": ("Install everything + safe Wan 2.1 models", [PYTHON, "spriteforge_unified.py", "install-all", "--model-tier", "safe"]),
         "install_advanced": ("Install safe Wan 2.1 + advanced Wan 2.2 5B", [PYTHON, "spriteforge_unified.py", "install-all", "--model-tier", "advanced"]),
-        "install_deps": ("Install SpriteForge dependencies", [PYTHON, "-m", "pip", "install", "--upgrade", "pip", "-r", "requirements.txt"]),
+        "install_deps": ("Install SpriteForge dependencies", [PYTHON, "-m", "pip", "install", "--upgrade", "pip", "-r", SPRITEFORGE_REQUIREMENTS]),
         "install_comfy": ("Install / update ComfyUI + WAN nodes + safe models", [PYTHON, "spriteforge_unified.py", "install-all", "--model-tier", "safe", "--skip-doctor"]),
         "install_manager": ("Install / update ComfyUI Manager", [PYTHON, "spriteforge_unified.py", "install-manager"]),
         "download_models": ("Repair / re-check safe Wan 2.1 model download", [PYTHON, "spriteforge_unified.py", "download-model-tier", "--tier", "safe"]),
@@ -175,6 +180,14 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         "asset_dashboard": ("Build asset dashboard", [PYTHON, "spriteforge_unified.py", "asset-dashboard"]),
         "open_latest": ("Open latest sprite output", [PYTHON, "spriteforge_unified.py", "open-latest"]),
     }
+
+
+def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
+    action = str(payload.get("action") or "")
+    project_meta = ProjectService.metadata_for_path(str(payload.get("active_project") or "")) or {}
+    if project_meta:
+        payload.update(project_meta)
+    table = _static_action_commands(payload)
     if action in table:
         return table[action]
     if action == "training_dataset":
@@ -302,6 +315,10 @@ def build_action_command(payload: Dict[str, Any]) -> Tuple[str, List[str]]:
         cmd += ["--profile", str(payload.get("profile") or "auto")]
         if not payload.get("workflow") and payload.get("existing_sprite_model") == "pixel_animate_14b":
             workflow = _pixel_animate_workflow_path()
+            if workflow:
+                payload["workflow"] = workflow
+        if not payload.get("workflow") and str(payload.get("reference_image") or "").strip():
+            workflow = _reference_capable_wan_workflow(tier)
             if workflow:
                 payload["workflow"] = workflow
         for key, arg in [("workflow", "--workflow"), ("sprite_action", "--action"), ("direction", "--direction"), ("character", "--character"), ("style", "--style"), ("background", "--background"), ("prompt", "--prompt"), ("negative", "--negative"), ("reference_image", "--reference-image"), ("seed", "--seed"), ("output_prefix", "--output-prefix"), ("lora_name", "--lora-name")]:

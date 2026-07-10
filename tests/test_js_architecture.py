@@ -46,6 +46,15 @@ def test_js_architecture_keeps_bootstrap_last():
     assert scripts[-1].startswith("js/app_main.js")
 
 
+def test_pixel_studio_is_lazy_loaded_through_view_lifecycle():
+    manifest = json.loads((WEB / "js" / "js_architecture.json").read_text(encoding="utf-8"))
+    lifecycle = (WEB / "js" / "view_lifecycle.js").read_text(encoding="utf-8")
+
+    assert "js/pixel_studio.js" not in _loader_scripts()
+    assert manifest["lazy_scripts"]["pixel_studio"] == "js/pixel_studio.js"
+    assert "registerLazyScript('pixel_studio', 'js/pixel_studio.js')" in lifecycle
+
+
 def test_js_architecture_blocks_known_health_global_regression():
     dashboard = (WEB / "js" / "app_dashboard.js").read_text(encoding="utf-8")
     status = (WEB / "js" / "app_status.js").read_text(encoding="utf-8")

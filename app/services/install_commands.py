@@ -20,6 +20,11 @@ WAN_VIDEO_CUSTOM_NODES = [
     ("https://github.com/talesofai/ComfyUI-Wan-VACE-Prep.git", "ComfyUI-Wan-VACE-Prep"),
 ]
 
+
+def spriteforge_requirements_file() -> Path:
+    locked = ROOT.parent / "requirements-lock.txt"
+    return locked if locked.exists() else ROOT / "requirements.txt"
+
 def venv_python(venv: Path) -> Path:
     from spriteforge_commands import venv_python as _vp
     return _vp(venv)
@@ -46,7 +51,7 @@ def install_wanvideo_optional_requirements(dest: Path, py: Path) -> None:
 def cmd_install_spriteforge(args: argparse.Namespace) -> None:
     py = ensure_venv(ROOT / ".venv", args.python)
     run([str(py), "-m", "pip", "install", "--upgrade", "pip"])
-    install_requirements(py, ROOT / "requirements.txt")
+    install_requirements(py, spriteforge_requirements_file())
     print(f"SpriteForge Python ready: {py}")
 
 

@@ -45,9 +45,14 @@ def api_get(url: str, timeout: float = 5.0) -> Any:
 def api_post_json(url: str, payload: Dict[str, Any], timeout: float = 30.0) -> Any:
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        txt = resp.read().decode("utf-8")
-        return json.loads(txt) if txt else {}
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            txt = resp.read().decode("utf-8")
+            return json.loads(txt) if txt else {}
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace").strip()
+        detail = f": {body}" if body else ""
+        raise RuntimeError(f"ComfyUI HTTP {exc.code} {exc.reason}{detail}") from exc
 
 
 def is_comfy_running(cfg: dict) -> bool:
@@ -111,6 +116,61 @@ def maybe_create_posepack(args: Any) -> Optional[Path]:
         return None
 
 
+def workflow_class_types(workflow: Dict[str, Any]) -> set[str]:
+    return {
+        str(node.get("class_type"))
+        for node in workflow.values()
+        if isinstance(node, dict) and node.get("class_type")
+    }
+
+
+def comfy_node_types(cfg: Any) -> Optional[set[str]]:
+    base_url = getattr(cfg, "base_url", None)
+    if not base_url:
+        return None
+    try:
+        data = api_get(str(base_url).rstrip("/") + "/object_info", timeout=10)
+    except Exception as exc:
+        logger.debug("Could not read ComfyUI node catalog for workflow selection: %s", exc)
+        return None
+    return set(data.keys()) if isinstance(data, dict) else None
+
+
+def workflow_missing_node_types(workflow_path: Path, available_types: Optional[set[str]]) -> set[str]:
+    if available_types is None:
+        return set()
+    try:
+        workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.debug("Could not inspect workflow node types for %s: %s", workflow_path, exc)
+        return set()
+    return workflow_class_types(workflow) - available_types
+
+
+def attach_reference_to_start_image(workflow: Dict[str, Any], staged_reference: str) -> int:
+    if not staged_reference:
+        return 0
+    numeric_ids = [int(key) for key in workflow if str(key).isdigit()]
+    next_id = str((max(numeric_ids) if numeric_ids else 0) + 1)
+    for _node_id, node in workflow.items():
+        if not isinstance(node, dict):
+            continue
+        class_type = node.get("class_type")
+        inputs = node.get("inputs")
+        if class_type not in {"Wan22ImageToVideoLatent", "WanImageToVideo"} or not isinstance(inputs, dict):
+            continue
+        workflow[next_id] = {
+            "class_type": "LoadImage",
+            "inputs": {
+                "image": staged_reference,
+                "upload": "image",
+            },
+        }
+        inputs["start_image"] = [next_id, 0]
+        return 1
+    return 0
+
+
 def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str, Any]:
     out = json.loads(json.dumps(prompt))
     requested_mode = getattr(args, "mode", "auto") or "auto"
@@ -163,9 +223,22 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
     if getattr(args, "style_image", None):
         staged_style = model_svc.stage_file_to_comfy_input(cfg, args.style_image)
 
+    ref_patched = 0
+    style_patched = 0
     if staged_reference or staged_style:
         ref_patched, style_patched = wf_svc.patch_workflow_images(out, staged_reference, staged_style)
+        if staged_reference and ref_patched == 0:
+            ref_patched = attach_reference_to_start_image(out, staged_reference)
         print(f"Workflow image patching results: main reference patched = {ref_patched}, style reference patched = {style_patched}")
+        if staged_reference and ref_patched == 0:
+            raise RuntimeError(
+                "Reference image was provided, but the selected ComfyUI workflow has no usable image/reference input. "
+                "Use a reference-capable workflow or choose an image-to-video/reference mode."
+            )
+        if staged_style and not staged_reference and style_patched == 0:
+            raise RuntimeError(
+                "Style image was provided, but the selected ComfyUI workflow has no usable image/style input."
+            )
 
     clip_vision_name = getattr(args, "clip_vision", None) or wd.get("clip_vision")
     patched_clip_vision = wf_svc.patch_clip_vision_nodes(out, clip_vision_name)
@@ -223,6 +296,9 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
         "action": getattr(args, "action", None),
         "direction": getattr(args, "direction", None),
         "reference_image": staged_reference,
+        "reference_nodes_patched": ref_patched,
+        "style_image": staged_style,
+        "style_nodes_patched": style_patched,
         "posepack": str(posepack_path) if posepack_path else None,
         "pose_nodes_patched": patched_pose if posepack_path else 0,
         "lora_name": lora_name,
@@ -233,6 +309,31 @@ def patch_wan_workflow(prompt: Dict[str, Any], args: Any, cfg: dict) -> Dict[str
     return out
 
 
+def reference_capable_workflow_for_args(args: Any, cfg: dict) -> Optional[Path]:
+    if getattr(args, "workflow", None) or not getattr(args, "reference_image", None):
+        return None
+    try:
+        tier = model_svc.normalize_model_tier(cfg, getattr(args, "tier", None))
+    except Exception:
+        tier = str(getattr(args, "tier", "") or "")
+    candidates: List[Path] = []
+    requested_mode = str(getattr(args, "mode", "") or "").lower()
+    if requested_mode in {"i2v", "reference", "image"}:
+        candidates.append(ROOT / "workflows" / "wan21_i2v_480p_14b_native_api.json")
+    if tier == "wan22_5b":
+        candidates.append(ROOT / "workflows" / "wan22_ti2v_5b_ipadapter_api.json")
+        candidates.append(ROOT / "workflows" / "wan22_ti2v_5b_native_api.json")
+    available_types = comfy_node_types(cfg)
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        missing_types = workflow_missing_node_types(candidate, available_types)
+        if not missing_types:
+            return candidate
+        logger.info("Skipping reference workflow %s; ComfyUI is missing node types: %s", candidate, sorted(missing_types))
+    return None
+
+
 def submit_prompt(cfg: dict, prompt: Dict[str, Any], client_id: Optional[str] = None) -> Any:
     payload: Dict[str, Any] = {"prompt": {k: v for k, v in prompt.items() if not str(k).startswith("_")}}
     if client_id:
@@ -241,12 +342,15 @@ def submit_prompt(cfg: dict, prompt: Dict[str, Any], client_id: Optional[str] = 
 
 
 def queue_wan_prompt(args: Any, cfg: dict) -> Tuple[Dict[str, Any], Dict[str, Any], Path]:
+    workflow_override = reference_capable_workflow_for_args(args, cfg)
     workflow_path = model_svc.workflow_resolve(
-        args.workflow, cfg,
+        str(workflow_override) if workflow_override else args.workflow, cfg,
         profile=getattr(args, "profile", None),
         mode=getattr(args, "mode", "auto"),
         tier=getattr(args, "tier", None)
     )
+    if workflow_override:
+        print(f"Using reference-capable workflow for supplied reference image: {workflow_path}")
     prompt = json.loads(workflow_path.read_text(encoding="utf-8"))
     patched = patch_wan_workflow(prompt, args, cfg)
 

@@ -90,9 +90,13 @@
       tile.className = 'frame-editor-tile' + (state.selectedIndices.has(index) ? ' active' : '');
       tile.draggable = true;
       tile.dataset.index = String(index);
-      const durationBadge = frame.duration_ms ? `<small class="frame-editor-duration-badge">${Number(frame.duration_ms)}ms</small>` : '';
       tile.classList.toggle('retimed', !!frame.duration_ms);
-      tile.innerHTML = `<img src="${frame.url || ''}" alt="" /><span>${index + 1}</span>${durationBadge}`;
+      const image = document.createElement('img');
+      image.src = String(frame.url || '');
+      image.alt = `Frame ${index + 1}`;
+      tile.appendChild(image);
+      appendText(tile, 'span', String(index + 1));
+      if (frame.duration_ms) appendText(tile, 'small', `${Number(frame.duration_ms)}ms`, 'frame-editor-duration-badge');
       tile.addEventListener('click', (event) => selectTimelineFrame(index, event));
       tile.addEventListener('dragstart', () => {
         state.dragIndex = index;

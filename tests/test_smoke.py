@@ -291,6 +291,24 @@ def test_project_palette_lock_forwards_custom_palette():
     assert "3" in cmd
 
 
+def test_reference_generation_uses_reference_capable_wan_workflow():
+    from web_helpers import build_action_command
+
+    _, cmd = build_action_command({
+        "action": "generate_sprite",
+        "tier": "wan22_5b",
+        "profile": "wan22_5b_3060_best",
+        "reference_image": "input/reference.png",
+        "style_image": "input/style.png",
+        "quality_check": False,
+    })
+
+    assert "--workflow" in cmd
+    assert cmd[cmd.index("--workflow") + 1] == "workflows/wan22_ti2v_5b_ipadapter_api.json"
+    assert "--reference-image" in cmd
+    assert "--style-image" in cmd
+
+
 def test_native_only_flags_are_parsed_and_forwarded():
     from web_helpers import build_action_command
     from spriteforge_unified import build_parser

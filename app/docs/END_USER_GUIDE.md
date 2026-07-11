@@ -3,13 +3,31 @@
 ## Normal workflow
 
 1. Double-click `START_HERE.bat` in the main folder.
-2. Open **Launchpad** and run the **No-GPU Demo**.
-3. Open **Setup**, run the first-run diagnostic, install the safe WAN setup, and launch ComfyUI.
-4. Open **Sprite Lab**.
-5. Describe the character, choose one or more actions, choose one or more directions, or select **All** directions, and use the `debug` or recommended profile first.
-6. Watch progress in **Task Center** or **Queue Monitor**.
-7. Review the finished result in **Quality Lab**.
-8. Build a shareable/exportable package in **Release**.
+2. Open **Home**. Choose **Try a demo** if you want to explore the bundled
+   playable character before configuring anything.
+3. Choose **Start creating** for the guided four-step character wizard.
+4. Pick a goal, describe the character, choose the first moves, and review the
+   ready check. The wizard uses friendly defaults and keeps advanced controls
+   under **Customize**.
+5. Create the character. SpriteForge can start its local creation engine when
+   required; low disk space and an existing creation job remain clear blockers.
+6. Watch work in **Task Center**, then open **Review** to run a friendly check,
+   repair issues, or playtest the character.
+7. Open **Export** to package the reviewed result for Godot, Unity, Unreal,
+   images, or web formats.
+
+## First-run setup and no-GPU demo
+
+The bundled demo works without a GPU or model download. For AI generation:
+
+1. Open **Settings** and read the setup summary.
+2. Run the first-run diagnostic and install the safe WAN setup if you want
+   local generation.
+3. Start with the `debug` profile and one short action.
+4. Leave **Start ComfyUI if needed** enabled for ordinary local generation.
+
+Use **Settings** rather than guessing at model readiness. It explains whether
+the local engine, art tools, disk space, and workshop are ready.
 
 Each finished sprite folder usually contains:
 
@@ -19,7 +37,7 @@ Each finished sprite folder usually contains:
 - `report.html` — visual report/contact sheet
 - `frames_processed/` — individual frame PNGs
 
-## Best first test
+## Best first AI-generation test
 
 Use this first:
 
@@ -51,6 +69,10 @@ cinematic shot, camera orbit, close-up, complex background, motion blur, scene c
 Use the **Final prompt preview** before generating. The **AI Auto Fix** button calls SpriteForge's prompt fixer and adds sprite-safe cues such as locked camera, clean silhouette, transparent/chroma background language, and negative prompt cleanup.
 
 ## Sprite Lab generation controls
+
+**Sprite Lab** is the advanced route. The Home wizard is the recommended path
+for a first character; use Sprite Lab when you need direct control over prompts,
+profiles, multi-action packs, and directional coverage.
 
 - **Actions** can include more than one animation in a single request, such as `idle`, `walk`, `slash`, and `cast`.
 - **Directions** can include individual directions or **All**, which expands to the full directional set.
@@ -163,7 +185,7 @@ python spriteforge.py video --input input/clip.mp4 --output output/clip_sprite -
 
 ## Fixing bad outputs
 
-Use **Quality Lab**:
+Use **Review**:
 
 - **Run QA** finds jitter, loop seams, duplicates, flicker, and edge problems.
 - **Auto-Fix** attempts anchor stabilization, loop duplicate removal, and edge cleanup.

@@ -9,12 +9,12 @@
     <section class="dashboard-tab-panel active" role="tabpanel" data-dashboard-panel="overview">
       <section class="dashboard-hero-stats" aria-label="Workspace hero stats">
         <article class="card dashboard-stat-card">
-          <span>Total sprites</span>
+          <span>Creations</span>
           <b id="dashboardStatSprites">0</b>
           <small id="dashboardStatSpritesHint">No outputs loaded yet.</small>
         </article>
         <article class="card dashboard-stat-card">
-          <span>Average QA</span>
+          <span>Quality</span>
           <b id="dashboardStatQa">n/a</b>
           <small id="dashboardStatQaHint">Run QA to build a trend.</small>
         </article>
@@ -33,22 +33,22 @@
         <button class="card action-card glow dashboard-action-card" id="dashActionCreate" type="button">
           <span class="dashboard-action-icon">01</span>
           <span>
-            <b>Create Sprite</b>
-            <small>Guided character, action loop, and generation setup.</small>
+            <b>Create a character</b>
+            <small>Answer a few questions and we’ll guide the rest.</small>
           </span>
         </button>
         <button class="card action-card glow dashboard-action-card" id="dashActionReview" type="button">
           <span class="dashboard-action-icon">02</span>
           <span>
-            <b>Review Results</b>
-            <small>Inspect frame sequences and run QA audits.</small>
+            <b>Review animations</b>
+            <small>Watch the movement and catch anything that feels off.</small>
           </span>
         </button>
         <button class="card action-card glow dashboard-action-card" id="dashActionExport" type="button">
           <span class="dashboard-action-icon">03</span>
           <span>
-            <b>Export &amp; Ship</b>
-            <small>Package sprite sheets for game engines.</small>
+            <b>Export to your game</b>
+            <small>Prepare clean files for your favorite engine.</small>
           </span>
         </button>
       </div>
@@ -62,7 +62,7 @@
         <button class="primary" id="onboardingCtaBtn" type="button">Launch Wizard</button>
       </section>
 
-      <section class="card dashboard-architecture-card" id="architectureStatusCard">
+      <section class="card dashboard-architecture-card mode-expert" id="architectureStatusCard">
         <div class="card-head">
           <div>
             <p class="eyebrow">Architecture Guardrails</p>

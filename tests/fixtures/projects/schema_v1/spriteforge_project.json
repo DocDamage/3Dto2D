@@ -1,0 +1,7 @@
+{
+  "schema": "spriteforge_project_v1",
+  "name": "legacy_v1",
+  "actions": ["idle", "walk"],
+  "directions": ["front", "right"],
+  "custom_legacy_field": {"must_survive": true}
+}

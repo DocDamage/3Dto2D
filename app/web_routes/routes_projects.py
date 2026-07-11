@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 import logging
 import time
 import json
@@ -17,6 +17,11 @@ from web_helpers import (
     _project_artifact_path, rel, safe_name
 )
 from spriteforge_utils import load_json, save_json
+from services.project_bundle_service import (
+    export_project_bundle as build_project_bundle,
+    import_project_bundle as extract_project_bundle,
+    resolve_project_directory,
+)
 
 routes_projects = Blueprint("routes_projects", __name__)
 logger = logging.getLogger(__name__)
@@ -260,9 +265,10 @@ def upload_file():
     file.save(dest)
     return jsonify({"ok": True, "path": str(dest), "relative": rel(dest), "name": dest.name})
 
-@routes_projects.route("/api/projects/export_bundle", methods=["GET"])
+@routes_projects.route("/api/projects/export_bundle", methods=["POST"])
 def export_project_bundle():
-    project_path = request.args.get("path", "")
+    body = request.get_json(silent=True) or {}
+    project_path = str(body.get("path") or "")
     if not project_path:
         active = ProjectService.get_active_project()
         if active:
@@ -272,38 +278,23 @@ def export_project_bundle():
         
     try:
         from services.project_service import PROJECTS_DIR
-        p_path = ROOT / project_path
-        if p_path.is_file():
-            p_dir = p_path.parent
-        else:
-            p_dir = p_path
-            
-        if not p_dir.exists() or p_dir == PROJECTS_DIR:
-            return jsonify({"ok": False, "message": "Invalid project directory."}), 400
-            
+        p_dir = resolve_project_directory(ROOT, PROJECTS_DIR, project_path)
         releases_dir = ROOT / "output" / "releases"
-        releases_dir.mkdir(parents=True, exist_ok=True)
-        bundle_path = releases_dir / f"{p_dir.name}.spriteforge"
-        
-        import zipfile
-        from spriteforge_utils import is_release_excluded, audit_dir_exclusions
-        violations = audit_dir_exclusions(p_dir)
-        if violations:
-            logger.warning(f"Auditor: Excluding {len(violations)} restricted/heavy files from project export: {violations}")
-
-        with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file_path in p_dir.rglob("*"):
-                if file_path.is_file():
-                    if not is_release_excluded(file_path, p_dir):
-                        zf.write(file_path, file_path.relative_to(p_dir))
-
-        from flask import send_from_directory
-        return send_from_directory(releases_dir, f"{p_dir.name}.spriteforge", as_attachment=True)
+        result = build_project_bundle(p_dir, releases_dir)
+        if result["excluded"]:
+            logger.warning("Excluded %s restricted files from project export.", len(result["excluded"]))
+        bundle_path = result["bundle_path"]
+        return send_file(bundle_path, as_attachment=True, download_name=bundle_path.name)
+    except (FileNotFoundError, ValueError) as exc:
+        return _project_route_error(exc, status=400)
     except Exception as exc:
         return _project_route_error(exc)
 
 @routes_projects.route("/api/projects/import_bundle", methods=["POST"])
 def import_project_bundle():
+    content_length = request.content_length
+    if content_length and content_length > 100 * 1024 * 1024:
+        return jsonify({"ok": False, "message": "Project bundle exceeds the 100 MB upload limit."}), 413
     if 'file' not in request.files:
         return jsonify({"ok": False, "message": "No file payload found."}), 400
     file = request.files['file']
@@ -316,37 +307,15 @@ def import_project_bundle():
         
     try:
         from services.project_service import PROJECTS_DIR
-        PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
-        
-        import tempfile
-        import zipfile
-        temp_dir = Path(tempfile.gettempdir())
-        temp_zip = temp_dir / f"import_{int(time.time())}.zip"
-        file.save(temp_zip)
-        
-        with zipfile.ZipFile(temp_zip, "r") as zf:
-            names = zf.namelist()
-            if "spriteforge_project.json" not in names:
-                return jsonify({"ok": False, "message": "Invalid bundle: missing spriteforge_project.json."}), 400
-            
-            manifest_bytes = zf.read("spriteforge_project.json")
-            manifest_data = json.loads(manifest_bytes.decode("utf-8"))
-            project_name = safe_name(manifest_data.get("name") or Path(filename).stem)
-            
-            dest_dir = PROJECTS_DIR / project_name
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            zf.extractall(dest_dir)
-            
-        try:
-            temp_zip.unlink()
-        except Exception:
-            pass
-            
+        result = extract_project_bundle(file.stream, filename, PROJECTS_DIR)
+        dest_dir = result["project_dir"]
         manifest_path = dest_dir / "spriteforge_project.json"
         rel_path = manifest_path.relative_to(ROOT).as_posix()
         ProjectService.set_active_project(rel_path)
         
-        return jsonify({"ok": True, "message": f"Successfully imported project '{project_name}'.", "project_path": rel_path})
+        return jsonify({"ok": True, "message": f"Successfully imported project '{dest_dir.name}'.", "project_path": rel_path})
+    except ValueError as exc:
+        return _project_route_error(exc, status=400)
     except Exception as exc:
         return _project_route_error(exc)
 

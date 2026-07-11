@@ -36,6 +36,29 @@ def test_keyboard_shortcuts_cover_phase_24_requirements():
     assert "window.SpriteForgeShortcuts" in js
 
 
+def test_notification_drawer_open_close_state_and_escape_stay_synchronized():
+    html = (WEB / "index.html").read_text(encoding="utf-8")
+    notifications = (WEB / "js" / "app_notifications.js").read_text(encoding="utf-8")
+    shortcuts = (WEB / "js" / "keyboard_shortcuts.js").read_text(encoding="utf-8")
+
+    assert 'class="notification-drawer hidden"' in html
+    assert 'id="notificationDrawer" role="dialog"' in html
+    assert "function setNotificationDrawer(open)" in notifications
+    remove_hidden = notifications.index("drawer.classList.remove('hidden')")
+    add_show = notifications.index("drawer.classList.add('show')")
+    assert remove_hidden < add_show
+    assert "drawer.classList.remove('show')" in notifications
+    assert "drawer.classList.add('hidden')" in notifications
+    assert "drawer.setAttribute('aria-hidden', 'false')" in notifications
+    assert "drawer.setAttribute('aria-hidden', 'true')" in notifications
+    assert "trigger?.setAttribute('aria-expanded', 'true')" in notifications
+    assert "trigger?.setAttribute('aria-expanded', 'false')" in notifications
+    assert "setNotificationDrawer(drawer.getAttribute('aria-hidden') !== 'false')" in notifications
+    assert "key === 'escape'" in shortcuts
+    assert "drawer?.getAttribute('aria-hidden') === 'false'" in shortcuts
+    assert "window.setNotificationDrawer(false)" in shortcuts
+
+
 def test_shortcut_cheat_sheet_styles_are_present():
     css = (WEB / "css" / "components_recipes_modal.css").read_text(encoding="utf-8")
 

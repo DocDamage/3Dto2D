@@ -44,6 +44,7 @@
     "styles.css",
     "sprite_preview.css",
     "animation_player.css",
+    "play_workbench.css",
     "compare_player.css",
     "lighting_preview.css",
     "cloud_hub.css",
@@ -63,7 +64,9 @@
     "css/ux_enhancements.css",
     "css/pixel_studio.css",
     "css/topbar_compact.css",
-    "css/wizard.css"
+    "css/wizard.css",
+    "css/consumer_experience.css",
+    "css/playful_console.css"
   ],
   "cascade_order": [
     {

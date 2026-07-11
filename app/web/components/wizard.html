@@ -12,22 +12,22 @@
 
     <!-- Stepper progress -->
     <div class="wizard-stepper">
-      <div class="wizard-step-indicator active" data-wiz-step="1">
+      <button class="wizard-step-indicator active" data-wiz-step="1" type="button" aria-current="step">
         <div class="indicator-num">1</div>
         <span class="indicator-label">Goal</span>
-      </div>
-      <div class="wizard-step-indicator" data-wiz-step="2">
+      </button>
+      <button class="wizard-step-indicator" data-wiz-step="2" type="button">
         <div class="indicator-num">2</div>
         <span class="indicator-label">Character</span>
-      </div>
-      <div class="wizard-step-indicator" data-wiz-step="3">
+      </button>
+      <button class="wizard-step-indicator" data-wiz-step="3" type="button">
         <div class="indicator-num">3</div>
         <span class="indicator-label">Animations</span>
-      </div>
-      <div class="wizard-step-indicator" data-wiz-step="4">
+      </button>
+      <button class="wizard-step-indicator" data-wiz-step="4" type="button">
         <div class="indicator-num">4</div>
         <span class="indicator-label">Review</span>
-      </div>
+      </button>
     </div>
 
     <!-- Body / Form -->
@@ -71,7 +71,7 @@
           <div class="wizard-fields">
             <h3>Describe your character</h3>
             <label>Character name
-              <input name="wiz_name" value="hero" placeholder="e.g. hero, goblin, knight" required />
+              <input name="wiz_name" value="Nova" placeholder="e.g. Nova, Bramble, Pip" required />
             </label>
             <label>Character type preset
               <select name="wiz_character_preset" id="wizCharacterPreset">
@@ -86,7 +86,7 @@
               </select>
             </label>
             <label>Character description
-              <textarea name="wiz_character" rows="5" required>single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit</textarea>
+              <textarea name="wiz_character" rows="5" required>A brave sky courier with a bright scarf, a compact glider, and a clear heroic silhouette.</textarea>
             </label>
             <label>Project template
               <select name="wiz_template">
@@ -119,8 +119,8 @@
       <section class="wizard-step-panel" data-wiz-panel="3">
         <div class="wizard-step-heading">
           <div>
-            <h3>Build the animation set</h3>
-            <p>Select a production-sized move list, then choose the camera directions to generate.</p>
+            <h3>Pick the first moves</h3>
+            <p>Choose how your character moves and which way they face. You can add more later.</p>
           </div>
           <div class="wizard-pack-meter" aria-live="polite">
             <b id="wizAnimationCount">2</b>
@@ -253,15 +253,15 @@
         </div>
       </section>
 
-      <!-- Step 4: Review & Launch -->
+      <!-- Step 4: Ready to create -->
       <section class="wizard-step-panel" data-wiz-panel="4">
-        <h3>Review &amp; Launch</h3>
-        <p style="color: var(--muted); font-size: 13px; margin: -6px 0 16px 0;">Verify your setup and start generation</p>
+        <h3>Ready to create?</h3>
+        <p style="color: var(--muted); font-size: 13px; margin: -6px 0 16px 0;">Review your choices while SpriteForge checks the workshop.</p>
         
         <div class="wizard-summary-section">
           <!-- Summary card -->
           <div class="wizard-summary-card">
-            <h4>Configuration Summary</h4>
+            <h4>Your character plan</h4>
             <div class="wizard-summary-item">
               <span>Goal</span>
               <span id="wizSummaryGoal">Single Sprite</span>
@@ -304,14 +304,14 @@
 
           <!-- Preflight list -->
           <div class="wizard-preflight-container">
-            <h4>Preflight Checklist</h4>
+            <h4>Ready check</h4>
             <ul class="wizard-preflight-list" id="wizPreflightList">
-              <li id="wiz-check-comfy"><span>❓</span> ComfyUI online</li>
-              <li id="wiz-check-models"><span>❓</span> Models available</li>
-              <li id="wiz-check-disk"><span>❓</span> Free disk space</li>
-              <li id="wiz-check-job"><span>❓</span> Queue free</li>
+              <li id="wiz-check-comfy"><span>❓</span> Creation engine ready</li>
+              <li id="wiz-check-models"><span>❓</span> Art tools ready</li>
+              <li id="wiz-check-disk"><span>❓</span> Room to save</li>
+              <li id="wiz-check-job"><span>❓</span> Workshop available</li>
             </ul>
-            <div id="wizPreflightError" style="margin-top: 12px; font-size: 11px; color: var(--danger); font-weight: bold; display: none;"></div>
+            <div id="wizPreflightError" role="status" aria-live="polite" aria-atomic="true" style="margin-top: 12px; font-size: 11px; color: var(--danger); font-weight: bold; display: none;"></div>
           </div>
         </div>
       </section>
@@ -326,7 +326,7 @@
       <div class="wizard-footer-right">
         <button class="ghost" id="wizardBackBtn" type="button" disabled>Back</button>
         <button class="primary" id="wizardNextBtn" type="button">Next</button>
-        <button class="primary ready" id="wizardLaunchBtn" type="button" style="display: none;">Generate Sprite</button>
+        <button class="primary ready" id="wizardLaunchBtn" type="button" style="display: none;">Create my sprite</button>
       </div>
     </footer>
 

@@ -51,6 +51,21 @@
       "name": "project-assets",
       "files": [
         "project_service.py",
+        "roadmap_models.py",
+        "asset_repository_service.py",
+        "feature_flag_service.py",
+        "qa_rule_service.py",
+        "animation_workspace_service.py",
+        "batch_matrix_service.py",
+        "workflow_builder_service.py",
+        "production_dashboard_service.py",
+        "export_preset_service.py",
+        "roadmap_performance_service.py",
+        "creative_document_service.py",
+        "studio_collaboration_service.py",
+        "pipeline_integration_service.py",
+        "worker_pool_service.py",
+        "art_direction_service.py",
         "project_palette_service.py",
         "project_path_service.py",
         "frame_repack_service.py",
@@ -101,6 +116,14 @@
       ]
     },
     {
+      "name": "assistant-and-knowledge",
+      "files": [
+        "assistant_service.py",
+        "assistant_knowledge_service.py",
+        "local_llm_service.py"
+      ]
+    },
+    {
       "name": "infrastructure",
       "files": [
         "database_service.py",
@@ -111,7 +134,9 @@
         "plugin_manager.py",
         "marketplace_service.py",
         "cloud_hub_service.py",
-        "cloud_image_generation_service.py"
+        "cloud_image_generation_service.py",
+        "distribution_service.py",
+        "trust_service.py"
       ]
     }
   ]

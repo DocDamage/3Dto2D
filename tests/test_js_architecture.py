@@ -19,8 +19,8 @@ def _loader_scripts() -> list[str]:
 def test_index_delegates_bootstrap_to_loader_files():
     html = (WEB / "index.html").read_text(encoding="utf-8")
 
-    assert 'src="js/component_loader.js?v=frontend-bootstrap"' in html
-    assert 'src="js/script_loader.js?v=frontend-bootstrap"' in html
+    assert 'src="js/component_loader.js?v=console-product-polish-v12"' in html
+    assert 'src="js/script_loader.js?v=console-product-polish-v12"' in html
     assert "function spriteForgeScriptList()" not in html
     assert "window.viewComponentsLoaded = new Promise" not in html
 
@@ -44,6 +44,15 @@ def test_js_architecture_keeps_bootstrap_last():
     assert scripts[0].startswith("js/globals.js")
     assert scripts[-2].startswith("js/ux_enhancements.js")
     assert scripts[-1].startswith("js/app_main.js")
+
+
+def test_pixel_studio_is_lazy_loaded_through_view_lifecycle():
+    manifest = json.loads((WEB / "js" / "js_architecture.json").read_text(encoding="utf-8"))
+    lifecycle = (WEB / "js" / "view_lifecycle.js").read_text(encoding="utf-8")
+
+    assert "js/pixel_studio.js" not in _loader_scripts()
+    assert manifest["lazy_scripts"]["pixel_studio"] == "js/pixel_studio.js"
+    assert "registerLazyScript('pixel_studio', 'js/pixel_studio.js')" in lifecycle
 
 
 def test_js_architecture_blocks_known_health_global_regression():

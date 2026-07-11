@@ -92,4 +92,20 @@
   .topbar {
     padding-left: 42px;
   }
+
+  .status-row {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .project-strip {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .project-strip > * {
+    max-width: 100%;
+    width: 100%;
+  }
 }

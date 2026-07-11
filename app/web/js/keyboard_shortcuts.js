@@ -99,7 +99,10 @@ function handleShortcut(event) {
   if (key === 'escape') {
     if (typeof closeResultPreview === 'function') closeResultPreview();
     const drawer = $('#notificationDrawer');
-    if (drawer) drawer.classList.remove('show');
+    if (drawer?.getAttribute('aria-hidden') === 'false') {
+      if (typeof window.setNotificationDrawer === 'function') window.setNotificationDrawer(false);
+      else drawer.classList.remove('show');
+    }
     if (typeof CommandPalette !== 'undefined' && typeof CommandPalette.close === 'function') {
       CommandPalette.close();
     }

@@ -100,35 +100,40 @@ def patch_workflow_images(workflow: Dict[str, Any], reference_image_name: Option
             workflow[sid].get("class_type") for sid in style_source_ids if sid in workflow
         }))
 
-    style_count = 0
-    ref_count = 0
-
+    image_nodes: List[Tuple[str, Dict[str, Any]]] = []
     for node_id, node in workflow.items():
         if not isinstance(node, dict):
             continue
         cls = node.get("class_type", "")
         if cls in {"LoadImage", "LoadImageMask", "LoadImageUpload"}:
-            inputs = node.setdefault("inputs", {})
-            if style_image_name and node_id in style_source_ids:
-                inputs["image"] = style_image_name
-                if "upload" in inputs:
-                    inputs["upload"] = "image"
-                style_count += 1
-            elif reference_image_name:
-                inputs["image"] = reference_image_name
-                if "upload" in inputs:
-                    inputs["upload"] = "image"
-                ref_count += 1
+            image_nodes.append((str(node_id), node))
+
+    style_count = 0
+    ref_count = 0
+    used_ids: set[str] = set()
+
+    if reference_image_name and image_nodes:
+        ref_candidates = [item for item in image_nodes if item[0] not in style_source_ids] or image_nodes[:1]
+        node_id, node = ref_candidates[0]
+        inputs = node.setdefault("inputs", {})
+        inputs["image"] = reference_image_name
+        if "upload" in inputs:
+            inputs["upload"] = "image"
+        ref_count += 1
+        used_ids.add(node_id)
 
     if style_image_name and style_count == 0:
-        for node in workflow.values():
-            if not isinstance(node, dict):
-                continue
-            if node.get("class_type") in {"LoadImage", "LoadImageMask", "LoadImageUpload"}:
-                inputs = node.setdefault("inputs", {})
-                inputs["image"] = style_image_name
-                style_count += 1
-                break
+        style_candidates = [item for item in image_nodes if item[0] in style_source_ids and item[0] not in used_ids]
+        if not reference_image_name:
+            style_candidates = style_candidates or image_nodes
+        if style_candidates:
+            node_id, node = style_candidates[0]
+            inputs = node.setdefault("inputs", {})
+            inputs["image"] = style_image_name
+            if "upload" in inputs:
+                inputs["upload"] = "image"
+            style_count += 1
+            used_ids.add(node_id)
 
     return ref_count, style_count
 

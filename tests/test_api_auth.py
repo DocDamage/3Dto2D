@@ -23,9 +23,10 @@ def test_get_auth_token_returns_valid_session_token(client):
     assert "token" in data
     assert len(data["token"]) == 48  # Hex token of 24 bytes
 
-def test_api_token_protection_blocks_post_requests(client):
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_api_token_protection_blocks_unsafe_requests(client, method):
     # Enable token check by passing the X-Force-Token-Check header
-    response = client.post(
+    response = getattr(client, method)(
         "/api/projects/create",
         headers={"X-Force-Token-Check": "true"},
         data=json.dumps({"name": "test_token_blocked"}),
@@ -34,6 +35,15 @@ def test_api_token_protection_blocks_post_requests(client):
     assert response.status_code == 401
     data = json.loads(response.data.decode("utf-8"))
     assert "Unauthorized" in data["message"]
+
+
+def test_security_headers_are_applied(client):
+    response = client.get("/")
+
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
 
 def test_api_token_protection_allows_valid_token(client, tmp_path, monkeypatch):
     import services.project_service as project_service

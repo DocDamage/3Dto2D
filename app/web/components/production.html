@@ -1,0 +1,35 @@
+<section class="view production-view" id="view-production">
+  <div class="panel-head">
+    <div><p class="eyebrow">Production Milestone</p><h2>Production Studio</h2><p class="description">Track readiness, design generation matrices, compose typed workflows, and manage recovery snapshots.</p></div>
+    <div class="button-row"><button class="mini" id="productionRefreshBtn" type="button">Refresh</button><button class="mini" id="productionSnapshotBtn" type="button">Create snapshot</button></div>
+  </div>
+  <section class="dashboard-hero-stats" aria-label="Production readiness">
+    <article class="card dashboard-stat-card"><span>Completion</span><b id="productionCompletion">—</b><small id="productionCompletionHint">Select a project.</small></article>
+    <article class="card dashboard-stat-card"><span>QA blockers</span><b id="productionQaErrors">—</b><small id="productionQaHint">Current revisions.</small></article>
+    <article class="card dashboard-stat-card"><span>Assets</span><b id="productionAssets">—</b><small id="productionAssetsHint">Canonical records.</small></article>
+    <article class="card dashboard-stat-card"><span>Export</span><b id="productionExport">—</b><small id="productionExportHint">Last successful package.</small></article>
+  </section>
+  <div class="production-grid">
+    <section class="card"><div class="card-head"><h3>Animation workspace</h3><button class="mini" id="productionLoadAnimationBtn" type="button">Load</button><button class="mini primary" id="productionSaveAnimationBtn" type="button">Save revision</button></div>
+      <label>Canonical animation asset<select id="productionAnimationAsset"><option value="">Select an asset</option></select></label>
+      <label>Workspace metadata (JSON)<textarea id="productionAnimationJson" rows="12">{"fps":12,"frames":[{"source_index":0,"duration_ms":83,"anchors":{"foot":{"x":0,"y":0}},"hitboxes":[]}],"clips":[{"name":"idle","start":0,"end":0,"loop":true}],"onion_skin":{"previous":1,"next":1,"opacity":0.28},"viewport":{"zoom":1,"selected_frames":[0],"overlay":"onion"}}</textarea></label>
+      <div class="production-overlay-toolbar"><label>Frame<input id="productionOverlayFrame" type="number" min="0" value="0" /></label><button class="mini" id="productionAddHitboxBtn" type="button">Add hitbox</button></div>
+      <canvas id="productionOverlayCanvas" class="production-overlay-canvas" width="320" height="240" aria-label="Anchor and hitbox editor"></canvas>
+      <p class="description" id="productionAnimationStatus">Timing, loop regions, anchors, hitboxes, onion skin, and viewport are saved as an immutable revision.</p>
+    </section>
+    <section class="card"><div class="card-head"><h3>Readiness actions</h3></div><div class="release-list" id="productionActions"><div class="empty compact">No project data loaded.</div></div></section>
+    <section class="card"><div class="card-head"><h3>Batch matrix</h3><button class="mini" id="productionBatchSyncBtn" type="button">Sync jobs</button><button class="mini primary" id="productionCreateBatchBtn" type="button">Plan matrix</button></div>
+      <label>Name<input id="productionBatchName" value="Variant search" /></label>
+      <label>Dimensions (JSON)<textarea id="productionBatchDimensions" rows="7">{"prompts":["hero idle"],"seeds":[1,2,3],"directions":["front","right"]}</textarea></label>
+      <p class="description" id="productionBatchEstimate">Edit dimensions to estimate the batch.</p>
+      <div class="production-contact-sheet" id="productionBatchResults"></div>
+    </section>
+    <section class="card"><div class="card-head"><h3>Workflow builder</h3><select id="productionNodeType"><option>transform</option><option>generate</option><option>qa</option><option>approval</option><option>export</option></select><button class="mini" id="productionAddNodeBtn" type="button">Add node</button><button class="mini" id="productionValidateWorkflowBtn" type="button">Validate</button><button class="mini" id="productionRunWorkflowBtn" type="button">Run</button><button class="mini" id="productionSyncWorkflowBtn" type="button">Sync</button><button class="mini primary" id="productionSaveWorkflowBtn" type="button">Save</button></div>
+      <label>Typed DAG (JSON)<textarea id="productionWorkflowJson" rows="13">{"name":"Validate and export","nodes":[{"id":"source","type":"import","parameters":{"path":"asset.png"}},{"id":"qa","type":"qa"}],"edges":[{"from":"source","output":"asset","to":"qa","input":"asset"}]}</textarea></label>
+      <div class="production-workflow-canvas" id="productionWorkflowCanvas" aria-label="Workflow graph editor"></div>
+      <pre class="terminal small" id="productionWorkflowStatus">Ready for preflight.</pre>
+    </section>
+    <section class="card"><div class="card-head"><h3>Recovery snapshots</h3><button class="mini" id="productionLoadSnapshotsBtn" type="button">Reload</button></div><div class="release-list" id="productionSnapshots"><div class="empty compact">No snapshots loaded.</div></div></section>
+    <section class="card"><div class="card-head"><h3>Deterministic export</h3><button class="mini" id="productionPreviewExportBtn" type="button">Preview</button><button class="mini primary" id="productionExportBtn" type="button">Export</button></div><label>Preset<select id="productionExportPreset"><option value="godot">Godot</option><option value="unity">Unity</option><option value="unreal">Unreal</option><option value="rpg_maker">RPG Maker</option><option value="lpc">LPC</option><option value="phaser">Phaser</option><option value="generic_json">Generic JSON</option><option value="css">CSS</option><option value="raw">Raw</option></select></label><pre class="terminal small" id="productionExportStatus">Preview the deterministic file tree before publishing.</pre></section>
+  </div>
+</section>

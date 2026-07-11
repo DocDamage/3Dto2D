@@ -1,3 +1,5 @@
+import copy
+import os
 from pathlib import Path
 from typing import Any, Dict
 
@@ -15,7 +17,15 @@ def save_json(path: Path, data: Any) -> None:
 class ConfigService:
     @staticmethod
     def get_config() -> Dict[str, Any]:
-        cfg = load_json(CONFIG_PATH, {})
+        cfg = copy.deepcopy(load_json(CONFIG_PATH, {}))
+        paths = cfg.setdefault("paths", {})
+        for env_name, config_name in {
+            "SPRITEFORGE_COMFYUI_DIR": "comfyui_dir",
+            "SPRITEFORGE_COMFYUI_OUTPUT": "comfyui_output",
+        }.items():
+            value = str(os.environ.get(env_name) or "").strip()
+            if value:
+                paths[config_name] = value
         from services.schema_validation_service import validate_config
         ok, err = validate_config(cfg)
         if not ok:

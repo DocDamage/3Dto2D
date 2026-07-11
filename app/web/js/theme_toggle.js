@@ -15,7 +15,7 @@ function applyTheme(theme) {
   const button = $('#themeToggle');
   if (button) {
     button.setAttribute('aria-pressed', isLight ? 'true' : 'false');
-    button.textContent = isLight ? 'Light' : 'Dark';
+    button.textContent = isLight ? 'Light theme' : 'Dark theme';
     button.title = isLight ? 'Switch to dark theme' : 'Switch to light theme';
   }
 }

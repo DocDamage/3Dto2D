@@ -343,7 +343,21 @@ def project_release_metadata(project: Optional[str]) -> Dict[str, str]:
         "project_root": project_root,
     }
 
-def make_release_readme(name: str, sprites: List[Dict[str, Any]], created: str) -> str:
+def make_release_readme(
+    name: str,
+    sprites: List[Dict[str, Any]],
+    created: str,
+    *,
+    target: Optional[str] = None,
+    target_label: Optional[str] = None,
+) -> str:
+    selected_target = str(target or "").strip().lower()
+    selected_label = str(target_label or selected_target or "").strip()
+    engine_contents = (
+        f"- `engine/`: {selected_label} handoff guidance and per-sprite import notes."
+        if selected_target
+        else "- `engine/`: lightweight Godot/Unity notes and import helpers when generated."
+    )
     lines = [
         f"# {name} Sprite Release",
         "",
@@ -352,7 +366,7 @@ def make_release_readme(name: str, sprites: List[Dict[str, Any]], created: str) 
         "## Contents",
         "",
         "- `sprites/`: source SpriteForge outputs containing `sheet.png`, `sheet.json`, preview GIFs, reports, and processed frames when available.",
-        "- `engine/`: lightweight Godot/Unity notes and import helpers when generated.",
+        engine_contents,
         "- `manifest.json`: machine-readable release manifest.",
         "- `preflight/`: setup/status report captured at packaging time.",
         "",
@@ -361,18 +375,25 @@ def make_release_readme(name: str, sprites: List[Dict[str, Any]], created: str) 
     ]
     for sp in sprites:
         lines.append(f"- `{sp['name']}` — {sp['frame_count']} frames, {sp['fps']} fps, {sp['frame_width']}×{sp['frame_height']}")
-    lines += [
-        "",
-        "## Import notes",
-        "",
-        "Godot: use `sheet.png` as a texture, set horizontal frames to `columns` and vertical frames to `rows` from `sheet.json`.",
-        "",
-        "Unity: import `sheet.png` as Sprite Mode Multiple, slice by `frame_width` × `frame_height`, then build an animation clip at the listed FPS.",
+    lines.extend(["", "## Import notes", ""])
+    if selected_target:
+        lines.extend([
+            f"This package targets **{selected_label}** (`{selected_target}`).",
+            "",
+            "Start with `engine/TARGET_GUIDE.md`, then use each sprite's `engine/<sprite>_import_notes.md` for its grid and timing values.",
+        ])
+    else:
+        lines.extend([
+            "Godot: use `sheet.png` as a texture, set horizontal frames to `columns` and vertical frames to `rows` from `sheet.json`.",
+            "",
+            "Unity: import `sheet.png` as Sprite Mode Multiple, slice by `frame_width` × `frame_height`, then build an animation clip at the listed FPS.",
+        ])
+    lines.extend([
         "",
         "## QA reminder",
         "",
         "Run QA and auto-fix before using sprites in-game if the release includes any experimental WAN output.",
-    ]
+    ])
     return "\n".join(lines) + "\n"
 
 def get_project_quality_gates(sprite_dir: Path) -> Dict[str, Any]:

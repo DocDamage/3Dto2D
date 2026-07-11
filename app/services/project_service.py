@@ -9,7 +9,9 @@ from typing import Any, Dict, List, Optional
 
 from services.logging_service import get_logger
 from services.project_palette_service import DEFAULT_PALETTE_LOCK, normalize_palette_lock
+from services.roadmap_models import PROJECT_SCHEMA, migrate_project_manifest
 from spriteforge_utils import ROOT, safe_name
+from spriteforge_utils import save_json
 
 PROJECTS_DIR = ROOT / "projects"
 STATE_PATH = ROOT / "output" / "projects" / "project_state.json"
@@ -37,8 +39,19 @@ class ProjectService:
 
     @staticmethod
     def _save_state(state: Dict[str, Any]) -> None:
-        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        save_json(STATE_PATH, state)
+
+    @staticmethod
+    def load_manifest(path: Path, *, persist_migration: bool = True) -> Dict[str, Any]:
+        """Load and safely migrate any historical project manifest."""
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        data, changed = migrate_project_manifest(raw)
+        if changed and persist_migration:
+            backup = path.with_name("spriteforge_project.pre-v2.json")
+            if not backup.exists():
+                save_json(backup, raw)
+            save_json(path, data)
+        return data
 
     @staticmethod
     def _summary(path: Path, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -109,7 +122,7 @@ class ProjectService:
             rows: List[Dict[str, Any]] = []
             for manifest in PROJECTS_DIR.glob("*/spriteforge_project.json"):
                 try:
-                    data = json.loads(manifest.read_text(encoding="utf-8"))
+                    data = ProjectService.load_manifest(manifest, persist_migration=False)
                     rows.append(ProjectService._summary(manifest, data))
                 except Exception as e:
                     logger.warning("Error loading project manifest", extra={"path": str(manifest)}, exc_info=e)
@@ -127,7 +140,7 @@ class ProjectService:
             if not path:
                 return None
             try:
-                return ProjectService._summary(path, json.loads(path.read_text(encoding="utf-8")))
+                return ProjectService._summary(path, ProjectService.load_manifest(path))
             except Exception as e:
                 logger.warning("Error loading active project", extra={"path": str(path)}, exc_info=e)
                 return None
@@ -184,11 +197,13 @@ class ProjectService:
             now = time.strftime("%Y-%m-%dT%H:%M:%S")
             manifest = ProjectService._manifest_path(project_dir)
             if manifest.exists():
-                data = json.loads(manifest.read_text(encoding="utf-8"))
+                data = ProjectService.load_manifest(manifest)
                 data["updated_at"] = now
             else:
                 data = {
-                    "schema": "spriteforge_project_v1",
+                    "schema": PROJECT_SCHEMA,
+                    "schema_version": 2,
+                    "project_id": project_name,
                     "name": project_name,
                     "created_at": now,
                     "updated_at": now,
@@ -220,6 +235,8 @@ class ProjectService:
                         "alpha_cleanliness": 0.05
                     },
                     "palette_lock": dict(DEFAULT_PALETTE_LOCK),
+                    "feature_flags": {},
+                    "style_profile_revision": None,
                 }
-            manifest.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            save_json(manifest, data)
             return ProjectService.set_active_project(str(manifest)) or ProjectService._summary(manifest, data)

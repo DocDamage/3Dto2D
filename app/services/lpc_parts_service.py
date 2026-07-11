@@ -10,7 +10,7 @@ import time
 from collections import Counter
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 from PIL import Image
 from PIL import ImageEnhance
@@ -22,6 +22,7 @@ DEFAULT_OUTPUT = ROOT / "output" / "lpc_parts"
 DEFAULT_LPC_SOURCE = ROOT / "input" / "lpc_assets" / "Universal-LPC-Spritesheet-Character-Generator"
 LPC_PRESETS_PATH = ROOT / "config" / "lpc_presets.json"
 LPC_CATALOG_VERSION = 2
+REPO_ROOT = ROOT.parent
 
 LPC_ACTION_ALIASES = {
     "backslash": "back_slash",
@@ -61,6 +62,23 @@ LPC_PALETTES = {
     "shadow": {"label": "Shadow", "brightness": 0.74, "contrast": 1.18, "color": 0.82, "rgb": (0.86, 0.9, 1.0)},
 }
 
+LPC_DIRECTION_ROWS = {
+    "back": 0,
+    "up": 0,
+    "north": 0,
+    "left": 1,
+    "west": 1,
+    "front": 2,
+    "down": 2,
+    "south": 2,
+    "right": 3,
+    "east": 3,
+}
+
+MAX_EDITOR_LAYERS = 64
+MAX_EDITOR_FRAMES = 256
+MAX_EDITOR_PNG_BYTES = 8 * 1024 * 1024
+
 LPC_LAYER_ORDER = [
     "shadow",
     "body",
@@ -84,6 +102,27 @@ LPC_LAYER_ORDER = [
     "weapon",
     "tools",
 ]
+
+
+def _resolve_lpc_source(source_dir: Path | str) -> Path:
+    raw = str(source_dir or "").strip()
+    if not raw:
+        return DEFAULT_LPC_SOURCE.resolve()
+    candidate = Path(raw).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve()
+
+    app_relative = (ROOT / candidate).resolve()
+    if app_relative.exists():
+        return app_relative
+
+    repo_relative = (REPO_ROOT / candidate).resolve()
+    if repo_relative.exists():
+        return repo_relative
+
+    # Prefer app-relative paths for missing optional LPC payloads so the error
+    # points at the documented local asset location.
+    return app_relative
 
 
 def _canonical_category(category: str) -> str:
@@ -191,6 +230,46 @@ def _image_data_uri(image: Image.Image, size: int = 160) -> str:
     return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
+def _normalize_preview_direction(direction: str) -> str:
+    value = str(direction or "front").strip().lower()
+    if value in {"down", "south"}:
+        return "front"
+    if value in {"up", "north"}:
+        return "back"
+    if value in {"east", "west"}:
+        return "right" if value == "east" else "left"
+    return value if value in {"front", "left", "right", "back"} else "front"
+
+
+def _preview_frame_data_uri(sheet: Image.Image, meta: Dict[str, Any], direction: str) -> str:
+    frame_width = int(meta.get("frame_width") or sheet.width)
+    frame_height = int(meta.get("frame_height") or sheet.height)
+    rows = max(1, int(meta.get("rows") or 1))
+    row = min(LPC_DIRECTION_ROWS.get(direction, 0), rows - 1)
+    frame = sheet.crop((0, row * frame_height, frame_width, (row + 1) * frame_height))
+    return _image_data_uri(frame, size=160)
+
+
+def _relative_file_url(path: Path) -> str:
+    try:
+        return "/file/" + path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return ""
+
+
+def _decode_png_data_uri(value: str) -> Image.Image:
+    text = str(value or "")
+    if "," in text and text.lower().startswith("data:image/png"):
+        text = text.split(",", 1)[1]
+    try:
+        raw = base64.b64decode(text, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Editor layer contains invalid base64 PNG data.") from exc
+    if len(raw) > MAX_EDITOR_PNG_BYTES:
+        raise ValueError("Editor layer PNG exceeds the 8 MB frame limit.")
+    return Image.open(BytesIO(raw)).convert("RGBA")
+
+
 def _image_size(path: Path) -> Tuple[int, int]:
     with Image.open(path) as img:
         return img.size
@@ -211,7 +290,7 @@ def _caption(trigger: str, part: Dict[str, Any]) -> str:
 
 
 def _load_or_scan_catalog(source_dir: Path | str) -> Dict[str, Any]:
-    source = Path(source_dir).resolve()
+    source = _resolve_lpc_source(source_dir)
     catalog_path = DEFAULT_OUTPUT / "catalog.json"
     if catalog_path.exists():
         try:
@@ -318,6 +397,54 @@ def _find_lpc_part(
         return None
     candidates.sort(key=lambda item: item[0])
     return candidates[0][1]
+
+
+def _split_layer_family_key(part: Dict[str, Any]) -> Tuple[str, str, str, str, str] | None:
+    phase = str(part.get("layer_phase") or "").lower()
+    if phase not in {"bg", "fg"}:
+        return None
+    rel = str(part.get("relative_path") or "").replace("\\", "/")
+    normalized_rel = "/".join(piece for piece in rel.split("/") if piece.lower() not in {"bg", "fg"})
+    return (
+        str(part.get("category") or ""),
+        str(part.get("action") or ""),
+        str(part.get("body_type") or ""),
+        str(part.get("variant") or ""),
+        normalized_rel,
+    )
+
+
+def _find_lpc_part_layers(
+    catalog: Dict[str, Any],
+    category: str,
+    action: str,
+    body_type: str,
+    query: str = "",
+) -> List[Dict[str, Any]]:
+    part = _find_lpc_part(catalog, category, action, body_type, query)
+    if not part:
+        return []
+    family_key = _split_layer_family_key(part)
+    if not family_key:
+        return [part]
+    return _split_layer_siblings(catalog, part, body_type)
+
+
+def _split_layer_siblings(catalog: Dict[str, Any], part: Dict[str, Any], body_type: str) -> List[Dict[str, Any]]:
+    family_key = _split_layer_family_key(part)
+    if not family_key:
+        return [part]
+    siblings = []
+    for candidate in catalog.get("parts") or []:
+        if int(candidate.get("unreadable") or 0):
+            continue
+        if _split_layer_family_key(candidate) != family_key:
+            continue
+        if not _body_compatible(body_type, str(candidate.get("body_type") or "")):
+            continue
+        siblings.append(candidate)
+    siblings.sort(key=lambda item: (_layer_order(item), _phase_rank(item), str(item.get("relative_path") or "")))
+    return siblings or [part]
 
 
 def _candidate_lpc_parts(
@@ -673,12 +800,15 @@ def _write_composition(
     missing: List[Dict[str, str]] | None = None,
     palette: str = "default",
     rules: Dict[str, Any] | None = None,
+    preview_direction: str = "front",
 ) -> Dict[str, Any]:
     out.mkdir(parents=True, exist_ok=True)
     sheet = _apply_lpc_palette(sheet, palette)
     sheet_path = out / "sheet.png"
     sheet.save(sheet_path)
     meta = _sheet_metadata(sheet, action, character_name)
+    direction = _normalize_preview_direction(preview_direction)
+    sheet_url = _relative_file_url(sheet_path)
     manifest = {
         "ok": True,
         "schema": "spriteforge.lpc_composition.v1",
@@ -687,11 +817,13 @@ def _write_composition(
         "spritesheets_dir": catalog.get("spritesheets_dir"),
         "output_dir": str(out),
         "sheet": str(sheet_path),
+        "sheet_url": sheet_url,
         "sheet_json": str(out / "sheet.json"),
         "name": character_name,
         "action": action,
         "body_type": body_type,
         "palette": palette if palette in LPC_PALETTES else "default",
+        "preview_direction": direction,
         "selections": selections,
         "missing": missing or [],
         "rules": rules or {},
@@ -704,6 +836,131 @@ def _write_composition(
     (out / "sheet.json").write_text(json.dumps({**meta, "lpc_manifest": "lpc_composition.json"}, indent=2), encoding="utf-8")
     (out / "lpc_composition.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     manifest["thumbnail_data_uri"] = _thumbnail_data_uri(sheet_path, size=160)
+    manifest["preview_frame_data_uri"] = _preview_frame_data_uri(sheet, meta, direction)
+    return manifest
+
+
+def _resolve_root_file(path: str) -> Path:
+    raw = str(path or "").strip()
+    if raw.startswith("/file/"):
+        raw = raw[len("/file/"):]
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        candidate = ROOT / raw
+    resolved = candidate.resolve()
+    if not resolved.exists() or not resolved.is_file():
+        raise FileNotFoundError(f"File not found: {path}")
+    return resolved
+
+
+def _load_sheet_meta(sheet_path: Path, sheet: Image.Image, fallback_name: str) -> Dict[str, Any]:
+    meta_path = sheet_path.with_name("sheet.json")
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            if isinstance(meta, dict):
+                return {
+                    **_sheet_metadata(sheet, str(meta.get("animation") or "edited"), fallback_name),
+                    **meta,
+                }
+        except (OSError, json.JSONDecodeError):
+            pass
+    return _sheet_metadata(sheet, "edited", fallback_name)
+
+
+def _iter_editor_frames(layer: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+    frames = layer.get("frames") if isinstance(layer, dict) else None
+    if isinstance(frames, list):
+        for item in frames:
+            if isinstance(item, dict):
+                yield item
+        return
+    if isinstance(frames, dict):
+        for key, png in frames.items():
+            direction, _, frame = str(key).partition(":")
+            yield {"direction": direction, "frame": frame, "png": png}
+
+
+def bake_lpc_editor_layers(
+    sheet_path: str,
+    layers: List[Dict[str, Any]],
+    output_dir: Path | str | None = None,
+    name: str = "",
+    preview_direction: str = "front",
+) -> Dict[str, Any]:
+    source_sheet = _resolve_root_file(sheet_path)
+    if not isinstance(layers, list) or not layers:
+        raise ValueError("At least one editor layer is required.")
+    if len(layers) > MAX_EDITOR_LAYERS:
+        raise ValueError(f"Editor bake supports at most {MAX_EDITOR_LAYERS} layers.")
+    with Image.open(source_sheet) as opened:
+        sheet = opened.convert("RGBA")
+    character_name = safe_name(name or source_sheet.parent.name or "lpc_edited")
+    meta = _load_sheet_meta(source_sheet, sheet, character_name)
+    frame_width = int(meta.get("frame_width") or 64)
+    frame_height = int(meta.get("frame_height") or 64)
+    columns = max(1, int(meta.get("columns") or sheet.width // frame_width or 1))
+    rows = max(1, int(meta.get("rows") or sheet.height // frame_height or 1))
+    applied = 0
+    baked_layers: List[Dict[str, Any]] = []
+    for layer_index, layer in enumerate(layers):
+        if not isinstance(layer, dict) or layer.get("visible") is False:
+            continue
+        layer_name = str(layer.get("name") or f"Edit Layer {layer_index + 1}")
+        layer_applied = 0
+        for frame in _iter_editor_frames(layer):
+            if applied >= MAX_EDITOR_FRAMES:
+                raise ValueError(f"Editor bake supports at most {MAX_EDITOR_FRAMES} painted frames.")
+            direction = _normalize_preview_direction(str(frame.get("direction") or "front"))
+            frame_index = max(0, int(frame.get("frame") or 0)) % columns
+            png = str(frame.get("png") or frame.get("data_uri") or "")
+            if not png:
+                continue
+            overlay = _decode_png_data_uri(png)
+            if overlay.size != (frame_width, frame_height):
+                raise ValueError(f"Editor layer frame must be {frame_width}x{frame_height}; got {overlay.width}x{overlay.height}.")
+            row = min(LPC_DIRECTION_ROWS.get(direction, 0), rows - 1)
+            sheet.alpha_composite(overlay, (frame_index * frame_width, row * frame_height))
+            applied += 1
+            layer_applied += 1
+        baked_layers.append({"name": layer_name, "frame_count": layer_applied})
+    if applied == 0:
+        raise ValueError("No painted editor frames were found to bake.")
+    out = Path(output_dir).resolve() if output_dir else source_sheet.parent / "baked_edits"
+    out.mkdir(parents=True, exist_ok=True)
+    baked_sheet = out / "sheet.png"
+    sheet.save(baked_sheet)
+    baked_meta = {
+        **meta,
+        "image": "sheet.png",
+        "source": "lpc_editor_bake",
+        "name": character_name,
+        "frame_count": columns * rows,
+        "columns": columns,
+        "rows": rows,
+    }
+    manifest = {
+        "ok": True,
+        "schema": "spriteforge.lpc_editor_bake.v1",
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "source_sheet": str(source_sheet),
+        "output_dir": str(out),
+        "sheet": str(baked_sheet),
+        "sheet_url": _relative_file_url(baked_sheet),
+        "sheet_json": str(out / "sheet.json"),
+        "name": character_name,
+        "preview_direction": _normalize_preview_direction(preview_direction),
+        "layers": baked_layers,
+        "applied_frames": applied,
+        "frame_width": frame_width,
+        "frame_height": frame_height,
+        "frame_count": columns * rows,
+        "columns": columns,
+    }
+    (out / "sheet.json").write_text(json.dumps({**baked_meta, "lpc_manifest": "lpc_editor_bake.json"}, indent=2), encoding="utf-8")
+    (out / "lpc_editor_bake.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    manifest["thumbnail_data_uri"] = _thumbnail_data_uri(baked_sheet, size=160)
+    manifest["preview_frame_data_uri"] = _preview_frame_data_uri(sheet, baked_meta, manifest["preview_direction"])
     return manifest
 
 
@@ -737,6 +994,7 @@ def compose_lpc_character(
     name: str = "",
     include_body: bool = True,
     palette: str = "default",
+    preview_direction: str = "front",
 ) -> Dict[str, Any]:
     catalog = _load_or_scan_catalog(source_dir)
     action = _normalize_action(action or "idle")
@@ -748,9 +1006,9 @@ def compose_lpc_character(
     missing: List[Dict[str, str]] = []
 
     for category, query in chosen_entries:
-        part = _find_lpc_part(catalog, category, action, body_type, query)
-        if part:
-            selected_layers.append(part)
+        parts = _find_lpc_part_layers(catalog, category, action, body_type, query)
+        if parts:
+            selected_layers.extend(parts)
         else:
             missing.append({"category": category, "query": query})
     rules = lpc_rules_report(
@@ -768,6 +1026,7 @@ def compose_lpc_character(
     return _write_composition(
         sheet, used_layers, catalog, out, action, body_type, character_name,
         _selection_manifest(chosen_entries), missing, palette=palette, rules=rules,
+        preview_direction=preview_direction,
     )
 
 
@@ -775,8 +1034,12 @@ def lpc_catalog_options(
     source_dir: Path | str,
     categories: List[str] | None = None,
     limit_per_category: int = 240,
+    action: str = "idle",
+    body_type: str = "male",
 ) -> Dict[str, Any]:
     catalog = _load_or_scan_catalog(source_dir)
+    action = _normalize_action(action or "idle")
+    body_type = str(body_type or "male").strip().lower()
     requested = categories or ["hair", "torso", "legs", "feet", "weapon", "hat", "cape", "shoulders"]
     category_pairs = [(category, _canonical_category(category)) for category in requested]
     options: Dict[str, List[Dict[str, str]]] = {category: [] for category, _canonical in category_pairs}
@@ -788,6 +1051,10 @@ def lpc_catalog_options(
         category = str(part.get("category") or "")
         output_categories = aliases_by_canonical.get(_canonical_category(category), [])
         if not output_categories:
+            continue
+        if str(part.get("action") or "") != action:
+            continue
+        if not _body_compatible(body_type, str(part.get("body_type") or "")):
             continue
         variant = str(part.get("variant") or "").strip()
         if not variant:
@@ -808,6 +1075,8 @@ def lpc_catalog_options(
         "ok": True,
         "schema": "spriteforge.lpc_catalog_options.v1",
         "source_dir": catalog.get("source_dir"),
+        "action": action,
+        "body_type": body_type,
         "part_count": catalog.get("part_count", 0),
         "actions": sorted((catalog.get("action_counts") or {}).keys()),
         "body_types": sorted((catalog.get("body_type_counts") or {}).keys()),
@@ -874,7 +1143,7 @@ def compose_lpc_batch(
             if category not in {"hair", "legs", "feet"} and rng.random() < 0.35:
                 continue
             part = rng.choice(choices)
-            selected_layers.append(part)
+            selected_layers.extend(_split_layer_siblings(catalog, part, item_body))
             selections[category] = str(part.get("variant") or part.get("relative_path") or category)
         selected_layers.sort(key=lambda part: (_layer_order(part), _phase_rank(part), str(part.get("relative_path") or "")))
         try:
@@ -1099,7 +1368,7 @@ def scan_lpc_parts(
     thumbnail_limit: int = 24,
     max_files: int = 0,
 ) -> Dict[str, Any]:
-    source = Path(source_dir).resolve()
+    source = _resolve_lpc_source(source_dir)
     spritesheets = _spritesheets_root(source)
     out = Path(output_dir).resolve() if output_dir else DEFAULT_OUTPUT
     out.mkdir(parents=True, exist_ok=True)

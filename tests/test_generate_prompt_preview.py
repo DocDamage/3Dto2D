@@ -69,4 +69,4 @@ def test_generate_prompt_preview_assets_are_wired():
     assert "?v=prompt-autofix" in index
     assert '<button class="nav" data-view="generate">Sprite Lab</button>' in index
     assert "generate: 'Sprite Lab'" in (APP / "web" / "js" / "ux_enhancements.js").read_text(encoding="utf-8")
-    assert "js/ux_enhancements.js?v=sprite-lab-visible" in index
+    assert "js/ux_enhancements.js?v=console-product-polish-v12" in index

@@ -1,65 +1,92 @@
 <section class="view active" id="view-guide">
-  <div class="guide-shell">
-    
-    <!-- Welcome Screen Main Content -->
-    <section class="guide-main card glow">
-      <div class="guide-intro" style="margin-bottom: 24px; text-align: center; padding: 20px 0;">
-        <h2 style="font-size: 24px; margin-bottom: 12px; color: #fff;">Create Game-Ready Character Sprites</h2>
-        <p style="font-size: 14px; max-width: 600px; margin: 0 auto 24px auto; color: var(--muted); line-height: 1.5;">
-          Use our interactive wizard to easily set up animations, directions, cell sizes, and styles. SpriteForge automatically handles ComfyUI pipeline configurations for you.
-        </p>
-        <div>
-          <button class="primary big" onclick="if (typeof openWizard === 'function') openWizard();" style="padding: 12px 28px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer;">Launch Guided Creator Wizard</button>
+  <div class="consumer-home">
+    <section class="home-hero" aria-labelledby="homeTitle">
+      <div class="home-hero-copy">
+        <p class="home-kicker">Your creative home</p>
+        <h2 id="homeTitle">What would you like to make?</h2>
+        <p>Choose a starting point. SpriteForge will guide you through the rest and keep the technical setup out of your way.</p>
+        <div class="home-project-state" id="homeProjectState" aria-live="polite">
+          <span class="home-project-dot" aria-hidden="true"></span>
+          <span><b id="homeProjectName">Start a new project</b><small id="homeProjectHint">Give your game or character a name when you are ready.</small></span>
         </div>
       </div>
-
-      <!-- Quick Start Workflows Grid -->
-      <div class="quick-start-workflows" style="margin-top: 32px; border-top: 1px solid var(--line, rgba(255,255,255,0.08)); padding-top: 24px;">
-        <h3 style="margin: 0 0 16px 0; font-size: 15px; color: #fff; text-transform: uppercase; letter-spacing: 0.05em;">Quick-Start Workflows</h3>
-        <div class="grid-columns-responsive" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-          
-          <div class="card workflow-card" onclick="if (typeof openWizard === 'function') openWizard('single');" style="cursor: pointer; padding: 16px; border: 1px solid var(--line, rgba(255,255,255,0.06)); transition: all 0.2s; display: flex; flex-direction: column; gap: 8px;">
-            <span style="font-size: 24px;">🏃‍♂️</span>
-            <b style="color: #fff; font-size: 13px;">Single Animation Cycle</b>
-            <p style="margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4;">Generate a single 8-frame loop (e.g. idle or walk) to test your prompts.</p>
-          </div>
-          
-          <div class="card workflow-card" onclick="if (typeof openWizard === 'function') openWizard('pack');" style="cursor: pointer; padding: 16px; border: 1px solid var(--line, rgba(255,255,255,0.06)); transition: all 0.2s; display: flex; flex-direction: column; gap: 8px;">
-            <span style="font-size: 24px;">📦</span>
-            <b style="color: #fff; font-size: 13px;">Complete Action Set</b>
-            <p style="margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4;">Create a full set of actions (idle, walk, attack, death) for your character.</p>
-          </div>
-          
-          <div class="card workflow-card" onclick="if (typeof openWizard === 'function') openWizard('convert');" style="cursor: pointer; padding: 16px; border: 1px solid var(--line, rgba(255,255,255,0.06)); transition: all 0.2s; display: flex; flex-direction: column; gap: 8px;">
-            <span style="font-size: 24px;">🎥</span>
-            <b style="color: #fff; font-size: 13px;">Video to Sprite Sheet</b>
-            <p style="margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4;">Import an external reference video and convert it to transparent keyed frames.</p>
-          </div>
-
-        </div>
+      <div class="home-hero-mark" aria-hidden="true">
+        <span class="home-pixel home-pixel-one"></span>
+        <span class="home-pixel home-pixel-two"></span>
+        <span class="home-pixel home-pixel-three"></span>
+        <svg viewBox="0 0 160 160">
+          <path d="M48 25h64v16h16v16h16v64h-16v16H32v-16H16V57h16V41h16z" />
+          <path d="M48 57h16v16H48zm48 0h16v16H96zM48 105h64v16H48z" class="home-mark-face" />
+        </svg>
       </div>
     </section>
 
-    <!-- Sidebar: Recent Results & Next Steps -->
-    <aside class="guide-side">
-      <section class="card">
-        <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h3 style="margin: 0;">Recent results</h3>
-          <button class="mini" data-jump="quality" type="button">Review</button>
-        </div>
-        <div id="guidedGallery" class="guided-gallery">
-          <!-- Filled dynamically by app_guide.js -->
-        </div>
-      </section>
-      <section class="card guide-ship-card">
-        <h3 style="margin-bottom: 10px;">When it looks good</h3>
-        <div class="button-row" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-          <button class="ghost" data-jump="quality" type="button" style="width: 100%; text-align: left;">Fix or QA</button>
-          <button class="ghost" data-jump="release" type="button" style="width: 100%; text-align: left;">Ship ZIP</button>
-          <button class="ghost" data-jump="packs" type="button" style="width: 100%; text-align: left;">Build atlas</button>
-        </div>
-      </section>
-    </aside>
+    <section class="home-journey" aria-label="Sprite creation journey">
+      <ol>
+        <li class="active"><span>1</span><b>Choose</b><small>Pick a starting point</small></li>
+        <li><span>2</span><b>Create</b><small>Make your character</small></li>
+        <li><span>3</span><b>Review</b><small>Check the movement</small></li>
+        <li><span>4</span><b>Export</b><small>Send it to your game</small></li>
+      </ol>
+    </section>
 
+    <section class="home-actions" aria-labelledby="homeActionsTitle">
+      <div class="home-section-heading">
+        <div>
+          <p class="home-kicker">Start here</p>
+          <h3 id="homeActionsTitle">Choose your path</h3>
+        </div>
+        <button class="home-text-action" type="button" data-jump="dashboard">View all projects</button>
+      </div>
+      <div class="home-action-grid">
+        <button class="home-action-card home-action-primary" type="button" data-workflow="single">
+          <span class="home-action-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M12 8h24v6h6v24h-6v6H12v-6H6V14h6z"/><path d="M15 17h6v6h-6zm12 0h6v6h-6zM15 29h18v6H15z" class="icon-detail"/></svg>
+          </span>
+          <span class="home-action-copy"><b>Create a character</b><small>Start from a description or reference image.</small></span>
+          <span class="home-action-arrow" aria-hidden="true">→</span>
+        </button>
+        <button class="home-action-card" type="button" data-workflow="pack">
+          <span class="home-action-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M8 9h32v30H8z"/><path d="M14 15h20v18H14zM20 3h8v6h-8zm0 36h8v6h-8z" class="icon-detail"/></svg>
+          </span>
+          <span class="home-action-copy"><b>Animate existing art</b><small>Import your sprites and bring them to life.</small></span>
+          <span class="home-action-arrow" aria-hidden="true">→</span>
+        </button>
+        <button class="home-action-card" type="button" data-workflow="convert">
+          <span class="home-action-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M5 10h29v28H5z"/><path d="m34 19 9-5v20l-9-5zM17 18l10 6-10 6z" class="icon-detail"/></svg>
+          </span>
+          <span class="home-action-copy"><b>Turn a video into sprites</b><small>Choose a clip and we’ll prepare clean frames.</small></span>
+          <span class="home-action-arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="home-lower-grid">
+      <section class="home-panel home-recent-panel">
+        <div class="home-section-heading">
+          <div>
+            <p class="home-kicker">Pick up where you left off</p>
+            <h3>Recent creations</h3>
+          </div>
+          <button class="home-text-action" data-jump="quality" type="button">Open Review</button>
+        </div>
+        <div id="guidedGallery" class="guided-gallery home-recent-gallery">
+          <div class="home-empty-state" id="homeRecentEmpty">
+            <span aria-hidden="true">✦</span>
+            <div><b>Your creations will appear here</b><small>Start with a character above. You can return and continue at any time.</small></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="home-panel home-help-panel">
+        <p class="home-kicker">New to SpriteForge?</p>
+        <h3>We’ll guide every step.</h3>
+        <p>You never need to understand models, pipelines, or file formats to create a polished sprite.</p>
+        <button class="secondary" type="button" data-home-action="learn">Learn the basics</button>
+        <button class="home-text-action" type="button" data-jump="setup">Check settings</button>
+      </aside>
+    </div>
   </div>
 </section>

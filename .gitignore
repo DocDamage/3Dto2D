@@ -14,6 +14,7 @@ app/*.egg-info/
 
 # Local logs and generated outputs
 output/
+qa_server_*.log
 app/logs/
 app/output/
 app/releases/
@@ -21,6 +22,7 @@ app/input/uploaded_videos/
 app/state/
 app/config/*.bak_*
 dist_release.zip
+dist/
 
 # Optional local training/asset corpora
 CuteSCKR_uncut/

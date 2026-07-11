@@ -18,11 +18,11 @@
       </div>
     </header>
 
-    <input type="hidden" id="lpcSourceDir" value="input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator" />
+    <input type="hidden" id="lpcSourceDir" value="app/input/lpc_assets/Universal-LPC-Spritesheet-Character-Generator" />
 
     <div class="lpc-stage">
       <form class="lpc-panel" id="lpcLeftPanel">
-        <label>Race<select data-lpc-fixed="race"><option>Human</option></select></label>
+        <label>Race<select data-lpc-slot="head" data-lpc-query="heads"><option value="human">Human</option></select></label>
         <label>Gender<select id="lpcGender"><option value="male">Male</option><option value="female">Female</option></select></label>
         <label>Body<select id="lpcBody"><option value="regular">Regular</option><option value="thin">Thin</option><option value="muscular">Muscular</option><option value="child">Child</option><option value="teen">Teen</option></select></label>
         <label>Wings<select data-lpc-slot="body" data-lpc-query="wings"><option value="">None</option></select></label>
@@ -30,9 +30,9 @@
         <label>Horns<select data-lpc-slot="head" data-lpc-query="horn"><option value="">None</option></select></label>
         <label>Hair<select data-lpc-slot="hair"><option value="">None</option></select></label>
         <label>Hair Addon<select data-lpc-slot="hair" data-lpc-query="addon"><option value="">None</option></select></label>
-        <label>Eyes<select data-lpc-slot="eyes"><option value="">Human</option></select></label>
-        <label>Ears<select data-lpc-slot="head" data-lpc-query="ears"><option value="">Base</option></select></label>
-        <label>Nose<select data-lpc-slot="facial" data-lpc-query="nose"><option value="">Base</option></select></label>
+        <label>Eyes<select data-lpc-slot="eyes"><option value="">None</option></select></label>
+        <label>Ears<select data-lpc-slot="head" data-lpc-query="ears"><option value="">None</option></select></label>
+        <label>Nose<select data-lpc-slot="facial" data-lpc-query="nose"><option value="">None</option></select></label>
         <label>Facial Hair<select data-lpc-slot="beards"><option value="">None</option></select></label>
         <label>Body Addon 1<select data-lpc-slot="body"><option value="">None</option></select></label>
         <label>Body Addon 2<select data-lpc-slot="body"><option value="">None</option></select></label>
@@ -52,17 +52,69 @@
               <option value="hurt">Hurt</option>
             </select>
           </label>
+          <label>Direction
+            <select id="lpcDirection">
+              <option value="front">Front / Down</option>
+              <option value="back">Back / Up</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
           <label>Name<input id="lpcCharacterName" value="lpc_character" /></label>
         </div>
-        <div class="lpc-preview-window" id="lpcPreviewWindow">
-          <img id="lpcPreviewImage" alt="LPC character preview" />
-          <div class="lpc-preview-empty" id="lpcPreviewEmpty">Compose a character to preview it here.</div>
+        <div class="lpc-mode-tabs" role="tablist" aria-label="LPC workspace">
+          <button class="mini lpc-mode-tab active" id="lpcPreviewTab" type="button" data-lpc-mode="preview" role="tab" aria-selected="true" aria-controls="lpcPreviewPanel">Preview</button>
+          <button class="mini lpc-mode-tab" id="lpcEditorTab" type="button" data-lpc-mode="editor" role="tab" aria-selected="false" aria-controls="lpcEditorPanel">Editor</button>
         </div>
-        <div class="lpc-zoom-row">
-          <button class="mini" id="lpcZoomOut" type="button">-</button>
-          <input id="lpcZoom" type="range" min="1" max="8" step="0.25" value="3" />
-          <button class="mini" id="lpcZoomIn" type="button">+</button>
-          <span id="lpcZoomLabel">300%</span>
+        <div class="lpc-mode-panel active" id="lpcPreviewPanel" role="tabpanel" aria-labelledby="lpcPreviewTab">
+          <div class="lpc-preview-window" id="lpcPreviewWindow">
+            <canvas id="lpcPreviewCanvas" width="64" height="64" aria-label="LPC character preview"></canvas>
+            <img id="lpcPreviewImage" alt="LPC character preview fallback" />
+            <div class="lpc-preview-empty" id="lpcPreviewEmpty">Loading a base male body preview...</div>
+          </div>
+          <div class="lpc-zoom-row">
+            <button class="mini" id="lpcPlayPause" type="button">Pause</button>
+            <button class="mini" id="lpcZoomOut" type="button">-</button>
+            <input id="lpcZoom" type="range" min="1" max="8" step="0.25" value="3" />
+            <button class="mini" id="lpcZoomIn" type="button">+</button>
+            <span id="lpcZoomLabel">300%</span>
+            <label>FPS<input id="lpcFps" type="range" min="1" max="24" step="1" value="6" /></label>
+            <span id="lpcFpsLabel">6 fps</span>
+            <button class="mini" id="lpcResetView" type="button">Center</button>
+          </div>
+        </div>
+        <div class="lpc-mode-panel" id="lpcEditorPanel" role="tabpanel" aria-labelledby="lpcEditorTab" hidden>
+          <div class="lpc-editor-toolbar">
+            <label>Tool
+              <select id="lpcEditorTool">
+                <option value="brush">Brush</option>
+                <option value="eraser">Eraser</option>
+              </select>
+            </label>
+            <label>Color<input id="lpcEditorColor" type="color" value="#f2a23a" /></label>
+            <label>Size<input id="lpcEditorSize" type="range" min="1" max="8" step="1" value="1" /></label>
+            <label class="checkbox-line"><input id="lpcEditorMirror" type="checkbox" checked /> Mirror</label>
+            <label>Directions
+              <select id="lpcEditorApplyDirections">
+                <option value="current">Current</option>
+                <option value="all">All directions</option>
+              </select>
+            </label>
+          </div>
+          <div class="lpc-editor-workspace">
+            <div class="lpc-editor-canvas-wrap">
+              <canvas id="lpcEditorCanvas" width="64" height="64" aria-label="LPC pixel editor canvas"></canvas>
+            </div>
+            <aside class="lpc-editor-layers" aria-label="LPC editor layers">
+              <div class="lpc-layer-actions">
+                <button class="mini" id="lpcEditorAddLayer" type="button">Add Layer</button>
+                <button class="mini" id="lpcEditorClearLayer" type="button">Clear</button>
+                <button class="mini primary" id="lpcEditorBake" type="button">Bake Edits</button>
+                <button class="mini" id="lpcEditorDownloadFrame" type="button">Download Frame</button>
+              </div>
+              <div id="lpcEditorLayerList" class="lpc-layer-list"></div>
+            </aside>
+          </div>
         </div>
         <div class="lpc-rules-panel" id="lpcRulesPanel"></div>
         <div class="lpc-batch-gallery" id="lpcBatchGallery"></div>
@@ -74,10 +126,10 @@
         <label>Facial<select data-lpc-slot="facial"><option value="">None</option></select></label>
         <label>Suit<select data-lpc-slot="torso" data-lpc-query="suit"><option value="">None</option></select></label>
         <label>Coverall<select data-lpc-slot="torso" data-lpc-query="coverall"><option value="">None</option></select></label>
-        <label>Shirt<select data-lpc-slot="torso"><option value="">Shirt</option></select></label>
+        <label>Shirt<select data-lpc-slot="torso"><option value="">None</option></select></label>
         <label>Gloves<select data-lpc-slot="arms"><option value="">None</option></select></label>
         <label>Belt<select data-lpc-slot="waist"><option value="">None</option></select></label>
-        <label>Pants<select data-lpc-slot="legs"><option value="">Pants</option></select></label>
+        <label>Pants<select data-lpc-slot="legs"><option value="">None</option></select></label>
         <label>Shoes<select data-lpc-slot="feet"><option value="">None</option></select></label>
         <label>Back<select data-lpc-slot="backpack"><option value="">None</option></select></label>
         <label>Mainhand<select data-lpc-slot="weapons"><option value="">None</option></select></label>

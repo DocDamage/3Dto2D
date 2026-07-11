@@ -13,6 +13,7 @@
     robot: 'single full body robot mech character, readable mechanical silhouette, bold armor shapes, clean silhouette, consistent materials',
   };
   let currentStep = window.SpriteForgeWizardStateConfig?.initialStep || 1;
+  let wizardPreviousFocus = null;
   const STORAGE_KEY = window.SpriteForgeWizardStateConfig?.storageKey || 'spriteforge_wizard_state';
 
   // Modal elements
@@ -30,6 +31,27 @@
     skipBtn = document.getElementById('wizardSkipBtn');
 
     if (!modal || !form) return;
+
+    modal.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeWizard();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(modal.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+        .filter(item => item.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
 
     stepperIndicators = Array.from(modal.querySelectorAll('.wizard-step-indicator'));
     stepPanels = Array.from(modal.querySelectorAll('.wizard-step-panel'));
@@ -347,7 +369,7 @@
     });
   }
 
-  async function runPreflightCheck() {
+  async function runPreflightCheck(options = {}) {
     const list = document.getElementById('wizPreflightList');
     const errBox = document.getElementById('wizPreflightError');
     if (!list) return;
@@ -355,14 +377,19 @@
     window.SpriteForgeWizardUi.renderPreflightChecking(list, errBox);
 
     try {
-      // Reuse the global status check endpoint or general status data
       let statusData = window._latestStatus;
-      if (!statusData && typeof refreshAll === 'function') {
+      if (options.refresh && typeof api === 'function') {
+        const query = typeof projectQuery === 'function' ? projectQuery() : '';
+        statusData = await api(`/api/status${query}`);
+        window._latestStatus = statusData;
+      } else if (!statusData && typeof refreshAll === 'function') {
         await refreshAll();
         statusData = window._latestStatus;
       }
 
-      window.SpriteForgeWizardUi.renderPreflightResult(window.SpriteForgeWizardSubmit.evaluateWizardPreflight(statusData), errBox);
+      const goal = getSelectedGoal();
+      const result = window.SpriteForgeWizardSubmit.evaluateWizardPreflight(statusData, goal);
+      window.SpriteForgeWizardUi.renderPreflightResult(result, errBox);
     } catch (e) {
       console.error(e);
       window.SpriteForgeWizardUi.renderPreflightError(list, errBox, e);
@@ -428,7 +455,12 @@
       loadWizardHtml().then(() => openWizard(initialGoal)).catch(e => console.error('Error opening wizard:', e));
       return;
     }
+    wizardPreviousFocus = document.activeElement;
     modal.classList.remove('hidden');
+    const main = document.getElementById('mainContent');
+    const rail = document.querySelector('.rail');
+    if (main && 'inert' in main) main.inert = true;
+    if (rail && 'inert' in rail) rail.inert = true;
 
     if (initialGoal) {
       const radio = form.querySelector(`input[name="wiz_goal"][value="${initialGoal}"]`);
@@ -447,11 +479,27 @@
     // Trigger pre-filled templates preview
     updatePromptPreview();
     updateVisualizerGrid();
+    if (currentStep === 4) {
+      buildSummaryPage();
+      runPreflightCheck({ refresh: true });
+    }
+    const title = document.getElementById('wizardTitle');
+    if (title) {
+      title.setAttribute('tabindex', '-1');
+      requestAnimationFrame(() => title.focus());
+    }
   }
 
   function closeWizard() {
     if (!modal) return;
     modal.classList.add('hidden');
+    modal.classList.remove('consumer-show-advanced');
+    const main = document.getElementById('mainContent');
+    const rail = document.querySelector('.rail');
+    if (main && 'inert' in main) main.inert = false;
+    if (rail && 'inert' in rail) rail.inert = window.matchMedia('(max-width: 760px)').matches && !document.body.classList.contains('mobile-rail-open');
+    if (wizardPreviousFocus && typeof wizardPreviousFocus.focus === 'function') wizardPreviousFocus.focus();
+    wizardPreviousFocus = null;
   }
 
   function saveWizardState() {
@@ -525,7 +573,7 @@
     const container = document.getElementById('wizardContainer');
     if (!container) return;
     try {
-      const res = await fetch('components/wizard.html?v=wizard-reference-upload-buttons');
+      const res = await fetch('components/wizard.html?v=wizard-product-ready-v12');
       if (res.ok) {
         container.innerHTML = await res.text();
         initWizard();

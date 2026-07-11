@@ -572,8 +572,8 @@ body[data-active-view="generate"] #view-generate .model-addons-list {
 
   body[data-active-view="generate"] .status-row {
     display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
+    flex-wrap: wrap !important;
+    overflow-x: visible;
     padding-bottom: 2px;
   }
 
@@ -583,7 +583,7 @@ body[data-active-view="generate"] #view-generate .model-addons-list {
 
   body[data-active-view="generate"] .project-strip {
     display: grid !important;
-    grid-template-columns: minmax(104px, 1fr) minmax(118px, 1fr) auto;
+    grid-template-columns: 1fr;
   }
 
   body[data-active-view="generate"] .project-strip label,
@@ -627,5 +627,32 @@ body[data-active-view="generate"] #view-generate .model-addons-list {
   body[data-active-view="generate"] .existing-sprite-grid,
   body[data-active-view="generate"] .existing-sprite-actions {
     grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .topbar-controls,
+  .status-row {
+    align-items: stretch !important;
+    flex-wrap: wrap !important;
+    width: 100%;
+  }
+
+  .project-strip {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    justify-content: stretch !important;
+    width: 100%;
+  }
+
+  .project-strip label,
+  .project-strip select,
+  .project-strip input,
+  .project-strip button {
+    max-width: 100% !important;
+    width: 100% !important;
   }
 }

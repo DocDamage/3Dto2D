@@ -20,8 +20,8 @@ echo ============================================================
 echo.
 
 REM ── 1. Unit + integration tests ─────────────────────────────
-echo [1/4] Running unit and integration tests...
-%PYTHON% -m pytest tests\ -v --tb=short -q
+echo [1/5] Running all unit and integration tests...
+%PYTHON% -m pytest -q --tb=short
 if errorlevel 1 (
   echo.
   echo FAILED: Unit/integration tests. Fix errors before proceeding.
@@ -32,7 +32,7 @@ echo PASSED: Unit tests.
 echo.
 
 REM ── 2. Web UI smoke test ────────────────────────────────────
-echo [2/4] Web UI smoke test...
+echo [2/5] Web UI smoke test...
 %PYTHON% app\spriteforge_web.py --smoke
 if errorlevel 1 (
   echo FAILED: Web UI smoke test.
@@ -43,13 +43,14 @@ echo PASSED: Web UI smoke.
 echo.
 
 REM ── 3. Demo generation smoke test ───────────────────────────
-echo [3/4] Demo generation smoke test (no GPU required)...
+echo [3/5] Demo generation smoke test (no GPU required)...
 %PYTHON% app\spriteforge_demo.py --smoke 2>nul
 if errorlevel 1 (
   REM spriteforge_demo.py may not support --smoke; try help check instead
   %PYTHON% -c "import app.spriteforge_demo" 2>nul
   if errorlevel 1 (
-    echo WARNING: Demo smoke test could not run - continuing.
+    echo FAILED: Demo smoke test could not run.
+    exit /b 1
   ) else (
     echo PASSED: Demo module imports OK.
   )
@@ -58,14 +59,23 @@ if errorlevel 1 (
 )
 echo.
 
-REM ── 4. Smoke tests via pytest ────────────────────────────────
-echo [4/4] Smoke test suite (pytest tests\test_smoke.py)...
-%PYTHON% -m pytest tests\test_smoke.py -v --tb=short 2>nul
+REM ── 4. JavaScript syntax ─────────────────────────────────────
+echo [4/5] Checking all JavaScript files...
+for %%F in (app\web\js\*.js) do node --check "%%F"
 if errorlevel 1 (
-  echo WARNING: Smoke tests not all passed. Check output above.
-) else (
-  echo PASSED: Smoke tests.
+  echo FAILED: JavaScript syntax check.
+  exit /b 1
 )
+echo PASSED: JavaScript syntax.
+echo.
+
+REM ── 5. Python/dependency integrity ───────────────────────────
+echo [5/5] Checking Python syntax and installed dependencies...
+%PYTHON% -m compileall -q app -x "app[\\/](vendor|input|scratch|\.venv)"
+if errorlevel 1 exit /b 1
+%PYTHON% -m pip check
+if errorlevel 1 exit /b 1
+echo PASSED: Python and dependency integrity.
 echo.
 
 echo ============================================================

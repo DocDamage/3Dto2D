@@ -69,6 +69,30 @@ def compare_sprite_to_golden(
     return _write_report(report, report_path)
 
 
+def compare_ui_screenshot(current_path: Path, golden_path: Path, *, mismatch_ratio: float = 0.01,
+                          max_channel_delta: int = 12, report_path: Optional[Path] = None) -> Dict[str, Any]:
+    """Compare deterministic UI-region screenshots with an explicit tolerance."""
+    current = Image.open(current_path).convert("RGBA")
+    golden = Image.open(golden_path).convert("RGBA")
+    report = {
+        "schema": "spriteforge.ui_visual_regression.v1", "current": str(current_path), "golden": str(golden_path),
+        "current_size": list(current.size), "golden_size": list(golden.size),
+        "max_allowed_channel_delta": max_channel_delta, "max_allowed_mismatch_ratio": mismatch_ratio,
+    }
+    if current.size != golden.size:
+        report.update({"ok": False, "reason": "size_mismatch", "pixel_mismatch_ratio": 1.0})
+        return _write_report(report, report_path)
+    delta = np.abs(np.asarray(current, dtype=np.int16) - np.asarray(golden, dtype=np.int16))
+    mismatched = np.max(delta, axis=2) > int(max_channel_delta)
+    ratio = float(np.sum(mismatched) / max(1, mismatched.size))
+    report.update({
+        "ok": ratio <= float(mismatch_ratio), "reason": "pass" if ratio <= float(mismatch_ratio) else "pixel_delta",
+        "pixel_mismatch_ratio": round(ratio, 6), "mismatched_pixels": int(np.sum(mismatched)),
+        "total_pixels": int(mismatched.size),
+    })
+    return _write_report(report, report_path)
+
+
 def _write_report(report: Dict[str, Any], report_path: Optional[Path]) -> Dict[str, Any]:
     if report_path:
         report_path.parent.mkdir(parents=True, exist_ok=True)

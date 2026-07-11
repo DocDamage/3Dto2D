@@ -37,11 +37,11 @@
       quality_check: true
     };
 
-    if (context.goal === 'pack') return { action: 'queue_create', view: 'queues', payload };
+    if (context.goal === 'pack') return { action: 'queue_create', view: 'tasks', payload };
     if (context.goal === 'convert') {
       return {
         action: 'convert_video',
-        view: 'logs',
+        view: 'tasks',
         payload: {
           input: context.video,
           fps: 12,
@@ -56,27 +56,61 @@
     if (context.goal === 'release') {
       return {
         action: 'release_package',
-        view: 'logs',
+        view: 'tasks',
         payload: { name: `${name}_sprite_pack`, sprites: context.selectedSpriteDir || '' }
       };
     }
-    return { action: 'generate_sprite', view: 'logs', payload };
+    return { action: 'generate_sprite', view: 'tasks', payload };
   }
 
-  function evaluateWizardPreflight(statusData) {
-    if (!statusData) return { unknown: true, checks: {}, reasons: [] };
+  function evaluateWizardPreflight(statusData, goal = 'single') {
+    const needsGeneration = goal === 'single' || goal === 'pack';
+    if (!statusData) {
+      return {
+        unknown: true,
+        checks: {},
+        required: {},
+        applicable: {},
+        reasons: [],
+        notices: [],
+        ok: false
+      };
+    }
     const checks = {
       comfy: !!statusData.comfy_running,
       models: !!(statusData.models && statusData.models.ok),
       disk: (statusData.disk ? parseFloat(statusData.disk.free_gb) : 0) >= 5,
       job: !(statusData.job && statusData.job.running)
     };
+    const required = {
+      comfy: false,
+      models: needsGeneration,
+      disk: true,
+      job: true
+    };
+    const applicable = {
+      comfy: needsGeneration,
+      models: needsGeneration,
+      disk: true,
+      job: true
+    };
     const reasons = [];
-    if (!checks.comfy) reasons.push('ComfyUI is offline.');
-    if (!checks.models) reasons.push('Models are not downloaded.');
-    if (!checks.disk) reasons.push('Free space is below 5 GB.');
-    if (!checks.job) reasons.push('Another task is already running.');
-    return { unknown: false, checks, reasons, ok: reasons.length === 0 };
+    const notices = [];
+    if (needsGeneration && !checks.comfy) {
+      notices.push('The creation engine will start automatically when you create.');
+    }
+    if (needsGeneration && !checks.models) reasons.push('SpriteForge is still finishing its art-tool setup.');
+    if (!checks.disk) reasons.push('At least 5 GB of free space is needed.');
+    if (!checks.job) reasons.push('Another creation is already in progress.');
+    return {
+      unknown: false,
+      checks,
+      required,
+      applicable,
+      reasons,
+      notices,
+      ok: reasons.length === 0
+    };
   }
 
   function validateWizardStep(step, context) {

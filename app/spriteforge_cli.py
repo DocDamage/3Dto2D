@@ -12,6 +12,7 @@ def main():
         print("  export      Export sheets to Godot, Unity, or Unreal")
         print("  prompts     Build posepacks and text prompts")
         print("  maintenance Manage ComfyUI git state and updates")
+        print("  assets      Manage reproducible asset history and QA")
         print("\nRun: spriteforge <command> [args]")
         sys.exit(1)
 
@@ -37,6 +38,9 @@ def main():
             sys.exit(mod.main())
         elif cmd == "maintenance":
             mod = importlib.import_module("spriteforge_maintenance")
+            sys.exit(mod.main())
+        elif cmd == "assets":
+            mod = importlib.import_module("spriteforge_assets")
             sys.exit(mod.main())
         else:
             print(f"Unknown command: {cmd}")

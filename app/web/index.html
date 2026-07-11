@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="styles.css?v=rail-footer-fit" />
   <link rel="stylesheet" href="sprite_preview.css" />
   <link rel="stylesheet" href="animation_player.css" />
+  <link rel="stylesheet" href="play_workbench.css" />
   <link rel="stylesheet" href="compare_player.css" />
   <link rel="stylesheet" href="lighting_preview.css" />
   <link rel="stylesheet" href="cloud_hub.css" />
@@ -27,7 +28,9 @@
   <link rel="stylesheet" href="css/ux_enhancements.css" />
   <link rel="stylesheet" href="css/pixel_studio.css" />
   <link rel="stylesheet" href="css/topbar_compact.css?v=generate-existing-sprite" />
-  <link rel="stylesheet" href="css/wizard.css?v=wizard-reference-upload-buttons" />
+  <link rel="stylesheet" href="css/wizard.css?v=wizard-product-ready-v12" />
+  <link rel="stylesheet" href="css/consumer_experience.css?v=console-product-polish-v12" />
+  <link rel="stylesheet" href="css/playful_console.css?v=console-product-polish-v12" />
   <style>
     .file-mode-warning { display: none; }
     html.file-mode body {
@@ -69,7 +72,7 @@
       font-weight: 700;
     }
   </style>
-  <script src="js/component_loader.js?v=frontend-bootstrap"></script>
+  <script src="js/component_loader.js?v=console-product-polish-v12"></script>
   <script type="application/json" id="spriteforge-bootstrap-manifest">
     {
       "global_contracts": ["function openWizard()", "function closeWizard()"],
@@ -78,13 +81,13 @@
       "dashboard_version_contract": "name === 'dashboard' ? '?v=dashboard-fit-no-window-resize'",
       "component_versions": {
         "dashboard": "?v=dashboard-fit-no-window-resize",
-        "generate": "?v=prompt-autofix",
+        "generate": "?v=product-copy-v12",
         "quality": "?v=quality-lab-compact",
         "training": "?v=sakpix-training-polish"
       },
       "views": [
-        "guide", "dashboard", "tasks", "launchpad", "generate", "convert", "quality",
-        "packs", "animation_player", "compare_player", "lighting_preview", "cloud_hub",
+        "guide", "dashboard", "production", "aaa_studio", "tasks", "launchpad", "generate", "convert", "quality",
+        "packs", "animation_player", "play_workbench", "compare_player", "lighting_preview", "cloud_hub",
         "frame_editor", "queue", "release", "setup", "cleanup", "logs", "history",
         "queues", "ab_runs", "library", "qa_dashboard", "training", "lpc", "pixel_studio"
       ],
@@ -92,21 +95,25 @@
       "legacy_view_order_contract": "'ab_runs', 'library', 'qa_dashboard', 'training', 'lpc'",
       "scripts": [
         "js/globals.js?v=training-lora-launcher",
+        "js/view_lifecycle.js",
         "js/project.js",
         "js/gallery.js",
         "js/editor_history.js",
         "js/editor.js",
         "js/sprite_preview.js?v=generate-compact-fit2",
         "js/animation_player.js",
+        "js/play_workbench.js?v=console-product-polish-v12",
         "js/compare_player.js",
         "js/lighting_preview.js",
         "js/cloud_hub.js",
         "js/frame_editor.js",
+        "js/production_studio.js",
+        "js/aaa_studio.js",
         "js/prompt_builder.js?v=prompt-autofix",
         "js/seed_gallery.js",
         "js/frame_review.js",
         "js/palette_harmonizer.js",
-        "js/keyboard_shortcuts.js",
+        "js/keyboard_shortcuts.js?v=console-product-polish-v12",
         "js/theme_toggle.js",
         "js/mobile_nav.js",
         "js/drag_drop.js?v=reference-upload-buttons",
@@ -118,7 +125,7 @@
         "js/experiments.js",
         "js/qa.js?v=quality-lab-compact",
         "js/app_views.js",
-        "js/app_notifications.js",
+        "js/app_notifications.js?v=console-product-polish-v12",
         "js/app_presets.js?v=sakpix-training-polish",
         "js/app_status.js",
         "js/app_jobs.js?v=generate-compact-fit2",
@@ -126,43 +133,48 @@
         "js/app_listings.js?v=generate-compact-fit2",
         "js/wizard_templates.js",
         "js/wizard_state.js",
-        "js/wizard_submit.js",
-        "js/wizard_ui.js",
-        "js/wizard.js?v=wizard-reference-upload-buttons",
+        "js/wizard_submit.js?v=wizard-product-ready-v12",
+        "js/wizard_ui.js?v=wizard-product-ready-v12",
+        "js/wizard.js?v=wizard-product-ready-v12",
         "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
         "js/command_palette.js",
-        "js/pixel_studio.js",
-        "js/ux_enhancements.js?v=sprite-lab-visible",
+        "js/consumer_experience.js?v=console-product-polish-v12",
+        "js/playful_console.js?v=console-product-polish-v12",
+        "js/ux_enhancements.js?v=console-product-polish-v12",
         "js/app_main.js?v=quality-lab-compact"
       ]
     }
   </script>
 </head>
 <body>
+  <a class="skip-link" href="#mainContent">Skip to your workspace</a>
   <div class="aurora aurora-one"></div>
   <div class="aurora aurora-two"></div>
   <div class="aurora aurora-three"></div>
-  <button class="mobile-rail-toggle" id="mobileRailToggle" type="button" aria-label="Open navigation" aria-expanded="false"><span></span></button>
+  <button class="mobile-rail-toggle" id="mobileRailToggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primaryNavigation"><span></span></button>
   <div class="mobile-rail-backdrop" id="mobileRailBackdrop"></div>
   <div class="file-mode-warning" role="status">
     <strong>SpriteForge needs the local server.</strong>
     <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally, then open <code>http://127.0.0.1:&lt;port&gt;/</code>.</span>
   </div>
 
-  <aside class="rail">
+  <aside class="rail" id="appRail">
     <div class="brand">
       <img src="logo.svg" alt="" />
       <div>
         <strong>SpriteForge</strong>
         <span>Studio v12</span>
       </div>
-      <button class="rail-collapse-toggle" id="railCollapseToggle" type="button" title="Collapse Sidebar" style="background:none; border:none; color:var(--muted); cursor:pointer; margin-left:auto; display:flex; align-items:center; padding:4px;">
+      <button class="rail-collapse-toggle" id="railCollapseToggle" type="button" title="Collapse Sidebar" aria-label="Collapse Sidebar" aria-controls="appRail" aria-expanded="true" style="background:none; border:none; color:var(--muted); cursor:pointer; margin-left:auto; display:flex; align-items:center; padding:4px;">
         <svg class="icon-svg" viewBox="0 0 24 24" style="width:16px; height:16px; transition: transform 0.2s;"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
       </button>
     </div>
-    <nav>
+    <nav id="primaryNavigation" aria-label="Primary navigation">
       <button class="nav active" data-view="guide">Guide</button>
       <button class="nav" data-view="dashboard">Dashboard</button>
+      <button class="nav mode-expert" data-view="production">Production Studio</button>
+      <button class="nav" data-view="aaa_studio">AAA Studio</button>
+      <button class="nav" data-view="play_workbench">Play Workbench</button>
       <button class="nav" data-view="tasks">Task Center</button>
       <button class="nav" data-view="generate">Sprite Lab</button>
       <button class="nav" data-view="lpc">LPC</button>
@@ -189,7 +201,10 @@
     </div>
     <div class="rail-footer">
       <div class="mode-toggle-container">
-        <span class="mode-label" style="font-size: 10px; color: var(--muted); font-weight: 800; text-transform: uppercase; margin-bottom: 4px; display: block;">Interface Mode:</span>
+        <button class="consumer-pro-toggle" id="proToolsToggle" type="button" aria-pressed="false">
+          <span>Professional tools</span><small>Hidden</small>
+        </button>
+        <span class="mode-label legacy-mode-label" style="font-size: 10px; color: var(--muted); font-weight: 800; text-transform: uppercase; margin-bottom: 4px; display: block;">Interface Mode:</span>
         <div class="mode-buttons">
           <button class="mode-btn active" id="modeBtnSimple" type="button" data-mode="simple">Simple</button>
           <button class="mode-btn" id="modeBtnDetailed" type="button" data-mode="detailed">Detailed</button>
@@ -200,27 +215,42 @@
     </div>
   </aside>
 
-  <main class="shell">
+  <main class="shell" id="mainContent" tabindex="-1">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">Final Polish Edition</p>
-        <h1>Build game-ready sprite animations.</h1>
+      <div class="topbar-title-row">
+        <p class="eyebrow" id="currentViewEyebrow">Home</p>
+        <h1 id="currentViewTitle">Make something wonderful.</h1>
       </div>
       <div class="topbar-controls">
-        <div class="status-row">
-          <div class="chip" id="chip-gpu">GPU: checking…</div>
-          <div class="chip" id="chip-comfy">ComfyUI: checking…</div>
-          <div class="chip" id="chip-models">WAN models: checking…</div>
-          <button class="icon-btn notification-trigger" id="notificationTrigger" title="Open Notifications">
-            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-            <span class="badge" id="notificationBadge">0</span>
+        <div class="readiness-control">
+          <button class="readiness-pill" id="healthSummaryToggle" type="button" aria-expanded="false" aria-controls="healthSummaryPanel">
+            <span class="readiness-dot" aria-hidden="true"></span>
+            <span><b id="healthSummaryText">System ready</b><small>Checking details…</small></span>
+            <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
+          <div class="health-summary-panel" id="healthSummaryPanel" hidden>
+            <div class="status-row" role="status" aria-live="polite" aria-atomic="true">
+              <div class="chip" id="chip-gpu">Graphics · Checking</div>
+              <div class="chip" id="chip-comfy">Generation engine · Checking</div>
+              <div class="chip" id="chip-models">AI models · Checking</div>
+              <div class="chip" id="chip-storage">Storage · Checking</div>
+            </div>
+            <button class="health-settings-link" type="button" data-jump="setup">Open settings</button>
+          </div>
         </div>
+        <button class="icon-btn notification-trigger" id="notificationTrigger" title="Open Notifications" aria-label="Open notifications">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span class="badge" id="notificationBadge">0</span>
+        </button>
       </div>
       <div class="project-strip">
-        <label>Project<select id="projectSelect"><option value="">No project</option></select></label>
-        <input id="projectNameInput" placeholder="New project name" />
-        <button class="mini" id="createProjectBtn" type="button">Create</button>
+        <label><span>Project</span><select id="projectSelect"><option value="">Choose a project</option></select></label>
+        <button class="project-create-toggle" id="projectCreateToggle" type="button" aria-expanded="false" aria-controls="projectCreatePanel">New project</button>
+        <div class="project-create-panel" id="projectCreatePanel" hidden>
+          <input id="projectNameInput" placeholder="New project name" aria-label="New project name" />
+          <button class="mini primary" id="createProjectBtn" type="button">Create</button>
+          <button class="mini ghost" id="cancelProjectCreateBtn" type="button">Cancel</button>
+        </div>
         <div class="project-summary" id="projectSummary">Global workspace</div>
       </div>
     </header>
@@ -244,6 +274,8 @@
     <section class="view active" id="view-guide"></section>
 
     <section class="view" id="view-dashboard"></section>
+    <section class="view" id="view-production"></section>
+    <section class="view" id="view-aaa_studio"></section>
 
     <!-- ============================================================
          Unified Task Center View
@@ -288,6 +320,7 @@
     <section class="view" id="view-packs"></section>
 
     <section class="view" id="view-animation_player"></section>
+    <section class="view play-workbench-view" id="view-play_workbench"></section>
     <section class="view" id="view-compare_player"></section>
     <section class="view" id="view-lighting_preview"></section>
     <section class="view" id="view-cloud_hub"></section>
@@ -497,7 +530,7 @@
 
 
   <div id="wizardContainer"></div>
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
   <div id="shortcutCheatSheet" class="shortcut-cheat-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="shortcutCheatSheetTitle">
     <button class="shortcut-cheat-sheet-backdrop" type="button" data-shortcut-help-close aria-label="Close shortcut help"></button>
     <section class="shortcut-cheat-sheet-card">
@@ -520,6 +553,6 @@
       </div>
     </section>
   </div>
-  <script src="js/script_loader.js?v=frontend-bootstrap"></script>
+  <script src="js/script_loader.js?v=console-product-polish-v12"></script>
 </body>
 </html>

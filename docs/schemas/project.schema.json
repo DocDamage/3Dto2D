@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spriteforge.local/schemas/project.v2.json",
+  "title": "SpriteForge Project",
+  "type": "object",
+  "required": ["schema", "schema_version", "project_id", "name", "feature_flags"],
+  "properties": {
+    "schema": {"const": "spriteforge.project.v2"},
+    "schema_version": {"const": 2},
+    "project_id": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1},
+    "feature_flags": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "style_profile_revision": {"type": ["string", "null"]}
+  }
+}

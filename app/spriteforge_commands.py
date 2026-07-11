@@ -152,7 +152,8 @@ def load_config() -> Config:
     config_path = ROOT / "config" / "spriteforge_config.json"
     if not config_path.exists():
         raise FileNotFoundError(f"Missing config: {config_path}")
-    return Config(json.loads(config_path.read_text(encoding="utf-8")))
+    from services.config_service import ConfigService
+    return Config(ConfigService.get_config())
 
 
 # ── ComfyUI Helpers ─────────────────────────────────────

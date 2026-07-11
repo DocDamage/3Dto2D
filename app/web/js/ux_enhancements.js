@@ -9,12 +9,13 @@
   'use strict';
 
   const VIEW_LABELS = {
-    guide: 'Guide', dashboard: 'Dashboard', tasks: 'Task Center',
-    launchpad: 'Launchpad', generate: 'Sprite Lab', lpc: 'LPC', convert: 'Convert Video',
+    guide: 'Guide', dashboard: 'Dashboard', production: 'Production Studio', aaa_studio: 'AAA Studio', tasks: 'Task Center',
+    launchpad: 'Launchpad', generate: 'Sprite Lab', lpc: 'LPC', pixel_studio: 'Pixel Studio', convert: 'Convert Video',
     quality: 'Quality Lab', ab_runs: 'A/B Runs', library: 'Pose Library',
     qa_dashboard: 'QA Dashboard', training: 'Training Lab', packs: 'Packs & Atlas', queue: 'Queue Builder',
     queues: 'Queue Monitor', history: 'History', release: 'Release',
-    cleanup: 'Cleanup Manager', setup: 'Setup', logs: 'Logs'
+    cleanup: 'Cleanup Manager', setup: 'Setup', logs: 'Logs', animation_player: 'Animation Player', play_workbench: 'Play Workbench',
+    compare_player: 'Compare Player', lighting_preview: 'Lighting Preview', cloud_hub: 'Cloud Hub', frame_editor: 'Frame Editor'
   };
 
   // ------------------------------------------------------------------
@@ -24,6 +25,7 @@
     guide: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
     generate: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="m19 2 4 4L7 22H3v-4z"/><path d="M14 7l4 4"/></svg>`,
     lpc: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="8" r="2"/><path d="M9 13h6"/><path d="M8 17h8"/></svg>`,
+    pixel_studio: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h5"/><path d="M7 12h3"/><path d="M15 11l2 2 4-4"/><path d="M8 21h8"/><path d="M12 18v3"/></svg>`,
     convert: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M23 7a2 2 0 0 0-2.45-1.45L16 7V5a2 2 0 0 0-2-2H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2l4.55 1.45A2 2 0 0 0 23 17z"/></svg>`,
     queue: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
     quality: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
@@ -32,6 +34,8 @@
     library: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
     training: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M10 2v6.5L4.5 18a3 3 0 0 0 2.6 4.5h9.8a3 3 0 0 0 2.6-4.5L14 8.5V2"/><path d="M8 2h8"/><path d="M7 16h10"/></svg>`,
     dashboard: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>`,
+    production: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/><path d="M2 19h22"/></svg>`,
+    aaa_studio: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 8h3v3H8z"/><path d="M14 8h2"/><path d="M8 15h8"/></svg>`,
     tasks: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
     launchpad: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 3.42-2 3.42s2.16-.5 3.42-2c1.24-1.46 1.77-3.9 1.77-3.9s-2.44.53-3.9 1.77z"/><path d="M12 12c-2-2-5.5-2.5-5.5-2.5s.5 3.5 2.5 5.5c2 2 5.5 2.5 5.5 2.5s-.5-3.5-2.5-5.5z"/><path d="M19 5c-3 0-8.5 4.5-8.5 4.5s4 4 8.5 8.5c0 0 4.5-5.5 4.5-8.5 0-3-1.5-4.5-4.5-4.5z"/></svg>`,
     packs: `<svg class="nav-icon icon-svg" viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><polygon points="12 22.08 12 12 3 6.92 3 17.08 12 22.08"/><polygon points="12 12 21 6.92 21 17.08 12 22.08"/><polygon points="12 2 21 6.92 12 11.85 3 6.92 12 2"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
@@ -44,9 +48,9 @@
   };
 
   const NAV_GROUPS = [
-    { name: 'Create', views: ['guide', 'training', 'generate', 'lpc', 'convert'] },
+    { name: 'Create', views: ['guide', 'training', 'generate', 'lpc', 'pixel_studio', 'convert'] },
     { name: 'Review', views: ['quality'] },
-    { name: 'Manage', views: ['dashboard', 'tasks', 'packs', 'history', 'release', 'cleanup'] },
+    { name: 'Manage', views: ['dashboard', 'production', 'aaa_studio', 'tasks', 'play_workbench', 'animation_player', 'compare_player', 'lighting_preview', 'cloud_hub', 'frame_editor', 'packs', 'history', 'release', 'cleanup'] },
     { name: 'System', views: ['setup', 'logs'] }
   ];
 
@@ -546,6 +550,7 @@
     }
 
     updateNavGroupActiveState(name);
+    window.ConsumerExperience?.onViewChange(name);
   };
 
   // ------------------------------------------------------------------
@@ -557,6 +562,8 @@
     addFieldHints();
     setFormTabOrder();
     updateFormReadyState();
+    window.ConsumerExperience?.refreshFromStatus(statusData);
+    window.PlayfulConsole?.refreshFromStatus(statusData);
   }
 
   const _origRenderGlobalProgress = window.renderGlobalProgress;
@@ -598,20 +605,29 @@
   // ------------------------------------------------------------------
   function initUxEnhancements() {
     buildGroupedNav();
+    window.ConsumerExperience?.init();
 
     // Sidebar collapse/expand with localStorage persistence
     const rail = document.querySelector('.rail');
     const collapseToggle = document.getElementById('railCollapseToggle');
     if (rail && collapseToggle) {
       const isCollapsed = localStorage.getItem('railCollapsed') === 'true';
+      const syncCollapseToggle = collapsed => {
+        const label = collapsed ? 'Expand Sidebar' : 'Collapse Sidebar';
+        collapseToggle.title = label;
+        collapseToggle.setAttribute('aria-label', label);
+        collapseToggle.setAttribute('aria-expanded', String(!collapsed));
+      };
       if (isCollapsed) {
         rail.classList.add('collapsed');
         document.body.classList.add('rail-collapsed');
       }
+      syncCollapseToggle(isCollapsed);
       collapseToggle.addEventListener('click', () => {
         const collapsedNow = rail.classList.toggle('collapsed');
         document.body.classList.toggle('rail-collapsed', collapsedNow);
         localStorage.setItem('railCollapsed', collapsedNow);
+        syncCollapseToggle(collapsedNow);
       });
     }
 

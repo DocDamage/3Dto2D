@@ -1516,3 +1516,13 @@ def test_pixel_studio_polish_ui_assets():
     assert 'id="inspectorRepairTileBtn"' in html
     assert "/api/pixel-assets/tileset/repair" in js
     assert "repairSelectedTile" in js
+
+
+def test_pixel_studio_stays_reachable_in_grouped_navigation():
+    index = (APP / "web" / "index.html").read_text(encoding="utf-8")
+    ux = (APP / "web" / "js" / "ux_enhancements.js").read_text(encoding="utf-8")
+
+    assert '<button class="nav" data-view="pixel_studio">Pixel Studio</button>' in index
+    assert "pixel_studio: 'Pixel Studio'" in ux
+    assert "pixel_studio:" in ux
+    assert "['guide', 'training', 'generate', 'lpc', 'pixel_studio', 'convert']" in ux

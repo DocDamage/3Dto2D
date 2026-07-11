@@ -182,6 +182,7 @@ function renderJob(job) {
       timeStateEl.innerHTML = '';
     }
   }
+  window.PlayfulConsole?.updateJob(job);
 }
 
 function formatJobDuration(seconds) {

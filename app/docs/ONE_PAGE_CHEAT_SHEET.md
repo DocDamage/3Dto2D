@@ -10,13 +10,13 @@ START_HERE.bat
 
 ## First setup
 
-Click:
+Choose:
 
 ```text
-Launchpad -> Run No-GPU Demo
-Setup -> Start First Run Diagnostic
-Setup -> Install Everything: Safe Wan 2.1
-Setup -> Launch ComfyUI
+Home -> Try a demo -> Play Workbench
+Home -> Start creating -> four-step character wizard
+Settings -> Start First Run Diagnostic
+Settings -> Install Everything: Safe Wan 2.1 (only for AI generation)
 ```
 
 ## First safe test
@@ -37,9 +37,11 @@ Direction: right
 Character: single full body original game hero, simple outfit, boots, clean silhouette
 ```
 
-## Sprite Lab must-knows
+## Guided Create and Sprite Lab must-knows
 
 ```text
+Start with Home -> Start creating for the friendly default path
+Use Customize when you need direct prompt/profile/action controls
 Use AI Auto Fix in Final prompt preview
 Choose multiple actions when building a pack
 Choose All directions for full directional coverage
@@ -117,9 +119,9 @@ plain bright green background, locked camera, centered, no zoom
 Use:
 
 ```text
-Quality Lab -> Run QA
-Quality Lab -> Auto-Fix / one-click repair
-Release -> Build package when QA passes
+Review -> Run a friendly check
+Review -> Polish it for me / one-click repair
+Export -> Pack it for my game when QA passes
 ```
 
 ## Before sharing a build

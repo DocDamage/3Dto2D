@@ -83,7 +83,7 @@ key tolerance = 45 to 65
 
 ## Sprite jitters or feet slide
 
-Use the one-click repair actions in **Quality Lab**, or use:
+Use the one-click repair actions in **Review**, or use:
 
 ```bat
 python spriteforge_unified.py autofix-sprite --input output\YOUR_SPRITE --output output\YOUR_SPRITE_fixed --stabilize-anchor --drop-loop-duplicate --deflicker

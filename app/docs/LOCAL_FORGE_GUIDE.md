@@ -36,6 +36,10 @@ After the model is available, open **Settings → Playful workshop → Optional
 embedded language model**, enable the model, keep the endpoint at
 `http://127.0.0.1:11434`, enter the model name, and save.
 
+The floating **Ask Forge** control is available on the Home and workshop
+surfaces. It automatically steps out of the way while a dialog, notification
+drawer, or mobile navigation drawer is open.
+
 SpriteForge also supports an OpenAI-compatible server running on the same
 computer. Model endpoints must resolve to `localhost` or a loopback IP address.
 Remote endpoints are rejected.

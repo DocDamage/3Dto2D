@@ -19,8 +19,8 @@ def _loader_scripts() -> list[str]:
 def test_index_delegates_bootstrap_to_loader_files():
     html = (WEB / "index.html").read_text(encoding="utf-8")
 
-    assert 'src="js/component_loader.js?v=frontend-bootstrap"' in html
-    assert 'src="js/script_loader.js?v=frontend-bootstrap"' in html
+    assert 'src="js/component_loader.js?v=console-product-polish-v12"' in html
+    assert 'src="js/script_loader.js?v=console-product-polish-v12"' in html
     assert "function spriteForgeScriptList()" not in html
     assert "window.viewComponentsLoaded = new Promise" not in html
 

@@ -6,6 +6,7 @@
   --text: #f1f4f9;
   --muted: #8f9db1;
   --cyan: #49a0e0;
+  --accent: var(--cyan);
   --violet: #7a62d6;
   --pink: #c05797;
   --green: #56c590;
@@ -25,6 +26,7 @@
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
   --skeleton-base: rgba(255, 255, 255, .055);
   --skeleton-sheen: rgba(255, 255, 255, .16);
+  --panel-2: var(--panel2);
 
   --color-success: var(--green);
   --color-warning: var(--yellow);

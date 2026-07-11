@@ -720,6 +720,8 @@ body.mode-simple #wizardModal:not(.consumer-show-advanced) .wizard-preview-panel
 body.mode-simple #wizardModal:not(.consumer-show-advanced) .wizard-reference-fields,
 body.mode-simple #wizardModal:not(.consumer-show-advanced) .wizard-action-groups,
 body.mode-simple #wizardModal:not(.consumer-show-advanced) .wizard-perspective-grid,
+body.mode-simple #wizardModal:not(.consumer-show-advanced) .wizard-animation-side .wizard-direction-panel:first-child,
+body.mode-simple #wizardModal:not(.consumer-show-advanced) #wizDirectionsPicker,
 body.mode-simple #wizardModal:not(.consumer-show-advanced) .wizard-sheet-stats,
 body.mode-simple #wizardModal:not(.consumer-show-advanced) .wizard-cells-grid-visualizer,
 body.mode-simple #wizardModal:not(.consumer-show-advanced) #wizardSkipBtn,
@@ -778,6 +780,20 @@ body.mode-simple .wizard-choice-card input[type="radio"] {
   padding: 0 12px;
   cursor: pointer;
   font-weight: 750;
+}
+
+#wizPreflightError {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wizard-preflight-repair {
+  min-height: 38px;
+  border-color: color-mix(in srgb, var(--consumer-sun) 55%, var(--line));
+  background: color-mix(in srgb, var(--consumer-sun) 12%, var(--panel2));
+  color: var(--text);
 }
 
 /* Studio: keep drawing, layers and frames; move infrastructure to pro tools. */

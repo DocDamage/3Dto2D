@@ -612,14 +612,22 @@
     const collapseToggle = document.getElementById('railCollapseToggle');
     if (rail && collapseToggle) {
       const isCollapsed = localStorage.getItem('railCollapsed') === 'true';
+      const syncCollapseToggle = collapsed => {
+        const label = collapsed ? 'Expand Sidebar' : 'Collapse Sidebar';
+        collapseToggle.title = label;
+        collapseToggle.setAttribute('aria-label', label);
+        collapseToggle.setAttribute('aria-expanded', String(!collapsed));
+      };
       if (isCollapsed) {
         rail.classList.add('collapsed');
         document.body.classList.add('rail-collapsed');
       }
+      syncCollapseToggle(isCollapsed);
       collapseToggle.addEventListener('click', () => {
         const collapsedNow = rail.classList.toggle('collapsed');
         document.body.classList.toggle('rail-collapsed', collapsedNow);
         localStorage.setItem('railCollapsed', collapsedNow);
+        syncCollapseToggle(collapsedNow);
       });
     }
 

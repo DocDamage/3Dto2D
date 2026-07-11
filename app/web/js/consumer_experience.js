@@ -42,6 +42,18 @@
     return parent;
   }
 
+  function friendlyCreationName(value) {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^wan_sprite_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(?=_|$)/i);
+    if (!match) return raw || 'Character';
+    const [, year, month, day, hour, minute, second] = match;
+    const created = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+    if (Number.isNaN(created.getTime())) return 'Character';
+    const dateLabel = created.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const timeLabel = created.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `Character · ${dateLabel}, ${timeLabel}`;
+  }
+
   function updateViewAccessibility(name) {
     const normalized = friendlyViewName(name);
     document.querySelectorAll('.rail .nav[data-view]').forEach(button => {
@@ -276,7 +288,9 @@
       }
       const copy = document.createElement('span');
       const title = document.createElement('b');
-      title.textContent = item.name || 'Character';
+      const displayName = friendlyCreationName(item.name);
+      title.textContent = displayName;
+      if (item.name && displayName !== item.name) button.title = item.name;
       const detail = document.createElement('small');
       detail.textContent = `${item.frame_count || 0} frames · Continue editing`;
       copy.append(title, detail);
@@ -320,6 +334,15 @@
     if (title) title.textContent = 'Create something new';
     const subtitle = modal.querySelector('.wizard-header-title p');
     if (subtitle) subtitle.textContent = 'Four friendly steps. You can change anything later.';
+    const nameField = modal.querySelector('[name="wiz_name"]');
+    const descriptionField = modal.querySelector('[name="wiz_character"]');
+    const legacyDescription = 'single full body original game hero, professional appealing character design, heroic adult proportions, distinctive outfit, clean readable silhouette, consistent outfit';
+    if (nameField?.value.trim().toLowerCase() === 'hero' && descriptionField?.value.trim() === legacyDescription) {
+      nameField.value = 'Nova';
+      descriptionField.value = 'A brave sky courier with a bright scarf, a compact glider, and a clear heroic silhouette.';
+      nameField.dispatchEvent(new Event('input', { bubbles: true }));
+      descriptionField.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     const labels = ['Choose', 'Character', 'Moves', 'Ready'];
     modal.querySelectorAll('.indicator-label').forEach((label, index) => {
       if (labels[index]) label.textContent = labels[index];
@@ -376,6 +399,8 @@
     initWizardObserver();
     updateViewAccessibility(document.body.dataset.activeView || location.hash.replace('#', '') || 'guide');
   }
+
+  window.friendlyCreationName = friendlyCreationName;
 
   window.ConsumerExperience = {
     init,

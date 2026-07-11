@@ -1,4 +1,7 @@
 let notifications = [];
+let notificationDrawerTimer = null;
+let notificationDrawerFrame = null;
+let notificationDrawerFocusReturn = null;
 
 function loadNotifications() {
   try {
@@ -121,11 +124,50 @@ function clearAllNotifications() {
   renderNotifications();
 }
 
+function setNotificationDrawer(open) {
+  const drawer = $('#notificationDrawer');
+  const trigger = $('#notificationTrigger');
+  if (!drawer) return;
+  if (notificationDrawerTimer) window.clearTimeout(notificationDrawerTimer);
+  if (notificationDrawerFrame) window.cancelAnimationFrame(notificationDrawerFrame);
+  notificationDrawerTimer = null;
+  notificationDrawerFrame = null;
+  if (open) {
+    notificationDrawerFocusReturn = document.activeElement;
+    drawer.classList.remove('hidden');
+    drawer.setAttribute('aria-hidden', 'false');
+    trigger?.setAttribute('aria-expanded', 'true');
+    notificationDrawerFrame = window.requestAnimationFrame(() => {
+      notificationDrawerFrame = null;
+      if (drawer.getAttribute('aria-hidden') === 'true') return;
+      drawer.classList.add('show');
+      $('#closeDrawerBtn')?.focus();
+    });
+    return;
+  }
+  drawer.classList.remove('show');
+  drawer.setAttribute('aria-hidden', 'true');
+  trigger?.setAttribute('aria-expanded', 'false');
+  notificationDrawerTimer = window.setTimeout(() => drawer.classList.add('hidden'), 320);
+  const focusTarget = notificationDrawerFocusReturn;
+  notificationDrawerFocusReturn = null;
+  if (focusTarget && typeof focusTarget.focus === 'function') focusTarget.focus();
+}
+
 function initNotifications() {
-  if ($('#notificationTrigger')) $('#notificationTrigger').addEventListener('click', () => $('#notificationDrawer')?.classList.toggle('show'));
-  if ($('#closeDrawerBtn')) $('#closeDrawerBtn').addEventListener('click', () => $('#notificationDrawer')?.classList.remove('show'));
+  const trigger = $('#notificationTrigger');
+  const drawer = $('#notificationDrawer');
+  if (trigger && drawer) {
+    trigger.setAttribute('aria-controls', 'notificationDrawer');
+    trigger.setAttribute('aria-expanded', 'false');
+    drawer.setAttribute('aria-hidden', 'true');
+    trigger.addEventListener('click', () => setNotificationDrawer(drawer.getAttribute('aria-hidden') !== 'false'));
+  }
+  if ($('#closeDrawerBtn')) $('#closeDrawerBtn').addEventListener('click', () => setNotificationDrawer(false));
   if ($('#clearNotificationsBtn')) $('#clearNotificationsBtn').addEventListener('click', clearAllNotifications);
 }
+
+window.setNotificationDrawer = setNotificationDrawer;
 
 if (window.onSpriteForgeReady) {
   window.onSpriteForgeReady(initNotifications);

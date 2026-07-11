@@ -116,17 +116,51 @@
 
   function renderPreflightChecking(list, errBox) {
     if (!list) return;
+    const launch = document.getElementById('wizardLaunchBtn');
+    if (launch) launch.disabled = true;
     list.querySelectorAll('li').forEach(li => {
       li.querySelector('span').textContent = '⏳';
     });
-    if (errBox) errBox.style.display = 'none';
+    if (errBox) {
+      errBox.replaceChildren();
+      errBox.style.display = 'none';
+    }
+  }
+
+  function renderPreflightRepair(errBox, message) {
+    if (!errBox) return;
+    errBox.style.color = 'var(--danger)';
+    const copy = document.createElement('span');
+    copy.textContent = message;
+    const repair = document.createElement('button');
+    repair.type = 'button';
+    repair.className = 'mini wizard-preflight-repair';
+    repair.textContent = 'Fix setup';
+    repair.addEventListener('click', () => {
+      window.closeWizard?.();
+      window.showView?.('setup');
+    });
+    errBox.replaceChildren(copy, repair);
+    errBox.style.display = 'flex';
+  }
+
+  function renderPreflightNotice(errBox, message) {
+    if (!errBox) return;
+    const copy = document.createElement('span');
+    copy.textContent = message;
+    errBox.replaceChildren(copy);
+    errBox.style.color = 'var(--yellow)';
+    errBox.style.display = 'flex';
   }
 
   function renderPreflightResult(result, errBox) {
+    const launch = document.getElementById('wizardLaunchBtn');
     if (result.unknown) {
       document.querySelectorAll('#wizPreflightList li').forEach(li => {
         li.querySelector('span').textContent = '❓';
       });
+      if (launch) launch.disabled = true;
+      renderPreflightRepair(errBox, 'SpriteForge is still checking the workshop. Open Settings if this takes more than a moment.');
       return;
     }
     const map = {
@@ -136,23 +170,35 @@
       job: document.getElementById('wiz-check-job')
     };
     Object.entries(map).forEach(([key, item]) => {
-      if (item) item.querySelector('span').textContent = result.checks[key] ? '✅' : '❌';
+      if (!item) return;
+      const isApplicable = result.applicable?.[key] !== false;
+      const isOptionalNotice = isApplicable && result.required?.[key] === false && !result.checks[key];
+      const icon = !isApplicable ? '➖' : (isOptionalNotice ? '⚠️' : (result.checks[key] ? '✅' : '❌'));
+      item.querySelector('span').textContent = icon;
+      item.dataset.preflightState = !isApplicable ? 'not-applicable' : (isOptionalNotice ? 'notice' : (result.checks[key] ? 'ready' : 'blocked'));
     });
+    if (launch) launch.disabled = !result.ok;
     if (!result.ok && errBox) {
-      errBox.textContent = 'Warning: Preflight check failed! ' + result.reasons.join(' ');
-      errBox.style.display = 'block';
+      const details = [...result.reasons, ...(result.notices || [])].join(' ');
+      renderPreflightRepair(errBox, details);
+    } else if (result.notices?.length && errBox) {
+      renderPreflightNotice(errBox, result.notices.join(' '));
+    } else if (errBox) {
+      errBox.replaceChildren();
+      errBox.style.display = 'none';
     }
   }
 
   function renderPreflightError(list, errBox, error) {
+    const launch = document.getElementById('wizardLaunchBtn');
+    if (launch) launch.disabled = true;
     if (list) {
       list.querySelectorAll('li').forEach(li => {
         li.querySelector('span').textContent = '❌';
       });
     }
     if (errBox) {
-      errBox.textContent = 'Preflight failed: ' + error.message;
-      errBox.style.display = 'block';
+      renderPreflightRepair(errBox, `SpriteForge could not finish the ready check: ${error.message}`);
     }
   }
 

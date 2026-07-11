@@ -369,7 +369,7 @@
     });
   }
 
-  async function runPreflightCheck() {
+  async function runPreflightCheck(options = {}) {
     const list = document.getElementById('wizPreflightList');
     const errBox = document.getElementById('wizPreflightError');
     if (!list) return;
@@ -377,14 +377,19 @@
     window.SpriteForgeWizardUi.renderPreflightChecking(list, errBox);
 
     try {
-      // Reuse the global status check endpoint or general status data
       let statusData = window._latestStatus;
-      if (!statusData && typeof refreshAll === 'function') {
+      if (options.refresh && typeof api === 'function') {
+        const query = typeof projectQuery === 'function' ? projectQuery() : '';
+        statusData = await api(`/api/status${query}`);
+        window._latestStatus = statusData;
+      } else if (!statusData && typeof refreshAll === 'function') {
         await refreshAll();
         statusData = window._latestStatus;
       }
 
-      window.SpriteForgeWizardUi.renderPreflightResult(window.SpriteForgeWizardSubmit.evaluateWizardPreflight(statusData), errBox);
+      const goal = getSelectedGoal();
+      const result = window.SpriteForgeWizardSubmit.evaluateWizardPreflight(statusData, goal);
+      window.SpriteForgeWizardUi.renderPreflightResult(result, errBox);
     } catch (e) {
       console.error(e);
       window.SpriteForgeWizardUi.renderPreflightError(list, errBox, e);
@@ -474,6 +479,10 @@
     // Trigger pre-filled templates preview
     updatePromptPreview();
     updateVisualizerGrid();
+    if (currentStep === 4) {
+      buildSummaryPage();
+      runPreflightCheck({ refresh: true });
+    }
     const title = document.getElementById('wizardTitle');
     if (title) {
       title.setAttribute('tabindex', '-1');
@@ -564,7 +573,7 @@
     const container = document.getElementById('wizardContainer');
     if (!container) return;
     try {
-      const res = await fetch('components/wizard.html?v=wizard-reference-upload-buttons');
+      const res = await fetch('components/wizard.html?v=wizard-product-ready-v12');
       if (res.ok) {
         container.innerHTML = await res.text();
         initWizard();

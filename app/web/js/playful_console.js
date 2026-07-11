@@ -23,6 +23,15 @@
     ['Polishing', 'Cleaning every frame'],
     ['Packing', 'Getting it game-ready']
   ]);
+  const MENU_TONES = Object.freeze({
+    guide: 'blue',
+    dashboard: 'sun',
+    generate: 'coral',
+    aaa_studio: 'grape',
+    quality: 'mint',
+    release: 'blue',
+    setup: 'neutral'
+  });
   const runtime = {
     audioContext: null,
     lastJobRunning: false,
@@ -31,6 +40,7 @@
     controllerFrame: null,
     gamepadLatch: Object.create(null),
     gamepadPressed: Object.create(null),
+    overlayObserver: null,
     assistantOpen: false,
     initialized: false
   };
@@ -41,6 +51,43 @@
 
   function isSimpleMode() {
     return document.body.classList.contains('mode-simple');
+  }
+
+  function overlayIsOpen() {
+    if (document.body.classList.contains('mobile-rail-open')) return true;
+    return Array.from(document.querySelectorAll('[role="dialog"]')).some(dialog => {
+      if (dialog.id === 'notificationDrawer') return !dialog.classList.contains('hidden');
+      return !dialog.hidden && !dialog.classList.contains('hidden') && dialog.getAttribute('aria-hidden') !== 'true';
+    });
+  }
+
+  function syncCompanionVisibility() {
+    const dock = byId('forgeGuideDock');
+    if (!dock) return;
+    const preferenceHidden = preference(PREFS.assistant, 'true') !== 'true' && !isSimpleMode();
+    const shouldHide = preferenceHidden || overlayIsOpen();
+    if (dock.hidden !== shouldHide) dock.hidden = shouldHide;
+  }
+
+  function installOverlayWatcher() {
+    if (runtime.overlayObserver) return;
+    runtime.overlayObserver = new MutationObserver(mutations => {
+      syncCompanionVisibility();
+      const viewChanged = mutations.some(mutation =>
+        mutation.type === 'attributes' && ['data-active-view', 'data-active-parent-view'].includes(mutation.attributeName));
+      if (viewChanged && preference(PREFS.controller, 'false') === 'true') {
+        window.requestAnimationFrame(() => {
+          if (consoleFocusIsIdle()) focusConsoleDefault();
+        });
+      }
+    });
+    runtime.overlayObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class', 'hidden', 'aria-hidden', 'data-active-view', 'data-active-parent-view'],
+      childList: true,
+      subtree: true
+    });
+    syncCompanionVisibility();
   }
 
   function reduceMotion() {
@@ -295,6 +342,16 @@
     }
   }
 
+  function openDemoExperience() {
+    if (SAFE_VIEWS.has('play_workbench') && byId('view-play_workbench')) {
+      localStorage.setItem('spriteforgePlayWorkbenchAsset', 'output/demo_sprite_no_gpu');
+      window.showView?.('play_workbench');
+      window.loadPlayWorkbenchDemo?.();
+      return;
+    }
+    window.showView?.('animation_player');
+  }
+
   function buildHomeEnhancements() {
     const home = document.querySelector('.consumer-home');
     if (!home || home.dataset.playfulEnhanced) return;
@@ -315,6 +372,23 @@
       mark.appendChild(caption);
     }
     const projectState = byId('homeProjectState');
+    const heroCopy = home.querySelector('.home-hero-copy');
+    if (heroCopy && !byId('forgeHeroActions')) {
+      const actions = document.createElement('div');
+      actions.id = 'forgeHeroActions';
+      actions.className = 'forge-hero-actions';
+      actions.dataset.spatialNav = '';
+      actions.setAttribute('role', 'group');
+      actions.setAttribute('aria-label', 'Quick start');
+      actions.innerHTML = `
+        <button class="forge-hero-start" type="button" id="forgeHeroStart" data-spatial-default>
+          <span><b>Start creating</b><small>Build a new character</small></span><kbd aria-hidden="true">Enter</kbd>
+        </button>
+        <button class="forge-hero-demo" type="button" id="forgeHeroDemo"><span aria-hidden="true">▶</span> Try a demo</button>`;
+      heroCopy.insertBefore(actions, projectState || null);
+      byId('forgeHeroStart')?.addEventListener('click', () => window.openWizard?.('single'));
+      byId('forgeHeroDemo')?.addEventListener('click', openDemoExperience);
+    }
     if (projectState && !byId('forgeContinueButton')) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -332,12 +406,38 @@
       demo.type = 'button';
       demo.dataset.homeAction = 'demo';
       demo.innerHTML = '<span aria-hidden="true">▶</span><span><b>Try the demo sprite</b><small>Play before setting anything up</small></span>';
-      demo.addEventListener('click', () => {
-        if (SAFE_VIEWS.has('play_workbench') && byId('view-play_workbench')) window.showView?.('play_workbench');
-        else window.showView?.('animation_player');
-      });
+      demo.addEventListener('click', openDemoExperience);
       help.insertBefore(demo, help.querySelector('.secondary'));
     }
+  }
+
+  function decorateConsoleSurfaces() {
+    const nav = byId('primaryNavigation');
+    if (nav) {
+      nav.dataset.spatialNav = '';
+      nav.dataset.consoleMenu = 'true';
+      nav.querySelectorAll('.nav[data-view]').forEach(button => {
+        button.dataset.forgeTone = MENU_TONES[button.dataset.view] || 'neutral';
+      });
+    }
+    document.querySelectorAll([
+      '.forge-hero-actions', '.home-action-grid', '.dashboard-tabs', '.dashboard-actions',
+      '.aaa-simple-tools', '.forge-style-grid', '.forge-move-grid', '.forge-quality-grid',
+      '.forge-review-actions', '.forge-export-targets'
+    ].join(', '))
+      .forEach(surface => { surface.dataset.spatialNav = ''; });
+  }
+
+  function buildControlHints() {
+    const footer = document.querySelector('.rail-footer');
+    if (!footer || byId('forgeControlHints')) return;
+    const hints = document.createElement('div');
+    hints.id = 'forgeControlHints';
+    hints.className = 'forge-control-hints';
+    hints.setAttribute('role', 'note');
+    hints.setAttribute('aria-label', 'Menu controls');
+    hints.innerHTML = '<span><kbd>↑↓</kbd> Move</span><span><kbd>Enter</kbd> Choose</span>';
+    footer.appendChild(hints);
   }
 
   function updateJourney(status) {
@@ -363,7 +463,9 @@
     if (continueButton) {
       continueButton.hidden = !hasOutput;
       const title = continueButton.querySelector('b');
-      if (title) title.textContent = latest.name ? `Continue ${latest.name}` : 'Open your latest character';
+      const displayName = window.friendlyCreationName?.(latest.name) || latest.name;
+      if (title) title.textContent = displayName ? `Continue ${displayName}` : 'Open your latest character';
+      continueButton.title = latest.name && displayName !== latest.name ? latest.name : '';
     }
   }
 
@@ -611,7 +713,7 @@
     const detail = byId('simpleExportDetail');
     const sprites = byId('releaseSprites');
     if (!latest) return;
-    if (source) source.textContent = latest.name || 'Latest character';
+    if (source) source.textContent = window.friendlyCreationName?.(latest.name) || latest.name || 'Latest character';
     if (detail) detail.textContent = `${latest.frame_count || 0} frames · ${latest.qa_status || (latest.qa_score !== undefined ? `quality ${latest.qa_score}` : 'ready to review')}`;
     if (sprites && !sprites.value.trim() && latest.path) sprites.value = latest.path;
   }
@@ -737,6 +839,7 @@
     controller.addEventListener('change', () => {
       setPreference(PREFS.controller, controller.checked);
       syncControllerLoop();
+      if (controller.checked) controller.blur();
     });
     assistant.addEventListener('change', () => {
       setPreference(PREFS.assistant, assistant.checked);
@@ -787,6 +890,41 @@
   function visibleSpatialItems(container) {
     return Array.from(container.querySelectorAll('button:not([disabled]), [tabindex="0"]'))
       .filter(item => item.offsetParent !== null && item.getAttribute('aria-hidden') !== 'true');
+  }
+
+  function focusConsoleDefault() {
+    if (!isSimpleMode()) return false;
+    const activeView = document.querySelector('.shell > .view.active');
+    const selectors = [
+      '[data-spatial-default]',
+      '[data-simple-style][aria-pressed="true"]',
+      '[role="tab"][aria-selected="true"]',
+      '[data-aaa-tool]',
+      '.forge-review-actions .forge-primary-action',
+      '.forge-export-targets [aria-pressed="true"]',
+      '.home-action-card.home-action-primary',
+      '[data-spatial-nav] button:not([disabled])'
+    ];
+    let target = null;
+    if (activeView) {
+      for (const selector of selectors) {
+        target = Array.from(activeView.querySelectorAll(selector))
+          .find(item => item.offsetParent !== null && item.getAttribute('aria-hidden') !== 'true');
+        if (target) break;
+      }
+    }
+    if (!target) {
+      target = document.querySelector('.rail .nav[aria-current="page"]');
+      if (target?.offsetParent === null) target = null;
+    }
+    if (!target) return false;
+    target.focus({ preventScroll: false });
+    return document.activeElement === target;
+  }
+
+  function consoleFocusIsIdle() {
+    const active = document.activeElement;
+    return !overlayIsOpen() && (active === document.body || active === byId('mainContent'));
   }
 
   function spatialMove(direction) {
@@ -840,9 +978,14 @@
         const repeatable = ['left', 'right', 'up', 'down'].includes(name);
         if (active && (!wasActive || (repeatable && now - latch > 260))) {
           runtime.gamepadLatch[name] = now;
-          if (repeatable) spatialMove(name);
-          if (name === 'accept' && document.activeElement instanceof HTMLElement && document.activeElement.getClientRects().length) {
-            document.activeElement.click();
+          if (repeatable && !spatialMove(name) && consoleFocusIsIdle()) focusConsoleDefault();
+          if (name === 'accept') {
+            if (consoleFocusIsIdle()) focusConsoleDefault();
+            const target = document.activeElement;
+            if (target instanceof HTMLElement && target.getClientRects().length &&
+              target.matches('button, [role="button"], a[href], input[type="checkbox"], input[type="radio"]')) {
+              target.click();
+            }
           }
           if (name === 'back') runtime.assistantOpen ? byId('forgeGuideClose')?.click() : window.showView?.('guide');
         }
@@ -860,7 +1003,9 @@
     runtime.controllerFrame = null;
     runtime.gamepadPressed = Object.create(null);
     runtime.gamepadLatch = Object.create(null);
-    if (preference(PREFS.controller, 'false') === 'true') runtime.controllerFrame = window.requestAnimationFrame(pollController);
+    if (preference(PREFS.controller, 'false') === 'true') {
+      runtime.controllerFrame = window.requestAnimationFrame(pollController);
+    }
   }
 
   function bindGlobalFeedback() {
@@ -880,7 +1025,16 @@
       if (!isSimpleMode() || event.altKey || event.ctrlKey || event.metaKey) return;
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
       if (event.target.matches('input, textarea, select, [contenteditable="true"]')) return;
-      if (dispatchDirection(event.key)) event.preventDefault();
+      if (dispatchDirection(event.key)) {
+        event.preventDefault();
+        return;
+      }
+      if (consoleFocusIsIdle() && focusConsoleDefault()) {
+        event.preventDefault();
+      }
+    });
+    window.addEventListener('gamepadconnected', () => {
+      if (preference(PREFS.controller, 'false') === 'true' && consoleFocusIsIdle()) focusConsoleDefault();
     });
   }
 
@@ -893,6 +1047,8 @@
     enhanceStudio();
     buildWorkshopTrail();
     buildSettings();
+    decorateConsoleSurfaces();
+    buildControlHints();
   }
 
   function refreshFromStatus(status) {
@@ -901,8 +1057,7 @@
     updateJourney(status || {});
     refreshExport(status || {});
     updateWorkshop(status?.job || {});
-    const dock = byId('forgeGuideDock');
-    if (dock) dock.hidden = preference(PREFS.assistant, 'true') !== 'true' && !isSimpleMode();
+    syncCompanionVisibility();
   }
 
   function init() {
@@ -913,6 +1068,7 @@
     runtime.initialized = true;
     enhanceAll();
     bindGlobalFeedback();
+    installOverlayWatcher();
     syncControllerLoop();
     const observer = new MutationObserver(enhanceAll);
     observer.observe(document.querySelector('.shell') || document.body, { childList: true, subtree: true });

@@ -210,6 +210,7 @@
     }
     state.outputs = outputs;
 
+    const preferred = settings.preferredPath || '';
     const previous = settings.keepSelection ? (state.path || select.value) : '';
     const saved = settings.keepSelection ? (localStorage.getItem('spriteforgePlayWorkbenchAsset') || '') : '';
     select.replaceChildren();
@@ -224,7 +225,7 @@
 
     const available = new Set(outputs.map(item => item.path));
     const firstCreation = outputs.find(item => item.path !== DEMO_PATH)?.path || DEMO_PATH;
-    const requested = [previous, saved, firstCreation, DEMO_PATH].find(path => path && available.has(path));
+    const requested = [preferred, previous, saved, firstCreation, DEMO_PATH].find(path => path && available.has(path));
     select.value = requested || DEMO_PATH;
     await loadAsset(select.value, { allowDemoFallback: true });
   }
@@ -772,5 +773,6 @@
   }
 
   window.refreshPlayWorkbenchSprites = () => refreshAssets({ keepSelection: true });
+  window.loadPlayWorkbenchDemo = () => refreshAssets({ keepSelection: true, preferredPath: DEMO_PATH });
   window.viewComponentsLoaded?.then(bindWorkbench);
 })();

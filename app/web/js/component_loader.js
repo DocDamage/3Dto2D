@@ -9,7 +9,7 @@
 
   const componentVersions = {
     dashboard: '?v=dashboard-fit-no-window-resize',
-    generate: '?v=prompt-autofix',
+    generate: '?v=product-copy-v12',
     quality: '?v=quality-lab-compact',
     training: '?v=sakpix-training-polish',
   };

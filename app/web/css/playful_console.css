@@ -85,6 +85,146 @@ body.mode-simple .nav.consumer-primary[aria-current="page"] {
   box-shadow: inset 5px 0 0 var(--forge-blue), var(--forge-foot-small);
 }
 
+/* Color-coded launch menu: every destination reads like a distinct game mode. */
+body.mode-simple .rail {
+  border-color: color-mix(in srgb, var(--forge-blue) 16%, var(--line));
+  background:
+    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--forge-blue) 10%, transparent), transparent 27%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, var(--forge-grape) 4%), var(--panel));
+  box-shadow: 0 18px 48px rgba(6, 12, 31, .22), inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+
+body.mode-simple .nav[data-forge-tone] {
+  --forge-menu-tone: var(--muted);
+  gap: 10px;
+  overflow: visible;
+  padding-inline: 8px 28px;
+}
+
+body.mode-simple .nav[data-forge-tone="blue"] { --forge-menu-tone: var(--forge-blue); }
+body.mode-simple .nav[data-forge-tone="sun"] { --forge-menu-tone: var(--forge-sun); }
+body.mode-simple .nav[data-forge-tone="coral"] { --forge-menu-tone: var(--forge-coral); }
+body.mode-simple .nav[data-forge-tone="grape"] { --forge-menu-tone: var(--forge-grape); }
+body.mode-simple .nav[data-forge-tone="mint"] { --forge-menu-tone: var(--forge-mint); }
+
+/* Keep the color-coded menu legible against the pale Simple-mode rail. */
+body.mode-simple.theme-light .nav[data-forge-tone="blue"] { --forge-menu-tone: #075f95; }
+body.mode-simple.theme-light .nav[data-forge-tone="sun"] { --forge-menu-tone: #795000; }
+body.mode-simple.theme-light .nav[data-forge-tone="coral"] { --forge-menu-tone: #9f2f49; }
+body.mode-simple.theme-light .nav[data-forge-tone="grape"] { --forge-menu-tone: #5540a6; }
+body.mode-simple.theme-light .nav[data-forge-tone="mint"] { --forge-menu-tone: #0d6b4d; }
+
+body.mode-simple.theme-light .nav[data-forge-tone] .nav-icon { opacity: 1; }
+
+body.mode-simple .nav[data-forge-tone] .nav-icon {
+  width: 18px;
+  height: 18px;
+  box-sizing: content-box;
+  border-radius: 10px;
+  padding: 5px;
+  background: color-mix(in srgb, var(--forge-menu-tone) 13%, transparent);
+  color: var(--forge-menu-tone);
+  opacity: .84;
+  transition: transform .16s cubic-bezier(.2, .8, .2, 1), background-color .16s ease, opacity .16s ease;
+}
+
+body.mode-simple .nav[data-forge-tone]::before { display: none; }
+
+body.mode-simple .nav[data-forge-tone]::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-top: 3px solid var(--forge-menu-tone);
+  border-right: 3px solid var(--forge-menu-tone);
+  opacity: 0;
+  transform: translateX(-5px) rotate(45deg);
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+body.mode-simple .nav[data-forge-tone]:hover,
+body.mode-simple .nav[data-forge-tone]:focus-visible {
+  transform: translateX(2px);
+}
+
+body.mode-simple .nav[data-forge-tone].active,
+body.mode-simple .nav[data-forge-tone][aria-current="page"] {
+  border-color: color-mix(in srgb, var(--forge-menu-tone) 58%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--forge-menu-tone) 19%, transparent), transparent 88%),
+    var(--panel2);
+  box-shadow: var(--forge-foot-small), inset 0 0 0 1px color-mix(in srgb, var(--forge-menu-tone) 13%, transparent);
+  transform: translateX(3px);
+}
+
+body.mode-simple .nav[data-forge-tone].active .nav-icon,
+body.mode-simple .nav[data-forge-tone][aria-current="page"] .nav-icon {
+  background: var(--forge-menu-tone);
+  color: var(--forge-ink);
+  opacity: 1;
+  transform: rotate(-3deg) scale(1.04);
+}
+
+body.mode-simple.theme-light .nav[data-forge-tone].active .nav-icon,
+body.mode-simple.theme-light .nav[data-forge-tone][aria-current="page"] .nav-icon {
+  color: #fff;
+}
+
+body.mode-simple .nav[data-forge-tone].active::after,
+body.mode-simple .nav[data-forge-tone][aria-current="page"]::after {
+  opacity: 1;
+  transform: translateX(0) rotate(45deg);
+}
+
+/* Tone treatments must not widen or offset the compact icon-only rail. */
+body.mode-simple .rail.collapsed .nav[data-forge-tone],
+body.mode-simple .rail.collapsed .nav[data-forge-tone]:hover,
+body.mode-simple .rail.collapsed .nav[data-forge-tone]:focus-visible,
+body.mode-simple .rail.collapsed .nav[data-forge-tone].active,
+body.mode-simple .rail.collapsed .nav[data-forge-tone][aria-current="page"] {
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  transform: none;
+}
+
+body.mode-simple .rail.collapsed .nav[data-forge-tone]::after { display: none; }
+
+body.mode-simple .rail.collapsed .nav[data-forge-tone] .nav-icon {
+  width: 18px;
+  height: 18px;
+  padding: 5px;
+}
+
+.forge-control-hints {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.forge-control-hints span { display: inline-flex; align-items: center; gap: 4px; }
+.forge-control-hints kbd,
+.forge-hero-actions kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  min-height: 20px;
+  border: 1px solid color-mix(in srgb, var(--text) 20%, var(--line));
+  border-radius: 7px;
+  padding: 1px 5px;
+  background: color-mix(in srgb, var(--panel2) 86%, transparent);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--forge-ink) 26%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 8px;
+}
+
 /* Let the rail itself scroll instead of shrinking nav groups beneath its footer. */
 body.mode-simple .rail nav {
   flex: 0 0 auto;
@@ -102,6 +242,7 @@ body.mode-simple .rail nav {
   body.mode-simple .consumer-pro-toggle { min-height: 34px; padding-block: 5px; }
   body.mode-simple .rail-footer { gap: 2px; padding-top: 3px; }
   body.mode-simple .theme-toggle { height: 22px; margin-top: 1px !important; }
+  body.mode-simple .forge-control-hints { display: none; }
 }
 
 /* Keep the exit from Professional mode reachable on compact desktop widths. */
@@ -208,7 +349,7 @@ body.mode-simple .rail nav {
 /* Floating local guide. */
 .forge-guide-dock {
   position: fixed;
-  z-index: 115;
+  z-index: 45;
   right: 18px;
   bottom: 18px;
   display: grid;
@@ -216,6 +357,8 @@ body.mode-simple .rail nav {
   gap: 9px;
   font-family: var(--font-ui, "Segoe UI", sans-serif);
 }
+
+.forge-guide-dock[hidden] { display: none !important; }
 
 .forge-guide-toggle {
   min-height: 64px;
@@ -476,6 +619,64 @@ body.mode-simple .rail nav {
 
 .forge-home-caption span { color: var(--muted); }
 
+.forge-hero-actions {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 0 0 15px;
+}
+
+.forge-hero-start,
+.forge-hero-demo {
+  min-height: 48px;
+  border-radius: 15px;
+  cursor: pointer;
+}
+
+.forge-hero-start {
+  min-width: min(260px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid color-mix(in srgb, var(--forge-blue) 78%, white 8%);
+  padding: 8px 10px 8px 15px;
+  background: linear-gradient(135deg, #79cdff, var(--forge-blue) 54%, #8b78ef);
+  box-shadow: var(--forge-foot), inset 0 1px 0 rgba(255, 255, 255, .42);
+  color: #071226;
+  text-align: left;
+}
+
+.forge-hero-start > span { display: grid; gap: 1px; }
+.forge-hero-start b { font-size: 14px; font-weight: 950; }
+.forge-hero-start small { color: rgba(7, 18, 38, .72); font-size: 10px; font-weight: 750; }
+.forge-hero-start kbd { border-color: rgba(7, 18, 38, .26); background: rgba(255, 255, 255, .58); color: #071226; }
+
+.forge-hero-demo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--forge-sun) 52%, var(--line));
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--forge-sun) 10%, var(--panel2));
+  box-shadow: var(--forge-foot-small);
+  color: var(--text);
+  font-weight: 850;
+}
+
+.forge-hero-demo > span {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--forge-sun);
+  color: var(--forge-ink);
+  font-size: 10px;
+}
+
 .forge-continue-button {
   width: min(420px, 100%);
   display: grid;
@@ -548,6 +749,16 @@ body.mode-simple .home-action-card:nth-child(2):hover { transform: translateY(-4
 .forge-demo-button > span:last-child { display: grid; gap: 2px; }
 .forge-demo-button small { color: var(--muted); }
 
+/* A quick, restrained entrance makes view changes feel like a menu transition. */
+body.mode-simple .shell > .view.active {
+  animation: forge-view-enter .2s cubic-bezier(.2, .78, .25, 1) both;
+}
+
+@keyframes forge-view-enter {
+  from { opacity: .35; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* Shared flow composition. */
 .forge-flow-header {
   display: flex;
@@ -581,10 +792,8 @@ body:not(.mode-simple) .consumer-export-flow {
 }
 
 /* Four-choice creation workshop. */
-body.mode-simple #view-generate .section-title .eyebrow { font-size: 0; }
-body.mode-simple #view-generate .section-title .eyebrow::after { content: 'Character workshop'; font-size: 11px; }
-body.mode-simple #view-generate .section-title h2 { font-size: 0; }
-body.mode-simple #view-generate .section-title h2::after { content: 'Create your character'; font-size: clamp(24px, 3vw, 34px); }
+body.mode-simple #view-generate .section-title .eyebrow { font-size: 11px; }
+body.mode-simple #view-generate .section-title h2 { font-size: clamp(24px, 3vw, 34px); }
 body.mode-simple #view-generate > .grid-2 { display: block; }
 body.mode-simple #generateForm { width: min(980px, 100%); margin: 0 auto; padding: 0; border: 0; background: transparent; box-shadow: none; }
 body.mode-simple #generateForm > :not(.consumer-create-flow):not(input[type="hidden"]) { display: none !important; }
@@ -792,7 +1001,42 @@ body.mode-simple #generateForm > :not(.consumer-create-flow):not(input[type="hid
 body.mode-simple #view-quality .quality-left-rail { display: none !important; }
 body.mode-simple #view-quality .quality-workbench { display: block !important; }
 body.mode-simple #view-quality .quality-right-stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 14px; }
-body.mode-simple #view-quality .view-tabs { display: none !important; }
+body.mode-simple #view-quality .view-tabs,
+body.mode-simple #view-quality-parent > .view-tabs { display: none !important; }
+
+/* Keep the Projects screen as one deliberate panel instead of a clipped nested page. */
+@media (min-width: 761px) {
+  body.mode-simple #view-dashboard.view.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  body.mode-simple #view-dashboard .dashboard-tab-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  body.mode-simple #view-dashboard .dashboard-tab-panel.active {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 4px;
+    padding-bottom: 20px;
+  }
+}
+
+@media (min-width: 1081px) {
+  body.mode-simple[data-active-parent-view="quality-parent"] .topbar > .topbar-title-row {
+    display: block !important;
+  }
+  body.mode-simple[data-active-parent-view="quality-parent"] .global-task-progress:not(.idle):not(.done) {
+    width: 100%;
+    margin: 0 0 10px;
+    grid-template-columns: minmax(180px, .8fr) minmax(250px, 1.2fr) auto;
+  }
+}
 
 .consumer-review-flow { display: grid; gap: 20px; }
 
@@ -960,6 +1204,25 @@ body.mode-simple .global-task-progress {
   border-color: color-mix(in srgb, var(--forge-blue) 20%, var(--line));
   border-radius: 18px;
   box-shadow: var(--consumer-shadow-soft);
+}
+
+/* Completed work lives in Recent creations; only interrupt the canvas for live work or failures. */
+body.mode-simple .global-task-progress.idle,
+body.mode-simple .global-task-progress.done {
+  display: none !important;
+}
+
+body.mode-simple.theme-light #view-dashboard .dashboard-tab-btn.active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--forge-blue) 15%, var(--panel));
+  border-color: color-mix(in srgb, var(--forge-blue) 55%, var(--line));
+}
+
+body.mode-simple.theme-light #view-dashboard .dashboard-action-card b,
+body.mode-simple.theme-light #view-dashboard .dashboard-onboarding-copy h3,
+body.mode-simple.theme-light #view-dashboard .dashboard-workspace-empty h3,
+body.mode-simple.theme-light #view-dashboard .dashboard-workspace-head h3 {
+  color: var(--text);
 }
 
 .forge-workshop-trail {
@@ -1158,7 +1421,58 @@ body.mode-simple .global-task-progress {
   .forge-workshop-trail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+@media (min-width: 761px) and (max-width: 1000px) {
+  body.mode-simple .home-hero {
+    min-height: 290px;
+    padding: 30px;
+  }
+  body.mode-simple .home-hero-copy { max-width: 78%; }
+  body.mode-simple .home-hero-copy > p:not(.home-kicker) {
+    margin: 13px 0 16px;
+    font-size: 14px;
+    line-height: 1.42;
+  }
+  body.mode-simple .forge-home-companion {
+    right: 14px;
+    width: 28%;
+  }
+  body.mode-simple .forge-home-mascot-art { width: min(170px, 100%); }
+  body.mode-simple .forge-home-caption { display: none; }
+}
+
+@media (min-width: 761px) and (max-height: 760px) {
+  body.mode-simple .consumer-home { gap: 11px; }
+  body.mode-simple .home-hero {
+    min-height: 250px;
+    padding-block: 22px;
+  }
+  body.mode-simple .home-hero h2 { font-size: clamp(35px, 5vw, 46px); }
+  body.mode-simple .home-hero-copy > p:not(.home-kicker),
+  body.mode-simple .home-project-state { display: none; }
+  body.mode-simple .forge-home-mascot-art { width: min(138px, 100%); }
+  body.mode-simple .home-journey li { min-height: 48px; grid-template-rows: 1fr; }
+  body.mode-simple .home-journey li > span { grid-row: 1; width: 30px; height: 30px; }
+  body.mode-simple .home-journey li b { align-self: center; }
+  body.mode-simple .home-journey li small { display: none; }
+  .forge-guide-dock { right: 10px; bottom: 10px; }
+  .forge-guide-bubble { display: none; }
+  .forge-guide-toggle { width: 58px; min-width: 58px; min-height: 58px; border-radius: 18px; padding: 7px; }
+  .forge-guide-toggle > span:last-child { display: none; }
+}
+
 @media (max-width: 760px) {
+  body.mode-simple .topbar-title-row h1 {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    font-size: 17px !important;
+    line-height: 1.08;
+  }
+  body.mode-simple .home-hero { padding: 24px 20px; }
+  body.mode-simple .home-hero h2 { font-size: clamp(34px, 10vw, 41px); }
+  body.mode-simple .home-hero-copy > p:not(.home-kicker),
+  body.mode-simple .consumer-home .home-project-state { display: none; }
+  body.mode-simple .forge-hero-actions { margin-top: 18px; }
   .forge-guide-dock { right: 10px; bottom: 10px; }
   .forge-guide-bubble { display: none; }
   .forge-guide-toggle { min-width: 58px; min-height: 58px; border-radius: 18px; padding: 7px; }
@@ -1182,6 +1496,9 @@ body.mode-simple .global-task-progress {
   .forge-preference-grid { grid-template-columns: 1fr; }
   .forge-model-grid { grid-template-columns: 1fr; }
   .forge-model-actions { align-items: flex-start; flex-direction: column; }
+  .forge-control-hints { display: none; }
+  .forge-hero-start { flex: 1 1 220px; }
+  .forge-hero-demo { flex: 1 1 130px; }
 }
 
 @media (max-width: 430px) {
@@ -1205,7 +1522,9 @@ body.mode-simple .global-task-progress {
   }
   .forge-guide-bubble,
   body.mode-simple button,
-  body.mode-simple .home-action-card {
+  body.mode-simple .home-action-card,
+  body.mode-simple .shell > .view.active {
+    animation: none !important;
     transition: none !important;
   }
 }
@@ -1217,6 +1536,10 @@ body.pref-reduce-motion .forge-workshop-trail li.active > span,
 body.pref-reduce-motion .forge-celebration i {
   animation: none !important;
 }
+
+body.pref-reduce-motion.mode-simple .shell > .view.active { animation: none !important; }
+body.pref-reduce-motion.mode-simple button,
+body.pref-reduce-motion.mode-simple .home-action-card { transition: none !important; }
 
 @media (forced-colors: active) {
   .forge-companion-mark,

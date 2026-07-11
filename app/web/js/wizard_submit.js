@@ -63,20 +63,54 @@
     return { action: 'generate_sprite', view: 'tasks', payload };
   }
 
-  function evaluateWizardPreflight(statusData) {
-    if (!statusData) return { unknown: true, checks: {}, reasons: [] };
+  function evaluateWizardPreflight(statusData, goal = 'single') {
+    const needsGeneration = goal === 'single' || goal === 'pack';
+    if (!statusData) {
+      return {
+        unknown: true,
+        checks: {},
+        required: {},
+        applicable: {},
+        reasons: [],
+        notices: [],
+        ok: false
+      };
+    }
     const checks = {
       comfy: !!statusData.comfy_running,
       models: !!(statusData.models && statusData.models.ok),
       disk: (statusData.disk ? parseFloat(statusData.disk.free_gb) : 0) >= 5,
       job: !(statusData.job && statusData.job.running)
     };
+    const required = {
+      comfy: false,
+      models: needsGeneration,
+      disk: true,
+      job: true
+    };
+    const applicable = {
+      comfy: needsGeneration,
+      models: needsGeneration,
+      disk: true,
+      job: true
+    };
     const reasons = [];
-    if (!checks.comfy) reasons.push('The creation engine needs to be started in Settings.');
-    if (!checks.models) reasons.push('SpriteForge is still finishing its art-tool setup.');
+    const notices = [];
+    if (needsGeneration && !checks.comfy) {
+      notices.push('The creation engine will start automatically when you create.');
+    }
+    if (needsGeneration && !checks.models) reasons.push('SpriteForge is still finishing its art-tool setup.');
     if (!checks.disk) reasons.push('At least 5 GB of free space is needed.');
     if (!checks.job) reasons.push('Another creation is already in progress.');
-    return { unknown: false, checks, reasons, ok: reasons.length === 0 };
+    return {
+      unknown: false,
+      checks,
+      required,
+      applicable,
+      reasons,
+      notices,
+      ok: reasons.length === 0
+    };
   }
 
   function validateWizardStep(step, context) {

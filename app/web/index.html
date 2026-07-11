@@ -28,9 +28,9 @@
   <link rel="stylesheet" href="css/ux_enhancements.css" />
   <link rel="stylesheet" href="css/pixel_studio.css" />
   <link rel="stylesheet" href="css/topbar_compact.css?v=generate-existing-sprite" />
-  <link rel="stylesheet" href="css/wizard.css?v=wizard-reference-upload-buttons" />
-  <link rel="stylesheet" href="css/consumer_experience.css?v=creator-journey" />
-  <link rel="stylesheet" href="css/playful_console.css?v=forge-guide-workshop" />
+  <link rel="stylesheet" href="css/wizard.css?v=wizard-product-ready-v12" />
+  <link rel="stylesheet" href="css/consumer_experience.css?v=console-product-polish-v12" />
+  <link rel="stylesheet" href="css/playful_console.css?v=console-product-polish-v12" />
   <style>
     .file-mode-warning { display: none; }
     html.file-mode body {
@@ -72,7 +72,7 @@
       font-weight: 700;
     }
   </style>
-  <script src="js/component_loader.js?v=frontend-bootstrap"></script>
+  <script src="js/component_loader.js?v=console-product-polish-v12"></script>
   <script type="application/json" id="spriteforge-bootstrap-manifest">
     {
       "global_contracts": ["function openWizard()", "function closeWizard()"],
@@ -81,7 +81,7 @@
       "dashboard_version_contract": "name === 'dashboard' ? '?v=dashboard-fit-no-window-resize'",
       "component_versions": {
         "dashboard": "?v=dashboard-fit-no-window-resize",
-        "generate": "?v=prompt-autofix",
+        "generate": "?v=product-copy-v12",
         "quality": "?v=quality-lab-compact",
         "training": "?v=sakpix-training-polish"
       },
@@ -102,7 +102,7 @@
         "js/editor.js",
         "js/sprite_preview.js?v=generate-compact-fit2",
         "js/animation_player.js",
-        "js/play_workbench.js",
+        "js/play_workbench.js?v=console-product-polish-v12",
         "js/compare_player.js",
         "js/lighting_preview.js",
         "js/cloud_hub.js",
@@ -113,7 +113,7 @@
         "js/seed_gallery.js",
         "js/frame_review.js",
         "js/palette_harmonizer.js",
-        "js/keyboard_shortcuts.js",
+        "js/keyboard_shortcuts.js?v=console-product-polish-v12",
         "js/theme_toggle.js",
         "js/mobile_nav.js",
         "js/drag_drop.js?v=reference-upload-buttons",
@@ -125,7 +125,7 @@
         "js/experiments.js",
         "js/qa.js?v=quality-lab-compact",
         "js/app_views.js",
-        "js/app_notifications.js",
+        "js/app_notifications.js?v=console-product-polish-v12",
         "js/app_presets.js?v=sakpix-training-polish",
         "js/app_status.js",
         "js/app_jobs.js?v=generate-compact-fit2",
@@ -133,14 +133,14 @@
         "js/app_listings.js?v=generate-compact-fit2",
         "js/wizard_templates.js",
         "js/wizard_state.js",
-        "js/wizard_submit.js",
-        "js/wizard_ui.js",
-        "js/wizard.js?v=wizard-reference-upload-buttons",
+        "js/wizard_submit.js?v=wizard-product-ready-v12",
+        "js/wizard_ui.js?v=wizard-product-ready-v12",
+        "js/wizard.js?v=wizard-product-ready-v12",
         "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
         "js/command_palette.js",
-        "js/consumer_experience.js?v=creator-journey",
-        "js/playful_console.js?v=forge-guide-workshop",
-        "js/ux_enhancements.js?v=sprite-lab-visible",
+        "js/consumer_experience.js?v=console-product-polish-v12",
+        "js/playful_console.js?v=console-product-polish-v12",
+        "js/ux_enhancements.js?v=console-product-polish-v12",
         "js/app_main.js?v=quality-lab-compact"
       ]
     }
@@ -158,14 +158,14 @@
     <span>Chrome blocks this app's component loading when opened as a file. Start SpriteForge normally, then open <code>http://127.0.0.1:&lt;port&gt;/</code>.</span>
   </div>
 
-  <aside class="rail">
+  <aside class="rail" id="appRail">
     <div class="brand">
       <img src="logo.svg" alt="" />
       <div>
         <strong>SpriteForge</strong>
         <span>Studio v12</span>
       </div>
-      <button class="rail-collapse-toggle" id="railCollapseToggle" type="button" title="Collapse Sidebar" style="background:none; border:none; color:var(--muted); cursor:pointer; margin-left:auto; display:flex; align-items:center; padding:4px;">
+      <button class="rail-collapse-toggle" id="railCollapseToggle" type="button" title="Collapse Sidebar" aria-label="Collapse Sidebar" aria-controls="appRail" aria-expanded="true" style="background:none; border:none; color:var(--muted); cursor:pointer; margin-left:auto; display:flex; align-items:center; padding:4px;">
         <svg class="icon-svg" viewBox="0 0 24 24" style="width:16px; height:16px; transition: transform 0.2s;"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
       </button>
     </div>
@@ -553,6 +553,6 @@
       </div>
     </section>
   </div>
-  <script src="js/script_loader.js?v=frontend-bootstrap"></script>
+  <script src="js/script_loader.js?v=console-product-polish-v12"></script>
 </body>
 </html>

@@ -47,6 +47,8 @@ def test_play_workbench_uses_latest_demo_and_missing_asset_fallbacks():
         "/api/outputs",
         "/api/sprite/preview?path=",
         "output/demo_sprite_no_gpu",
+        "preferredPath",
+        "window.loadPlayWorkbenchDemo",
         "buildClipMap",
         "loadImage",
         "image.onerror",

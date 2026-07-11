@@ -83,6 +83,13 @@ def test_design_system_exposes_skeleton_loading_primitives():
     assert "@keyframes skeleton-sheen" in components
 
 
+def test_base_variables_keep_shared_token_aliases():
+    variables = (WEB / "css" / "base_variables.css").read_text(encoding="utf-8")
+
+    assert re.search(r"--accent\s*:\s*var\(\s*--cyan\s*\)\s*;", variables)
+    assert re.search(r"--panel-2\s*:\s*var\(\s*--panel2\s*\)\s*;", variables)
+
+
 def test_css_architecture_tracks_known_debt_hotspots():
     manifest = json.loads((WEB / "css" / "css_architecture.json").read_text(encoding="utf-8"))
     debt = {item["id"]: item for item in manifest["debt_register"]}

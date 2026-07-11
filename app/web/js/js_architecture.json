@@ -20,7 +20,7 @@
       "files": [
         "js/sprite_preview.js?v=generate-compact-fit2",
         "js/animation_player.js",
-        "js/play_workbench.js",
+        "js/play_workbench.js?v=console-product-polish-v12",
         "js/compare_player.js",
         "js/lighting_preview.js",
         "js/cloud_hub.js",
@@ -37,7 +37,7 @@
     {
       "layer": "interaction",
       "files": [
-        "js/keyboard_shortcuts.js",
+        "js/keyboard_shortcuts.js?v=console-product-polish-v12",
         "js/theme_toggle.js",
         "js/mobile_nav.js",
         "js/drag_drop.js?v=reference-upload-buttons",
@@ -55,7 +55,7 @@
         "js/experiments.js",
         "js/qa.js?v=quality-lab-compact",
         "js/app_views.js",
-        "js/app_notifications.js",
+        "js/app_notifications.js?v=console-product-polish-v12",
         "js/app_presets.js?v=sakpix-training-polish",
         "js/app_status.js",
         "js/app_jobs.js?v=generate-compact-fit2",
@@ -63,9 +63,9 @@
         "js/app_listings.js?v=generate-compact-fit2",
         "js/wizard_templates.js",
         "js/wizard_state.js",
-        "js/wizard_submit.js",
-        "js/wizard_ui.js",
-        "js/wizard.js?v=wizard-reference-upload-buttons",
+        "js/wizard_submit.js?v=wizard-product-ready-v12",
+        "js/wizard_ui.js?v=wizard-product-ready-v12",
+        "js/wizard.js?v=wizard-product-ready-v12",
         "js/app_dashboard.js?v=dashboard-fit-no-window-resize",
         "js/command_palette.js"
       ],
@@ -74,9 +74,9 @@
     {
       "layer": "bootstrap",
       "files": [
-        "js/consumer_experience.js?v=creator-journey",
-        "js/playful_console.js?v=forge-guide-workshop",
-        "js/ux_enhancements.js?v=sprite-lab-visible",
+        "js/consumer_experience.js?v=console-product-polish-v12",
+        "js/playful_console.js?v=console-product-polish-v12",
+        "js/ux_enhancements.js?v=console-product-polish-v12",
         "js/app_main.js?v=quality-lab-compact"
       ],
       "purpose": "Consumer journey, playful guide/workshop feedback, final UX wrappers, and application startup. Must stay last until ES module migration is complete."

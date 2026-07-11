@@ -120,6 +120,35 @@ def test_simple_mode_has_six_friendly_primary_destinations():
     assert "nav-label" in consumer_js
 
 
+def test_sidebar_collapse_control_announces_its_current_action():
+    index = _read(WEB / "index.html")
+    ux_js = _read(WEB / "js" / "ux_enhancements.js")
+
+    assert '<aside class="rail" id="appRail">' in index
+    assert 'aria-controls="appRail"' in index
+    assert 'aria-expanded="true"' in index
+    assert "const syncCollapseToggle = collapsed =>" in ux_js
+    assert "collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'" in ux_js
+    assert "collapseToggle.setAttribute('aria-label', label)" in ux_js
+    assert "collapseToggle.setAttribute('aria-expanded', String(!collapsed))" in ux_js
+    assert "syncCollapseToggle(collapsedNow)" in ux_js
+
+
+def test_raw_wan_sprite_names_are_presented_as_friendly_creation_dates():
+    consumer_js = _read(WEB / "js" / "consumer_experience.js")
+    playful_js = _read(WEB / "js" / "playful_console.js")
+
+    assert "function friendlyCreationName(value)" in consumer_js
+    assert "raw.match(/^wan_sprite_" in consumer_js
+    assert "(?=_|$)" in consumer_js
+    assert "created.toLocaleDateString" in consumer_js
+    assert "created.toLocaleTimeString" in consumer_js
+    assert "return `Character · ${dateLabel}, ${timeLabel}`" in consumer_js
+    assert "window.friendlyCreationName = friendlyCreationName" in consumer_js
+    assert "const displayName = friendlyCreationName(item.name)" in consumer_js
+    assert "window.friendlyCreationName?.(latest.name)" in playful_js
+
+
 def test_health_summary_is_a_progressive_disclosure_with_friendly_copy():
     index = _read(WEB / "index.html")
     consumer_js_files = sorted(path for path in (WEB / "js").glob("*.js") if "consumer" in path.stem.lower())
